@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SGenAxis 產品架構（PySide6 實作）</title>
+<style>
+:root{--bg:#f2f5f7;--ink:#172c39;--muted:#526876;--line:#dce4e9;--teal:#006f75;--gold:#a46305;--blue:#246bff}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Segoe UI","Microsoft JhengHei",sans-serif}
+header{background:#102c3b;color:#fff;padding:46px max(5vw,24px) 34px}
+header p{color:#c4dbe1;max-width:920px;margin:8px 0}
+h1{font-size:38px;margin:8px 0}h2{font-size:25px;margin:0 0 16px}h3{font-size:17px;margin:22px 0 8px}
+nav{position:sticky;top:0;background:#fff;z-index:4;border-bottom:1px solid var(--line);padding:11px 5vw;display:flex;gap:18px;flex-wrap:wrap}
+nav a{text-decoration:none;color:#00737b}nav a:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:3px solid #dd970d;outline-offset:3px}
+main{max-width:1320px;margin:auto;padding:28px}
+section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;margin:0 0 24px;scroll-margin-top:80px}
+.eyebrow{letter-spacing:3px;font-size:12px;color:#86d7da}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;background:#eaf0f3;font-size:12px;color:#385563;margin:3px}
+.good{background:#dff2e6;color:#155332}.warn{background:#fff1d7;color:#875000}.bad{background:#fde4e4;color:#8a1f1f}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.card{padding:18px;border:1px solid var(--line);border-radius:12px}.number{font-size:30px;font-weight:700}
+.muted{color:var(--muted)}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:#eef4f5}tr.hl td{background:#fff6dc}
+code{background:#edf2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere;font-family:Consolas,"Cascadia Code",monospace;font-size:13px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6f8;padding:15px;border-radius:8px;font-size:13px;font-family:Consolas,"Cascadia Code",monospace}
+.note{border-left:4px solid #d99b33;background:#fff8e9;padding:12px 18px;margin:14px 0}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.tablewrap,.graph{overflow:auto}.graph svg{width:100%;height:auto;min-width:760px}
+.flow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.flow span{border:1px solid #b8d5d8;border-radius:7px;padding:6px 10px;background:#f6fbfb;font-size:13px}
+.flow i{color:var(--muted);font-style:normal}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}.sw{width:118px;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:11px}
+.sw b{display:block;height:34px}.sw span{display:block;padding:4px 6px}
+.dagnode{cursor:pointer}.dagnode rect{transition:stroke .15s}.dagnode.sel rect.body{stroke:#246bff;stroke-width:2.5}
+#dagInfo{border:1px solid var(--line);border-radius:12px;padding:14px 18px;min-height:150px}
+.footer{padding:20px;text-align:center;color:var(--muted)}
+@media(max-width:800px){main{padding:12px}section{padding:18px}h1{font-size:28px}.twocol{grid-template-columns:1fr}nav{position:static}}
+@media print{nav{display:none}body{background:#fff;font-size:11px}section{break-inside:avoid;border:0;padding:10px}header{background:#fff;color:#000}header p{color:#333}.graph svg{min-width:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SGENAXIS / PRODUCT ARCHITECTURE · AS BUILT</div>
+  <h1>SGenAxis 產品架構</h1>
+  <p>Git 管理工作台的 PySide6 桌面實作。畫面規格來源為 <code style="background:#1d4152;color:#e6f3f5">git_workbench_interactive.html</code>；工項規則、派工狀態機、排程與期間統計依 Beta 測試看板 <code style="background:#1d4152;color:#e6f3f5">PROJECT-BOARD.html</code> 修正。本文件描述「目前程式碼實際的樣子」，不是規劃。</p>
+  <span class="badge good">83 項測試</span><span class="badge">Python 3.10.6</span><span class="badge">PySide6 6.12.0</span><span class="badge">pytest 9.1.1</span><span class="badge warn">Agent 預設模擬；沙盒專案可切實際啟動。Git 只讀、部署未接上</span>
+</header>
+<nav aria-label="章節">
+  <a href="#overview">總覽</a><a href="#layers">分層</a><a href="#modules">程式模組</a><a href="#window">視窗結構</a>
+  <a href="#pages">頁面路由</a><a href="#flows">資料流</a><a href="#domain">領域模型</a><a href="#theme">主題系統</a>
+  <a href="#dag">模組 DAG</a><a href="#guards">約束</a><a href="#tests">測試</a><a href="#gaps">缺口</a>
+</nav>
+<main>
+
+<section id="overview">
+  <h2>01 / 產品與交付狀態</h2>
+  <p>SGenAxis 是本機優先的工程控制台：以四色燈號管理工項（灰待辦／黃進行中／紅阻塞／綠完成，綠燈可再由使用者「確認驗收」），依優先序把卡片派給多條 Agent 通道，依排程自動開工或收工，並統計每日／每週／每月的完成率。</p>
+  <div class="note"><strong>這一版的邊界：</strong>規則與狀態機是真的（Core 全部實作並有測試）。工項與派工狀態已存成專案資料夾內的 JSON（<code>&lt;專案&gt;/.sgenaxis/tasks.json</code>，hb-board/1 格式，鎖檔＋原子寫入）；啟動時先顯示 Beta 看板的唯讀快照（80 張＋1 個版本，SHA-256 已核對）。Agent 預設由 <code>DryRunLauncher</code> 模擬；在「設定 › Agent 啟動」可對目前專案切到實際啟動（<code>ProcessLauncher</code>，只限 <code>D:\AIAD\_sandbox</code> 底下的專案，切換專案即回到模擬）。回報走與 Beta 相同的三條管道（回報檔、輸出標記、回報指令）加上畫面上的「模擬回報」。佈版頁的版本來自看板紀錄、成品與 <code>dist/</code> 即時檢查；Git 頁只對 SGenAxis 建立且有自己 <code>.git</code> 的專案執行唯讀查詢。Git 寫入、Clone、部署、提交仍只在狀態列留下提示。</div>
+  <div class="cards">
+    <div class="card"><div class="muted">原始碼</div><div class="number">7,542</div><div>行 Python（sgenaxis/）</div></div>
+    <div class="card"><div class="muted">Core</div><div class="number">2,312</div><div>行，無 Qt、無 I/O（12 檔）</div></div>
+    <div class="card"><div class="muted">頁面</div><div class="number">14</div><div>同一視窗內切換；「最近紀錄」兼作派工 Log</div></div>
+    <div class="card"><div class="muted">啟動時的看板</div><div class="number">80</div><div>Beta 快照：綠 31 · 灰 19 · 紅 17 · 黃 13（唯讀）</div></div>
+    <div class="card"><div class="muted">自動測試</div><div class="number">172</div><div>Core＋Adapter＋回報指令 138 · UI 34（offscreen）</div></div>
+  </div>
+  <h3>啟動方式</h3>
+  <table>
+    <thead><tr><th>方式</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td><code>start_sgenaxis.bat</code></td><td>切到自身資料夾後以 <code>pythonw -m sgenaxis</code> 啟動（無主控台）；找不到 pythonw 時改用 python；兩者皆無則提示並暫停。</td></tr>
+      <tr><td><code>python -m sgenaxis</code></td><td><code>__main__.py</code> → <code>app.main()</code>：建立 QApplication，以 Beta 快照（記憶體）、<code>SystemClock</code>、<code>FileProjectBoards</code> 組裝 WorkbenchSession，套用 QSS，顯示 MainWindow。開啟或新增專案後才讀寫該資料夾的 <code>.sgenaxis/</code>。</td></tr>
+      <tr><td><code>python -m pytest tests -q</code></td><td>全部約 1 分鐘（Core 不到 1 秒）；UI 測試需 <code>QT_QPA_PLATFORM=offscreen</code>。每個 UI 測試結束後會刪除殘留視窗，否則換主題時會重繪先前所有視窗，拖到 30 分鐘以上。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="layers">
+  <h2>02 / 分層架構（Mode A：獨立桌面應用）</h2>
+  <p>控制流由上往下；編譯期依賴一律指向內層。<strong>Core 定義 Port（Protocol），Adapter 實作 Port</strong>：Core 不依賴 Qt、不讀寫檔案、不讀系統時鐘、不啟動子行程，所以派工狀態機與排程可以用 <code>ManualClock</code> 和 <code>DryRunLauncher</code> 在毫秒內測完。</p>
+  <div class="graph">
+  <svg viewBox="0 0 1000 640" role="img" aria-label="分層圖：入口、組裝根、頁面、共用 UI 服務、Core 應用與領域、Port、Adapter">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#7f97a3"/></marker></defs>
+    <g font-family="Segoe UI, Microsoft JhengHei" font-size="14">
+      <rect x="20" y="16" width="960" height="62" rx="10" fill="#eef4f5" stroke="#9fbcc4"/>
+      <text x="36" y="42" font-weight="700">入口 Entry</text>
+      <text x="36" y="64" fill="#526876">start_sgenaxis.bat · __main__.py · app.main()：WorkbenchSession(clock=SystemClock())</text>
+
+      <rect x="20" y="96" width="960" height="70" rx="10" fill="#e3f1f2" stroke="#36848b" stroke-width="1.5"/>
+      <text x="36" y="122" font-weight="700">組裝根 Composition root — ui/main_window.py · MainWindow（819 行）</text>
+      <text x="36" y="148" fill="#526876">路由 · refresh() 投影 · 訊號接線 · dispatch_timer（每秒 tick）· DispatchError／VersionConflict 轉成狀態列訊息</text>
+
+      <rect x="20" y="184" width="960" height="132" rx="10" fill="#f6fbfb" stroke="#9fbcc4"/>
+      <text x="36" y="208" font-weight="700">頁面與面板（各自只發出 Signal，不碰 Session）</text>
+      <g font-size="12.5">
+        <rect x="36" y="220" width="150" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="46" y="245">TaskSidebar</text>
+        <rect x="196" y="220" width="150" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="206" y="245">TaskBoard</text>
+        <rect x="356" y="220" width="190" height="40" rx="7" fill="#fff" stroke="#36848b" stroke-width="1.5"/><text x="366" y="245">AgentDispatchPage · LaneCard</text>
+        <rect x="556" y="220" width="130" height="40" rx="7" fill="#fff" stroke="#36848b" stroke-width="1.5"/><text x="566" y="245">StatsPage</text>
+        <rect x="696" y="220" width="130" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="706" y="245">ArchPage</text>
+        <rect x="836" y="220" width="130" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="846" y="245">UiDesignPage</text>
+        <rect x="36" y="268" width="150" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="46" y="293">GitWorkspacePage</text>
+        <rect x="196" y="268" width="150" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="206" y="293">ReleasePage</text>
+        <rect x="356" y="268" width="190" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="366" y="293">ProjectPage（Inspector）</text>
+        <rect x="556" y="268" width="130" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="566" y="293">SettingsDialog</text>
+        <rect x="696" y="268" width="270" height="40" rx="7" fill="#fff" stroke="#b8d5d8"/><text x="706" y="293">ExecLogPanel · StatusBar · git_dialogs</text>
+      </g>
+
+      <rect x="20" y="334" width="960" height="54" rx="10" fill="#fdf6e7" stroke="#d9b36a"/>
+      <text x="36" y="358" font-weight="700">共用 UI 服務</text>
+      <text x="36" y="378" fill="#526876" font-size="13">theme.py（token、QSS）· icons.py（依主題著色 SVG）· task_board.py（STATUS_OPTIONS、DOT_COLORS、ACTOR_TAGS）</text>
+
+      <rect x="20" y="406" width="960" height="150" rx="10" fill="#e8f5ec" stroke="#4f9a6a" stroke-width="1.5"/>
+      <text x="36" y="430" font-weight="700">★ Core（無 Qt／無 I/O）</text>
+      <g font-size="12.5">
+        <rect x="36" y="442" width="300" height="46" rx="7" fill="#fff" stroke="#4f9a6a"/><text x="46" y="462" font-weight="700">應用 session.py</text><text x="46" y="480" fill="#526876">篩選、驗收封鎖、專案、外觀、agent_sync</text>
+        <rect x="346" y="442" width="300" height="46" rx="7" fill="#fff" stroke="#4f9a6a"/><text x="356" y="462" font-weight="700">應用 dispatcher.py</text><text x="356" y="480" fill="#526876">通道、派工狀態機、回報、排程觸發、歷史</text>
+        <rect x="656" y="442" width="308" height="46" rx="7" fill="#fff" stroke="#4f9a6a"/><text x="666" y="462" font-weight="700">查詢 stats.py</text><text x="666" y="480" fill="#526876">日／週／月期間統計與完成率</text>
+        <rect x="36" y="498" width="300" height="46" rx="7" fill="#fff" stroke="#4f9a6a"/><text x="46" y="518" font-weight="700">領域 board.py</text><text x="46" y="536" fill="#526876">WorkItem、燈號轉換、版本、紀錄</text>
+        <rect x="346" y="498" width="300" height="46" rx="7" fill="#fff" stroke="#4f9a6a"/><text x="356" y="518" font-weight="700">領域 dispatch.py · schedule.py</text><text x="356" y="536" fill="#526876">選卡優先序、回報對應、提示詞、排程事件</text>
+        <rect x="656" y="498" width="308" height="46" rx="7" fill="#fff" stroke="#246bff" stroke-dasharray="5 3"/><text x="666" y="518" font-weight="700">Port ports.py</text><text x="666" y="536" fill="#526876">TaskStore · DispatchState · ReportInbox · ProjectBoards · Clock · AgentLauncher</text>
+      </g>
+
+      <rect x="20" y="574" width="960" height="54" rx="10" fill="#eef1fb" stroke="#7f97c9"/>
+      <text x="36" y="598" font-weight="700">Adapter（實作 Port）</text>
+      <text x="36" y="618" fill="#526876" font-size="12.5">adapters/json_board.py：JsonTaskStore · JsonDispatchState · FileReportInbox · FileProjectBoards　｜　board_seed.py · system_clock.py　｜　core/in_memory.py（測試／示範）</text>
+
+      <path d="M500 78 V92" stroke="#7f97a3" stroke-width="1.6" marker-end="url(#ar)"/>
+      <path d="M500 166 V180" stroke="#7f97a3" stroke-width="1.6" marker-end="url(#ar)"/>
+      <path d="M500 316 V330" stroke="#7f97a3" stroke-width="1.6" marker-end="url(#ar)"/>
+      <path d="M990 131 C1000 131 1000 465 984 465" stroke="#4f9a6a" stroke-width="1.6" fill="none" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+      <path d="M810 590 V552" stroke="#246bff" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+    </g>
+  </svg>
+  </div>
+  <p class="muted">綠色虛線：MainWindow 直接呼叫 Session／Dispatcher 方法（唯一的狀態變更入口）。藍色虛線：Adapter 實作 Core 定義的 Port（依賴指向內層）。<code>in_memory.py</code> 雖然放在 core 套件裡，但它只是 Port 的純記憶體實作，供種子資料與測試使用，不碰作業系統。</p>
+</section>
+
+<section id="modules">
+  <h2>03 / 程式模組清單</h2>
+  <h3>Core 與 Adapter</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>檔案</th><th>行數</th><th>責任</th><th>公開介面</th></tr></thead>
+    <tbody>
+      <tr><td><code>core/board.py</code></td><td>137</td><td>工項實體與燈號轉換規則（版本、紀錄、ISO 時間戳、使用者／Agent）</td><td><code>WorkItem</code> · <code>set_zone</code> · <code>set_status</code> · <code>edit</code> · <code>check</code> · <code>agent_may_overwrite</code> · <code>VersionConflict</code></td></tr>
+      <tr class="hl"><td><code>core/board_json.py</code></td><td>76</td><td>WorkItem ↔ hb-board/1 任務 dict（保留 Beta 欄位；source／files／confirmed／lightMode 為額外鍵）</td><td><code>from_dict</code> · <code>to_dict</code> · <code>document</code> · <code>items_from_document</code></td></tr>
+      <tr class="hl"><td><code>core/timefmt.py</code></td><td>42</td><td>ISO-8601 時間：寫入、解析、排序（無時區當 UTC、無法解析排最後）、本地顯示</td><td><code>stamp</code> · <code>parse</code> · <code>sort_key</code> · <code>local</code> · <code>display</code></td></tr>
+      <tr><td><code>core/ports.py</code></td><td>103</td><td>Port 定義（Protocol）</td><td><code>TaskStore</code> · <code>DispatchStateStore</code> · <code>ReportInbox</code> · <code>ProjectBoards</code> · <code>Clock</code> · <code>AgentLauncher</code> · <code>RunHandle</code> · <code>LaunchRequest</code> · <code>StoreError</code></td></tr>
+      <tr class="hl"><td><code>core/report_channels.py</code></td><td>73</td><td>回報檔解析（16 KB、BOM／UTF-16、card／run 必須相符）與輸出標記</td><td><code>parse_report_file</code> · <code>find_marker</code> · <code>marker_template</code> · <code>CHANNEL_LABELS</code></td></tr>
+      <tr><td><code>core/dispatch.py</code></td><td>281</td><td>派工純函式：選卡、燈號、註記、Agent 規格（含視窗模式）、安全參數、環境變數、額度／登入判斷、提示詞</td><td><code>AGENTS</code> · <code>select_next</code> · <code>resolve_argv</code> · <code>run_env</code> · <code>classify_exit</code> · <code>build_prompt</code></td></tr>
+      <tr><td><code>core/schedule.py</code></td><td>128</td><td>排程值物件與事件計算（單次／每天／時段）</td><td><code>make</code> · <code>events_between</code> · <code>next_event</code> · <code>describe</code></td></tr>
+      <tr><td><code>core/dispatcher.py</code></td><td>773</td><td>派工狀態機：通道、三條回報管道（先到先算）、視窗模式、逾時、needs-human、快速失敗、排程、狀態存檔與重啟復原、關閉</td><td><code>add_lane</code> · <code>start_lane</code> · <code>stop_lane</code> · <code>report</code> · <code>tick</code> · <code>add_schedule</code> · <code>update_schedule</code> · <code>shutdown</code></td></tr>
+      <tr><td><code>core/stats.py</code></td><td>91</td><td>期間統計（新增、完成、當期新增且完成、累計完成率）</td><td><code>periods</code> · <code>completion_rate</code></td></tr>
+      <tr><td><code>core/session.py</code></td><td>419</td><td>工作階段：篩選、TASK-Y1 驗收封鎖、專案（開啟／新增時綁定該資料夾的看板）、外觀；組裝 Dispatcher</td><td><code>set_item_status</code> · <code>edit_item</code> · <code>open_named</code> · <code>create_project</code> · <code>board_path</code> · <code>shutdown</code></td></tr>
+      <tr><td><code>core/in_memory.py</code></td><td>172</td><td>Port 的記憶體實作（示範與測試）</td><td><code>InMemoryTaskStore</code> · <code>InMemoryDispatchState</code> · <code>InMemoryReportInbox</code> · <code>InMemoryProjectBoards</code> · <code>ManualClock</code> · <code>DryRunLauncher</code></td></tr>
+      <tr class="hl"><td><code>adapters/json_board.py</code></td><td>286</td><td><code>&lt;專案&gt;/.sgenaxis/</code>：tasks.json、dispatch.json、report-inbox／reports、logs；O_EXCL 鎖檔（30 秒視為殘留）＋暫存檔→fsync→os.replace</td><td><code>JsonTaskStore</code> · <code>JsonDispatchState</code> · <code>FileReportInbox</code> · <code>FileProjectBoards</code> · <code>FileLock</code></td></tr>
+      <tr class="hl"><td><code>adapters/process_launcher.py</code></td><td>230</td><td>實際啟動 Agent CLI：不經 shell；展開 argv[0] 的 %VAR%，.cmd／.bat 重新檢查安全字元；寫 prompt.md；輸出寫 output.log 並保留 64 KB 尾端；停止時先正常結束整棵程序樹，5 秒後 <code>taskkill /T /F</code>（在 worker 執行緒）</td><td><code>ProcessLauncher</code> · <code>ProcessHandle</code></td></tr>
+      <tr class="hl"><td><code>adapters/git_reader.py</code></td><td>110</td><td>唯讀 Git：<code>--no-optional-locks</code>、<code>GIT_CEILING_DIRECTORIES</code>、移除 GIT_DIR 類變數；只讀資料夾自己的 <code>.git</code></td><td><code>GitCliReader</code> · <code>parse_status</code></td></tr>
+      <tr class="hl"><td><code>adapters/file_probe.py</code></td><td>55</td><td>成品與 <code>dist/</code> 的存在、大小、檔數、時間（資料夾最多數 20000 個項目）</td><td><code>LocalFileProbe</code></td></tr>
+      <tr class="hl"><td><code>adapters/board_seed.py</code></td><td>44</td><td>讀取 <code>sgenaxis/data/board-seed</code> 的 Beta 快照並核對 manifest 的 SHA-256</td><td><code>load_items</code> · <code>load_releases</code> · <code>source</code></td></tr>
+      <tr class="hl"><td><code>core/release.py</code></td><td>66</td><td>佈版紀錄值物件（成品、commit、報告、CHANGELOG、來源），新到舊排序</td><td><code>Release</code> · <code>from_dict</code> · <code>releases_from_document</code></td></tr>
+      <tr class="hl"><td><code>report_cli.py</code> · <code>sgenaxis_report.py</code></td><td>77 · 6</td><td>回報指令（不載入 Qt）；根目錄腳本讓 Agent 從任何資料夾呼叫</td><td><code>report_main</code> · <code>write_report</code></td></tr>
+      <tr class="hl"><td><code>adapters/json_board.py</code>（新增）</td><td>—</td><td><code>.sgenaxis/releases.json</code>（唯讀、可省略）；使用者層級的專案清單</td><td><code>JsonReleaseStore</code> · <code>JsonProjectRegistry</code> · <code>user_registry_path</code></td></tr>
+      <tr><td><code>adapters/system_clock.py</code></td><td>10</td><td>真實時鐘（含本地時區）</td><td><code>SystemClock</code></td></tr>
+    </tbody>
+  </table></div>
+  <h3>UI</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>檔案</th><th>行數</th><th>責任</th><th>對外 Signal／公開方法</th></tr></thead>
+    <tbody>
+      <tr><td><code>ui/main_window.py</code></td><td>819</td><td>組裝根：選單、工具列、版面、路由、狀態投影、派工計時器、主題</td><td><code>refresh()</code> · <code>tick_dispatch()</code> · <code>apply_theme()</code> · <code>_show_page()</code></td></tr>
+      <tr class="hl"><td><code>ui/agent_page.py</code></td><td>566</td><td>Agent 通道卡（Agent、每輪張數、清空為止、開始／停止／中止／移除、模擬回報、排程表單、視窗模式與回報檔錯誤）、看板 JSON 路徑、下一張卡、needs-human、最近紀錄（點選顯示提示詞／輸出／回報）與排程歷史</td><td><code>lane_action</code> · <code>lane_config</code> · <code>report_requested</code> · <code>schedule_add</code> · <code>unskip_requested</code> · <code>show_dispatch()</code></td></tr>
+      <tr class="hl"><td><code>ui/stats_page.py</code></td><td>103</td><td>期間統計頁：整體完成率、日／週／月切換、期間表</td><td><code>show_stats()</code> · <code>set_granularity()</code></td></tr>
+      <tr><td><code>ui/sidebar.py</code></td><td>148</td><td>左側導覽（新增「期間統計」）；Agent 按鈕顯示「執行中／通道數」</td><td><code>filter_chosen</code> · <code>page_chosen</code> · <code>set_agent_state()</code></td></tr>
+      <tr><td><code>ui/task_board.py</code></td><td>192</td><td>工項表格；標題下方顯示「代號 · 類型 · 最後由誰改」</td><td><code>status_changed(str,str)</code> · <code>show_items()</code></td></tr>
+      <tr><td><code>ui/project_page.py</code></td><td>245</td><td>專案清單與 Inspector（新增版本／修改者與最近 20 筆燈號紀錄）</td><td><code>show_task()</code> · <code>selection_changed</code></td></tr>
+      <tr><td><code>ui/arch_page.py</code></td><td>715</td><td>模組架構 DAG 編輯器（資料改為本版 9 個模組）</td><td><code>select_module()</code> · <code>reset_layout()</code></td></tr>
+      <tr><td><code>ui/git_page.py</code></td><td>323</td><td>已驗收頁（顯示綠燈且已確認的工項）</td><td><code>command(str)</code> · <code>status_changed</code></td></tr>
+      <tr><td><code>ui/release_page.py</code> · <code>ui_design_page.py</code> · <code>settings_dialog.py</code> · <code>exec_log.py</code> · <code>statusbar.py</code> · <code>git_dialogs.py</code></td><td>335 · 374 · 222 · 137 · 47 · 77</td><td>本次未改</td><td>—</td></tr>
+      <tr><td><code>ui/theme.py</code> · <code>icons.py</code></td><td>447 · 86</td><td>主題 token／QSS（新增通道卡與執行／錯誤狀態樣式）、SVG 圖示</td><td><code>theme_qss()</code> · <code>icon()</code></td></tr>
+    </tbody>
+  </table></div>
+  <h3>模組依賴（import）</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>模組</th><th>依賴</th></tr></thead>
+    <tbody>
+      <tr><td>app</td><td>adapters.board_seed · adapters.json_board · adapters.system_clock · core.in_memory · core.session · ui.main_window · ui.theme</td></tr>
+      <tr><td>adapters.json_board · adapters.board_seed</td><td>core.board_json · core.board · core.ports（依賴指向內層）</td></tr>
+      <tr><td>ui.main_window</td><td>core.board · core.dispatcher · core.session · 所有 ui 頁面</td></tr>
+      <tr><td>ui.agent_page</td><td>core.dispatch · core.dispatcher · core.report_channels · core.schedule · core.timefmt</td></tr>
+      <tr><td>ui.stats_page</td><td>core.stats</td></tr>
+      <tr><td>ui.task_board · ui.project_page · ui.git_page</td><td>core.board（WorkItem）· core.timefmt</td></tr>
+      <tr><td>core.session</td><td>core.board · core.dispatcher · core.in_memory · core.ports · core.timefmt</td></tr>
+      <tr><td>core.dispatcher</td><td>core.board · core.dispatch · core.in_memory · core.ports · core.report_channels · core.schedule · core.timefmt</td></tr>
+      <tr><td>core.board · core.board_json · core.dispatch · core.report_channels · core.schedule · core.stats · core.timefmt · core.ports</td><td>僅標準函式庫（dataclasses、datetime、json、re、typing）</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">沒有循環依賴；Core 內沒有任何 PySide6 import；頁面彼此不 import，橫向協作全部經由 MainWindow 的訊號接線。</p>
+</section>
+
+<section id="window">
+  <h2>04 / 主視窗結構</h2>
+  <div class="graph">
+  <svg viewBox="0 0 1000 520" role="img" aria-label="主視窗版面配置圖">
+    <g font-family="Segoe UI, Microsoft JhengHei" font-size="13">
+      <rect x="10" y="10" width="980" height="500" rx="8" fill="#101112" stroke="#34383e"/>
+      <rect x="10" y="10" width="980" height="30" fill="#101215"/><text x="22" y="30" fill="#cbd5e1">選單列：SGenAxis · 檔案 · 編輯 · 專案 · 模組 · 工項 · 視窗 · 說明　　　　　　　　　設計預覽 · 示範資料</text>
+      <rect x="10" y="40" width="980" height="46" fill="#14171c"/><text x="22" y="68" fill="#cbd5e1">工具列：專案下拉 · 路徑 · 分支（開關分支樹）· 歷史 · GIT 設定　　　　　　　Qt / PySide 對照 · ⚙ · ?</text>
+      <rect x="10" y="86" width="190" height="370" fill="#141618" stroke="#34383e"/>
+      <text x="22" y="110" fill="#eef0f3" font-weight="700">TaskSidebar</text>
+      <text x="22" y="134" fill="#aeb5bf">Agent 派工 [執行中/通道]</text><text x="22" y="156" fill="#aeb5bf">工項 ▾ 全部 (19)</text>
+      <text x="34" y="178" fill="#8b949e">● 總覽 · 待辦 · 進行中</text><text x="34" y="198" fill="#8b949e">● Bug · 已完成 · 已驗收</text>
+      <text x="22" y="224" fill="#aeb5bf">佈版 v0.4.0</text><text x="22" y="246" fill="#aeb5bf">期間統計</text><text x="22" y="268" fill="#aeb5bf">模組架構圖</text><text x="22" y="290" fill="#aeb5bf">UI 設計工具</text>
+      <rect x="200" y="86" width="560" height="250" fill="#101112" stroke="#34383e"/>
+      <text x="216" y="112" fill="#eef0f3" font-weight="700">center_splitter ▸ mainStack（QStackedWidget）</text>
+      <text x="216" y="136" fill="#aeb5bf">14 頁之一：工項表／Agent／期間統計／架構圖／UI 設計／已驗收／佈版／設定…</text>
+      <rect x="200" y="336" width="560" height="30" fill="#1b1d1f" stroke="#34383e"/><text x="216" y="356" fill="#aeb5bf">branch_panel（分支樹，預設高度 0，可由工具列開關）</text>
+      <rect x="200" y="366" width="560" height="90" fill="#101214" stroke="#34383e"/><text x="216" y="390" fill="#eef0f3" font-weight="700">ExecLogPanel（每頁共用）</text><text x="216" y="414" fill="#aeb5bf">派工、回報、排程與拒絕訊息都寫入這裡</text>
+      <rect x="760" y="86" width="230" height="370" fill="#141618" stroke="#34383e"/>
+      <text x="774" y="110" fill="#8bb8ff" font-weight="700">InspectorPanel</text><text x="774" y="134" fill="#aeb5bf">僅在已驗收頁顯示</text><text x="774" y="156" fill="#aeb5bf">工項（版本、修改者、燈號紀錄）</text><text x="774" y="178" fill="#aeb5bf">專案資訊</text>
+      <rect x="10" y="456" width="980" height="54" fill="#0c0e11"/><text x="22" y="488" fill="#d5d8de">狀態列：● DRAFT 0.1 / 即時同步　｜　派工進度　｜　Agent 執行中 N　｜　提示訊息</text>
+    </g>
+  </svg>
+  </div>
+  <p><code>body_splitter</code>（水平）＝ Sidebar ｜ <code>center_splitter</code> ｜ Inspector；<code>center_splitter</code>（垂直）＝ mainStack ｜ branch_panel ｜ exec_log。設定頁也放在 mainStack 內，<strong>不使用彈出視窗</strong>。</p>
+</section>
+
+<section id="pages">
+  <h2>05 / 頁面與路由</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>路由鍵</th><th>頁面</th><th>入口</th><th>重點</th></tr></thead>
+    <tbody>
+      <tr><td><code>tasks</code></td><td>工項表（預設開啟，紅燈 6 筆）</td><td>側欄狀態燈號、Ctrl+K</td><td>狀態下拉改燈號；標題下方顯示類型與最後修改者（使用者／Agent）</td></tr>
+      <tr class="hl"><td><code>agent</code></td><td>Agent 派工</td><td>側欄最上方</td><td>多通道（預設 1 條、上限 3 條）；每條可選 Agent、每輪張數或「清空為止」、排程；needs-human 清單可「重新放回佇列」；派工歷史與排程紀錄</td></tr>
+      <tr class="hl"><td><code>stats</code></td><td>期間統計</td><td>側欄「期間統計」</td><td>整體完成率進度條；日／週／月切換；每期新增、完成、當期新增且完成、累計完成率</td></tr>
+      <tr><td><code>git</code></td><td>已驗收（分支與變更）</td><td>側欄「已驗收」</td><td>只列綠燈且使用者已確認的工項；18 個 Git 指令只留提示</td></tr>
+      <tr><td><code>release</code></td><td>佈版</td><td>側欄「佈版」</td><td>版本、環境、成品、佈版報告（部署只留提示）</td></tr>
+      <tr><td><code>arch</code></td><td>模組架構圖</td><td>側欄、模組選單</td><td>本版 9 個模組 DAG、拖曳、展開、接線、可停靠 Inspector</td></tr>
+      <tr><td><code>ui</code> · <code>settings</code> · <code>projects</code></td><td>UI 設計工具 · 設定 · 專案管理</td><td>側欄、工具列、選單</td><td>本次未改</td></tr>
+      <tr><td><code>schedule</code> · <code>runlog</code> · <code>report</code> · <code>standard</code></td><td>資訊頁</td><td>選單</td><td>佔位頁</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="flows">
+  <h2>06 / 關鍵資料流</h2>
+  <h3>A. 使用者改變工項狀態</h3>
+  <div class="flow"><span>狀態下拉</span><i>→ status_changed(id, status) →</i><span>session.set_item_status(actor="user")</span><i>→</i><span>board.set_status：寫 started／completed、加紀錄、version+1</span><i>→</i><span>store.commit(item, expected_version)</span><i>→</i><span>refresh()</span></div>
+  <p>選「已驗收」等於「綠燈＋確認」，只有使用者可以做；Agent 嘗試會被拒。TASK-Y1 仍被 Session 擋下（「可重現工具鏈與測試骨架不進入已驗收頁」）。版本不符時拋 <code>VersionConflict</code>（「這筆剛被別人改過，已重新載入。」）。</p>
+  <h3>B. 派工一張卡</h3>
+  <div class="flow"><span>通道「開始」或排程觸發</span><i>→</i><span>dispatcher.start_lane</span><i>→</i><span>select_next：紅 &gt; 黃 &gt; 灰，再依最舊更新時間；略過綠燈、note／epic／milestone／release、別的通道手上的卡、needs-human 卡</span><i>→</i><span>灰 → 黃（Agent 寫入）</span><i>→</i><span>launcher.launch(LaunchRequest)</span></div>
+  <p>LaunchRequest 只帶 Agent 規格展開後的參數（不含卡片文字；argv[0] 之後每個參數都要符合安全字元，含權限繞過旗標的規格直接拒絕），提示詞寫到 <code>.sgenaxis/logs/&lt;runId&gt;/prompt.md</code>，環境變數帶 <code>HB_BOARD_TASKS</code>、<code>HB_DISPATCH_RUN_ID</code>、<code>HB_DISPATCH_CARD</code>、<code>HB_DISPATCH_REPORT_FILE</code>、<code>PYTHONIOENCODING=utf-8</code>。提示詞有「看板 JSON（必須更新）」一節，告訴每個 Agent 看板檔的位置，並要求以回報更新它、不要直接手改；同時有其他通道在跑時，會列出它們手上的卡。</p>
+  <h3>C. 回報與結束</h3>
+  <div class="flow"><span>回報檔 <code>report-inbox/&lt;runId&gt;.json</code>・輸出最後的 <code>HB-REPORT:</code> 標記・回報指令・模擬回報</span><i>→</i><span>tick 每秒檢查；第一個有效回報算數，之後的記為「已忽略」</span><i>→</i><span>完成 → 綠；阻塞 → 紅＋註記並放入略過清單</span><i>→</i><span>還有額度就派下一張；否則閒置</span></div>
+  <p><strong>回報指令</strong>：<code>python "&lt;SGenAxis&gt;\sgenaxis_report.py" --card … --run … --file … --outcome done|blocked --note "…"</code>（也可 <code>python -m sgenaxis report</code>；卡號、run、回報檔可由 <code>HB_DISPATCH_*</code> 環境變數帶入）。它只用標準函式庫與 Core，不載入 PySide6，所以 Agent 用任何 Python 3.10+ 都能執行；它寫入同一個回報檔並標記 <code>"via": "cli"</code>，已有回報檔時拒絕（exit 1），由執行中的工作台在下一次 tick（或重開時）套用並記為「回報指令」。結束碼：0 已寫入、1 拒絕或 I/O 錯誤、2 參數錯誤。</p>
+  <p>同一次檢查同時有回報檔與標記時，以回報檔為準。無效的回報檔留在收件匣並顯示原因；若這輪最後以別的方式結束，檔案移到 <code>reports/rejected</code> 並寫進 needs-human 註記。程式結束後還會再等 20 秒讓晚到的回報檔進來。沒回報、逾時、被中止、程式關閉、上次中斷（orphaned）→ 寫入 needs-human 註記與略過清單，不自動重試。沒有回報且輸出含額度用完／未登入字樣 → 卡片退回原燈號、通道進入錯誤並顯示登入提示；啟動失敗同樣處理。連續 3 次在 60 秒內結束且沒回報 → 通道錯誤（快速失敗）。</p>
+  <p><strong>視窗模式（Antigravity）</strong>：啟動程式結束不代表完成，也不檢查額度／登入字樣與快速失敗；只有回報或逾時會結束這輪。逾時與立即終止都不會關掉視窗，註記會說明視窗需自行檢查；關閉程式時這輪保持原狀，重開後繼續等它的回報檔。</p>
+  <h3>C2. 存檔與重新啟動</h3>
+  <div class="flow"><span>任何改變通道、執行、排程的動作</span><i>→</i><span>dispatch.json（鎖檔＋原子寫入，內容沒變就不寫）</span><i>→</i><span>重開：先套用關閉期間寫入的回報檔</span><i>→</i><span>視窗模式繼續追蹤；其他未結束的執行標成 orphaned、該通道進入錯誤</span></div>
+  <p>開啟既有專案不寫任何檔案（第一次存檔才建立 <code>.sgenaxis/</code>）；新增專案會建立資料夾與空的 tasks.json。有通道在跑時不能切換專案（「Agent 派工中，請先全部停止再切換專案」）。關閉主視窗會呼叫 <code>shutdown()</code>：非視窗模式的執行以 server-shutdown 標成 needs-human。</p>
+  <h3>D. 排程</h3>
+  <div class="flow"><span>dispatch_timer 每秒</span><i>→</i><span>dispatcher.tick()</span><i>→</i><span>events_between(上次, 現在]</span><i>→</i><span>開始通道（記錄由哪個排程啟動）／時段結束只停自己啟動的通道</span></div>
+  <p>不補跑：第一次 tick 只記時間；兩次 tick 間隔超過 10 秒或時鐘倒退時，期間的事件全部略過。暫停全部排程時記錄「skipped-paused」。單次排程觸發後自動停用。</p>
+  <h3>E. 外部動作（刻意不執行）</h3>
+  <div class="flow"><span>Pull／Push／Fetch… · Clone · 提交 · 開始部署</span><i>→</i><span>notice／_note</span><i>→</i><span>狀態列提示</span></div>
+  <p>Agent 提示詞明文要求「不得執行任何 git 指令」「不得呼叫任何 Agent CLI」；<code>check_agent_spec</code> 拒絕危險旗標（例如略過權限確認）與未知佔位符，<code>resolve_argv</code> 拒絕含不安全字元的參數。</p>
+</section>
+
+<section id="domain">
+  <h2>07 / 領域模型（Core）</h2>
+  <div class="twocol">
+    <div>
+      <h3>WorkItem（board.py，不可變）</h3>
+      <pre>item_id · code · title · zone(gray|yellow|red|green)
+source · files · bdd · tdd · note · kind="task"
+created · started · completed · confirmed=False
+by · updated · updated_by(user|agent)
+log: tuple[ZoneChange(at, zone, by)]（最多 20 筆）
+version=1 · light_mode="set"
+status → "accepted" 若 green 且 confirmed，否則 zone</pre>
+      <h3>Schedule（schedule.py）</h3>
+      <pre>schedule_id · kind(once|daily|window)
+at · time · start · end · weekdays
+enabled · max_cards · last_fired · last_result</pre>
+    </div>
+    <div>
+      <h3>Lane / Run（dispatcher.py）</h3>
+      <pre>Lane: lane_id · agent · max_cards（None＝清空為止）
+      state(idle|running|stopping|error) · stop_reason · error
+      dispatched · limit · current: Run · started_by
+      fast_fails · schedules
+Run:  run_id · lane_id · agent · card_id · title · from_zone
+      started_at · handle · detached · prompt · report(outcome, note, channel)
+      reported_at · exited_at · report_error · ignored
+HistoryEntry: run_id · lane_id · agent · card_id · title · outcome · channel
+      started_at · at · note · detached · report_error · ignored · prompt · output（末 8 KB）
+ScheduleEvent: at · lane_id · schedule_id · action · result
+停止模式：after-current（做完這張）· now（立即）</pre>
+      <h3>WorkbenchSession</h3>
+      <pre>store: TaskStore · clock: Clock · launcher: AgentLauncher
+boards: ProjectBoards（None＝只用記憶體）
+dispatcher: Dispatcher（沒有存檔時預設 1 條通道 L1，不寫檔）
+projects · filter_name · source · query · ui_style · tone
+account（僅記憶體）</pre>
+    </div>
+  </div>
+  <h3>規則（皆有測試）</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>規則</th><th>內容</th><th>測試</th></tr></thead>
+    <tbody>
+      <tr><td>完成時間</td><td>只在綠燈時有 completed；離開綠燈就清除</td><td><code>test_board_rules.py</code></td></tr>
+      <tr><td>開始時間</td><td>第一次變黃時寫入，之後不覆寫</td><td><code>test_board_rules.py</code></td></tr>
+      <tr><td>燈號紀錄</td><td>每次換燈加一筆，最多保留 20 筆</td><td><code>test_board_rules.py</code></td></tr>
+      <tr><td>版本</td><td>每次寫入 version+1；送出舊版本 → VersionConflict</td><td><code>test_board_rules.py</code> · <code>test_workbench_session.py</code></td></tr>
+      <tr><td>Agent 不覆寫使用者</td><td>最後由使用者修改的卡，agent_sync 回傳 needs-review</td><td><code>test_workbench_session.py</code></td></tr>
+      <tr><td>驗收確認</td><td>只有使用者可確認；確認過的卡改回綠燈即取消確認</td><td><code>test_board_rules.py</code></td></tr>
+      <tr><td>編號格式</td><td>只允許 <code>A-Z a-z 0-9 _ - . ~ : @ +</code></td><td><code>test_board_rules.py</code></td></tr>
+      <tr><td>通道上限</td><td>預設最多 3 條、硬上限 6；同一張卡不會同時派給兩條</td><td><code>test_dispatcher.py</code></td></tr>
+      <tr><td>選卡順序</td><td>紅 &gt; 黃 &gt; 灰 → 最舊更新 → 編號；綠燈與 note／epic／milestone／release 不派</td><td><code>test_dispatcher.py</code></td></tr>
+      <tr><td>回報與 needs-human</td><td>見資料流 C；三條管道先到先算、回報檔優先於標記、無效回報檔移到 rejected</td><td><code>test_dispatcher.py</code></td></tr>
+      <tr><td>視窗模式</td><td>只有回報或逾時會結束；永不終止視窗；重開後繼續追蹤</td><td><code>test_dispatcher.py</code></td></tr>
+      <tr><td>啟動安全</td><td>不含卡片文字、安全字元、禁止權限繞過、固定環境變數</td><td><code>test_dispatcher.py</code></td></tr>
+      <tr><td>存檔與復原</td><td>通道／排程／歷史跨重啟保留；未結束的執行標成 orphaned</td><td><code>test_dispatcher.py</code> · <code>test_board_files.py</code></td></tr>
+      <tr><td>看板檔</td><td>hb-board/1；版本不符或鎖住時拋錯且檔案位元組不變</td><td><code>test_board_files.py</code></td></tr>
+      <tr><td>排程</td><td>時段可跨午夜（星期以開始日為準）；不補跑；只停自己啟動的通道</td><td><code>test_schedule.py</code></td></tr>
+      <tr><td>期間統計</td><td>日／週（週一起算）／月；累計完成率＝截至期末綠燈數／截至期末建立數</td><td><code>test_stats.py</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="theme">
+  <h2>08 / 主題系統</h2>
+  <p>主題由兩個獨立維度組成：<strong>UI 風格</strong>決定所有表面顏色，<strong>色調</strong>決定強調色。<code>theme_tokens(style, tone)</code> 產生一組 token，同時供 QSS、ArchPage 繪製、圖示引擎、表格代理使用。本次新增 <code>QFrame[laneCard="true"]</code> 通道卡樣式，以及 <code>QLabel[state="running"|"error"]</code> 狀態色。</p>
+  <h3>風格調色盤（節錄主要 token）</h3>
+  <div id="paletteHost"></div>
+  <h3>色調（強調色）</h3>
+  <div id="accentHost" class="swatches"></div>
+  <p class="muted">狀態燈號（灰 #8b949e、黃 #f2b544、紅 #f07979、綠 #5bc98b、已驗收 #246bff）屬於語意色，不隨主題改變。</p>
+</section>
+
+<section id="dag">
+  <h2>09 / 產品模組 DAG（架構圖頁面的資料）</h2>
+  <p>架構圖頁面現在呈現「本版實際的模組」，<strong>A → B 表示 A 依賴 B</strong>。點選節點查看細節（可用 Tab 與 Enter 操作）。</p>
+  <div class="twocol">
+    <div class="graph">
+      <svg id="dagSvg" viewBox="0 0 940 560" role="group" aria-label="模組依賴 DAG">
+        <rect width="940" height="560" rx="10" fill="#101214"/>
+        <g id="dagEdges" fill="none" stroke="#8b939e" stroke-width="1.5"></g>
+        <g id="dagNodes" font-family="Segoe UI, Microsoft JhengHei"></g>
+      </svg>
+    </div>
+    <div id="dagInfo" aria-live="polite"></div>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>代號</th><th>名稱</th><th>類型</th><th>狀態</th><th>Port／入口</th><th>程式</th></tr></thead>
+    <tbody id="dagTable"></tbody>
+  </table></div>
+</section>
+
+<section id="guards">
+  <h2>10 / 架構約束與護欄</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>約束</th><th>落實方式</th><th>驗證</th></tr></thead>
+    <tbody>
+      <tr><td>Core 不依賴 Qt、不做 I/O</td><td>時間、儲存、回報收件匣、專案資料夾、啟動 Agent 都經由 Port；Core 只用標準函式庫</td><td>93 項 Core／Adapter 測試不載入 PySide6</td></tr>
+      <tr><td>Git 只讀；只寫自己的資料夾</td><td>Git 頁只執行唯讀查詢（SGenAxis 建立且有自己 .git 的專案）；Git 寫入／Clone／提交／部署只發 notice；Agent 預設模擬，實際啟動只限沙盒；磁碟寫入只發生在 <code>&lt;專案&gt;/.sgenaxis/</code>；Beta 快照唯讀且不寫回 mailbox</td><td>提交對話框測試確認資料夾維持空白；<code>test_create_project_writes_an_empty_board_and_open_never_writes</code></td></tr>
+      <tr><td>看板寫入不半寫</td><td>鎖檔 → 讀 → 比對版本 → 暫存檔 → fsync → os.replace；失敗時原檔不變</td><td><code>test_store_writes_hb_board_json_and_checks_versions</code> · <code>test_busy_lock_times_out_and_the_file_is_unchanged</code></td></tr>
+      <tr><td>密碼只存在記憶體</td><td><code>save_account</code> 只更新 dict</td><td><code>test_save_account_stays_in_memory</code></td></tr>
+      <tr><td>TASK-Y1 不進已驗收</td><td>Session 擋下，UI 顯示訊息</td><td><code>test_status_choice_moves_the_light_and_blocks_toolchain_acceptance</code></td></tr>
+      <tr><td>使用者優先</td><td>Agent 不覆寫使用者最後修改的卡；只有使用者能確認驗收</td><td><code>test_agent_sync_never_overwrites_a_user_decision</code> · <code>test_accepted_is_an_owner_confirmation_on_green</code></td></tr>
+      <tr><td>並行寫入</td><td>每次 commit 比對 expected_version</td><td><code>test_stale_writes_are_rejected_and_keep_the_newer_change</code></td></tr>
+      <tr><td>錯誤不讓畫面崩潰</td><td>MainWindow._dispatch 把 DispatchError／ValueError 轉成狀態列訊息後重繪</td><td><code>test_agent_lanes_report_stop_and_needs_human</code></td></tr>
+      <tr><td>執行緒</td><td>派工狀態只在 GUI 主執行緒變動；QTimer 每秒呼叫 <code>tick()</code>。實際啟動時 stdin 寫入、輸出讀取、程序樹結束都在 worker 執行緒，主執行緒只讀取加鎖的輸出尾端</td><td><code>test_terminate_ends_the_whole_process_tree</code> · <code>test_stdin_prompt_env_and_output_reach_the_dispatcher</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="tests">
+  <h2>11 / 測試覆蓋（172）</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>檔案</th><th>數量</th><th>涵蓋</th></tr></thead>
+    <tbody>
+      <tr><td><code>test_board_rules.py</code></td><td>12</td><td>started／completed、紀錄上限、版本、確認驗收、編號格式、Agent 覆寫判斷</td></tr>
+      <tr><td><code>test_dispatcher.py</code></td><td>34</td><td>選卡優先序（含時區與無法解析的時間）、通道上限、回報三管道與先到先算、無效回報檔、輸出標記、等待晚到回報、視窗模式、額度／登入、啟動安全與環境變數、平行派工提示、存檔／復原／orphaned、關閉、Log 內容</td></tr>
+      <tr class="hl"><td><code>test_board_files.py</code></td><td>20</td><td>Beta 快照 80 張與 SHA-256、hb-board/1 往返、tasks.json 寫入與版本衝突、跨行程可見、鎖逾時、毀損檔、新增／開啟專案、回報檔歸檔、dispatch.json、Session 切換專案與拒絕、佈版紀錄、專案清單記憶與毀損時不覆寫</td></tr>
+      <tr class="hl"><td><code>test_report_cli.py</code></td><td>7</td><td>回報指令寫檔、環境變數預設、不覆寫第一個回報、參數錯誤、工作台記為「回報指令」、從其他資料夾執行且不載入 PySide6</td></tr>
+      <tr><td><code>test_schedule.py</code></td><td>11</td><td>單次／每天／時段、跨午夜、不補跑、只停自己啟動的通道、暫停、單次停用、已觸發單次要新時間才能啟用、未知欄位</td></tr>
+      <tr><td><code>test_stats.py</code></td><td>3</td><td>日／週／月分組與累計完成率</td></tr>
+      <tr><td><code>test_workbench_session.py</code></td><td>19</td><td>篩選與計數、TASK-Y1 封鎖、專案、外觀、帳戶、確認驗收、過期寫入、agent_sync、模擬派工</td></tr>
+      <tr class="hl"><td><code>test_real_data_session.py</code></td><td>19</td><td>Git 只讀 SGenAxis 建立的專案、成品即時檢查與記錄值、<code>dist/</code> 清單、啟動方式只限沙盒（含 <code>..</code>）、派工中不能切換、切換專案回到模擬</td></tr>
+      <tr class="hl"><td><code>test_real_adapters.py</code></td><td>13</td><td>porcelain 解析、真 git repo 唯讀（index 不變、無 index.lock）、不讀上層 repo、檔案探測、真子行程：stdin／環境變數／工作目錄／output.log、arg 模式無 stdin、輸出尾端、.cmd 展開與不安全字元、整棵程序樹被結束、視窗模式</td></tr>
+      <tr><td><code>test_pyside_shell.py</code></td><td>34</td><td>畫面、側欄、架構 DAG（9 模組／11 接線）、Agent 通道與回報、最近紀錄兼 Log、關閉即 shutdown、佈版頁（看板版本、即時成品、dist 清單）、排程表單、期間統計頁、工項修改者、主題、已驗收頁、Git 唯讀快照、設定切換啟動方式</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="gaps">
+  <h2>12 / 已知缺口與下一步</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>項目</th><th>現況</th><th>下一步</th></tr></thead>
+    <tbody>
+      <tr><td>真實 Agent 啟動</td><td>已接上，只限沙盒；2026-10-11 實測 Claude Code（14 秒，輸出標記）與 Cursor Agent（31 秒，回報檔）完成；Codex 因使用者 <code>config.toml</code> 的 <code>service_tier</code> 值不被此版接受而沒有開始</td><td>修正 Codex 設定後重測；Antigravity 視窗模式未實測；Codex 設定錯誤目前歸為 no-report，可加入 <code>classify_exit</code> 判斷</td></tr>
+      <tr><td>Git 寫入／部署</td><td>Git 頁唯讀；寫入與部署只顯示提示；部署設定欄標示「未接上」</td><td>另立 Port（版本控制寫入、部署），本版不做</td></tr>
+      <tr><td>示範專案清單</td><td>從未開過的種子專案仍顯示（路徑不存在）；開過／新增的專案記在 <code>%APPDATA%\SGenAxis\projects.json</code></td><td>設定頁提供「從清單移除」</td></tr>
+      <tr><td>Git Inspector 停靠、UI 設計拖放、diff 檢視、資訊頁</td><td>同前版</td><td>未排入本次</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<div class="footer">SGenAxis 產品架構 · 依 2026-10-11 程式碼整理（Beta 看板修正版）· 原始碼 D:\AIAD\sgenaxis</div>
+
+<script>
+const PALETTES = {
+  dark:  {window:"#101112", sidebar:"#141618", panel:"#1b1d1f", hover:"#282c32", border:"#34383e", text:"#eef0f3", muted:"#aeb5bf", canvas:"#101214", icon:"#c5ccd4"},
+  light: {window:"#f4f6f8", sidebar:"#e7ebf0", panel:"#ffffff", hover:"#e4e8ee", border:"#d3d8e0", text:"#1c2128", muted:"#6d7682", canvas:"#eef1f4", icon:"#4e5864"},
+  gray:  {window:"#2b3036", sidebar:"#343a42", panel:"#3b424b", hover:"#4a525c", border:"#5b6470", text:"#f3f5f7", muted:"#9aa3ad", canvas:"#2b3036", icon:"#d5dae0"}
+};
+const STYLE_NAMES = {dark:"暗 dark", light:"亮 light", gray:"灰 gray"};
+const ACCENTS = {blue:["藍","#246bff","#3b7cff"], gray:["灰","#7d8694","#949eac"], beige:["米","#b08968","#c4a484"], iron:["鐵黑","#5e6d7c","#7d8c9b"]};
+
+function swatch(name, color){
+  const box = document.createElement('div'); box.className = 'sw';
+  box.innerHTML = `<b style="background:${color}"></b><span>${name}<br><code>${color}</code></span>`;
+  return box;
+}
+const paletteHost = document.getElementById('paletteHost');
+for (const [style, tokens] of Object.entries(PALETTES)) {
+  const title = document.createElement('p'); title.innerHTML = `<strong>${STYLE_NAMES[style]}</strong>`;
+  const row = document.createElement('div'); row.className = 'swatches';
+  for (const [key, color] of Object.entries(tokens)) row.appendChild(swatch(key, color));
+  paletteHost.append(title, row);
+}
+const accentHost = document.getElementById('accentHost');
+for (const [key, [label, accent, hover]] of Object.entries(ACCENTS)) {
+  accentHost.appendChild(swatch(`${label} ${key}`, accent));
+  accentHost.appendChild(swatch(`${label} hover`, hover));
+}
+
+const DONE = "#5bc98b", SIM = "#f2b544", TODO = "#8b949e";
+const MODULES = [
+  {code:"UI", name:"工程控制台", kind:"介面", status:"已完成", tone:DONE, port:"MainWindow", file:"ui/*", desc:"組裝根與各頁面；只發 Signal，由 MainWindow 呼叫 Core。", x:16, y:230},
+  {code:"DISP", name:"派工狀態機", kind:"應用", status:"已完成", tone:DONE, port:"Dispatcher", file:"core/dispatcher.py", desc:"多通道派工、回報、needs-human、快速失敗、逾時、排程觸發與歷史。", x:250, y:60},
+  {code:"STATS", name:"期間統計", kind:"查詢", status:"已完成", tone:DONE, port:"periods()", file:"core/stats.py", desc:"日／週／月的新增、完成與累計完成率。", x:250, y:340},
+  {code:"REL", name:"部署與發布", kind:"發布", status:"資料真實・部署未接", tone:SIM, port:"ReleaseSource · FileProbe", file:"ui/release_page.py · adapters/file_probe.py", desc:"版本來自看板佈版紀錄，成品與 dist/ 即時檢查；部署動作仍只寫狀態列提示。", x:250, y:456},
+  {code:"SCHED", name:"排程", kind:"領域", status:"已完成", tone:DONE, port:"Schedule", file:"core/schedule.py", desc:"單次／每天／時段排程事件計算，不補跑。", x:500, y:16},
+  {code:"LAUNCH", name:"Agent 啟動", kind:"Port", status:"模擬／沙盒實際", tone:DONE, port:"AgentLauncher", file:"adapters/process_launcher.py · core/in_memory.py", desc:"預設 DryRunLauncher；沙盒專案可切到 ProcessLauncher 真的啟動 Claude／Cursor Agent／Codex（已實測前兩者）。", x:500, y:126},
+  {code:"REPORT", name:"回報管道", kind:"Port", status:"已完成", tone:DONE, port:"ReportInbox", file:"core/report_channels.py · adapters/json_board.py", desc:"回報檔、輸出標記、回報指令；先到先算，無效回報檔移到 rejected。", x:500, y:236},
+  {code:"BOARD", name:"工項規則", kind:"領域", status:"已完成", tone:DONE, port:"WorkItem", file:"core/board.py", desc:"燈號轉換、開始／完成時間、紀錄、版本、使用者優先、確認驗收。", x:500, y:346},
+  {code:"STORE", name:"工項儲存", kind:"Port", status:"已完成", tone:DONE, port:"TaskStore", file:"adapters/json_board.py", desc:"<專案>/.sgenaxis/tasks.json（hb-board/1），鎖檔＋原子寫入、版本比對；啟動時為 Beta 唯讀快照。", x:748, y:346}
+];
+const LINKS = [["UI","DISP"],["UI","BOARD"],["UI","STATS"],["UI","REL"],["DISP","SCHED"],["DISP","LAUNCH"],["DISP","REPORT"],["DISP","BOARD"],["REPORT","BOARD"],["STATS","BOARD"],["BOARD","STORE"]];
+const W = 172, H = 86, NS = "http://www.w3.org/2000/svg";
+const byCode = Object.fromEntries(MODULES.map(m => [m.code, m]));
+
+function el(tag, attrs, text){
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+const edgeLayer = document.getElementById('dagEdges');
+for (const [a, b] of LINKS) {
+  const s = byCode[a], t = byCode[b];
+  const sx = s.x + W, sy = s.y + H / 2, tx = t.x, ty = t.y + H / 2;
+  const reach = Math.max(Math.abs(tx - sx) / 2, 60);
+  edgeLayer.appendChild(el('path', {d:`M${sx} ${sy} C${sx + reach} ${sy} ${tx - reach} ${ty} ${tx} ${ty}`, 'data-a':a, 'data-b':b}));
+}
+const nodeLayer = document.getElementById('dagNodes');
+const table = document.getElementById('dagTable');
+for (const m of MODULES) {
+  const g = el('g', {class:'dagnode', tabindex:'0', role:'button', 'aria-label':`${m.code} ${m.name}`, 'data-code':m.code, transform:`translate(${m.x} ${m.y})`});
+  g.append(
+    el('rect', {class:'body', width:W, height:H, rx:6, fill:'#151719', stroke:'#34383e'}),
+    el('text', {x:14, y:28, fill:'#eef0f3', 'font-size':14, 'font-weight':700}, m.code),
+    el('text', {x:14, y:50, fill:'#aeb5bf', 'font-size':12}, m.name),
+    el('circle', {cx:18, cy:68, r:4, fill:m.tone}),
+    el('text', {x:28, y:72, fill:'#aeb5bf', 'font-size':12}, m.status),
+    el('circle', {cx:0, cy:H / 2, r:5, fill:'#1d2024', stroke:'#8b949e', 'stroke-width':1.5}),
+    el('circle', {cx:W, cy:H / 2, r:5, fill:'#5bc98b', stroke:'#5bc98b', 'stroke-width':1.5})
+  );
+  g.addEventListener('click', () => select(m.code));
+  g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(m.code); } });
+  nodeLayer.appendChild(g);
+  const tr = document.createElement('tr'); tr.dataset.code = m.code;
+  tr.innerHTML = `<td>${m.code}</td><td>${m.name}</td><td>${m.kind}</td><td>${m.status}</td><td><code>${m.port}</code></td><td><code>${m.file}</code></td>`;
+  table.appendChild(tr);
+}
+function select(code){
+  const m = byCode[code];
+  document.querySelectorAll('.dagnode').forEach(n => n.classList.toggle('sel', n.dataset.code === code));
+  document.querySelectorAll('#dagTable tr').forEach(r => r.classList.toggle('hl', r.dataset.code === code));
+  document.querySelectorAll('#dagEdges path').forEach(p => {
+    const on = p.dataset.a === code || p.dataset.b === code;
+    p.setAttribute('stroke', on ? '#246bff' : '#8b939e');
+    p.setAttribute('stroke-width', on ? 2.5 : 1.5);
+  });
+  const uses = LINKS.filter(l => l[0] === code).map(l => l[1]);
+  const usedBy = LINKS.filter(l => l[1] === code).map(l => l[0]);
+  document.getElementById('dagInfo').innerHTML =
+    `<h3 style="margin-top:0">${m.code} · ${m.name}</h3>
+     <p><span class="badge">${m.kind}</span><span class="badge">${m.status}</span><span class="badge">${m.port}</span></p>
+     <p>${m.desc}</p>
+     <p><strong>依賴：</strong>${uses.join('、') || '無'}　<strong>被依賴：</strong>${usedBy.join('、') || '無'}</p>
+     <p><strong>程式：</strong><code>${m.file}</code></p>`;
+}
+select('DISP');
+</script>
+</body>
+</html>

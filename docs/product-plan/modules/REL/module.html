@@ -1,0 +1,1005 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>REL · 部署與發布</title><style>
+:root{--bg:#f2f5f7;--ink:#172c39;--muted:#526876;--line:#dce4e9;--teal:#006f75;--gold:#a46305}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Segoe UI","Microsoft JhengHei",sans-serif}header{background:#102c3b;color:white;padding:50px max(5vw,24px) 38px}header p{color:#c4dbe1;max-width:880px}h1{font-size:40px;margin:10px 0}h2{font-size:26px;margin:0 0 18px}h3{font-size:18px}nav{position:sticky;top:0;background:#fff;z-index:4;border-bottom:1px solid var(--line);padding:12px 5vw;display:flex;gap:18px;flex-wrap:wrap}a{color:#00737b}nav a{text-decoration:none}main{max-width:1320px;margin:auto;padding:28px}section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;margin:0 0 24px;scroll-margin-top:90px}.eyebrow{letter-spacing:3px;font-size:12px;color:#86d7da}.badge{display:inline-block;padding:3px 10px;border-radius:20px;background:#eaf0f3;font-size:12px;color:#385563;margin:3px}.warn{background:#fff1d7;color:#875000}.good{background:#dff2e6;color:#155332}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px}.card{padding:20px;border:1px solid var(--line);border-radius:12px}.number{font-size:30px;font-weight:700}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:#eef4f5}code{background:#edf2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6f8;padding:15px;border-radius:8px;font-size:13px}details{border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:14px}summary{cursor:pointer;font-weight:650}details[open]>summary{margin-bottom:20px}label{display:inline-flex;align-items:center;gap:8px;margin-right:12px}input,select,button{font:inherit;padding:9px 12px;border:1px solid #adc0ca;border-radius:7px;background:#fff;color:var(--ink)}button{cursor:pointer}button:hover{background:#e8f4f4}:focus-visible{outline:3px solid #dd970d;outline-offset:3px}.note{border-left:4px solid #d99b33;background:#fff8e9;padding:14px 18px;margin:16px 0}.flow{display:flex;gap:8px;flex-wrap:wrap}.flow span{border:1px solid #b8d5d8;border-radius:7px;padding:8px 12px}.graph{overflow:auto}.graph svg{min-width:1000px;width:100%;height:auto}.node rect{fill:#edf7f7;stroke:#36848b;stroke-width:1.5}.node text{fill:#173945;font-size:14px}.node:hover rect{fill:#d3eeed}.node.selected rect{fill:#ffe6a9;stroke:#986111;stroke-width:3}.edge{stroke:#bccbd2;stroke-width:1.5;fill:none}.edge.active{stroke:#b06f05;stroke-width:3}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:20px}.task.hidden{display:none}.footer{padding:20px;text-align:center;color:var(--muted)}.tablewrap{overflow:auto} @media(max-width:750px){main{padding:12px}section{padding:18px}h1{font-size:30px}.twocol{grid-template-columns:1fr}nav{position:static}}@media print{nav,.controls,button{display:none}body{background:#fff;font-size:11px}section{break-inside:avoid;border:0;padding:10px}header{background:#fff;color:#000;padding:15px}header p{color:#333}main{padding:0}.task.hidden{display:block}details{break-inside:avoid}.graph svg{min-width:0}}
+</style></head><body><header><div class="eyebrow">SGenAxis / PRODUCT ENGINEERING PLAN</div><h1>REL · 部署與發布</h1><p>讓規格約束 Agent，讓證據說明進度。多專案・模組 DAG・BDD/TDD・Git・部署</p><span class="badge warn">DRAFT 0.1 / 待架構核准</span><span class="badge">產品尚未實作</span></header><nav><a href="../../index.html">← 系統產品規畫</a></nav><main><section id="overview"><h2>部署與發布 / 模組工程規畫</h2><p>擁有 Deployment Profile、發布核准與部署操作紀錄</p><p class="note">架構 PROPOSED；Contracts/BDD/TDD 為草稿；實作 NOT STARTED；回歸 NOT RUN；健康未評估。</p></section><section id="architecture"><h2>架構位置、所有權與 Ports</h2><pre>系統邊界：本機 SGenAxis
+Driving Adapters：Electron / React UI、CLI（後續）、Tests
+                      │ Input Ports
+                      ▼
+Application：Workspace / Workflow / Execution / Git / Release use cases
+                      │
+                      ▼
+Domain：Task state、Envelope、Contracts、Evidence validity、DAG rules
+                      │ 使用內部定義的 Output Ports
+                      ▲ 實作
+Driven Adapters：Git CLI、Agent CLI、Filesystem、SQLite、Installer
+                      │
+外部邊界：專案目錄、遠端 Git、Provider、OS 程序、部署目標
+
+依賴向內：Adapter → Port；Application → Domain / Port。
+Domain 禁止依賴 React、Electron、Node filesystem、SQLite、Git CLI 或具體 Provider。
+所有 mutation 經 input port / use case；UI 與 HTML 不直接改權威資料。</pre><div class="tablewrap"><table><thead><tr><th>欄位</th><th>提案</th></tr></thead><tbody><tr><td>id</td><td>REL</td></tr><tr><td>name</td><td>部署與發布</td></tr><tr><td>responsibility</td><td>擁有 Deployment Profile、發布核准與部署操作紀錄</td></tr><tr><td>layer</td><td>Application</td></tr><tr><td>input</td><td>IReleaseCommands</td></tr><tr><td>output</td><td>IDeploymentTarget, IArtifactStore, IReleaseStore</td></tr><tr><td>adapter</td><td>WindowsInstallerAdapter；後續 SSH/Container/DCC adapters</td></tr><tr><td>transaction</td><td>部署每步有 checkpoint；失敗與回滾結果分開，不假設所有操作可逆</td></tr></tbody></table></div><p>依賴目標：WORK, EVID</p><p>完整模組 DAG 見 <a href="../../index.html#architecture">系統架構</a>。此模組只允許經自身 Input Port 修改其權威資料。禁止跨模組直接資料庫寫入及 Domain 基礎設施依賴。</p></section><section id="dependency"><h2>模組依賴視圖</h2><div class="graph"><svg viewBox="0 0 1010 610" role="img" aria-label="提議模組依賴圖；箭頭 A 到 B 表示 A 依賴 B 的公開契約"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#839da9"/></marker></defs><path class="edge" data-a="UI" data-b="SPEC" d="M205 330 C255 330,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="FLOW" d="M205 330 C255 330,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="WORK" d="M205 330 C255 330,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="GIT" d="M205 330 C255 330,195 240,255 240" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="EVID" d="M205 330 C255 330,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REL" d="M205 330 C255 330,195 380,255 380" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REPORT" d="M205 330 C255 330,195 520,255 520" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="SPEC" d="M440 100 C490 100,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="WORK" d="M440 100 C490 100,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="GUARD" d="M440 100 C490 100,440 210,500 210" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EXEC" d="M440 100 C490 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EVID" d="M440 100 C490 100,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="GUARD" data-b="SPEC" d="M685 210 C735 210,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="EXEC" data-b="WORK" d="M685 70 C735 70,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="GIT" data-b="WORK" d="M440 240 C490 240,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="WORK" d="M440 380 C490 380,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="EVID" d="M440 380 C490 380,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="SPEC" d="M440 520 C490 520,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="EVID" d="M440 520 C490 520,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="UI" d="M205 100 C255 100,-40 330,20 330" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="FLOW" d="M205 100 C255 100,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="EXEC" d="M205 100 C255 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="WORK" d="M205 100 C255 100,710 470,770 470" marker-end="url(#arrow)"/><a href="../../index.html#module-HOST" class="node" data-mod="HOST" aria-label="查看 桌面宿主與建置"><rect x="20" y="70" width="185" height="65" rx="9"/><text x="32" y="95">HOST · 桌面宿主與建置</text><text x="32" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-UI" class="node" data-mod="UI" aria-label="查看 工程控制台"><rect x="20" y="300" width="185" height="65" rx="9"/><text x="32" y="325">UI · 工程控制台</text><text x="32" y="349" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-FLOW" class="node" data-mod="FLOW" aria-label="查看 流程與核准"><rect x="255" y="70" width="185" height="65" rx="9"/><text x="267" y="95">FLOW · 流程與核准</text><text x="267" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GIT" class="node" data-mod="GIT" aria-label="查看 版本控管"><rect x="255" y="210" width="185" height="65" rx="9"/><text x="267" y="235">GIT · 版本控管</text><text x="267" y="259" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REL" class="node" data-mod="REL" aria-label="查看 部署與發布"><rect x="255" y="350" width="185" height="65" rx="9"/><text x="267" y="375">REL · 部署與發布</text><text x="267" y="399" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REPORT" class="node" data-mod="REPORT" aria-label="查看 報告投影"><rect x="255" y="490" width="185" height="65" rx="9"/><text x="267" y="515">REPORT · 報告投影</text><text x="267" y="539" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EXEC" class="node" data-mod="EXEC" aria-label="查看 Agent 執行"><rect x="500" y="40" width="185" height="65" rx="9"/><text x="512" y="65">EXEC · Agent 執行</text><text x="512" y="89" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GUARD" class="node" data-mod="GUARD" aria-label="查看 開發邊界"><rect x="500" y="180" width="185" height="65" rx="9"/><text x="512" y="205">GUARD · 開發邊界</text><text x="512" y="229" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EVID" class="node" data-mod="EVID" aria-label="查看 驗證證據"><rect x="500" y="320" width="185" height="65" rx="9"/><text x="512" y="345">EVID · 驗證證據</text><text x="512" y="369" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-SPEC" class="node" data-mod="SPEC" aria-label="查看 工程規格"><rect x="770" y="200" width="185" height="65" rx="9"/><text x="782" y="225">SPEC · 工程規格</text><text x="782" y="249" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-WORK" class="node" data-mod="WORK" aria-label="查看 專案工作區"><rect x="770" y="440" width="185" height="65" rx="9"/><text x="782" y="465">WORK · 專案工作區</text><text x="782" y="489" style="font-size:12px">規劃 · 未核准 · 未測試</text></a></svg></div></section><section id="tasks"><h2>工項、Contract、BDD、TDD 與驗收</h2><details class="task" id="task-REL-001" data-module="REL" data-phase="M3"><summary>REL-001 · 部署設定與版本產物追溯 <span class="badge">M3</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>REL / REQ-REL</td></tr><tr><td>意圖</td><td>部署明確版本的已驗證產物</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>SPEC-002, EVID-002</td></tr><tr><td>允許範圍（提議）</td><td>packages/release/**<br>tests/release/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-REL-001-01 — 部署 profile 版本化；產物不可變且有 hash；secret 僅保存引用</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署</td></tr><tr><td>驗收標準</td><td>test/prod 使用同產物；不把 Git push 算部署</td></tr><tr><td>模組／相鄰回歸</td><td>EVID, REL, SPEC</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id REL-001</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 1800 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/REL-001/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation；G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape</p><h3>BDD · 可匯出 Gherkin</h3><pre>@REL-001 @planning
+Feature: REL-001 部署設定與版本產物追溯
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 部署 profile 版本化；產物不可變且有 hash；secret 僅保存引用
+
+    @BDD-REL-001-01
+    Scenario: BDD-REL-001-01
+      Given 具備環境、命令、檢查與復原策略的 profile
+      When 使用者建立部署候選
+      Then 候選綁定 commit、artifact hash 與 profile revision
+
+    @BDD-REL-001-02
+    Scenario: BDD-REL-001-02
+      Given profile 缺少健康檢查或復原聲明
+      When 使用者驗證候選
+      Then 阻止部署並列出缺口
+
+    @BDD-REL-001-03
+    Scenario: BDD-REL-001-03
+      Given 產物內容在核准後被替換
+      When 使用者開始部署
+      Then 雜湊不符而拒絕執行
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-REL-001-01</td><td>TDD-REL-001-01</td><td>INV-REL-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-001-02</td><td>TDD-REL-001-02</td><td>INV-REL-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-001-03</td><td>TDD-REL-001-03</td><td>INV-REL-001-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-REL-001-01 · 測試案例</summary><p>前置：具備環境、命令、檢查與復原策略的 profile</p><p>操作：使用者建立部署候選</p><p>斷言：候選綁定 commit、artifact hash 與 profile revision；操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署</p><p>RED：測試可建置且執行到斷言，但尚未實作的「候選綁定 commit、artifact hash 與 profile revision」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-001-02 · 測試案例</summary><p>前置：profile 缺少健康檢查或復原聲明</p><p>操作：使用者驗證候選</p><p>斷言：阻止部署並列出缺口；操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署</p><p>RED：測試可建置且執行到斷言，但尚未實作的「阻止部署並列出缺口」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-001-03 · 測試案例</summary><p>前置：產物內容在核准後被替換</p><p>操作：使用者開始部署</p><p>斷言：雜湊不符而拒絕執行；操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署</p><p>RED：測試可建置且執行到斷言，但尚未實作的「雜湊不符而拒絕執行」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;target&quot;: &quot;test&quot;,
+  &quot;artifact_hash&quot;: &quot;sha256-fixture&quot;,
+  &quot;secret_ref&quot;: &quot;credential-store/key&quot;
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-REL-002" data-module="REL" data-phase="M3"><summary>REL-002 · Windows 打包與靜默安裝驗證 <span class="badge">M3</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>REL / REQ-REL</td></tr><tr><td>意圖</td><td>建立第一個完整部署 Adapter</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>REL-001, UI-003, EXEC-003</td></tr><tr><td>允許範圍（提議）</td><td>packages/adapters/deployment/windows/**<br>tests/deployment/windows/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-REL-002-01 — 精確 OS/installer 版本需 D-03 核准；命令成功還須安裝檢查</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功</td></tr><tr><td>驗收標準</td><td>靜默 install/uninstall、權限、環境、重複安裝均有證據；無 VM 則 BLOCKED</td></tr><tr><td>模組／相鄰回歸</td><td>EXEC, REL, UI</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id REL-002</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 1800 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/REL-002/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation；G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape</p><h3>BDD · 可匯出 Gherkin</h3><pre>@REL-002 @planning
+Feature: REL-002 Windows 打包與靜默安裝驗證
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 精確 OS/installer 版本需 D-03 核准；命令成功還須安裝檢查
+
+    @BDD-REL-002-01
+    Scenario: BDD-REL-002-01
+      Given 乾淨 Windows VM 與核准安裝包
+      When 系統執行靜默安裝
+      Then exit、log、檔案、捷徑、啟動與版本均符合 profile
+
+    @BDD-REL-002-02
+    Scenario: BDD-REL-002-02
+      Given 安裝中途故障或權限不足
+      When 系統執行靜默安裝
+      Then 標失敗並保存實際環境與可用復原步驟
+
+    @BDD-REL-002-03
+    Scenario: BDD-REL-002-03
+      Given 同版本已安裝
+      When 系統重複安裝後卸載
+      Then 符合冪等策略且卸載保留宣告的使用者資料
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-REL-002-01</td><td>TDD-REL-002-01</td><td>INV-REL-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-002-02</td><td>TDD-REL-002-02</td><td>INV-REL-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-002-03</td><td>TDD-REL-002-03</td><td>INV-REL-002-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-REL-002-01 · 測試案例</summary><p>前置：乾淨 Windows VM 與核准安裝包</p><p>操作：系統執行靜默安裝</p><p>斷言：exit、log、檔案、捷徑、啟動與版本均符合 profile；操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「exit、log、檔案、捷徑、啟動與版本均符合 profile」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-002-02 · 測試案例</summary><p>前置：安裝中途故障或權限不足</p><p>操作：系統執行靜默安裝</p><p>斷言：標失敗並保存實際環境與可用復原步驟；操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「標失敗並保存實際環境與可用復原步驟」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-002-03 · 測試案例</summary><p>前置：同版本已安裝</p><p>操作：系統重複安裝後卸載</p><p>斷言：符合冪等策略且卸載保留宣告的使用者資料；操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「符合冪等策略且卸載保留宣告的使用者資料」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;vm&quot;: &quot;D-03 target pending&quot;,
+  &quot;installer&quot;: &quot;tool selection pending&quot;,
+  &quot;cases&quot;: [
+    &quot;clean&quot;,
+    &quot;upgrade&quot;,
+    &quot;repeat&quot;,
+    &quot;uninstall&quot;
+  ]
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-REL-003" data-module="REL" data-phase="M3"><summary>REL-003 · 發布核准、健康檢查與回滾 <span class="badge">M3</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>REL / REQ-REL</td></tr><tr><td>意圖</td><td>正式部署可審核且能報告復原真相</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>REL-002, FLOW-003, GIT-003</td></tr><tr><td>允許範圍（提議）</td><td>packages/release/**<br>tests/release/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-REL-003-01 — 部署成功和回滾成功是不同結果；不可逆變更需明確處置</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health</td></tr><tr><td>驗收標準</td><td>核准綁定環境/產物/profile；無自動略過；恢復失敗不綠</td></tr><tr><td>模組／相鄰回歸</td><td>FLOW, GIT, REL</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id REL-003</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 1800 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/REL-003/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>G-RELEASE: REPORT-001 accepted; build/install/regression/compatibility evidence complete; human release approval</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation；G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape</p><h3>BDD · 可匯出 Gherkin</h3><pre>@REL-003 @planning
+Feature: REL-003 發布核准、健康檢查與回滾
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 部署成功和回滾成功是不同結果；不可逆變更需明確處置
+
+    @BDD-REL-003-01
+    Scenario: BDD-REL-003-01
+      Given 測試環境驗證完成且正式發布已核准
+      When 系統部署到正式環境
+      Then 使用同一產物並在健康檢查通過後標記成功
+
+    @BDD-REL-003-02
+    Scenario: BDD-REL-003-02
+      Given 部署命令成功但健康檢查失敗
+      When 系統驗證部署
+      Then 部署標 FAIL 並依已核准策略復原
+
+    @BDD-REL-003-03
+    Scenario: BDD-REL-003-03
+      Given 回滾過程也失敗
+      When 系統處理復原結果
+      Then 回滾標 FAIL 並提供人工處置且保留環境狀態
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-REL-003-01</td><td>TDD-REL-003-01</td><td>INV-REL-003-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-003-02</td><td>TDD-REL-003-02</td><td>INV-REL-003-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-003-03</td><td>TDD-REL-003-03</td><td>INV-REL-003-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-REL-003-01 · 測試案例</summary><p>前置：測試環境驗證完成且正式發布已核准</p><p>操作：系統部署到正式環境</p><p>斷言：使用同一產物並在健康檢查通過後標記成功；操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health</p><p>RED：測試可建置且執行到斷言，但尚未實作的「使用同一產物並在健康檢查通過後標記成功」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-003-02 · 測試案例</summary><p>前置：部署命令成功但健康檢查失敗</p><p>操作：系統驗證部署</p><p>斷言：部署標 FAIL 並依已核准策略復原；操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health</p><p>RED：測試可建置且執行到斷言，但尚未實作的「部署標 FAIL 並依已核准策略復原」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-003-03 · 測試案例</summary><p>前置：回滾過程也失敗</p><p>操作：系統處理復原結果</p><p>斷言：回滾標 FAIL 並提供人工處置且保留環境狀態；操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health</p><p>RED：測試可建置且執行到斷言，但尚未實作的「回滾標 FAIL 並提供人工處置且保留環境狀態」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;deployment_exit&quot;: 0,
+  &quot;health&quot;: &quot;fail&quot;,
+  &quot;rollback&quot;: [
+    &quot;success&quot;,
+    &quot;fail&quot;
+  ]
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-REL-004" data-module="REL" data-phase="M4"><summary>REL-004 · SSH、容器與 DCC 部署擴充規劃 <span class="badge">M4</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>REL / REQ-REL</td></tr><tr><td>意圖</td><td>逐種方式建立獨立核准與相容性矩陣</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>REL-003</td></tr><tr><td>允許範圍（提議）</td><td>planning/deployment/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-REL-004-01 — 此 Task 僅產出設計；不可宣告 Adapter 已支援</td></tr><tr><td>TDD 設計與 RED 判準</td><td>文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准</td></tr><tr><td>驗收標準</td><td>本 Task 完成僅代表擴充規劃完成；新 Adapter 各走獨立 RED→GREEN</td></tr><tr><td>模組／相鄰回歸</td><td>REL</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>文件完整性檢查（腳本待準備）；不執行產品測試</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 1800 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/REL-004/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>規劃目標已指定；讀取既有部署架構與相容性資料；文件交付需完整性檢查與設計審查；不要求新 Skeleton/產品 RED 作為規劃前提</p><h3>BDD · 可匯出 Gherkin</h3><pre>@REL-004 @planning
+Feature: REL-004 SSH、容器與 DCC 部署擴充規劃
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 此 Task 僅產出設計；不可宣告 Adapter 已支援
+
+    @BDD-REL-004-01
+    Scenario: BDD-REL-004-01
+      Given 首個擴充目標及版本由使用者指定
+      When 規劃 Agent 產生擴充封包
+      Then 每種方式各有 port mapping、BDD/TDD、回滾限制與新工項
+
+    @BDD-REL-004-02
+    Scenario: BDD-REL-004-02
+      Given 尚未指定 OS 或 DCC 版本
+      When 規劃 Agent 檢查就緒度
+      Then 標待決策且不進入產品實作
+
+    @BDD-REL-004-03
+    Scenario: BDD-REL-004-03
+      Given DCC 版本使用不同 Python/Qt 執行環境
+      When 規劃 Agent 定義相容性矩陣
+      Then 分列 load/unload、環境隔離及 batch 驗證
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-REL-004-01</td><td>TDD-REL-004-01</td><td>INV-REL-004-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-004-02</td><td>TDD-REL-004-02</td><td>INV-REL-004-01</td><td>NOT RUN</td></tr><tr><td>BDD-REL-004-03</td><td>TDD-REL-004-03</td><td>INV-REL-004-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-REL-004-01 · 測試案例</summary><p>前置：首個擴充目標及版本由使用者指定</p><p>操作：規劃 Agent 產生擴充封包</p><p>斷言：每種方式各有 port mapping、BDD/TDD、回滾限制與新工項；操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准</p><p>RED：文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-004-02 · 測試案例</summary><p>前置：尚未指定 OS 或 DCC 版本</p><p>操作：規劃 Agent 檢查就緒度</p><p>斷言：標待決策且不進入產品實作；操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准</p><p>RED：文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-REL-004-03 · 測試案例</summary><p>前置：DCC 版本使用不同 Python/Qt 執行環境</p><p>操作：規劃 Agent 定義相容性矩陣</p><p>斷言：分列 load/unload、環境隔離及 batch 驗證；操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准</p><p>RED：文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;targets&quot;: [
+    &quot;SSH&quot;,
+    &quot;Compose&quot;,
+    &quot;DCC&quot;
+  ],
+  &quot;versions&quot;: &quot;TBD&quot;
+}</pre><h3>Agent 執行順序</h3><ol><li>讀取已核准部署架構與目前相容性報告</li><li>確認使用者選定的部署目標與版本；缺少資料則列待決策</li><li>為每種 Adapter 草擬架構、Contract、BDD、測試策略與 fixtures</li><li>以文件檢查驗證目標、版本、失敗/復原和工項追溯完整性</li><li>提交擴充封包待人核准；不修改產品程式碼、不宣告 Adapter 已實作</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details></section><section id="coverage"><h2>BDD 類別評估與回歸</h2><div class="tablewrap"><table><thead><tr><th>分類</th><th>初稿狀態</th><th>說明</th></tr></thead><tbody><tr><td>B1 主要成功</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B2 輸入邊界</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B3 無效輸入</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B4 相依失敗</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B5 部分失敗</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B6 狀態一致性</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B7 交易</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B8 生命週期</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B9 復原/回滾</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B10 跨模組</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B11 相容性</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B12 重要回歸</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr></tbody></table></div><p>L0–L5 測試計畫見各 Task；目前所有結果 NOT RUN。無 build、package、install 或 DCC 接受證據。</p></section><section id="health"><h2>風險、決策與最終健康</h2><p>規格與 Ports 未核准；Task 命令僅為規劃；步驟 stubs 未自動化。Module health：PLANNING / NOT VERIFIED。</p><div class="tablewrap"><table><thead><tr><th>ID</th><th>決策</th><th>建議</th><th>影響</th></tr></thead><tbody><tr><td>D-01</td><td>技術與架構</td><td>建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料</td><td>核准前不能進入 skeleton/產品實作</td></tr><tr><td>D-02</td><td>首個 Agent Provider</td><td>建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式</td><td>阻塞 EXEC-002 及依賴項，其他規劃可繼續</td></tr><tr><td>D-03</td><td>首版平台與安装器</td><td>Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定</td><td>阻塞真實安裝相容性聲明</td></tr><tr><td>D-04</td><td>核准與權限</td><td>首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用</td><td>強隔離機制必須 spike 驗證，worktree 不等於沙箱</td></tr><tr><td>D-05</td><td>儲存權威</td><td>每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威</td><td>採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照</td></tr><tr><td>D-06</td><td>程序續跑</td><td>第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳</td><td>常駐 service / 多機 worker 留待後續架構</td></tr></tbody></table></div></section></main><div class="footer">SGenAxis · 2026-10-06T05:57:13.670858+00:00 · 文件草稿，不代表發布資格</div><script type="application/json" id="module-spec">{
+  "metadata": {
+    "product": "SGenAxis",
+    "version": "0.1",
+    "generated_at": "2026-10-06T05:57:13.670858+00:00",
+    "state": "PLANNING",
+    "architecture_status": "PROPOSED / NOT APPROVED",
+    "implementation_status": "NOT STARTED",
+    "test_status": "NOT RUN",
+    "release_status": "DO NOT RELEASE",
+    "basis": "本次對話需求；架構為建議，非已核准設計",
+    "git": "目前交付未建立 Git commit"
+  },
+  "module": {
+    "id": "REL",
+    "name": "部署與發布",
+    "responsibility": "擁有 Deployment Profile、發布核准與部署操作紀錄",
+    "layer": "Application",
+    "input": "IReleaseCommands",
+    "output": "IDeploymentTarget, IArtifactStore, IReleaseStore",
+    "adapter": "WindowsInstallerAdapter；後續 SSH/Container/DCC adapters",
+    "transaction": "部署每步有 checkpoint；失敗與回滾結果分開，不假設所有操作可逆"
+  },
+  "tasks": [
+    {
+      "id": "REL-001",
+      "module": "REL",
+      "title": "部署設定與版本產物追溯",
+      "milestone": "M3",
+      "depends_on": [
+        "SPEC-002",
+        "EVID-002"
+      ],
+      "intent": "部署明確版本的已驗證產物",
+      "allowed_scope": [
+        "packages/release/**",
+        "tests/release/**"
+      ],
+      "contract": "部署 profile 版本化；產物不可變且有 hash；secret 僅保存引用",
+      "invariant": "INV-REL-001-01",
+      "bdd": [
+        {
+          "id": "BDD-REL-001-01",
+          "given": "具備環境、命令、檢查與復原策略的 profile",
+          "when": "使用者建立部署候選",
+          "then": "候選綁定 commit、artifact hash 與 profile revision",
+          "invariant": "INV-REL-001-01",
+          "test": "TDD-REL-001-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-001-02",
+          "given": "profile 缺少健康檢查或復原聲明",
+          "when": "使用者驗證候選",
+          "then": "阻止部署並列出缺口",
+          "invariant": "INV-REL-001-01",
+          "test": "TDD-REL-001-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-001-03",
+          "given": "產物內容在核准後被替換",
+          "when": "使用者開始部署",
+          "then": "雜湊不符而拒絕執行",
+          "invariant": "INV-REL-001-01",
+          "test": "TDD-REL-001-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "target": "test",
+        "artifact_hash": "sha256-fixture",
+        "secret_ref": "credential-store/key"
+      },
+      "tdd_design": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+      "acceptance": "test/prod 使用同產物；不把 Git push 算部署",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-REL",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id REL-001",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 1800,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/REL-001/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "EVID",
+        "REL",
+        "SPEC"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-REL-001-01",
+          "bdd": "BDD-REL-001-01",
+          "precondition": "具備環境、命令、檢查與復原策略的 profile",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者建立部署候選",
+          "assertions": [
+            "候選綁定 commit、artifact hash 與 profile revision",
+            "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「候選綁定 commit、artifact hash 與 profile revision」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-001-02",
+          "bdd": "BDD-REL-001-02",
+          "precondition": "profile 缺少健康檢查或復原聲明",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者驗證候選",
+          "assertions": [
+            "阻止部署並列出缺口",
+            "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「阻止部署並列出缺口」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-001-03",
+          "bdd": "BDD-REL-001-03",
+          "precondition": "產物內容在核准後被替換",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者開始部署",
+          "assertions": [
+            "雜湊不符而拒絕執行",
+            "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「雜湊不符而拒絕執行」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ]
+    },
+    {
+      "id": "REL-002",
+      "module": "REL",
+      "title": "Windows 打包與靜默安裝驗證",
+      "milestone": "M3",
+      "depends_on": [
+        "REL-001",
+        "UI-003",
+        "EXEC-003"
+      ],
+      "intent": "建立第一個完整部署 Adapter",
+      "allowed_scope": [
+        "packages/adapters/deployment/windows/**",
+        "tests/deployment/windows/**"
+      ],
+      "contract": "精確 OS/installer 版本需 D-03 核准；命令成功還須安裝檢查",
+      "invariant": "INV-REL-002-01",
+      "bdd": [
+        {
+          "id": "BDD-REL-002-01",
+          "given": "乾淨 Windows VM 與核准安裝包",
+          "when": "系統執行靜默安裝",
+          "then": "exit、log、檔案、捷徑、啟動與版本均符合 profile",
+          "invariant": "INV-REL-002-01",
+          "test": "TDD-REL-002-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-002-02",
+          "given": "安裝中途故障或權限不足",
+          "when": "系統執行靜默安裝",
+          "then": "標失敗並保存實際環境與可用復原步驟",
+          "invariant": "INV-REL-002-01",
+          "test": "TDD-REL-002-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-002-03",
+          "given": "同版本已安裝",
+          "when": "系統重複安裝後卸載",
+          "then": "符合冪等策略且卸載保留宣告的使用者資料",
+          "invariant": "INV-REL-002-01",
+          "test": "TDD-REL-002-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "vm": "D-03 target pending",
+        "installer": "tool selection pending",
+        "cases": [
+          "clean",
+          "upgrade",
+          "repeat",
+          "uninstall"
+        ]
+      },
+      "tdd_design": "L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功",
+      "acceptance": "靜默 install/uninstall、權限、環境、重複安裝均有證據；無 VM 則 BLOCKED",
+      "effort": "L",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-REL",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id REL-002",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 1800,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/REL-002/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "EXEC",
+        "REL",
+        "UI"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-REL-002-01",
+          "bdd": "BDD-REL-002-01",
+          "precondition": "乾淨 Windows VM 與核准安裝包",
+          "fixture_ref": "fixtures.json",
+          "action": "系統執行靜默安裝",
+          "assertions": [
+            "exit、log、檔案、捷徑、啟動與版本均符合 profile",
+            "操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「exit、log、檔案、捷徑、啟動與版本均符合 profile」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-002-02",
+          "bdd": "BDD-REL-002-02",
+          "precondition": "安裝中途故障或權限不足",
+          "fixture_ref": "fixtures.json",
+          "action": "系統執行靜默安裝",
+          "assertions": [
+            "標失敗並保存實際環境與可用復原步驟",
+            "操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「標失敗並保存實際環境與可用復原步驟」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-002-03",
+          "bdd": "BDD-REL-002-03",
+          "precondition": "同版本已安裝",
+          "fixture_ref": "fixtures.json",
+          "action": "系統重複安裝後卸載",
+          "assertions": [
+            "符合冪等策略且卸載保留宣告的使用者資料",
+            "操作結果與 INV-REL-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 installer VM failure injection；L5 launch smoke；RED：缺檔仍成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「符合冪等策略且卸載保留宣告的使用者資料」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ]
+    },
+    {
+      "id": "REL-003",
+      "module": "REL",
+      "title": "發布核准、健康檢查與回滾",
+      "milestone": "M3",
+      "depends_on": [
+        "REL-002",
+        "FLOW-003",
+        "GIT-003"
+      ],
+      "intent": "正式部署可審核且能報告復原真相",
+      "allowed_scope": [
+        "packages/release/**",
+        "tests/release/**"
+      ],
+      "contract": "部署成功和回滾成功是不同結果；不可逆變更需明確處置",
+      "invariant": "INV-REL-003-01",
+      "bdd": [
+        {
+          "id": "BDD-REL-003-01",
+          "given": "測試環境驗證完成且正式發布已核准",
+          "when": "系統部署到正式環境",
+          "then": "使用同一產物並在健康檢查通過後標記成功",
+          "invariant": "INV-REL-003-01",
+          "test": "TDD-REL-003-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-003-02",
+          "given": "部署命令成功但健康檢查失敗",
+          "when": "系統驗證部署",
+          "then": "部署標 FAIL 並依已核准策略復原",
+          "invariant": "INV-REL-003-01",
+          "test": "TDD-REL-003-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-003-03",
+          "given": "回滾過程也失敗",
+          "when": "系統處理復原結果",
+          "then": "回滾標 FAIL 並提供人工處置且保留環境狀態",
+          "invariant": "INV-REL-003-01",
+          "test": "TDD-REL-003-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "deployment_exit": 0,
+        "health": "fail",
+        "rollback": [
+          "success",
+          "fail"
+        ]
+      },
+      "tdd_design": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+      "acceptance": "核准綁定環境/產物/profile；無自動略過；恢復失敗不綠",
+      "effort": "L",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-REL",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id REL-003",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 1800,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/REL-003/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "FLOW",
+        "GIT",
+        "REL"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-REL-003-01",
+          "bdd": "BDD-REL-003-01",
+          "precondition": "測試環境驗證完成且正式發布已核准",
+          "fixture_ref": "fixtures.json",
+          "action": "系統部署到正式環境",
+          "assertions": [
+            "使用同一產物並在健康檢查通過後標記成功",
+            "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「使用同一產物並在健康檢查通過後標記成功」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-003-02",
+          "bdd": "BDD-REL-003-02",
+          "precondition": "部署命令成功但健康檢查失敗",
+          "fixture_ref": "fixtures.json",
+          "action": "系統驗證部署",
+          "assertions": [
+            "部署標 FAIL 並依已核准策略復原",
+            "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「部署標 FAIL 並依已核准策略復原」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-003-03",
+          "bdd": "BDD-REL-003-03",
+          "precondition": "回滾過程也失敗",
+          "fixture_ref": "fixtures.json",
+          "action": "系統處理復原結果",
+          "assertions": [
+            "回滾標 FAIL 並提供人工處置且保留環境狀態",
+            "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「回滾標 FAIL 並提供人工處置且保留環境狀態」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ],
+      "release_operation_gates": [
+        "G-RELEASE: REPORT-001 accepted; build/install/regression/compatibility evidence complete; human release approval"
+      ],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ]
+    },
+    {
+      "id": "REL-004",
+      "module": "REL",
+      "title": "SSH、容器與 DCC 部署擴充規劃",
+      "milestone": "M4",
+      "depends_on": [
+        "REL-003"
+      ],
+      "intent": "逐種方式建立獨立核准與相容性矩陣",
+      "allowed_scope": [
+        "planning/deployment/**"
+      ],
+      "contract": "此 Task 僅產出設計；不可宣告 Adapter 已支援",
+      "invariant": "INV-REL-004-01",
+      "bdd": [
+        {
+          "id": "BDD-REL-004-01",
+          "given": "首個擴充目標及版本由使用者指定",
+          "when": "規劃 Agent 產生擴充封包",
+          "then": "每種方式各有 port mapping、BDD/TDD、回滾限制與新工項",
+          "invariant": "INV-REL-004-01",
+          "test": "TDD-REL-004-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-004-02",
+          "given": "尚未指定 OS 或 DCC 版本",
+          "when": "規劃 Agent 檢查就緒度",
+          "then": "標待決策且不進入產品實作",
+          "invariant": "INV-REL-004-01",
+          "test": "TDD-REL-004-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-REL-004-03",
+          "given": "DCC 版本使用不同 Python/Qt 執行環境",
+          "when": "規劃 Agent 定義相容性矩陣",
+          "then": "分列 load/unload、環境隔離及 batch 驗證",
+          "invariant": "INV-REL-004-01",
+          "test": "TDD-REL-004-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "targets": [
+          "SSH",
+          "Compose",
+          "DCC"
+        ],
+        "versions": "TBD"
+      },
+      "tdd_design": "文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准",
+      "acceptance": "本 Task 完成僅代表擴充規劃完成；新 Adapter 各走獨立 RED→GREEN",
+      "effort": "L",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-REL",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "文件完整性檢查（腳本待準備）；不執行產品測試",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 1800,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/REL-004/\u003crun-id\u003e/",
+      "execution_steps": [
+        "讀取已核准部署架構與目前相容性報告",
+        "確認使用者選定的部署目標與版本；缺少資料則列待決策",
+        "為每種 Adapter 草擬架構、Contract、BDD、測試策略與 fixtures",
+        "以文件檢查驗證目標、版本、失敗/復原和工項追溯完整性",
+        "提交擴充封包待人核准；不修改產品程式碼、不宣告 Adapter 已實作"
+      ],
+      "regression_modules": [
+        "REL"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "PLANNING_DELIVERABLE",
+      "tdd_cases": [
+        {
+          "id": "TDD-REL-004-01",
+          "bdd": "BDD-REL-004-01",
+          "precondition": "首個擴充目標及版本由使用者指定",
+          "fixture_ref": "fixtures.json",
+          "action": "規劃 Agent 產生擴充封包",
+          "assertions": [
+            "每種方式各有 port mapping、BDD/TDD、回滾限制與新工項",
+            "操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准",
+          "red_expected": "文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-004-02",
+          "bdd": "BDD-REL-004-02",
+          "precondition": "尚未指定 OS 或 DCC 版本",
+          "fixture_ref": "fixtures.json",
+          "action": "規劃 Agent 檢查就緒度",
+          "assertions": [
+            "標待決策且不進入產品實作",
+            "操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准",
+          "red_expected": "文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-REL-004-03",
+          "bdd": "BDD-REL-004-03",
+          "precondition": "DCC 版本使用不同 Python/Qt 執行環境",
+          "fixture_ref": "fixtures.json",
+          "action": "規劃 Agent 定義相容性矩陣",
+          "assertions": [
+            "分列 load/unload、環境隔離及 batch 驗證",
+            "操作結果與 INV-REL-004-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "文件 lint：每個 target 有版本/fixtures/失敗/復原；Adapter 實作測試留待新封包核准",
+          "red_expected": "文件驗證用缺漏 fixture 應被拒絕；這不是產品實作 RED gate",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "規劃目標已指定；讀取既有部署架構與相容性資料",
+        "文件交付需完整性檢查與設計審查；不要求新 Skeleton/產品 RED 作為規劃前提"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [
+        "規劃目標已指定；讀取既有部署架構與相容性資料",
+        "文件交付需完整性檢查與設計審查；不要求新 Skeleton/產品 RED 作為規劃前提"
+      ],
+      "implementation_gates": []
+    }
+  ],
+  "decisions": [
+    [
+      "D-01",
+      "技術與架構",
+      "建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料",
+      "核准前不能進入 skeleton/產品實作"
+    ],
+    [
+      "D-02",
+      "首個 Agent Provider",
+      "建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式",
+      "阻塞 EXEC-002 及依賴項，其他規劃可繼續"
+    ],
+    [
+      "D-03",
+      "首版平台與安装器",
+      "Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定",
+      "阻塞真實安裝相容性聲明"
+    ],
+    [
+      "D-04",
+      "核准與權限",
+      "首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用",
+      "強隔離機制必須 spike 驗證，worktree 不等於沙箱"
+    ],
+    [
+      "D-05",
+      "儲存權威",
+      "每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威",
+      "採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照"
+    ],
+    [
+      "D-06",
+      "程序續跑",
+      "第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳",
+      "常駐 service / 多機 worker 留待後續架構"
+    ]
+  ],
+  "dependencies": [
+    "WORK",
+    "EVID"
+  ]
+}</script><script></script></body></html>

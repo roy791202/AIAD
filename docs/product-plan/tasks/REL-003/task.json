@@ -1,0 +1,204 @@
+{
+  "id": "REL-003",
+  "module": "REL",
+  "title": "發布核准、健康檢查與回滾",
+  "milestone": "M3",
+  "depends_on": [
+    "REL-002",
+    "FLOW-003",
+    "GIT-003"
+  ],
+  "intent": "正式部署可審核且能報告復原真相",
+  "allowed_scope": [
+    "packages/release/**",
+    "tests/release/**"
+  ],
+  "contract": "部署成功和回滾成功是不同結果；不可逆變更需明確處置",
+  "invariant": "INV-REL-003-01",
+  "bdd": [
+    {
+      "id": "BDD-REL-003-01",
+      "given": "測試環境驗證完成且正式發布已核准",
+      "when": "系統部署到正式環境",
+      "then": "使用同一產物並在健康檢查通過後標記成功",
+      "invariant": "INV-REL-003-01",
+      "test": "TDD-REL-003-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-REL-003-02",
+      "given": "部署命令成功但健康檢查失敗",
+      "when": "系統驗證部署",
+      "then": "部署標 FAIL 並依已核准策略復原",
+      "invariant": "INV-REL-003-01",
+      "test": "TDD-REL-003-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-REL-003-03",
+      "given": "回滾過程也失敗",
+      "when": "系統處理復原結果",
+      "then": "回滾標 FAIL 並提供人工處置且保留環境狀態",
+      "invariant": "INV-REL-003-01",
+      "test": "TDD-REL-003-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "deployment_exit": 0,
+    "health": "fail",
+    "rollback": [
+      "success",
+      "fail"
+    ]
+  },
+  "tdd_design": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+  "acceptance": "核准綁定環境/產物/profile；無自動略過；恢復失敗不綠",
+  "effort": "L",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-REL",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id REL-003",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 1800,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/REL-003/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "FLOW",
+    "GIT",
+    "REL"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-REL-003-01",
+      "bdd": "BDD-REL-003-01",
+      "precondition": "測試環境驗證完成且正式發布已核准",
+      "fixture_ref": "fixtures.json",
+      "action": "系統部署到正式環境",
+      "assertions": [
+        "使用同一產物並在健康檢查通過後標記成功",
+        "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「使用同一產物並在健康檢查通過後標記成功」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-REL-003-02",
+      "bdd": "BDD-REL-003-02",
+      "precondition": "部署命令成功但健康檢查失敗",
+      "fixture_ref": "fixtures.json",
+      "action": "系統驗證部署",
+      "assertions": [
+        "部署標 FAIL 並依已核准策略復原",
+        "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「部署標 FAIL 並依已核准策略復原」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-REL-003-03",
+      "bdd": "BDD-REL-003-03",
+      "precondition": "回滾過程也失敗",
+      "fixture_ref": "fixtures.json",
+      "action": "系統處理復原結果",
+      "assertions": [
+        "回滾標 FAIL 並提供人工處置且保留環境狀態",
+        "操作結果與 INV-REL-003-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 fake target sagas；L3 VM rollback；RED：exit0 忽略 health",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「回滾標 FAIL 並提供人工處置且保留環境狀態」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation",
+    "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+  ],
+  "release_operation_gates": [
+    "G-RELEASE: REPORT-001 accepted; build/install/regression/compatibility evidence complete; human release approval"
+  ],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation",
+    "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+  ]
+}

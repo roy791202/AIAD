@@ -1,0 +1,772 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GIT · 版本控管</title><style>
+:root{--bg:#f2f5f7;--ink:#172c39;--muted:#526876;--line:#dce4e9;--teal:#006f75;--gold:#a46305}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Segoe UI","Microsoft JhengHei",sans-serif}header{background:#102c3b;color:white;padding:50px max(5vw,24px) 38px}header p{color:#c4dbe1;max-width:880px}h1{font-size:40px;margin:10px 0}h2{font-size:26px;margin:0 0 18px}h3{font-size:18px}nav{position:sticky;top:0;background:#fff;z-index:4;border-bottom:1px solid var(--line);padding:12px 5vw;display:flex;gap:18px;flex-wrap:wrap}a{color:#00737b}nav a{text-decoration:none}main{max-width:1320px;margin:auto;padding:28px}section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;margin:0 0 24px;scroll-margin-top:90px}.eyebrow{letter-spacing:3px;font-size:12px;color:#86d7da}.badge{display:inline-block;padding:3px 10px;border-radius:20px;background:#eaf0f3;font-size:12px;color:#385563;margin:3px}.warn{background:#fff1d7;color:#875000}.good{background:#dff2e6;color:#155332}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px}.card{padding:20px;border:1px solid var(--line);border-radius:12px}.number{font-size:30px;font-weight:700}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:#eef4f5}code{background:#edf2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6f8;padding:15px;border-radius:8px;font-size:13px}details{border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:14px}summary{cursor:pointer;font-weight:650}details[open]>summary{margin-bottom:20px}label{display:inline-flex;align-items:center;gap:8px;margin-right:12px}input,select,button{font:inherit;padding:9px 12px;border:1px solid #adc0ca;border-radius:7px;background:#fff;color:var(--ink)}button{cursor:pointer}button:hover{background:#e8f4f4}:focus-visible{outline:3px solid #dd970d;outline-offset:3px}.note{border-left:4px solid #d99b33;background:#fff8e9;padding:14px 18px;margin:16px 0}.flow{display:flex;gap:8px;flex-wrap:wrap}.flow span{border:1px solid #b8d5d8;border-radius:7px;padding:8px 12px}.graph{overflow:auto}.graph svg{min-width:1000px;width:100%;height:auto}.node rect{fill:#edf7f7;stroke:#36848b;stroke-width:1.5}.node text{fill:#173945;font-size:14px}.node:hover rect{fill:#d3eeed}.node.selected rect{fill:#ffe6a9;stroke:#986111;stroke-width:3}.edge{stroke:#bccbd2;stroke-width:1.5;fill:none}.edge.active{stroke:#b06f05;stroke-width:3}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:20px}.task.hidden{display:none}.footer{padding:20px;text-align:center;color:var(--muted)}.tablewrap{overflow:auto} @media(max-width:750px){main{padding:12px}section{padding:18px}h1{font-size:30px}.twocol{grid-template-columns:1fr}nav{position:static}}@media print{nav,.controls,button{display:none}body{background:#fff;font-size:11px}section{break-inside:avoid;border:0;padding:10px}header{background:#fff;color:#000;padding:15px}header p{color:#333}main{padding:0}.task.hidden{display:block}details{break-inside:avoid}.graph svg{min-width:0}}
+</style></head><body><header><div class="eyebrow">SGenAxis / PRODUCT ENGINEERING PLAN</div><h1>GIT · 版本控管</h1><p>讓規格約束 Agent，讓證據說明進度。多專案・模組 DAG・BDD/TDD・Git・部署</p><span class="badge warn">DRAFT 0.1 / 待架構核准</span><span class="badge">產品尚未實作</span></header><nav><a href="../../index.html">← 系統產品規畫</a></nav><main><section id="overview"><h2>版本控管 / 模組工程規畫</h2><p>管理程式庫操作與工作區變更；Git 是版本歷史權威</p><p class="note">架構 PROPOSED；Contracts/BDD/TDD 為草稿；實作 NOT STARTED；回歸 NOT RUN；健康未評估。</p></section><section id="architecture"><h2>架構位置、所有權與 Ports</h2><pre>系統邊界：本機 SGenAxis
+Driving Adapters：Electron / React UI、CLI（後續）、Tests
+                      │ Input Ports
+                      ▼
+Application：Workspace / Workflow / Execution / Git / Release use cases
+                      │
+                      ▼
+Domain：Task state、Envelope、Contracts、Evidence validity、DAG rules
+                      │ 使用內部定義的 Output Ports
+                      ▲ 實作
+Driven Adapters：Git CLI、Agent CLI、Filesystem、SQLite、Installer
+                      │
+外部邊界：專案目錄、遠端 Git、Provider、OS 程序、部署目標
+
+依賴向內：Adapter → Port；Application → Domain / Port。
+Domain 禁止依賴 React、Electron、Node filesystem、SQLite、Git CLI 或具體 Provider。
+所有 mutation 經 input port / use case；UI 與 HTML 不直接改權威資料。</pre><div class="tablewrap"><table><thead><tr><th>欄位</th><th>提案</th></tr></thead><tbody><tr><td>id</td><td>GIT</td></tr><tr><td>name</td><td>版本控管</td></tr><tr><td>responsibility</td><td>管理程式庫操作與工作區變更；Git 是版本歷史權威</td></tr><tr><td>layer</td><td>Application / Adapter</td></tr><tr><td>input</td><td>IVersionControl</td></tr><tr><td>output</td><td>IGitProcess, IWorkspaceLease</td></tr><tr><td>adapter</td><td>GitCliAdapter</td></tr><tr><td>transaction</td><td>遠端寫入失敗保留本機 commit；衝突不得自動丟棄資料</td></tr></tbody></table></div><p>依賴目標：WORK</p><p>完整模組 DAG 見 <a href="../../index.html#architecture">系統架構</a>。此模組只允許經自身 Input Port 修改其權威資料。禁止跨模組直接資料庫寫入及 Domain 基礎設施依賴。</p></section><section id="dependency"><h2>模組依賴視圖</h2><div class="graph"><svg viewBox="0 0 1010 610" role="img" aria-label="提議模組依賴圖；箭頭 A 到 B 表示 A 依賴 B 的公開契約"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#839da9"/></marker></defs><path class="edge" data-a="UI" data-b="SPEC" d="M205 330 C255 330,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="FLOW" d="M205 330 C255 330,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="WORK" d="M205 330 C255 330,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="GIT" d="M205 330 C255 330,195 240,255 240" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="EVID" d="M205 330 C255 330,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REL" d="M205 330 C255 330,195 380,255 380" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REPORT" d="M205 330 C255 330,195 520,255 520" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="SPEC" d="M440 100 C490 100,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="WORK" d="M440 100 C490 100,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="GUARD" d="M440 100 C490 100,440 210,500 210" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EXEC" d="M440 100 C490 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EVID" d="M440 100 C490 100,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="GUARD" data-b="SPEC" d="M685 210 C735 210,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="EXEC" data-b="WORK" d="M685 70 C735 70,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="GIT" data-b="WORK" d="M440 240 C490 240,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="WORK" d="M440 380 C490 380,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="EVID" d="M440 380 C490 380,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="SPEC" d="M440 520 C490 520,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="EVID" d="M440 520 C490 520,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="UI" d="M205 100 C255 100,-40 330,20 330" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="FLOW" d="M205 100 C255 100,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="EXEC" d="M205 100 C255 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="WORK" d="M205 100 C255 100,710 470,770 470" marker-end="url(#arrow)"/><a href="../../index.html#module-HOST" class="node" data-mod="HOST" aria-label="查看 桌面宿主與建置"><rect x="20" y="70" width="185" height="65" rx="9"/><text x="32" y="95">HOST · 桌面宿主與建置</text><text x="32" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-UI" class="node" data-mod="UI" aria-label="查看 工程控制台"><rect x="20" y="300" width="185" height="65" rx="9"/><text x="32" y="325">UI · 工程控制台</text><text x="32" y="349" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-FLOW" class="node" data-mod="FLOW" aria-label="查看 流程與核准"><rect x="255" y="70" width="185" height="65" rx="9"/><text x="267" y="95">FLOW · 流程與核准</text><text x="267" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GIT" class="node" data-mod="GIT" aria-label="查看 版本控管"><rect x="255" y="210" width="185" height="65" rx="9"/><text x="267" y="235">GIT · 版本控管</text><text x="267" y="259" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REL" class="node" data-mod="REL" aria-label="查看 部署與發布"><rect x="255" y="350" width="185" height="65" rx="9"/><text x="267" y="375">REL · 部署與發布</text><text x="267" y="399" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REPORT" class="node" data-mod="REPORT" aria-label="查看 報告投影"><rect x="255" y="490" width="185" height="65" rx="9"/><text x="267" y="515">REPORT · 報告投影</text><text x="267" y="539" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EXEC" class="node" data-mod="EXEC" aria-label="查看 Agent 執行"><rect x="500" y="40" width="185" height="65" rx="9"/><text x="512" y="65">EXEC · Agent 執行</text><text x="512" y="89" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GUARD" class="node" data-mod="GUARD" aria-label="查看 開發邊界"><rect x="500" y="180" width="185" height="65" rx="9"/><text x="512" y="205">GUARD · 開發邊界</text><text x="512" y="229" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EVID" class="node" data-mod="EVID" aria-label="查看 驗證證據"><rect x="500" y="320" width="185" height="65" rx="9"/><text x="512" y="345">EVID · 驗證證據</text><text x="512" y="369" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-SPEC" class="node" data-mod="SPEC" aria-label="查看 工程規格"><rect x="770" y="200" width="185" height="65" rx="9"/><text x="782" y="225">SPEC · 工程規格</text><text x="782" y="249" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-WORK" class="node" data-mod="WORK" aria-label="查看 專案工作區"><rect x="770" y="440" width="185" height="65" rx="9"/><text x="782" y="465">WORK · 專案工作區</text><text x="782" y="489" style="font-size:12px">規劃 · 未核准 · 未測試</text></a></svg></div></section><section id="tasks"><h2>工項、Contract、BDD、TDD 與驗收</h2><details class="task" id="task-GIT-001" data-module="GIT" data-phase="M2"><summary>GIT-001 · Clone、Init 與程式庫摘要 <span class="badge">M2</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>GIT / REQ-GIT</td></tr><tr><td>意圖</td><td>管理本機與遠端 Git 專案</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>WORK-002</td></tr><tr><td>允許範圍（提議）</td><td>packages/version-control/**<br>packages/adapters/git/**<br>tests/git/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-GIT-001-01 — clone 失敗不登錄為完整專案；憑證不得出現在輸出</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功</td></tr><tr><td>驗收標準</td><td>clone/init/status 有 BDD；無覆寫；本機離線測試不依賴外部服務</td></tr><tr><td>模組／相鄰回歸</td><td>GIT, WORK</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id GIT-001</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 600 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/GIT-001/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation</p><h3>BDD · 可匯出 Gherkin</h3><pre>@GIT-001 @planning
+Feature: GIT-001 Clone、Init 與程式庫摘要
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: clone 失敗不登錄為完整專案；憑證不得出現在輸出
+
+    @BDD-GIT-001-01
+    Scenario: BDD-GIT-001-01
+      Given 可用的本機 bare 遠端與空目標資料夾
+      When 使用者 clone
+      Then 成功後登錄專案並顯示 branch 與 remote
+
+    @BDD-GIT-001-02
+    Scenario: BDD-GIT-001-02
+      Given 遠端不可達或認證被拒
+      When 使用者 clone
+      Then 顯示脫敏錯誤且不宣告 clone 成功
+
+    @BDD-GIT-001-03
+    Scenario: BDD-GIT-001-03
+      Given 目標資料夾非空
+      When 使用者 clone
+      Then 拒絕覆寫並保留既有資料
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-GIT-001-01</td><td>TDD-GIT-001-01</td><td>INV-GIT-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-001-02</td><td>TDD-GIT-001-02</td><td>INV-GIT-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-001-03</td><td>TDD-GIT-001-03</td><td>INV-GIT-001-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-GIT-001-01 · 測試案例</summary><p>前置：可用的本機 bare 遠端與空目標資料夾</p><p>操作：使用者 clone</p><p>斷言：成功後登錄專案並顯示 branch 與 remote；操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「成功後登錄專案並顯示 branch 與 remote」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-001-02 · 測試案例</summary><p>前置：遠端不可達或認證被拒</p><p>操作：使用者 clone</p><p>斷言：顯示脫敏錯誤且不宣告 clone 成功；操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「顯示脫敏錯誤且不宣告 clone 成功」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-001-03 · 測試案例</summary><p>前置：目標資料夾非空</p><p>操作：使用者 clone</p><p>斷言：拒絕覆寫並保留既有資料；操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功</p><p>RED：測試可建置且執行到斷言，但尚未實作的「拒絕覆寫並保留既有資料」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;remote&quot;: &quot;temporary bare repository&quot;,
+  &quot;target&quot;: &quot;temporary&quot;,
+  &quot;credential_failure&quot;: &quot;injected&quot;
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-GIT-002" data-module="GIT" data-phase="M2"><summary>GIT-002 · Fetch、安全 Pull 與分支切換 <span class="badge">M2</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>GIT / REQ-GIT</td></tr><tr><td>意圖</td><td>更新版本同時保護工作區</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>GIT-001</td></tr><tr><td>允許範圍（提議）</td><td>packages/version-control/**<br>tests/git/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-GIT-002-01 — 默认 FF-only；分歧拒絕自動 merge/rebase；活動租約禁止切換</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L3 local remote competing commits；L2 lease gate；RED：dirty overwrite</td></tr><tr><td>驗收標準</td><td>未追蹤檔也受保護；fetch 不改工作檔；衝突無自動丟棄</td></tr><tr><td>模組／相鄰回歸</td><td>GIT</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id GIT-002</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 600 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/GIT-002/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation</p><h3>BDD · 可匯出 Gherkin</h3><pre>@GIT-002 @planning
+Feature: GIT-002 Fetch、安全 Pull 與分支切換
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 默认 FF-only；分歧拒絕自動 merge/rebase；活動租約禁止切換
+
+    @BDD-GIT-002-01
+    Scenario: BDD-GIT-002-01
+      Given 工作目錄乾淨且遠端可快轉
+      When 使用者 pull
+      Then 更新到遠端提交並顯示新版本
+
+    @BDD-GIT-002-02
+    Scenario: BDD-GIT-002-02
+      Given 分支分歧或更新會覆蓋本機變更
+      When 使用者 pull
+      Then 停止並保留本機內容與提交
+
+    @BDD-GIT-002-03
+    Scenario: BDD-GIT-002-03
+      Given 目前工作區有活動 Run
+      When 使用者切換分支
+      Then 拒絕並指出佔用 Run
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-GIT-002-01</td><td>TDD-GIT-002-01</td><td>INV-GIT-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-002-02</td><td>TDD-GIT-002-02</td><td>INV-GIT-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-002-03</td><td>TDD-GIT-002-03</td><td>INV-GIT-002-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-GIT-002-01 · 測試案例</summary><p>前置：工作目錄乾淨且遠端可快轉</p><p>操作：使用者 pull</p><p>斷言：更新到遠端提交並顯示新版本；操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local remote competing commits；L2 lease gate；RED：dirty overwrite</p><p>RED：測試可建置且執行到斷言，但尚未實作的「更新到遠端提交並顯示新版本」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-002-02 · 測試案例</summary><p>前置：分支分歧或更新會覆蓋本機變更</p><p>操作：使用者 pull</p><p>斷言：停止並保留本機內容與提交；操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local remote competing commits；L2 lease gate；RED：dirty overwrite</p><p>RED：測試可建置且執行到斷言，但尚未實作的「停止並保留本機內容與提交」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-002-03 · 測試案例</summary><p>前置：目前工作區有活動 Run</p><p>操作：使用者切換分支</p><p>斷言：拒絕並指出佔用 Run；操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 local remote competing commits；L2 lease gate；RED：dirty overwrite</p><p>RED：測試可建置且執行到斷言，但尚未實作的「拒絕並指出佔用 Run」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;repositories&quot;: 2,
+  &quot;cases&quot;: [
+    &quot;fast_forward&quot;,
+    &quot;diverged&quot;,
+    &quot;dirty&quot;,
+    &quot;lease&quot;
+  ]
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-GIT-003" data-module="GIT" data-phase="M3"><summary>GIT-003 · 審核式 Commit 與 Push <span class="badge">M3</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>GIT / REQ-GIT</td></tr><tr><td>意圖</td><td>將合格工項交付為可追溯版本</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>GIT-002, FLOW-001, EVID-002</td></tr><tr><td>允許範圍（提議）</td><td>packages/version-control/**<br>tests/git/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-GIT-003-01 — commit 需驗收；只納入選定範圍；push 需授權；禁自動 force</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP</td></tr><tr><td>驗收標準</td><td>commit 與 push 狀態分開；push 不代表發布或測試通過</td></tr><tr><td>模組／相鄰回歸</td><td>EVID, FLOW, GIT</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id GIT-003</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 600 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/GIT-003/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation；G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape</p><h3>BDD · 可匯出 Gherkin</h3><pre>@GIT-003 @planning
+Feature: GIT-003 審核式 Commit 與 Push
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: commit 需驗收；只納入選定範圍；push 需授權；禁自動 force
+
+    @BDD-GIT-003-01
+    Scenario: BDD-GIT-003-01
+      Given 工項驗收通過且已選取範圍內變更
+      When 使用者提交並授權 push
+      Then 建立可追溯 commit 並回報遠端結果
+
+    @BDD-GIT-003-02
+    Scenario: BDD-GIT-003-02
+      Given 工作區含其他未選取 WIP
+      When 使用者提交此工項
+      Then 提交只包含選定工項且保留 WIP
+
+    @BDD-GIT-003-03
+    Scenario: BDD-GIT-003-03
+      Given 遠端已前進而拒絕 push
+      When 使用者 push
+      Then 保留本機 commit 並顯示拒絕原因
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-GIT-003-01</td><td>TDD-GIT-003-01</td><td>INV-GIT-003-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-003-02</td><td>TDD-GIT-003-02</td><td>INV-GIT-003-01</td><td>NOT RUN</td></tr><tr><td>BDD-GIT-003-03</td><td>TDD-GIT-003-03</td><td>INV-GIT-003-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-GIT-003-01 · 測試案例</summary><p>前置：工項驗收通過且已選取範圍內變更</p><p>操作：使用者提交並授權 push</p><p>斷言：建立可追溯 commit 並回報遠端結果；操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP</p><p>RED：測試可建置且執行到斷言，但尚未實作的「建立可追溯 commit 並回報遠端結果」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-003-02 · 測試案例</summary><p>前置：工作區含其他未選取 WIP</p><p>操作：使用者提交此工項</p><p>斷言：提交只包含選定工項且保留 WIP；操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP</p><p>RED：測試可建置且執行到斷言，但尚未實作的「提交只包含選定工項且保留 WIP」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-GIT-003-03 · 測試案例</summary><p>前置：遠端已前進而拒絕 push</p><p>操作：使用者 push</p><p>斷言：保留本機 commit 並顯示拒絕原因；操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP</p><p>RED：測試可建置且執行到斷言，但尚未實作的「保留本機 commit 並顯示拒絕原因」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;selected&quot;: [
+    &quot;task-file&quot;
+  ],
+  &quot;unrelated&quot;: [
+    &quot;wip-file&quot;
+  ],
+  &quot;remote_advanced&quot;: true
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details></section><section id="coverage"><h2>BDD 類別評估與回歸</h2><div class="tablewrap"><table><thead><tr><th>分類</th><th>初稿狀態</th><th>說明</th></tr></thead><tbody><tr><td>B1 主要成功</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B2 輸入邊界</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B3 無效輸入</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B4 相依失敗</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B5 部分失敗</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B6 狀態一致性</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B7 交易</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B8 生命週期</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B9 復原/回滾</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B10 跨模組</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B11 相容性</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B12 重要回歸</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr></tbody></table></div><p>L0–L5 測試計畫見各 Task；目前所有結果 NOT RUN。無 build、package、install 或 DCC 接受證據。</p></section><section id="health"><h2>風險、決策與最終健康</h2><p>規格與 Ports 未核准；Task 命令僅為規劃；步驟 stubs 未自動化。Module health：PLANNING / NOT VERIFIED。</p><div class="tablewrap"><table><thead><tr><th>ID</th><th>決策</th><th>建議</th><th>影響</th></tr></thead><tbody><tr><td>D-01</td><td>技術與架構</td><td>建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料</td><td>核准前不能進入 skeleton/產品實作</td></tr><tr><td>D-02</td><td>首個 Agent Provider</td><td>建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式</td><td>阻塞 EXEC-002 及依賴項，其他規劃可繼續</td></tr><tr><td>D-03</td><td>首版平台與安装器</td><td>Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定</td><td>阻塞真實安裝相容性聲明</td></tr><tr><td>D-04</td><td>核准與權限</td><td>首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用</td><td>強隔離機制必須 spike 驗證，worktree 不等於沙箱</td></tr><tr><td>D-05</td><td>儲存權威</td><td>每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威</td><td>採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照</td></tr><tr><td>D-06</td><td>程序續跑</td><td>第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳</td><td>常駐 service / 多機 worker 留待後續架構</td></tr></tbody></table></div></section></main><div class="footer">SGenAxis · 2026-10-06T05:57:13.670858+00:00 · 文件草稿，不代表發布資格</div><script type="application/json" id="module-spec">{
+  "metadata": {
+    "product": "SGenAxis",
+    "version": "0.1",
+    "generated_at": "2026-10-06T05:57:13.670858+00:00",
+    "state": "PLANNING",
+    "architecture_status": "PROPOSED / NOT APPROVED",
+    "implementation_status": "NOT STARTED",
+    "test_status": "NOT RUN",
+    "release_status": "DO NOT RELEASE",
+    "basis": "本次對話需求；架構為建議，非已核准設計",
+    "git": "目前交付未建立 Git commit"
+  },
+  "module": {
+    "id": "GIT",
+    "name": "版本控管",
+    "responsibility": "管理程式庫操作與工作區變更；Git 是版本歷史權威",
+    "layer": "Application / Adapter",
+    "input": "IVersionControl",
+    "output": "IGitProcess, IWorkspaceLease",
+    "adapter": "GitCliAdapter",
+    "transaction": "遠端寫入失敗保留本機 commit；衝突不得自動丟棄資料"
+  },
+  "tasks": [
+    {
+      "id": "GIT-001",
+      "module": "GIT",
+      "title": "Clone、Init 與程式庫摘要",
+      "milestone": "M2",
+      "depends_on": [
+        "WORK-002"
+      ],
+      "intent": "管理本機與遠端 Git 專案",
+      "allowed_scope": [
+        "packages/version-control/**",
+        "packages/adapters/git/**",
+        "tests/git/**"
+      ],
+      "contract": "clone 失敗不登錄為完整專案；憑證不得出現在輸出",
+      "invariant": "INV-GIT-001-01",
+      "bdd": [
+        {
+          "id": "BDD-GIT-001-01",
+          "given": "可用的本機 bare 遠端與空目標資料夾",
+          "when": "使用者 clone",
+          "then": "成功後登錄專案並顯示 branch 與 remote",
+          "invariant": "INV-GIT-001-01",
+          "test": "TDD-GIT-001-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-001-02",
+          "given": "遠端不可達或認證被拒",
+          "when": "使用者 clone",
+          "then": "顯示脫敏錯誤且不宣告 clone 成功",
+          "invariant": "INV-GIT-001-01",
+          "test": "TDD-GIT-001-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-001-03",
+          "given": "目標資料夾非空",
+          "when": "使用者 clone",
+          "then": "拒絕覆寫並保留既有資料",
+          "invariant": "INV-GIT-001-01",
+          "test": "TDD-GIT-001-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "remote": "temporary bare repository",
+        "target": "temporary",
+        "credential_failure": "injected"
+      },
+      "tdd_design": "L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功",
+      "acceptance": "clone/init/status 有 BDD；無覆寫；本機離線測試不依賴外部服務",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-GIT",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id GIT-001",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 600,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/GIT-001/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "GIT",
+        "WORK"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-GIT-001-01",
+          "bdd": "BDD-GIT-001-01",
+          "precondition": "可用的本機 bare 遠端與空目標資料夾",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 clone",
+          "assertions": [
+            "成功後登錄專案並顯示 branch 與 remote",
+            "操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「成功後登錄專案並顯示 branch 與 remote」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-001-02",
+          "bdd": "BDD-GIT-001-02",
+          "precondition": "遠端不可達或認證被拒",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 clone",
+          "assertions": [
+            "顯示脫敏錯誤且不宣告 clone 成功",
+            "操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示脫敏錯誤且不宣告 clone 成功」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-001-03",
+          "bdd": "BDD-GIT-001-03",
+          "precondition": "目標資料夾非空",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 clone",
+          "assertions": [
+            "拒絕覆寫並保留既有資料",
+            "操作結果與 INV-GIT-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local bare git；L2 auth redaction；RED：失敗仍登錄成功",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕覆寫並保留既有資料」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ]
+    },
+    {
+      "id": "GIT-002",
+      "module": "GIT",
+      "title": "Fetch、安全 Pull 與分支切換",
+      "milestone": "M2",
+      "depends_on": [
+        "GIT-001"
+      ],
+      "intent": "更新版本同時保護工作區",
+      "allowed_scope": [
+        "packages/version-control/**",
+        "tests/git/**"
+      ],
+      "contract": "默认 FF-only；分歧拒絕自動 merge/rebase；活動租約禁止切換",
+      "invariant": "INV-GIT-002-01",
+      "bdd": [
+        {
+          "id": "BDD-GIT-002-01",
+          "given": "工作目錄乾淨且遠端可快轉",
+          "when": "使用者 pull",
+          "then": "更新到遠端提交並顯示新版本",
+          "invariant": "INV-GIT-002-01",
+          "test": "TDD-GIT-002-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-002-02",
+          "given": "分支分歧或更新會覆蓋本機變更",
+          "when": "使用者 pull",
+          "then": "停止並保留本機內容與提交",
+          "invariant": "INV-GIT-002-01",
+          "test": "TDD-GIT-002-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-002-03",
+          "given": "目前工作區有活動 Run",
+          "when": "使用者切換分支",
+          "then": "拒絕並指出佔用 Run",
+          "invariant": "INV-GIT-002-01",
+          "test": "TDD-GIT-002-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "repositories": 2,
+        "cases": [
+          "fast_forward",
+          "diverged",
+          "dirty",
+          "lease"
+        ]
+      },
+      "tdd_design": "L3 local remote competing commits；L2 lease gate；RED：dirty overwrite",
+      "acceptance": "未追蹤檔也受保護；fetch 不改工作檔；衝突無自動丟棄",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-GIT",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id GIT-002",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 600,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/GIT-002/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "GIT"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-GIT-002-01",
+          "bdd": "BDD-GIT-002-01",
+          "precondition": "工作目錄乾淨且遠端可快轉",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 pull",
+          "assertions": [
+            "更新到遠端提交並顯示新版本",
+            "操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local remote competing commits；L2 lease gate；RED：dirty overwrite",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「更新到遠端提交並顯示新版本」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-002-02",
+          "bdd": "BDD-GIT-002-02",
+          "precondition": "分支分歧或更新會覆蓋本機變更",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 pull",
+          "assertions": [
+            "停止並保留本機內容與提交",
+            "操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local remote competing commits；L2 lease gate；RED：dirty overwrite",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「停止並保留本機內容與提交」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-002-03",
+          "bdd": "BDD-GIT-002-03",
+          "precondition": "目前工作區有活動 Run",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者切換分支",
+          "assertions": [
+            "拒絕並指出佔用 Run",
+            "操作結果與 INV-GIT-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 local remote competing commits；L2 lease gate；RED：dirty overwrite",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕並指出佔用 Run」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ]
+    },
+    {
+      "id": "GIT-003",
+      "module": "GIT",
+      "title": "審核式 Commit 與 Push",
+      "milestone": "M3",
+      "depends_on": [
+        "GIT-002",
+        "FLOW-001",
+        "EVID-002"
+      ],
+      "intent": "將合格工項交付為可追溯版本",
+      "allowed_scope": [
+        "packages/version-control/**",
+        "tests/git/**"
+      ],
+      "contract": "commit 需驗收；只納入選定範圍；push 需授權；禁自動 force",
+      "invariant": "INV-GIT-003-01",
+      "bdd": [
+        {
+          "id": "BDD-GIT-003-01",
+          "given": "工項驗收通過且已選取範圍內變更",
+          "when": "使用者提交並授權 push",
+          "then": "建立可追溯 commit 並回報遠端結果",
+          "invariant": "INV-GIT-003-01",
+          "test": "TDD-GIT-003-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-003-02",
+          "given": "工作區含其他未選取 WIP",
+          "when": "使用者提交此工項",
+          "then": "提交只包含選定工項且保留 WIP",
+          "invariant": "INV-GIT-003-01",
+          "test": "TDD-GIT-003-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-GIT-003-03",
+          "given": "遠端已前進而拒絕 push",
+          "when": "使用者 push",
+          "then": "保留本機 commit 並顯示拒絕原因",
+          "invariant": "INV-GIT-003-01",
+          "test": "TDD-GIT-003-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "selected": [
+          "task-file"
+        ],
+        "unrelated": [
+          "wip-file"
+        ],
+        "remote_advanced": true
+      },
+      "tdd_design": "L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP",
+      "acceptance": "commit 與 push 狀態分開；push 不代表發布或測試通過",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-GIT",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id GIT-003",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 600,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/GIT-003/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "EVID",
+        "FLOW",
+        "GIT"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-GIT-003-01",
+          "bdd": "BDD-GIT-003-01",
+          "precondition": "工項驗收通過且已選取範圍內變更",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者提交並授權 push",
+          "assertions": [
+            "建立可追溯 commit 並回報遠端結果",
+            "操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「建立可追溯 commit 並回報遠端結果」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-003-02",
+          "bdd": "BDD-GIT-003-02",
+          "precondition": "工作區含其他未選取 WIP",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者提交此工項",
+          "assertions": [
+            "提交只包含選定工項且保留 WIP",
+            "操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「提交只包含選定工項且保留 WIP」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-GIT-003-03",
+          "bdd": "BDD-GIT-003-03",
+          "precondition": "遠端已前進而拒絕 push",
+          "fixture_ref": "fixtures.json",
+          "action": "使用者 push",
+          "assertions": [
+            "保留本機 commit 並顯示拒絕原因",
+            "操作結果與 INV-GIT-003-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L3 partial staging/remote rejection；L2 acceptance gate；RED：混入 WIP",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「保留本機 commit 並顯示拒絕原因」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation",
+        "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+      ]
+    }
+  ],
+  "decisions": [
+    [
+      "D-01",
+      "技術與架構",
+      "建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料",
+      "核准前不能進入 skeleton/產品實作"
+    ],
+    [
+      "D-02",
+      "首個 Agent Provider",
+      "建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式",
+      "阻塞 EXEC-002 及依賴項，其他規劃可繼續"
+    ],
+    [
+      "D-03",
+      "首版平台與安装器",
+      "Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定",
+      "阻塞真實安裝相容性聲明"
+    ],
+    [
+      "D-04",
+      "核准與權限",
+      "首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用",
+      "強隔離機制必須 spike 驗證，worktree 不等於沙箱"
+    ],
+    [
+      "D-05",
+      "儲存權威",
+      "每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威",
+      "採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照"
+    ],
+    [
+      "D-06",
+      "程序續跑",
+      "第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳",
+      "常駐 service / 多機 worker 留待後續架構"
+    ]
+  ],
+  "dependencies": [
+    "WORK"
+  ]
+}</script><script></script></body></html>

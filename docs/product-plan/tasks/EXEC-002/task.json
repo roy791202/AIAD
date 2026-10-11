@@ -1,0 +1,197 @@
+{
+  "id": "EXEC-002",
+  "module": "EXEC",
+  "title": "首個真實 Agent CLI Adapter",
+  "milestone": "M2",
+  "depends_on": [
+    "EXEC-001",
+    "FLOW-001",
+    "EVID-001"
+  ],
+  "intent": "接上經相容性驗證的 Agent 執行工具",
+  "allowed_scope": [
+    "packages/adapters/agent/**",
+    "tests/agent/**"
+  ],
+  "contract": "僅使用已驗證 CLI 非互動協定；未知認證/版本不得猜測",
+  "invariant": "INV-EXEC-002-01",
+  "bdd": [
+    {
+      "id": "BDD-EXEC-002-01",
+      "given": "已選定 Provider 的版本、認證與事件格式通過 spike",
+      "when": "使用者執行示範 Task",
+      "then": "Agent 在指定 root 產生範圍內變更與可解析事件",
+      "invariant": "INV-EXEC-002-01",
+      "test": "TDD-EXEC-002-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-EXEC-002-02",
+      "given": "登入失效或 CLI 版本不相容",
+      "when": "使用者啟動 Agent",
+      "then": "停止並回報 IMPLEMENTATION_BLOCKED 且不輸出憑證",
+      "invariant": "INV-EXEC-002-01",
+      "test": "TDD-EXEC-002-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-EXEC-002-03",
+      "given": "CLI 輸出截斷或非協定文字",
+      "when": "系統接收輸出",
+      "then": "保存診斷並拒絕偽造成功",
+      "invariant": "INV-EXEC-002-01",
+      "test": "TDD-EXEC-002-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "provider": "TBD approval D-02",
+    "sandbox_repo": "temporary",
+    "credentials": "external reference only"
+  },
+  "tdd_design": "L2 recorded protocol fixtures；L3 real CLI smoke；RED：格式錯誤被當成功",
+  "acceptance": "先提交 CLI spike 報告；mock/真實證據分開；未知供應商協定保持阻塞",
+  "effort": "L",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-EXEC",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id EXEC-002",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/EXEC-002/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "EVID",
+    "EXEC",
+    "FLOW"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-EXEC-002-01",
+      "bdd": "BDD-EXEC-002-01",
+      "precondition": "已選定 Provider 的版本、認證與事件格式通過 spike",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者執行示範 Task",
+      "assertions": [
+        "Agent 在指定 root 產生範圍內變更與可解析事件",
+        "操作結果與 INV-EXEC-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 recorded protocol fixtures；L3 real CLI smoke；RED：格式錯誤被當成功",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「Agent 在指定 root 產生範圍內變更與可解析事件」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-EXEC-002-02",
+      "bdd": "BDD-EXEC-002-02",
+      "precondition": "登入失效或 CLI 版本不相容",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者啟動 Agent",
+      "assertions": [
+        "停止並回報 IMPLEMENTATION_BLOCKED 且不輸出憑證",
+        "操作結果與 INV-EXEC-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 recorded protocol fixtures；L3 real CLI smoke；RED：格式錯誤被當成功",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「停止並回報 IMPLEMENTATION_BLOCKED 且不輸出憑證」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-EXEC-002-03",
+      "bdd": "BDD-EXEC-002-03",
+      "precondition": "CLI 輸出截斷或非協定文字",
+      "fixture_ref": "fixtures.json",
+      "action": "系統接收輸出",
+      "assertions": [
+        "保存診斷並拒絕偽造成功",
+        "操作結果與 INV-EXEC-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 recorded protocol fixtures；L3 real CLI smoke；RED：格式錯誤被當成功",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「保存診斷並拒絕偽造成功」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

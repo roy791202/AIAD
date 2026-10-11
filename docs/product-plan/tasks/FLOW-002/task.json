@@ -1,0 +1,211 @@
+{
+  "id": "FLOW-002",
+  "module": "FLOW",
+  "title": "依賴排程與失敗停止",
+  "milestone": "M2",
+  "depends_on": [
+    "FLOW-001",
+    "EXEC-001",
+    "EVID-001"
+  ],
+  "intent": "只執行前置條件已滿足的工項",
+  "allowed_scope": [
+    "packages/workflow/**",
+    "tests/workflow/**"
+  ],
+  "contract": "Task DAG 與架構 DAG 獨立；依賴失敗不自動執行後續",
+  "invariant": "INV-FLOW-002-01",
+  "bdd": [
+    {
+      "id": "BDD-FLOW-002-01",
+      "given": "A 已完成且 B 依賴 A",
+      "when": "排程器選擇下一個工項",
+      "then": "B 可排程並保存決策原因",
+      "invariant": "INV-FLOW-002-01",
+      "test": "TDD-FLOW-002-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-FLOW-002-02",
+      "given": "A 未完成而 B 依賴 A",
+      "when": "排程器選擇下一個工項",
+      "then": "B 保持等待且不啟動 Agent",
+      "invariant": "INV-FLOW-002-01",
+      "test": "TDD-FLOW-002-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-FLOW-002-03",
+      "given": "工項依賴形成 A 到 B 到 A",
+      "when": "使用者驗證排程",
+      "then": "顯示循環路徑並拒絕啟動",
+      "invariant": "INV-FLOW-002-01",
+      "test": "TDD-FLOW-002-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "dag": [
+      [
+        "A",
+        "B"
+      ]
+    ],
+    "cycle": [
+      [
+        "A",
+        "B"
+      ],
+      [
+        "B",
+        "A"
+      ]
+    ],
+    "concurrency": 1
+  },
+  "tdd_design": "L0 topo/cycle；L2 fake execution dispatch；RED：依賴未完成仍 dispatch",
+  "acceptance": "第一版並行上限 1；無循環；不超派或重複派工",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-FLOW",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id FLOW-002",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/FLOW-002/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "EVID",
+    "EXEC",
+    "FLOW"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-FLOW-002-01",
+      "bdd": "BDD-FLOW-002-01",
+      "precondition": "A 已完成且 B 依賴 A",
+      "fixture_ref": "fixtures.json",
+      "action": "排程器選擇下一個工項",
+      "assertions": [
+        "B 可排程並保存決策原因",
+        "操作結果與 INV-FLOW-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 topo/cycle；L2 fake execution dispatch；RED：依賴未完成仍 dispatch",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「B 可排程並保存決策原因」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-FLOW-002-02",
+      "bdd": "BDD-FLOW-002-02",
+      "precondition": "A 未完成而 B 依賴 A",
+      "fixture_ref": "fixtures.json",
+      "action": "排程器選擇下一個工項",
+      "assertions": [
+        "B 保持等待且不啟動 Agent",
+        "操作結果與 INV-FLOW-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 topo/cycle；L2 fake execution dispatch；RED：依賴未完成仍 dispatch",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「B 保持等待且不啟動 Agent」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-FLOW-002-03",
+      "bdd": "BDD-FLOW-002-03",
+      "precondition": "工項依賴形成 A 到 B 到 A",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者驗證排程",
+      "assertions": [
+        "顯示循環路徑並拒絕啟動",
+        "操作結果與 INV-FLOW-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 topo/cycle；L2 fake execution dispatch；RED：依賴未完成仍 dispatch",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示循環路徑並拒絕啟動」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

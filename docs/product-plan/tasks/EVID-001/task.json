@@ -1,0 +1,200 @@
+{
+  "id": "EVID-001",
+  "module": "EVID",
+  "title": "測試 Runner 與有效 RED",
+  "milestone": "M1",
+  "depends_on": [
+    "SPEC-001",
+    "WORK-001"
+  ],
+  "intent": "區分預期行為失敗與測試環境故障",
+  "allowed_scope": [
+    "packages/evidence/**",
+    "packages/adapters/tests/**",
+    "tests/evidence/**"
+  ],
+  "contract": "RED 必須 test build 成功且因指定缺失行為失敗；空輸出不算 PASS",
+  "invariant": "INV-EVID-001-01",
+  "bdd": [
+    {
+      "id": "BDD-EVID-001-01",
+      "given": "測試可建置且指定行為尚未實作",
+      "when": "系統執行 RED 驗證",
+      "then": "登錄 behavioral RED 並連結 BDD",
+      "invariant": "INV-EVID-001-01",
+      "test": "TDD-EVID-001-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-EVID-001-02",
+      "given": "測試因編譯或 fixture 損壞失敗",
+      "when": "系統執行 RED 驗證",
+      "then": "拒絕 RED 資格並分類失敗",
+      "invariant": "INV-EVID-001-01",
+      "test": "TDD-EVID-001-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-EVID-001-03",
+      "given": "命令 exit 0 但缺少必要測試結果",
+      "when": "系統解析結果",
+      "then": "標記未測得而非 PASS",
+      "invariant": "INV-EVID-001-01",
+      "test": "TDD-EVID-001-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "outcomes": [
+      "behavioral_failure",
+      "compile_error",
+      "empty_output"
+    ],
+    "expected_test_id": "case1"
+  },
+  "tdd_design": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+  "acceptance": "每次保存命令、cwd、版本、exit、結果；三類失敗不可混用",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-EVID",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id EVID-001",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/EVID-001/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "EVID",
+    "SPEC",
+    "WORK"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-EVID-001-01",
+      "bdd": "BDD-EVID-001-01",
+      "precondition": "測試可建置且指定行為尚未實作",
+      "fixture_ref": "fixtures.json",
+      "action": "系統執行 RED 驗證",
+      "assertions": [
+        "登錄 behavioral RED 並連結 BDD",
+        "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「登錄 behavioral RED 並連結 BDD」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-EVID-001-02",
+      "bdd": "BDD-EVID-001-02",
+      "precondition": "測試因編譯或 fixture 損壞失敗",
+      "fixture_ref": "fixtures.json",
+      "action": "系統執行 RED 驗證",
+      "assertions": [
+        "拒絕 RED 資格並分類失敗",
+        "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕 RED 資格並分類失敗」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-EVID-001-03",
+      "bdd": "BDD-EVID-001-03",
+      "precondition": "命令 exit 0 但缺少必要測試結果",
+      "fixture_ref": "fixtures.json",
+      "action": "系統解析結果",
+      "assertions": [
+        "標記未測得而非 PASS",
+        "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「標記未測得而非 PASS」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

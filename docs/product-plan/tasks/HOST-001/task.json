@@ -1,0 +1,203 @@
+{
+  "id": "HOST-001",
+  "module": "HOST",
+  "title": "可重現工具鏈與測試骨架",
+  "milestone": "M1",
+  "depends_on": [],
+  "intent": "建立後續 Agent 可使用的建置與測試入口",
+  "allowed_scope": [
+    "package.json",
+    "package-lock.json",
+    "tsconfig*.json",
+    "vitest.config.*",
+    "cucumber.*",
+    "playwright.config.*",
+    "tools/**",
+    "tests/host/**"
+  ],
+  "contract": "版本固定且命令可重現；測試未發現不能回報通過；僅建立已核准模組骨架",
+  "invariant": "INV-HOST-001-01",
+  "bdd": [
+    {
+      "id": "BDD-HOST-001-01",
+      "given": "乾淨 checkout 與核准工具版本已就緒",
+      "when": "開發者安裝鎖定依賴並執行測試入口",
+      "then": "相依版本符合 lockfile 並產生含案例 ID 的機器結果",
+      "invariant": "INV-HOST-001-01",
+      "test": "TDD-HOST-001-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-HOST-001-02",
+      "given": "指定工項沒有可執行測試",
+      "when": "開發者執行該工項測試",
+      "then": "回報無案例且不得偽造 GREEN",
+      "invariant": "INV-HOST-001-01",
+      "test": "TDD-HOST-001-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-HOST-001-03",
+      "given": "同一 fixture 測試在第二個乾淨工作目錄執行",
+      "when": "開發者重複測試",
+      "then": "案例數與結果一致且不依賴第一個目錄",
+      "invariant": "INV-HOST-001-01",
+      "test": "TDD-HOST-001-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "fixture_suite": [
+      "pass",
+      "behavior_failure"
+    ],
+    "empty_suite": "empty",
+    "roots": [
+      "clean-A",
+      "clean-B"
+    ]
+  },
+  "tdd_design": "L2 task-runner contract；無案例防誤綠先建立可運行 RED；工具安裝故障分類 infrastructure",
+  "acceptance": "記錄 Node/npm/框架版本；定義 test:task 入口；空 suite 不綠；CI/本機同命令",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-HOST",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id HOST-001",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/HOST-001/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "HOST"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-HOST-001-01",
+      "bdd": "BDD-HOST-001-01",
+      "precondition": "乾淨 checkout 與核准工具版本已就緒",
+      "fixture_ref": "fixtures.json",
+      "action": "開發者安裝鎖定依賴並執行測試入口",
+      "assertions": [
+        "相依版本符合 lockfile 並產生含案例 ID 的機器結果",
+        "操作結果與 INV-HOST-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 task-runner contract；無案例防誤綠先建立可運行 RED；工具安裝故障分類 infrastructure",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「相依版本符合 lockfile 並產生含案例 ID 的機器結果」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-HOST-001-02",
+      "bdd": "BDD-HOST-001-02",
+      "precondition": "指定工項沒有可執行測試",
+      "fixture_ref": "fixtures.json",
+      "action": "開發者執行該工項測試",
+      "assertions": [
+        "回報無案例且不得偽造 GREEN",
+        "操作結果與 INV-HOST-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 task-runner contract；無案例防誤綠先建立可運行 RED；工具安裝故障分類 infrastructure",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「回報無案例且不得偽造 GREEN」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-HOST-001-03",
+      "bdd": "BDD-HOST-001-03",
+      "precondition": "同一 fixture 測試在第二個乾淨工作目錄執行",
+      "fixture_ref": "fixtures.json",
+      "action": "開發者重複測試",
+      "assertions": [
+        "案例數與結果一致且不依賴第一個目錄",
+        "操作結果與 INV-HOST-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 task-runner contract；無案例防誤綠先建立可運行 RED；工具安裝故障分類 infrastructure",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「案例數與結果一致且不依賴第一個目錄」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

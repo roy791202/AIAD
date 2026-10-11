@@ -1,0 +1,202 @@
+{
+  "id": "HOST-002",
+  "module": "HOST",
+  "title": "Electron 宿主、受限 IPC 與組裝入口",
+  "milestone": "M1",
+  "depends_on": [
+    "HOST-001",
+    "WORK-001",
+    "FLOW-001"
+  ],
+  "intent": "讓 UI 與應用服務經核准邊界連接",
+  "allowed_scope": [
+    "apps/desktop/main/**",
+    "apps/desktop/preload/**",
+    "apps/desktop/composition/**",
+    "tests/host/**"
+  ],
+  "contract": "renderer 無任意檔案或 shell 權限；只允許經驗證命令；composition root 組裝 adapters",
+  "invariant": "INV-HOST-002-01",
+  "bdd": [
+    {
+      "id": "BDD-HOST-002-01",
+      "given": "已核准的視窗與服務組裝設定",
+      "when": "使用者啟動應用程式",
+      "then": "顯示初始視窗且服務透過型別化橋接提供",
+      "invariant": "INV-HOST-002-01",
+      "test": "TDD-HOST-002-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-HOST-002-02",
+      "given": "呼叫來源或 IPC 輸入不符合契約",
+      "when": "介面送出請求",
+      "then": "拒絕操作且不執行檔案或 shell 副作用",
+      "invariant": "INV-HOST-002-01",
+      "test": "TDD-HOST-002-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-HOST-002-03",
+      "given": "服務在啟動中途失敗",
+      "when": "使用者啟動應用程式",
+      "then": "顯示診斷並釋放已建立資源",
+      "invariant": "INV-HOST-002-01",
+      "test": "TDD-HOST-002-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "ipc": [
+      "valid",
+      "invalid",
+      "untrusted_sender"
+    ],
+    "startup_failure": "injected"
+  },
+  "tdd_design": "L2 bridge schema/permission；L3 startup cleanup；RED：非法 IPC 可觸發副作用",
+  "acceptance": "context isolation/sandbox 設定有測試；無 unrestricted shell API；關閉行為遵循 D-06",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-HOST",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id HOST-002",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/HOST-002/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "FLOW",
+    "HOST",
+    "WORK"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-HOST-002-01",
+      "bdd": "BDD-HOST-002-01",
+      "precondition": "已核准的視窗與服務組裝設定",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者啟動應用程式",
+      "assertions": [
+        "顯示初始視窗且服務透過型別化橋接提供",
+        "操作結果與 INV-HOST-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 bridge schema/permission；L3 startup cleanup；RED：非法 IPC 可觸發副作用",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示初始視窗且服務透過型別化橋接提供」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-HOST-002-02",
+      "bdd": "BDD-HOST-002-02",
+      "precondition": "呼叫來源或 IPC 輸入不符合契約",
+      "fixture_ref": "fixtures.json",
+      "action": "介面送出請求",
+      "assertions": [
+        "拒絕操作且不執行檔案或 shell 副作用",
+        "操作結果與 INV-HOST-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 bridge schema/permission；L3 startup cleanup；RED：非法 IPC 可觸發副作用",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕操作且不執行檔案或 shell 副作用」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-HOST-002-03",
+      "bdd": "BDD-HOST-002-03",
+      "precondition": "服務在啟動中途失敗",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者啟動應用程式",
+      "assertions": [
+        "顯示診斷並釋放已建立資源",
+        "操作結果與 INV-HOST-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L2 bridge schema/permission；L3 startup cleanup；RED：非法 IPC 可觸發副作用",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示診斷並釋放已建立資源」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

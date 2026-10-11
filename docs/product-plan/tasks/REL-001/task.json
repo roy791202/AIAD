@@ -1,0 +1,198 @@
+{
+  "id": "REL-001",
+  "module": "REL",
+  "title": "部署設定與版本產物追溯",
+  "milestone": "M3",
+  "depends_on": [
+    "SPEC-002",
+    "EVID-002"
+  ],
+  "intent": "部署明確版本的已驗證產物",
+  "allowed_scope": [
+    "packages/release/**",
+    "tests/release/**"
+  ],
+  "contract": "部署 profile 版本化；產物不可變且有 hash；secret 僅保存引用",
+  "invariant": "INV-REL-001-01",
+  "bdd": [
+    {
+      "id": "BDD-REL-001-01",
+      "given": "具備環境、命令、檢查與復原策略的 profile",
+      "when": "使用者建立部署候選",
+      "then": "候選綁定 commit、artifact hash 與 profile revision",
+      "invariant": "INV-REL-001-01",
+      "test": "TDD-REL-001-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-REL-001-02",
+      "given": "profile 缺少健康檢查或復原聲明",
+      "when": "使用者驗證候選",
+      "then": "阻止部署並列出缺口",
+      "invariant": "INV-REL-001-01",
+      "test": "TDD-REL-001-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-REL-001-03",
+      "given": "產物內容在核准後被替換",
+      "when": "使用者開始部署",
+      "then": "雜湊不符而拒絕執行",
+      "invariant": "INV-REL-001-01",
+      "test": "TDD-REL-001-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "target": "test",
+    "artifact_hash": "sha256-fixture",
+    "secret_ref": "credential-store/key"
+  },
+  "tdd_design": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+  "acceptance": "test/prod 使用同產物；不把 Git push 算部署",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-REL",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id REL-001",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 1800,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/REL-001/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "EVID",
+    "REL",
+    "SPEC"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-REL-001-01",
+      "bdd": "BDD-REL-001-01",
+      "precondition": "具備環境、命令、檢查與復原策略的 profile",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者建立部署候選",
+      "assertions": [
+        "候選綁定 commit、artifact hash 與 profile revision",
+        "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「候選綁定 commit、artifact hash 與 profile revision」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-REL-001-02",
+      "bdd": "BDD-REL-001-02",
+      "precondition": "profile 缺少健康檢查或復原聲明",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者驗證候選",
+      "assertions": [
+        "阻止部署並列出缺口",
+        "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「阻止部署並列出缺口」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-REL-001-03",
+      "bdd": "BDD-REL-001-03",
+      "precondition": "產物內容在核准後被替換",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者開始部署",
+      "assertions": [
+        "雜湊不符而拒絕執行",
+        "操作結果與 INV-REL-001-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 profile validation；L2 artifact tamper；RED：替換產物仍可部署",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「雜湊不符而拒絕執行」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation",
+    "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation",
+    "G-M2: all required M1/M2 tasks accepted, no unresolved P0/P1 or architecture escape"
+  ]
+}

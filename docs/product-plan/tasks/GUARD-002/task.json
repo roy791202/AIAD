@@ -1,0 +1,196 @@
+{
+  "id": "GUARD-002",
+  "module": "GUARD",
+  "title": "變更保護與執行權限",
+  "milestone": "M2",
+  "depends_on": [
+    "GUARD-001",
+    "EXEC-002"
+  ],
+  "intent": "限制寫入並攔截不允許的變更",
+  "allowed_scope": [
+    "packages/guard/**",
+    "packages/adapters/guard/**",
+    "tests/guard/**"
+  ],
+  "contract": "worktree 不是安全沙箱；無法強制執行的限制不得聲稱已保護",
+  "invariant": "INV-GUARD-002-01",
+  "bdd": [
+    {
+      "id": "BDD-GUARD-002-01",
+      "given": "已套用且驗證 OS 或 Provider 寫入限制",
+      "when": "Agent 嘗試寫入受保護檔案",
+      "then": "寫入遭拒且留下審計紀錄",
+      "invariant": "INV-GUARD-002-01",
+      "test": "TDD-GUARD-002-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-GUARD-002-02",
+      "given": "執行環境無法提供所需強制限制",
+      "when": "使用者啟動要求該限制的 Task",
+      "then": "拒絕自動實作並列出缺失能力",
+      "invariant": "INV-GUARD-002-01",
+      "test": "TDD-GUARD-002-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-GUARD-002-03",
+      "given": "Agent 修改測試期待以讓測試通過",
+      "when": "系統審查變更",
+      "then": "攔截驗收並要求規格審查",
+      "invariant": "INV-GUARD-002-01",
+      "test": "TDD-GUARD-002-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "protected": "contracts/approved.json",
+    "escape": "../other-project",
+    "assertion_change": true
+  },
+  "tdd_design": "L3 actual write-denial probes；L2 diff evidence；RED：受保護檔可寫入",
+  "acceptance": "OS/Provider capability 報告必備；偵測與預防分開；不能靠 prompt 宣告隔離",
+  "effort": "L",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-GUARD",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id GUARD-002",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/GUARD-002/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "EXEC",
+    "GUARD"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-GUARD-002-01",
+      "bdd": "BDD-GUARD-002-01",
+      "precondition": "已套用且驗證 OS 或 Provider 寫入限制",
+      "fixture_ref": "fixtures.json",
+      "action": "Agent 嘗試寫入受保護檔案",
+      "assertions": [
+        "寫入遭拒且留下審計紀錄",
+        "操作結果與 INV-GUARD-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L3 actual write-denial probes；L2 diff evidence；RED：受保護檔可寫入",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「寫入遭拒且留下審計紀錄」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-GUARD-002-02",
+      "bdd": "BDD-GUARD-002-02",
+      "precondition": "執行環境無法提供所需強制限制",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者啟動要求該限制的 Task",
+      "assertions": [
+        "拒絕自動實作並列出缺失能力",
+        "操作結果與 INV-GUARD-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L3 actual write-denial probes；L2 diff evidence；RED：受保護檔可寫入",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕自動實作並列出缺失能力」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-GUARD-002-03",
+      "bdd": "BDD-GUARD-002-03",
+      "precondition": "Agent 修改測試期待以讓測試通過",
+      "fixture_ref": "fixtures.json",
+      "action": "系統審查變更",
+      "assertions": [
+        "攔截驗收並要求規格審查",
+        "操作結果與 INV-GUARD-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L3 actual write-denial probes；L2 diff evidence；RED：受保護檔可寫入",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「攔截驗收並要求規格審查」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

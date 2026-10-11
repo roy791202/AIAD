@@ -1,0 +1,203 @@
+{
+  "id": "UI-002",
+  "module": "UI",
+  "title": "互動式模組架構 DAG",
+  "milestone": "M2",
+  "depends_on": [
+    "UI-001",
+    "SPEC-001"
+  ],
+  "intent": "用圖呈現核准架構及模組健康",
+  "allowed_scope": [
+    "apps/desktop/renderer/graph/**",
+    "tests/ui/graph/**"
+  ],
+  "contract": "A→B 代表 A 依賴 B；繪圖不修改核准架構；Task DAG 分開",
+  "invariant": "INV-UI-002-01",
+  "bdd": [
+    {
+      "id": "BDD-UI-002-01",
+      "given": "合法模組 DAG 與模組 Tasks 已載入",
+      "when": "使用者選取模組",
+      "then": "顯示其責任、Ports、依賴與所屬 Tasks",
+      "invariant": "INV-UI-002-01",
+      "test": "TDD-UI-002-01",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-UI-002-02",
+      "given": "架構含循環 A 到 B 到 A",
+      "when": "使用者驗證架構",
+      "then": "顯示循環路徑並禁止核准",
+      "invariant": "INV-UI-002-01",
+      "test": "TDD-UI-002-02",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "BDD-UI-002-03",
+      "given": "模組沒有工項或證據",
+      "when": "使用者查看節點",
+      "then": "顯示未評估而非完成綠燈",
+      "invariant": "INV-UI-002-01",
+      "test": "TDD-UI-002-03",
+      "result": "NOT RUN"
+    }
+  ],
+  "fixture": {
+    "nodes": [
+      "A",
+      "B",
+      "C"
+    ],
+    "cycle": [
+      "A",
+      "B",
+      "A"
+    ],
+    "empty_module": "C"
+  },
+  "tdd_design": "L0 cycle；L1 graph selection；L5 zoom/keyboard alternative；RED：cycle 被接受",
+  "acceptance": "依賴方向固定；表格替代視圖；大圖性能門檻待基準 spike 定義",
+  "effort": "M",
+  "state": "PLANNING",
+  "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+  "architecture_revision": "DRAFT-0.1",
+  "approval": "PENDING",
+  "results": "NOT RUN",
+  "requirement": "REQ-UI",
+  "protected_scope": [
+    "所有其他模組產品原始碼",
+    "已核准 Contract / BDD / Skeleton / 測試期待",
+    "使用者既有未提交檔案"
+  ],
+  "test_command": "npm run test:task -- --id UI-002",
+  "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+  "working_directory": "<approved-worktree-root>",
+  "timeout_seconds": 600,
+  "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+  "result_path": ".devworkflow/results/UI-002/<run-id>/",
+  "execution_steps": [
+    "確認 primary module、ADR 與封包核准版本",
+    "建立對應 skeleton/test seams；不得改已核准語意",
+    "依 fixtures 與 TDD 設計寫可建置測試",
+    "執行測試並證明是指定缺失行為造成 RED",
+    "只在 allowed_scope 實作",
+    "執行相同測試達 GREEN；禁止弱化 assertions",
+    "跑模組與相關回歸，分類每個失敗",
+    "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+  ],
+  "regression_modules": [
+    "SPEC",
+    "UI"
+  ],
+  "bdd_coverage_categories": {
+    "B1": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B2": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B3": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B4": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B5": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B6": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    },
+    "B7": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B8": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B9": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B10": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B11": {
+      "state": "Deferred",
+      "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+    },
+    "B12": {
+      "state": "Applicable",
+      "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+    }
+  },
+  "task_type": "IMPLEMENTATION_SLICE",
+  "tdd_cases": [
+    {
+      "id": "TDD-UI-002-01",
+      "bdd": "BDD-UI-002-01",
+      "precondition": "合法模組 DAG 與模組 Tasks 已載入",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者選取模組",
+      "assertions": [
+        "顯示其責任、Ports、依賴與所屬 Tasks",
+        "操作結果與 INV-UI-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 cycle；L1 graph selection；L5 zoom/keyboard alternative；RED：cycle 被接受",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示其責任、Ports、依賴與所屬 Tasks」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-UI-002-02",
+      "bdd": "BDD-UI-002-02",
+      "precondition": "架構含循環 A 到 B 到 A",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者驗證架構",
+      "assertions": [
+        "顯示循環路徑並禁止核准",
+        "操作結果與 INV-UI-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 cycle；L1 graph selection；L5 zoom/keyboard alternative；RED：cycle 被接受",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示循環路徑並禁止核准」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    },
+    {
+      "id": "TDD-UI-002-03",
+      "bdd": "BDD-UI-002-03",
+      "precondition": "模組沒有工項或證據",
+      "fixture_ref": "fixtures.json",
+      "action": "使用者查看節點",
+      "assertions": [
+        "顯示未評估而非完成綠燈",
+        "操作結果與 INV-UI-002-01 一致；副作用不可超出核准範圍"
+      ],
+      "seam_and_failure_injection": "L0 cycle；L1 graph selection；L5 zoom/keyboard alternative；RED：cycle 被接受",
+      "red_expected": "測試可建置且執行到斷言，但尚未實作的「顯示未評估而非完成綠燈」不成立；環境/fixture/編譯失敗均不接受",
+      "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+      "observed": "NOT RUN"
+    }
+  ],
+  "required_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ],
+  "release_operation_gates": [],
+  "planning_gates": [],
+  "implementation_gates": [
+    "D-01 architecture approval",
+    "task specification and skeleton approval",
+    "valid behavioral RED before production implementation"
+  ]
+}

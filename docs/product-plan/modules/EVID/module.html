@@ -1,0 +1,549 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EVID · 驗證證據</title><style>
+:root{--bg:#f2f5f7;--ink:#172c39;--muted:#526876;--line:#dce4e9;--teal:#006f75;--gold:#a46305}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 "Segoe UI","Microsoft JhengHei",sans-serif}header{background:#102c3b;color:white;padding:50px max(5vw,24px) 38px}header p{color:#c4dbe1;max-width:880px}h1{font-size:40px;margin:10px 0}h2{font-size:26px;margin:0 0 18px}h3{font-size:18px}nav{position:sticky;top:0;background:#fff;z-index:4;border-bottom:1px solid var(--line);padding:12px 5vw;display:flex;gap:18px;flex-wrap:wrap}a{color:#00737b}nav a{text-decoration:none}main{max-width:1320px;margin:auto;padding:28px}section{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;margin:0 0 24px;scroll-margin-top:90px}.eyebrow{letter-spacing:3px;font-size:12px;color:#86d7da}.badge{display:inline-block;padding:3px 10px;border-radius:20px;background:#eaf0f3;font-size:12px;color:#385563;margin:3px}.warn{background:#fff1d7;color:#875000}.good{background:#dff2e6;color:#155332}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px}.card{padding:20px;border:1px solid var(--line);border-radius:12px}.number{font-size:30px;font-weight:700}.muted{color:var(--muted)}table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14px}th,td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:#eef4f5}code{background:#edf2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6f8;padding:15px;border-radius:8px;font-size:13px}details{border:1px solid var(--line);border-radius:10px;margin:12px 0;padding:14px}summary{cursor:pointer;font-weight:650}details[open]>summary{margin-bottom:20px}label{display:inline-flex;align-items:center;gap:8px;margin-right:12px}input,select,button{font:inherit;padding:9px 12px;border:1px solid #adc0ca;border-radius:7px;background:#fff;color:var(--ink)}button{cursor:pointer}button:hover{background:#e8f4f4}:focus-visible{outline:3px solid #dd970d;outline-offset:3px}.note{border-left:4px solid #d99b33;background:#fff8e9;padding:14px 18px;margin:16px 0}.flow{display:flex;gap:8px;flex-wrap:wrap}.flow span{border:1px solid #b8d5d8;border-radius:7px;padding:8px 12px}.graph{overflow:auto}.graph svg{min-width:1000px;width:100%;height:auto}.node rect{fill:#edf7f7;stroke:#36848b;stroke-width:1.5}.node text{fill:#173945;font-size:14px}.node:hover rect{fill:#d3eeed}.node.selected rect{fill:#ffe6a9;stroke:#986111;stroke-width:3}.edge{stroke:#bccbd2;stroke-width:1.5;fill:none}.edge.active{stroke:#b06f05;stroke-width:3}.twocol{display:grid;grid-template-columns:1fr 1fr;gap:20px}.task.hidden{display:none}.footer{padding:20px;text-align:center;color:var(--muted)}.tablewrap{overflow:auto} @media(max-width:750px){main{padding:12px}section{padding:18px}h1{font-size:30px}.twocol{grid-template-columns:1fr}nav{position:static}}@media print{nav,.controls,button{display:none}body{background:#fff;font-size:11px}section{break-inside:avoid;border:0;padding:10px}header{background:#fff;color:#000;padding:15px}header p{color:#333}main{padding:0}.task.hidden{display:block}details{break-inside:avoid}.graph svg{min-width:0}}
+</style></head><body><header><div class="eyebrow">SGenAxis / PRODUCT ENGINEERING PLAN</div><h1>EVID · 驗證證據</h1><p>讓規格約束 Agent，讓證據說明進度。多專案・模組 DAG・BDD/TDD・Git・部署</p><span class="badge warn">DRAFT 0.1 / 待架構核准</span><span class="badge">產品尚未實作</span></header><nav><a href="../../index.html">← 系統產品規畫</a></nav><main><section id="overview"><h2>驗證證據 / 模組工程規畫</h2><p>擁有不可變測試紀錄、版本綁定與有效性判定</p><p class="note">架構 PROPOSED；Contracts/BDD/TDD 為草稿；實作 NOT STARTED；回歸 NOT RUN；健康未評估。</p></section><section id="architecture"><h2>架構位置、所有權與 Ports</h2><pre>系統邊界：本機 SGenAxis
+Driving Adapters：Electron / React UI、CLI（後續）、Tests
+                      │ Input Ports
+                      ▼
+Application：Workspace / Workflow / Execution / Git / Release use cases
+                      │
+                      ▼
+Domain：Task state、Envelope、Contracts、Evidence validity、DAG rules
+                      │ 使用內部定義的 Output Ports
+                      ▲ 實作
+Driven Adapters：Git CLI、Agent CLI、Filesystem、SQLite、Installer
+                      │
+外部邊界：專案目錄、遠端 Git、Provider、OS 程序、部署目標
+
+依賴向內：Adapter → Port；Application → Domain / Port。
+Domain 禁止依賴 React、Electron、Node filesystem、SQLite、Git CLI 或具體 Provider。
+所有 mutation 經 input port / use case；UI 與 HTML 不直接改權威資料。</pre><div class="tablewrap"><table><thead><tr><th>欄位</th><th>提案</th></tr></thead><tbody><tr><td>id</td><td>EVID</td></tr><tr><td>name</td><td>驗證證據</td></tr><tr><td>responsibility</td><td>擁有不可變測試紀錄、版本綁定與有效性判定</td></tr><tr><td>layer</td><td>Domain / Application</td></tr><tr><td>input</td><td>IEvidenceCommands</td></tr><tr><td>output</td><td>ITestRunner, IEvidenceStore</td></tr><tr><td>adapter</td><td>ProcessTestRunner, ArtifactStore</td></tr><tr><td>transaction</td><td>先完整寫入證據再登錄索引；缺漏或版本不符不得判 PASS</td></tr></tbody></table></div><p>依賴目標：無其他模組公開契約依賴</p><p>完整模組 DAG 見 <a href="../../index.html#architecture">系統架構</a>。此模組只允許經自身 Input Port 修改其權威資料。禁止跨模組直接資料庫寫入及 Domain 基礎設施依賴。</p></section><section id="dependency"><h2>模組依賴視圖</h2><div class="graph"><svg viewBox="0 0 1010 610" role="img" aria-label="提議模組依賴圖；箭頭 A 到 B 表示 A 依賴 B 的公開契約"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="#839da9"/></marker></defs><path class="edge" data-a="UI" data-b="SPEC" d="M205 330 C255 330,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="FLOW" d="M205 330 C255 330,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="WORK" d="M205 330 C255 330,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="GIT" d="M205 330 C255 330,195 240,255 240" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="EVID" d="M205 330 C255 330,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REL" d="M205 330 C255 330,195 380,255 380" marker-end="url(#arrow)"/><path class="edge" data-a="UI" data-b="REPORT" d="M205 330 C255 330,195 520,255 520" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="SPEC" d="M440 100 C490 100,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="WORK" d="M440 100 C490 100,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="GUARD" d="M440 100 C490 100,440 210,500 210" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EXEC" d="M440 100 C490 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="FLOW" data-b="EVID" d="M440 100 C490 100,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="GUARD" data-b="SPEC" d="M685 210 C735 210,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="EXEC" data-b="WORK" d="M685 70 C735 70,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="GIT" data-b="WORK" d="M440 240 C490 240,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="WORK" d="M440 380 C490 380,710 470,770 470" marker-end="url(#arrow)"/><path class="edge" data-a="REL" data-b="EVID" d="M440 380 C490 380,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="SPEC" d="M440 520 C490 520,710 230,770 230" marker-end="url(#arrow)"/><path class="edge" data-a="REPORT" data-b="EVID" d="M440 520 C490 520,440 350,500 350" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="UI" d="M205 100 C255 100,-40 330,20 330" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="FLOW" d="M205 100 C255 100,195 100,255 100" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="EXEC" d="M205 100 C255 100,440 70,500 70" marker-end="url(#arrow)"/><path class="edge" data-a="HOST" data-b="WORK" d="M205 100 C255 100,710 470,770 470" marker-end="url(#arrow)"/><a href="../../index.html#module-HOST" class="node" data-mod="HOST" aria-label="查看 桌面宿主與建置"><rect x="20" y="70" width="185" height="65" rx="9"/><text x="32" y="95">HOST · 桌面宿主與建置</text><text x="32" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-UI" class="node" data-mod="UI" aria-label="查看 工程控制台"><rect x="20" y="300" width="185" height="65" rx="9"/><text x="32" y="325">UI · 工程控制台</text><text x="32" y="349" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-FLOW" class="node" data-mod="FLOW" aria-label="查看 流程與核准"><rect x="255" y="70" width="185" height="65" rx="9"/><text x="267" y="95">FLOW · 流程與核准</text><text x="267" y="119" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GIT" class="node" data-mod="GIT" aria-label="查看 版本控管"><rect x="255" y="210" width="185" height="65" rx="9"/><text x="267" y="235">GIT · 版本控管</text><text x="267" y="259" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REL" class="node" data-mod="REL" aria-label="查看 部署與發布"><rect x="255" y="350" width="185" height="65" rx="9"/><text x="267" y="375">REL · 部署與發布</text><text x="267" y="399" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-REPORT" class="node" data-mod="REPORT" aria-label="查看 報告投影"><rect x="255" y="490" width="185" height="65" rx="9"/><text x="267" y="515">REPORT · 報告投影</text><text x="267" y="539" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EXEC" class="node" data-mod="EXEC" aria-label="查看 Agent 執行"><rect x="500" y="40" width="185" height="65" rx="9"/><text x="512" y="65">EXEC · Agent 執行</text><text x="512" y="89" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-GUARD" class="node" data-mod="GUARD" aria-label="查看 開發邊界"><rect x="500" y="180" width="185" height="65" rx="9"/><text x="512" y="205">GUARD · 開發邊界</text><text x="512" y="229" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-EVID" class="node" data-mod="EVID" aria-label="查看 驗證證據"><rect x="500" y="320" width="185" height="65" rx="9"/><text x="512" y="345">EVID · 驗證證據</text><text x="512" y="369" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-SPEC" class="node" data-mod="SPEC" aria-label="查看 工程規格"><rect x="770" y="200" width="185" height="65" rx="9"/><text x="782" y="225">SPEC · 工程規格</text><text x="782" y="249" style="font-size:12px">規劃 · 未核准 · 未測試</text></a><a href="../../index.html#module-WORK" class="node" data-mod="WORK" aria-label="查看 專案工作區"><rect x="770" y="440" width="185" height="65" rx="9"/><text x="782" y="465">WORK · 專案工作區</text><text x="782" y="489" style="font-size:12px">規劃 · 未核准 · 未測試</text></a></svg></div></section><section id="tasks"><h2>工項、Contract、BDD、TDD 與驗收</h2><details class="task" id="task-EVID-001" data-module="EVID" data-phase="M1"><summary>EVID-001 · 測試 Runner 與有效 RED <span class="badge">M1</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>EVID / REQ-EVID</td></tr><tr><td>意圖</td><td>區分預期行為失敗與測試環境故障</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>SPEC-001, WORK-001</td></tr><tr><td>允許範圍（提議）</td><td>packages/evidence/**<br>packages/adapters/tests/**<br>tests/evidence/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-EVID-001-01 — RED 必須 test build 成功且因指定缺失行為失敗；空輸出不算 PASS</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS</td></tr><tr><td>驗收標準</td><td>每次保存命令、cwd、版本、exit、結果；三類失敗不可混用</td></tr><tr><td>模組／相鄰回歸</td><td>EVID, SPEC, WORK</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id EVID-001</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 600 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/EVID-001/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation</p><h3>BDD · 可匯出 Gherkin</h3><pre>@EVID-001 @planning
+Feature: EVID-001 測試 Runner 與有效 RED
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: RED 必須 test build 成功且因指定缺失行為失敗；空輸出不算 PASS
+
+    @BDD-EVID-001-01
+    Scenario: BDD-EVID-001-01
+      Given 測試可建置且指定行為尚未實作
+      When 系統執行 RED 驗證
+      Then 登錄 behavioral RED 並連結 BDD
+
+    @BDD-EVID-001-02
+    Scenario: BDD-EVID-001-02
+      Given 測試因編譯或 fixture 損壞失敗
+      When 系統執行 RED 驗證
+      Then 拒絕 RED 資格並分類失敗
+
+    @BDD-EVID-001-03
+    Scenario: BDD-EVID-001-03
+      Given 命令 exit 0 但缺少必要測試結果
+      When 系統解析結果
+      Then 標記未測得而非 PASS
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-EVID-001-01</td><td>TDD-EVID-001-01</td><td>INV-EVID-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-EVID-001-02</td><td>TDD-EVID-001-02</td><td>INV-EVID-001-01</td><td>NOT RUN</td></tr><tr><td>BDD-EVID-001-03</td><td>TDD-EVID-001-03</td><td>INV-EVID-001-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-EVID-001-01 · 測試案例</summary><p>前置：測試可建置且指定行為尚未實作</p><p>操作：系統執行 RED 驗證</p><p>斷言：登錄 behavioral RED 並連結 BDD；操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS</p><p>RED：測試可建置且執行到斷言，但尚未實作的「登錄 behavioral RED 並連結 BDD」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-EVID-001-02 · 測試案例</summary><p>前置：測試因編譯或 fixture 損壞失敗</p><p>操作：系統執行 RED 驗證</p><p>斷言：拒絕 RED 資格並分類失敗；操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS</p><p>RED：測試可建置且執行到斷言，但尚未實作的「拒絕 RED 資格並分類失敗」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-EVID-001-03 · 測試案例</summary><p>前置：命令 exit 0 但缺少必要測試結果</p><p>操作：系統解析結果</p><p>斷言：標記未測得而非 PASS；操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS</p><p>RED：測試可建置且執行到斷言，但尚未實作的「標記未測得而非 PASS」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;outcomes&quot;: [
+    &quot;behavioral_failure&quot;,
+    &quot;compile_error&quot;,
+    &quot;empty_output&quot;
+  ],
+  &quot;expected_test_id&quot;: &quot;case1&quot;
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details><details class="task" id="task-EVID-002" data-module="EVID" data-phase="M2"><summary>EVID-002 · 證據失效與模組覆蓋 <span class="badge">M2</span><span class="badge warn">規劃／待核准</span></summary><div class="tablewrap"><table><thead><tr><th>欄位</th><th>工程封包</th></tr></thead><tbody><tr><td>主要模組／需求</td><td>EVID / REQ-EVID</td></tr><tr><td>意圖</td><td>測試證據只適用於實際驗證版本</td></tr><tr><td>狀態</td><td>PLANNING · NOT_READY_FOR_IMPLEMENTATION · Tests NOT RUN</td></tr><tr><td>前置工項</td><td>EVID-001, SPEC-002</td></tr><tr><td>允許範圍（提議）</td><td>packages/evidence/**<br>tests/evidence/**</td></tr><tr><td>保護範圍</td><td>所有其他模組產品原始碼<br>已核准 Contract / BDD / Skeleton / 測試期待<br>使用者既有未提交檔案</td></tr><tr><td>Contract / Invariant</td><td>INV-EVID-002-01 — 結果綁定 spec hash 與工作樹指紋；passed count 不代表 BDD 完整</td></tr><tr><td>TDD 設計與 RED 判準</td><td>L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效</td></tr><tr><td>驗收標準</td><td>未知/skipped 不計通過；歷史不覆寫；B1–B12 均有評估</td></tr><tr><td>模組／相鄰回歸</td><td>EVID, SPEC</td></tr><tr><td>規格核准</td><td>DRAFT-0.1；PENDING；不得進入產品實作</td></tr><tr><td>執行命令（規劃）</td><td><code>npm run test:task -- --id EVID-002</code><br>runner 尚未建立；目前不得執行此命令</td></tr><tr><td>執行環境</td><td>&lt;approved-worktree-root&gt;；timeout 600 s；不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次</td></tr><tr><td>結果位置</td><td><code>.devworkflow/results/EVID-002/&lt;run-id&gt;/</code></td></tr><tr><td>真實發布操作閘門（不阻止功能開發）</td><td>此工項不授權正式發布</td></tr></tbody></table></div><p><strong>必要閘門：</strong>D-01 architecture approval；task specification and skeleton approval；valid behavioral RED before production implementation</p><h3>BDD · 可匯出 Gherkin</h3><pre>@EVID-002 @planning
+Feature: EVID-002 證據失效與模組覆蓋
+  Background:
+    Given 使用者已選定正確專案與規格版本
+
+  Rule: 結果綁定 spec hash 與工作樹指紋；passed count 不代表 BDD 完整
+
+    @BDD-EVID-002-01
+    Scenario: BDD-EVID-002-01
+      Given 所有必要 BDD 有對應有效證據
+      When 系統計算模組覆蓋
+      Then 呈現已驗證數與缺口為零
+
+    @BDD-EVID-002-02
+    Scenario: BDD-EVID-002-02
+      Given 程式或規格在測試後改變
+      When 系統重新計算狀態
+      Then 舊結果保留但不再支持當前綠燈
+
+    @BDD-EVID-002-03
+    Scenario: BDD-EVID-002-03
+      Given 部分必要測試被 skip
+      When 系統計算完成資格
+      Then 列出未驗證行為並拒絕完成
+</pre><h3>TDD 追溯與案例</h3><div class="tablewrap"><table><thead><tr><th>BDD</th><th>TDD</th><th>Invariant</th><th>結果</th></tr></thead><tbody><tr><td>BDD-EVID-002-01</td><td>TDD-EVID-002-01</td><td>INV-EVID-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-EVID-002-02</td><td>TDD-EVID-002-02</td><td>INV-EVID-002-01</td><td>NOT RUN</td></tr><tr><td>BDD-EVID-002-03</td><td>TDD-EVID-002-03</td><td>INV-EVID-002-01</td><td>NOT RUN</td></tr></tbody></table></div><details><summary>TDD-EVID-002-01 · 測試案例</summary><p>前置：所有必要 BDD 有對應有效證據</p><p>操作：系統計算模組覆蓋</p><p>斷言：呈現已驗證數與缺口為零；操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效</p><p>RED：測試可建置且執行到斷言，但尚未實作的「呈現已驗證數與缺口為零」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-EVID-002-02 · 測試案例</summary><p>前置：程式或規格在測試後改變</p><p>操作：系統重新計算狀態</p><p>斷言：舊結果保留但不再支持當前綠燈；操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效</p><p>RED：測試可建置且執行到斷言，但尚未實作的「舊結果保留但不再支持當前綠燈」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><details><summary>TDD-EVID-002-03 · 測試案例</summary><p>前置：部分必要測試被 skip</p><p>操作：系統計算完成資格</p><p>斷言：列出未驗證行為並拒絕完成；操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍</p><p>Seam / injection：L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效</p><p>RED：測試可建置且執行到斷言，但尚未實作的「列出未驗證行為並拒絕完成」不成立；環境/fixture/編譯失敗均不接受</p><p>GREEN：相同前置、操作與斷言全部通過，不修改測試期待</p></details><h3>Fixtures / test data</h3><pre>{
+  &quot;hashes&quot;: [
+    &quot;before&quot;,
+    &quot;after&quot;
+  ],
+  &quot;test_states&quot;: [
+    &quot;passed&quot;,
+    &quot;skipped&quot;,
+    &quot;not_run&quot;
+  ]
+}</pre><h3>Agent 執行順序</h3><ol><li>確認 primary module、ADR 與封包核准版本</li><li>建立對應 skeleton/test seams；不得改已核准語意</li><li>依 fixtures 與 TDD 設計寫可建置測試</li><li>執行測試並證明是指定缺失行為造成 RED</li><li>只在 allowed_scope 實作</li><li>執行相同測試達 GREEN；禁止弱化 assertions</li><li>跑模組與相關回歸，分類每個失敗</li><li>審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit</li></ol><p class="note">Pending automation：測試 runner、steps、fixtures 的真實環境配置、失敗注入與測試實作尚未完成。所有案例均未執行；不宣告 RED 或 GREEN。</p></details></section><section id="coverage"><h2>BDD 類別評估與回歸</h2><div class="tablewrap"><table><thead><tr><th>分類</th><th>初稿狀態</th><th>說明</th></tr></thead><tbody><tr><td>B1 主要成功</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B2 輸入邊界</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B3 無效輸入</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B4 相依失敗</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B5 部分失敗</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B6 狀態一致性</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B7 交易</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B8 生命週期</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B9 復原/回滾</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B10 跨模組</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B11 相容性</td><td>Deferred</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr><tr><td>B12 重要回歸</td><td>Applicable / Pending scenarios</td><td>需在規格核准前補完整案例或明確 N/A；初稿不宣告覆蓋完成</td></tr></tbody></table></div><p>L0–L5 測試計畫見各 Task；目前所有結果 NOT RUN。無 build、package、install 或 DCC 接受證據。</p></section><section id="health"><h2>風險、決策與最終健康</h2><p>規格與 Ports 未核准；Task 命令僅為規劃；步驟 stubs 未自動化。Module health：PLANNING / NOT VERIFIED。</p><div class="tablewrap"><table><thead><tr><th>ID</th><th>決策</th><th>建議</th><th>影響</th></tr></thead><tbody><tr><td>D-01</td><td>技術與架構</td><td>建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料</td><td>核准前不能進入 skeleton/產品實作</td></tr><tr><td>D-02</td><td>首個 Agent Provider</td><td>建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式</td><td>阻塞 EXEC-002 及依賴項，其他規劃可繼續</td></tr><tr><td>D-03</td><td>首版平台與安装器</td><td>Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定</td><td>阻塞真實安裝相容性聲明</td></tr><tr><td>D-04</td><td>核准與權限</td><td>首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用</td><td>強隔離機制必須 spike 驗證，worktree 不等於沙箱</td></tr><tr><td>D-05</td><td>儲存權威</td><td>每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威</td><td>採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照</td></tr><tr><td>D-06</td><td>程序續跑</td><td>第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳</td><td>常駐 service / 多機 worker 留待後續架構</td></tr></tbody></table></div></section></main><div class="footer">SGenAxis · 2026-10-06T05:57:13.670858+00:00 · 文件草稿，不代表發布資格</div><script type="application/json" id="module-spec">{
+  "metadata": {
+    "product": "SGenAxis",
+    "version": "0.1",
+    "generated_at": "2026-10-06T05:57:13.670858+00:00",
+    "state": "PLANNING",
+    "architecture_status": "PROPOSED / NOT APPROVED",
+    "implementation_status": "NOT STARTED",
+    "test_status": "NOT RUN",
+    "release_status": "DO NOT RELEASE",
+    "basis": "本次對話需求；架構為建議，非已核准設計",
+    "git": "目前交付未建立 Git commit"
+  },
+  "module": {
+    "id": "EVID",
+    "name": "驗證證據",
+    "responsibility": "擁有不可變測試紀錄、版本綁定與有效性判定",
+    "layer": "Domain / Application",
+    "input": "IEvidenceCommands",
+    "output": "ITestRunner, IEvidenceStore",
+    "adapter": "ProcessTestRunner, ArtifactStore",
+    "transaction": "先完整寫入證據再登錄索引；缺漏或版本不符不得判 PASS"
+  },
+  "tasks": [
+    {
+      "id": "EVID-001",
+      "module": "EVID",
+      "title": "測試 Runner 與有效 RED",
+      "milestone": "M1",
+      "depends_on": [
+        "SPEC-001",
+        "WORK-001"
+      ],
+      "intent": "區分預期行為失敗與測試環境故障",
+      "allowed_scope": [
+        "packages/evidence/**",
+        "packages/adapters/tests/**",
+        "tests/evidence/**"
+      ],
+      "contract": "RED 必須 test build 成功且因指定缺失行為失敗；空輸出不算 PASS",
+      "invariant": "INV-EVID-001-01",
+      "bdd": [
+        {
+          "id": "BDD-EVID-001-01",
+          "given": "測試可建置且指定行為尚未實作",
+          "when": "系統執行 RED 驗證",
+          "then": "登錄 behavioral RED 並連結 BDD",
+          "invariant": "INV-EVID-001-01",
+          "test": "TDD-EVID-001-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-EVID-001-02",
+          "given": "測試因編譯或 fixture 損壞失敗",
+          "when": "系統執行 RED 驗證",
+          "then": "拒絕 RED 資格並分類失敗",
+          "invariant": "INV-EVID-001-01",
+          "test": "TDD-EVID-001-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-EVID-001-03",
+          "given": "命令 exit 0 但缺少必要測試結果",
+          "when": "系統解析結果",
+          "then": "標記未測得而非 PASS",
+          "invariant": "INV-EVID-001-01",
+          "test": "TDD-EVID-001-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "outcomes": [
+          "behavioral_failure",
+          "compile_error",
+          "empty_output"
+        ],
+        "expected_test_id": "case1"
+      },
+      "tdd_design": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+      "acceptance": "每次保存命令、cwd、版本、exit、結果；三類失敗不可混用",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-EVID",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id EVID-001",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 600,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/EVID-001/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "EVID",
+        "SPEC",
+        "WORK"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-EVID-001-01",
+          "bdd": "BDD-EVID-001-01",
+          "precondition": "測試可建置且指定行為尚未實作",
+          "fixture_ref": "fixtures.json",
+          "action": "系統執行 RED 驗證",
+          "assertions": [
+            "登錄 behavioral RED 並連結 BDD",
+            "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「登錄 behavioral RED 並連結 BDD」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-EVID-001-02",
+          "bdd": "BDD-EVID-001-02",
+          "precondition": "測試因編譯或 fixture 損壞失敗",
+          "fixture_ref": "fixtures.json",
+          "action": "系統執行 RED 驗證",
+          "assertions": [
+            "拒絕 RED 資格並分類失敗",
+            "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「拒絕 RED 資格並分類失敗」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-EVID-001-03",
+          "bdd": "BDD-EVID-001-03",
+          "precondition": "命令 exit 0 但缺少必要測試結果",
+          "fixture_ref": "fixtures.json",
+          "action": "系統解析結果",
+          "assertions": [
+            "標記未測得而非 PASS",
+            "操作結果與 INV-EVID-001-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 result parser；L2 runner fake outputs；L3 tiny fixture runner；RED：empty exit0 被判 PASS",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「標記未測得而非 PASS」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ]
+    },
+    {
+      "id": "EVID-002",
+      "module": "EVID",
+      "title": "證據失效與模組覆蓋",
+      "milestone": "M2",
+      "depends_on": [
+        "EVID-001",
+        "SPEC-002"
+      ],
+      "intent": "測試證據只適用於實際驗證版本",
+      "allowed_scope": [
+        "packages/evidence/**",
+        "tests/evidence/**"
+      ],
+      "contract": "結果綁定 spec hash 與工作樹指紋；passed count 不代表 BDD 完整",
+      "invariant": "INV-EVID-002-01",
+      "bdd": [
+        {
+          "id": "BDD-EVID-002-01",
+          "given": "所有必要 BDD 有對應有效證據",
+          "when": "系統計算模組覆蓋",
+          "then": "呈現已驗證數與缺口為零",
+          "invariant": "INV-EVID-002-01",
+          "test": "TDD-EVID-002-01",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-EVID-002-02",
+          "given": "程式或規格在測試後改變",
+          "when": "系統重新計算狀態",
+          "then": "舊結果保留但不再支持當前綠燈",
+          "invariant": "INV-EVID-002-01",
+          "test": "TDD-EVID-002-02",
+          "result": "NOT RUN"
+        },
+        {
+          "id": "BDD-EVID-002-03",
+          "given": "部分必要測試被 skip",
+          "when": "系統計算完成資格",
+          "then": "列出未驗證行為並拒絕完成",
+          "invariant": "INV-EVID-002-01",
+          "test": "TDD-EVID-002-03",
+          "result": "NOT RUN"
+        }
+      ],
+      "fixture": {
+        "hashes": [
+          "before",
+          "after"
+        ],
+        "test_states": [
+          "passed",
+          "skipped",
+          "not_run"
+        ]
+      },
+      "tdd_design": "L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效",
+      "acceptance": "未知/skipped 不計通過；歷史不覆寫；B1–B12 均有評估",
+      "effort": "M",
+      "state": "PLANNING",
+      "readiness": "NOT_READY_FOR_IMPLEMENTATION",
+      "architecture_revision": "DRAFT-0.1",
+      "approval": "PENDING",
+      "results": "NOT RUN",
+      "requirement": "REQ-EVID",
+      "protected_scope": [
+        "所有其他模組產品原始碼",
+        "已核准 Contract / BDD / Skeleton / 測試期待",
+        "使用者既有未提交檔案"
+      ],
+      "test_command": "npm run test:task -- --id EVID-002",
+      "command_status": "PLANNED — 尚無產品 runner，不可直接執行",
+      "working_directory": "\u003capproved-worktree-root\u003e",
+      "timeout_seconds": 600,
+      "retry_policy": "不自動重送 mutation；只允許明確宣告可重試的唯讀操作，最多 1 次",
+      "result_path": ".devworkflow/results/EVID-002/\u003crun-id\u003e/",
+      "execution_steps": [
+        "確認 primary module、ADR 與封包核准版本",
+        "建立對應 skeleton/test seams；不得改已核准語意",
+        "依 fixtures 與 TDD 設計寫可建置測試",
+        "執行測試並證明是指定缺失行為造成 RED",
+        "只在 allowed_scope 實作",
+        "執行相同測試達 GREEN；禁止弱化 assertions",
+        "跑模組與相關回歸，分類每個失敗",
+        "審查 diff/Contract/BDD/架構與驗收，更新 module.html；待人核准 commit"
+      ],
+      "regression_modules": [
+        "EVID",
+        "SPEC"
+      ],
+      "bdd_coverage_categories": {
+        "B1": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B2": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B3": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B4": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B5": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B6": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        },
+        "B7": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B8": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B9": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B10": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B11": {
+          "state": "Deferred",
+          "reason": "需在模組規格核准前依 transaction/lifecycle/cross-module/compatibility 適用性補齊或說明 N/A"
+        },
+        "B12": {
+          "state": "Applicable",
+          "reason": "本封包三個初步情境，完整案例需在 specification gate 補足"
+        }
+      },
+      "task_type": "IMPLEMENTATION_SLICE",
+      "tdd_cases": [
+        {
+          "id": "TDD-EVID-002-01",
+          "bdd": "BDD-EVID-002-01",
+          "precondition": "所有必要 BDD 有對應有效證據",
+          "fixture_ref": "fixtures.json",
+          "action": "系統計算模組覆蓋",
+          "assertions": [
+            "呈現已驗證數與缺口為零",
+            "操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「呈現已驗證數與缺口為零」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-EVID-002-02",
+          "bdd": "BDD-EVID-002-02",
+          "precondition": "程式或規格在測試後改變",
+          "fixture_ref": "fixtures.json",
+          "action": "系統重新計算狀態",
+          "assertions": [
+            "舊結果保留但不再支持當前綠燈",
+            "操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「舊結果保留但不再支持當前綠燈」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        },
+        {
+          "id": "TDD-EVID-002-03",
+          "bdd": "BDD-EVID-002-03",
+          "precondition": "部分必要測試被 skip",
+          "fixture_ref": "fixtures.json",
+          "action": "系統計算完成資格",
+          "assertions": [
+            "列出未驗證行為並拒絕完成",
+            "操作結果與 INV-EVID-002-01 一致；副作用不可超出核准範圍"
+          ],
+          "seam_and_failure_injection": "L0 validity/coverage；L2 historical evidence queries；RED：版本變更仍有效",
+          "red_expected": "測試可建置且執行到斷言，但尚未實作的「列出未驗證行為並拒絕完成」不成立；環境/fixture/編譯失敗均不接受",
+          "green_expected": "相同前置、操作與斷言全部通過，不修改測試期待",
+          "observed": "NOT RUN"
+        }
+      ],
+      "required_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ],
+      "release_operation_gates": [],
+      "planning_gates": [],
+      "implementation_gates": [
+        "D-01 architecture approval",
+        "task specification and skeleton approval",
+        "valid behavioral RED before production implementation"
+      ]
+    }
+  ],
+  "decisions": [
+    [
+      "D-01",
+      "技術與架構",
+      "建議 Electron + React + TypeScript；React Flow + ELK；XState 隔離於 workflow；SQLite 保存執行資料",
+      "核准前不能進入 skeleton/產品實作"
+    ],
+    [
+      "D-02",
+      "首個 Agent Provider",
+      "建議先評估 Codex CLI；須查核實際非互動協定、授權、取消與事件格式",
+      "阻塞 EXEC-002 及依賴項，其他規劃可繼續"
+    ],
+    [
+      "D-03",
+      "首版平台與安装器",
+      "Windows 本機優先；精確 OS build、架構、安裝器與簽章策略尚待選定",
+      "阻塞真實安裝相容性聲明"
+    ],
+    [
+      "D-04",
+      "核准與權限",
+      "首版單機單一使用者；人核准架構/驗收/正式發布；自動 push 預設停用",
+      "強隔離機制必須 spike 驗證，worktree 不等於沙箱"
+    ],
+    [
+      "D-05",
+      "儲存權威",
+      "每模組 module.html 內 module-spec JSON 為 canonical；UI 由其生成；SQLite 儲存 run/events，不複製規格权威",
+      "採 sidecar YAML 需另作 ADR；匯出 plan.json 是可重建快照"
+    ],
+    [
+      "D-06",
+      "程序續跑",
+      "第一版 UI 切換可不中斷；整個 App 結束後不保證背景繼續；重開先對帳",
+      "常駐 service / 多機 worker 留待後續架構"
+    ]
+  ],
+  "dependencies": []
+}</script><script></script></body></html>
