@@ -1,0 +1,1029 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGGenAxis - UI System Specification</title>
+<style>
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --border: #dce2ea;
+  --text: #202a38;
+  --muted: #637083;
+  --accent: #2864dc;
+  --accent-soft: #eaf1ff;
+  --code: #edf1f6;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
+  line-height: 1.65;
+}
+header {
+  padding: 34px 5%;
+  color: white;
+  background: #172438;
+}
+header h1 { margin: 8px 0; font-size: 30px; }
+header p { color: #d5dfed; margin: 6px 0; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 12px;
+  color: #a9c5ff;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 245px minmax(0, 1fr);
+  gap: 22px;
+  max-width: 1500px;
+  margin: auto;
+  padding: 24px;
+}
+nav, .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+nav {
+  padding: 18px;
+  align-self: start;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+nav strong { display: block; margin-bottom: 12px; }
+nav a {
+  display: block;
+  color: #33445c;
+  text-decoration: none;
+  padding: 5px 0;
+  font-size: 13px;
+}
+nav a:hover { color: var(--accent); }
+main { min-width: 0; }
+.card { padding: 24px; margin-bottom: 18px; }
+h2 { font-size: 22px; margin: 0 0 14px; }
+h3 { font-size: 17px; margin: 22px 0 8px; }
+h4 { font-size: 15px; margin: 16px 0 6px; }
+p, li { font-size: 14px; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 13px;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+}
+th { background: #edf2f8; }
+tr:nth-child(even) td { background: #fafbfd; }
+code {
+  background: var(--code);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: .92em;
+  overflow-wrap: anywhere;
+}
+.callout {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 13px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.diagram {
+  background: #f7f9fc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.tag {
+  display: inline-block;
+  background: #e9eef6;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin: 2px;
+  font-size: 12px;
+}
+footer {
+  text-align: center;
+  color: var(--muted);
+  padding: 24px;
+  font-size: 12px;
+}
+@media(max-width: 850px) {
+  .layout { grid-template-columns: 1fr; padding: 12px; }
+  nav { position: static; max-height: none; }
+  .card { padding: 17px; overflow-wrap: anywhere; }
+  table { display: block; overflow-x: auto; }
+}
+@media print {
+  body { background: white; }
+  .layout { display: block; padding: 0; }
+  nav { display: none; }
+  .card { box-shadow: none; break-inside: avoid; }
+  header { background: white; color: black; border-bottom: 2px solid #333; }
+  header p { color: #333; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">SGGenAxis · UI Architecture</div>
+  <h1>UI System Specification</h1>
+  <p>UI Layer、Editor、Viewer、UI 元件、屬性 Schema、資源管理、事件邏輯與資料綁定</p>
+  <p>文件性質：系統設計建議稿，供架構規劃、資料模型、AI 生成及驗證流程使用。</p>
+</header>
+
+<div class="layout">
+<nav aria-label="文件目錄">
+  <strong>文件目錄</strong>
+  <a href="#purpose">1. 系統定位</a>
+  <a href="#architecture">2. UI 架構與操作入口</a>
+  <a href="#editor">3. Editor 編輯環境</a>
+  <a href="#viewer">4. Viewer 預覽環境</a>
+  <a href="#hierarchy">5. UI 節點與 Slot</a>
+  <a href="#common">6. 共用屬性</a>
+  <a href="#families">7. UI 元件分類</a>
+  <a href="#style">8. Style & Theme</a>
+  <a href="#assets">9. Asset / Resource Manager</a>
+  <a href="#events">10. Event System</a>
+  <a href="#logic">11. UI Logic</a>
+  <a href="#binding">12. Data Binding</a>
+  <a href="#inspector">13. Inspector / Property Schema</a>
+  <a href="#validation">14. Validation</a>
+  <a href="#data-model">15. 資料模型</a>
+  <a href="#workflow">16. 操作流程</a>
+  <a href="#roadmap">17. 實作優先順序</a>
+</nav>
+
+<main>
+
+<section class="card" id="purpose">
+<h2>1. 系統定位</h2>
+<p>SGGenAxis 的 UI System 是一套可由使用者編輯、可被資料模型描述、可由 AI 協助生成，並可透過驗證流程檢查的 UI 定義系統。</p>
+
+<div class="callout">
+<strong>核心原則：</strong>
+UI Layer 負責在架構畫布上代表 UI 系統；
+Editor 負責編輯 UI；
+Viewer 負責預覽與操作 UI。
+UI 元件的視覺呈現、事件、邏輯、資料綁定與資源參照應由同一份 Canonical UI Definition 管理。
+</div>
+
+<h3>1.1 設計目標</h3>
+<ul>
+  <li>將 UI 架構與 UI 內部元件編輯分離。</li>
+  <li>讓使用者可以調整結構、配色、樣式及圖片資源。</li>
+  <li>支援 UI 事件、邏輯節點及資料綁定。</li>
+  <li>使用穩定 ID 管理節點、Slot、資源與資料參照。</li>
+  <li>提供 AI 生成、規格檢查、測試與版本追蹤的基礎。</li>
+</ul>
+</section>
+
+<section class="card" id="architecture">
+<h2>2. UI 架構與操作入口</h2>
+
+<h3>2.1 Architecture Canvas</h3>
+<p>主架構畫布只呈現 UI Layer 作為架構節點，不應將 Button、Label、Dropdown 等所有 UI 元件直接散佈在主架構畫布上。</p>
+
+<div class="diagram">Architecture Canvas
+└── UI Layer
+    ├── Open Editor
+    │   ├── UI Structure Editor
+    │   ├── Style & Theme Editor
+    │   ├── Asset / Resource Manager
+    │   ├── Event & Logic Editor
+    │   ├── Data Binding Editor
+    │   ├── Inspector
+    │   ├── Validation
+    │   └── Preview
+    └── Open Viewer
+        └── Preview / Runtime Interaction</div>
+
+<h3>2.2 UI Layer 屬性</h3>
+<table>
+<thead><tr><th>屬性</th><th>型別</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>uiLayerId</code></td><td>Stable ID</td><td>UI Layer 唯一識別碼。</td></tr>
+<tr><td><code>name</code></td><td>String</td><td>顯示名稱。</td></tr>
+<tr><td><code>rootNodeId</code></td><td>Node ID</td><td>UI 結構根節點。</td></tr>
+<tr><td><code>uiDefinitionRef</code></td><td>Reference</td><td>Canonical UI Definition 參照。</td></tr>
+<tr><td><code>themeRef</code></td><td>Theme ID</td><td>預設主題參照。</td></tr>
+<tr><td><code>assetRefs</code></td><td>Asset ID[]</td><td>此 UI 使用的資源。</td></tr>
+<tr><td><code>schemaVersion</code></td><td>Version</td><td>UI 定義版本。</td></tr>
+<tr><td><code>validationStatus</code></td><td>Enum</td><td>最近一次驗證狀態。</td></tr>
+</tbody>
+</table>
+
+<h3>2.3 操作入口</h3>
+<ul>
+  <li>選取 UI Layer → <strong>Open Editor</strong>：開啟該 UI Layer 的編輯環境。</li>
+  <li>選取 UI Layer → <strong>Open Viewer</strong>：開啟該 UI Layer 的預覽環境。</li>
+  <li>Window → UI Editor：開啟 Editor，再選擇既有 UI Layer 或建立新 UI Layer。</li>
+  <li>Window → UI Viewer：開啟 Viewer，再選擇要預覽的 UI 定義。</li>
+</ul>
+</section>
+
+<section class="card" id="editor">
+<h2>3. Editor 編輯環境</h2>
+<p>原本的 <code>Edit Logic (UX)</code> 統一更名為 <strong>Editor</strong>。因為此環境不只編輯邏輯，也負責 UI 結構、配色、樣式、圖檔資源、事件與資料綁定。</p>
+
+<h3>3.1 Editor 子模組</h3>
+<table>
+<thead><tr><th>子模組</th><th>主要責任</th><th>主要輸出</th></tr></thead>
+<tbody>
+<tr><td>UI Structure Editor</td><td>新增、刪除、複製、移動 UI 節點，編輯父子層級與 Slot。</td><td>UI Node Tree</td></tr>
+<tr><td>Style & Theme Editor</td><td>編輯顏色、字型、尺寸、間距、邊框、陰影、狀態樣式與主題。</td><td>Style / Theme Definition</td></tr>
+<tr><td>Asset / Resource Manager</td><td>匯入、預覽、分類、替換、重新連結及檢查圖片與其他資源。</td><td>Asset Registry</td></tr>
+<tr><td>Event & Logic Editor</td><td>建立觸發事件、條件、流程、命令呼叫及狀態更新。</td><td>Event / Logic Graph</td></tr>
+<tr><td>Data Binding Editor</td><td>連接資料來源與 UI 屬性，設定更新方向、轉換與驗證規則。</td><td>Binding Definitions</td></tr>
+<tr><td>Inspector</td><td>依選取的節點類型顯示專屬屬性。</td><td>Property Changes</td></tr>
+<tr><td>Validation</td><td>檢查結構、屬性、資源、事件、邏輯與資料綁定。</td><td>Validation Report</td></tr>
+<tr><td>Preview</td><td>即時查看尚未正式發布的設計結果。</td><td>Preview State</td></tr>
+</tbody>
+</table>
+
+<h3>3.2 Editor 工作區建議</h3>
+<div class="diagram">┌─────────────────────────────────────────────────────┐
+│ Menu / Toolbar / Save / Undo / Redo / Validation    │
+├──────────────┬──────────────────────┬───────────────┤
+│ Structure    │                      │ Inspector     │
+│ UI Node Tree │   Design Workspace   │ General       │
+│              │   Layout / Canvas    │ Style         │
+│ Components   │                      │ Assets        │
+│              │                      │ Events & Logic│
+├──────────────┴──────────────────────┴───────────────┤
+│ Asset Browser / Logic Graph / Binding / Validation  │
+└─────────────────────────────────────────────────────┘</div>
+
+<p>此工作區為建議配置，實際面板可支援停駐、浮動、隱藏與重新排列。面板佈局屬於 Editor 的工作區設定，不應混入 UI 元件的業務資料。</p>
+
+<h3>3.3 Editor 操作</h3>
+<table>
+<thead><tr><th>功能</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>New UI Definition</td><td>建立新的 UI 定義。</td></tr>
+<tr><td>Open UI Definition</td><td>開啟既有 UI 定義。</td></tr>
+<tr><td>Save / Save As</td><td>儲存或另存 UI 定義。</td></tr>
+<tr><td>Undo / Redo</td><td>還原或重做編輯操作。</td></tr>
+<tr><td>Add Component</td><td>新增 UI 元件。</td></tr>
+<tr><td>Duplicate / Delete</td><td>複製或刪除選取節點。</td></tr>
+<tr><td>Import Assets</td><td>匯入圖檔與其他受支援資源。</td></tr>
+<tr><td>Apply Theme</td><td>套用既有主題。</td></tr>
+<tr><td>Validate</td><td>執行 UI 定義驗證。</td></tr>
+<tr><td>Open Viewer</td><td>將目前定義送入 Viewer 預覽。</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" id="viewer">
+<h2>4. Viewer 預覽環境</h2>
+<p>Viewer 用來查看 UI 的實際呈現與互動結果。Viewer 不負責修改 UI 結構、樣式或資源定義。</p>
+
+<table>
+<thead><tr><th>功能</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td>Render UI</td><td>根據 UI Definition、Theme、Assets 與資料狀態呈現 UI。</td></tr>
+<tr><td>Interactive Preview</td><td>測試按鈕、選單、輸入欄位、切換及其他互動。</td></tr>
+<tr><td>Test Data</td><td>使用模擬資料測試 Data Binding。</td></tr>
+<tr><td>Event Inspection</td><td>在除錯模式下檢視事件是否觸發。</td></tr>
+<tr><td>Logic Trace</td><td>檢視邏輯流程與命令執行結果。</td></tr>
+<tr><td>Responsive Preview</td><td>測試不同視窗尺寸與支援的縮放模式。</td></tr>
+<tr><td>Runtime Diagnostics</td><td>顯示資源載入錯誤、綁定錯誤及執行期警告。</td></tr>
+</tbody>
+</table>
+
+<div class="callout">
+Editor 的 Preview 可以用於快速設計驗證；Viewer 則是獨立的預覽／互動入口。兩者可以共用同一個呈現引擎，但應明確區分編輯權限與執行狀態。
+</div>
+</section>
+
+<section class="card" id="hierarchy">
+<h2>5. UI 節點與 Slot</h2>
+
+<h3>5.1 Node Hierarchy</h3>
+<p>UI 元件以樹狀結構組織。允許包含子元件的節點，必須透過 Slot 定義可接受的子節點與容納限制。</p>
+
+<div class="diagram">Window
+└── ContentSlot
+    └── Panel
+        ├── HeaderSlot
+        │   └── Label
+        └── BodySlot
+            ├── Input
+            └── Button</div>
+
+<h3>5.2 Slot Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>slotId</code></td><td>Slot 穩定識別碼。</td></tr>
+<tr><td><code>ownerNodeId</code></td><td>擁有此 Slot 的父節點。</td></tr>
+<tr><td><code>name</code></td><td>Slot 名稱。</td></tr>
+<tr><td><code>allowedChildKinds</code></td><td>允許的子節點類型。</td></tr>
+<tr><td><code>minChildren</code></td><td>最少子節點數。</td></tr>
+<tr><td><code>maxChildren</code></td><td>最多子節點數；可為無上限。</td></tr>
+<tr><td><code>layoutMode</code></td><td>Slot 內的排列模式。</td></tr>
+<tr><td><code>constraints</code></td><td>其他結構與尺寸限制。</td></tr>
+</tbody>
+</table>
+
+<h3>5.3 子節點關係</h3>
+<ul>
+  <li>每個子節點以 <code>parentNodeId</code> 指向父節點。</li>
+  <li>每個子節點以 <code>parentSlotId</code> 指向所屬 Slot。</li>
+  <li>使用 <code>order</code> 記錄同一 Slot 內的排列順序。</li>
+  <li>不得形成父子循環或孤立的非法關係。</li>
+  <li>拖放前後均應檢查 Slot 相容性與 Cardinality。</li>
+</ul>
+</section>
+
+<section class="card" id="common">
+<h2>6. UI Node 共用屬性</h2>
+<table>
+<thead><tr><th>屬性</th><th>型別</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>nodeId</code></td><td>Stable ID</td><td>唯一識別碼；改名不得改變 ID。</td></tr>
+<tr><td><code>uiKind</code></td><td>Enum / Registry Key</td><td>決定元件種類及專屬 Schema。</td></tr>
+<tr><td><code>name</code></td><td>String</td><td>編輯器中的名稱。</td></tr>
+<tr><td><code>label</code></td><td>String / Localized Text</td><td>對使用者顯示的文字。</td></tr>
+<tr><td><code>parentNodeId</code></td><td>Node ID / null</td><td>父節點參照。</td></tr>
+<tr><td><code>parentSlotId</code></td><td>Slot ID / null</td><td>所屬 Slot 參照。</td></tr>
+<tr><td><code>order</code></td><td>Integer</td><td>同一 Slot 內的順序。</td></tr>
+<tr><td><code>properties</code></td><td>Object</td><td>元件專屬屬性。</td></tr>
+<tr><td><code>styleRef</code></td><td>Style ID / null</td><td>樣式定義參照。</td></tr>
+<tr><td><code>assetRefs</code></td><td>Asset ID[]</td><td>使用的資源參照。</td></tr>
+<tr><td><code>bindings</code></td><td>Binding ID[]</td><td>資料綁定參照。</td></tr>
+<tr><td><code>eventRefs</code></td><td>Event ID[]</td><td>事件定義參照。</td></tr>
+<tr><td><code>visible</code></td><td>Boolean</td><td>是否顯示。</td></tr>
+<tr><td><code>enabled</code></td><td>Boolean</td><td>是否可互動。</td></tr>
+<tr><td><code>locked</code></td><td>Boolean</td><td>是否禁止一般編輯操作。</td></tr>
+<tr><td><code>accessibility</code></td><td>Object</td><td>無障礙名稱、描述及角色。</td></tr>
+<tr><td><code>metadata</code></td><td>Object</td><td>擴充資訊。</td></tr>
+</tbody>
+</table>
+
+<h3>6.1 共用尺寸與排列屬性</h3>
+<table>
+<thead><tr><th>屬性</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>width / height</code></td><td>寬度與高度。</td></tr>
+<tr><td><code>minWidth / maxWidth</code></td><td>寬度限制。</td></tr>
+<tr><td><code>minHeight / maxHeight</code></td><td>高度限制。</td></tr>
+<tr><td><code>margin</code></td><td>元件外部間距。</td></tr>
+<tr><td><code>padding</code></td><td>元件內部間距。</td></tr>
+<tr><td><code>alignment</code></td><td>水平與垂直對齊。</td></tr>
+<tr><td><code>flexGrow / flexShrink</code></td><td>彈性配置行為。</td></tr>
+<tr><td><code>positionMode</code></td><td>Flow、Absolute、Anchored 等定位模式。</td></tr>
+<tr><td><code>zIndex</code></td><td>重疊順序。</td></tr>
+</tbody>
+</table>
+<p>以上欄位應由元件類型與佈局模式決定是否適用；不要求每個元件都顯示全部屬性。</p>
+</section>
+
+<section class="card" id="families">
+<h2>7. UI 元件分類與詳細子類別</h2>
+<p>元件種類應由 UI Kind Registry 管理。每個種類定義自己的屬性 Schema、允許的 Slot、事件、預設樣式及驗證規則。</p>
+
+<h3>7.1 Root / Window / Page</h3>
+<table>
+<thead><tr><th>元件</th><th>用途</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Window</td><td>頂層視窗。</td><td>title、windowMode、resizable、minSize、maxSize、modal、closePolicy。</td></tr>
+<tr><td>Page</td><td>頁面或主要 UI 畫面。</td><td>routeId、pageTitle、navigationPolicy、keepAlive。</td></tr>
+<tr><td>Dialog</td><td>對話框。</td><td>modal、dismissible、confirmPolicy、escapeToClose。</td></tr>
+<tr><td>Overlay</td><td>覆蓋層。</td><td>overlayMode、backdrop、dismissPolicy、zIndex。</td></tr>
+<tr><td>Component</td><td>可重用 UI 元件。</td><td>componentDefinitionRef、exposedProperties、exposedEvents。</td></tr>
+</tbody>
+</table>
+
+<h3>7.2 Layout / Container</h3>
+<table>
+<thead><tr><th>元件</th><th>用途</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Panel</td><td>一般內容容器。</td><td>border、padding、background、clipContent。</td></tr>
+<tr><td>Group</td><td>相關元件分組。</td><td>groupTitle、collapsible、collapsed。</td></tr>
+<tr><td>Layout</td><td>通用排列容器。</td><td>layoutMode、gap、alignment、distribution。</td></tr>
+<tr><td>Row</td><td>水平排列。</td><td>gap、wrap、verticalAlignment。</td></tr>
+<tr><td>Column</td><td>垂直排列。</td><td>gap、horizontalAlignment。</td></tr>
+<tr><td>Grid</td><td>網格排列。</td><td>columns、rows、columnGap、rowGap、cellSizing。</td></tr>
+<tr><td>ScrollView</td><td>可捲動區域。</td><td>scrollDirection、scrollbarPolicy、overscroll。</td></tr>
+<tr><td>Splitter</td><td>可調整分割區。</td><td>orientation、initialRatio、minPaneSize、resizable。</td></tr>
+<tr><td>Spacer</td><td>彈性空間。</td><td>flex、minSize、maxSize。</td></tr>
+<tr><td>Separator</td><td>分隔線。</td><td>orientation、thickness、style、color。</td></tr>
+</tbody>
+</table>
+
+<h3>7.3 Navigation</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>MenuBar</td><td>menus、overflowPolicy、activationMode。</td></tr>
+<tr><td>Menu</td><td>items、placement、dismissOnSelect。</td></tr>
+<tr><td>MenuItem</td><td>commandRef、shortcut、checked、disabledReason。</td></tr>
+<tr><td>Toolbar</td><td>orientation、itemSpacing、overflowPolicy。</td></tr>
+<tr><td>TabView</td><td>tabs、activeTabId、tabPosition、closableTabs。</td></tr>
+<tr><td>TabItem</td><td>tabId、title、iconAssetId、closeable。</td></tr>
+<tr><td>Breadcrumb</td><td>items、separator、maxVisibleItems。</td></tr>
+<tr><td>TreeView</td><td>dataSourceRef、selectionMode、expandPolicy、virtualization。</td></tr>
+<tr><td>TreeItem</td><td>itemId、label、iconAssetId、expanded、selectable。</td></tr>
+<tr><td>Pagination</td><td>pageSize、currentPage、totalCount、pageSizeOptions。</td></tr>
+</tbody>
+</table>
+
+<h3>7.4 Basic Components</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Label</td><td>text、fontRef、fontSize、fontWeight、color、textAlign、wrapping。</td></tr>
+<tr><td>Button</td><td>text、iconAssetId、variant、size、loading、disabled、commandRef。</td></tr>
+<tr><td>Icon</td><td>assetId、iconSize、tintColor、fitMode。</td></tr>
+<tr><td>Image</td><td>assetId、fitMode、aspectRatio、alignment、placeholderAssetId。</td></tr>
+<tr><td>Link</td><td>text、target、navigationRef、externalLinkPolicy。</td></tr>
+<tr><td>Badge</td><td>text、variant、color、size。</td></tr>
+<tr><td>Divider</td><td>orientation、thickness、color、style。</td></tr>
+</tbody>
+</table>
+
+<h3>7.5 Input / Form</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>TextInput</td><td>value、placeholder、maxLength、inputMode、readOnly、clearable。</td></tr>
+<tr><td>TextArea</td><td>value、rows、maxRows、maxLength、resizeMode。</td></tr>
+<tr><td>NumberInput</td><td>value、min、max、step、precision、unit。</td></tr>
+<tr><td>Checkbox</td><td>checked、indeterminate、label、triState。</td></tr>
+<tr><td>RadioGroup</td><td>options、value、orientation、selectionRequired。</td></tr>
+<tr><td>Dropdown / Select</td><td>options、value、placeholder、searchable、multiSelect。</td></tr>
+<tr><td>Slider</td><td>value、min、max、step、orientation、showValue。</td></tr>
+<tr><td>ColorPicker</td><td>colorValue、colorSpace、alphaEnabled、paletteRef。</td></tr>
+<tr><td>DatePicker</td><td>value、minDate、maxDate、format、calendarMode。</td></tr>
+<tr><td>Form</td><td>fieldRefs、validationMode、submitPolicy、resetPolicy。</td></tr>
+<tr><td>FormField</td><td>fieldName、label、required、helpText、errorText。</td></tr>
+<tr><td>FilePicker</td><td>acceptedTypes、multiple、maxFileSize、selectionMode。</td></tr>
+</tbody>
+</table>
+
+<h3>7.6 Data Display</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Table</td><td>columns、dataSourceRef、sorting、filtering、selectionMode。</td></tr>
+<tr><td>ListView</td><td>itemTemplateRef、dataSourceRef、selectionMode、virtualization。</td></tr>
+<tr><td>DataGrid</td><td>columns、rowKey、editingMode、sorting、filtering、pagination。</td></tr>
+<tr><td>PropertyGrid</td><td>schemaRef、selectedObjectRef、categoryGrouping、readOnly。</td></tr>
+<tr><td>TextView</td><td>content、format、wrapping、selectable。</td></tr>
+<tr><td>CodeView</td><td>language、contentRef、lineNumbers、readOnly、syntaxHighlighting。</td></tr>
+<tr><td>LogView</td><td>dataSourceRef、severityFilter、autoScroll、maxEntries。</td></tr>
+<tr><td>Chart</td><td>chartType、dataSourceRef、series、axes、legend、interactionMode。</td></tr>
+</tbody>
+</table>
+
+<h3>7.7 3D / Visualization</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Viewport3D</td><td>sceneRef、cameraRef、navigationMode、renderMode、gridVisible、gizmoVisible。</td></tr>
+<tr><td>SceneView</td><td>sceneRef、selectionPolicy、overlayRefs、updatePolicy。</td></tr>
+<tr><td>Gizmo</td><td>gizmoType、targetRef、axisVisibility、interactionMode。</td></tr>
+<tr><td>Timeline</td><td>startTime、endTime、currentTime、frameRate、tracksRef。</td></tr>
+<tr><td>GraphView</td><td>graphRef、nodeKinds、connectionPolicy、autoLayout。</td></tr>
+<tr><td>NodeCanvas</td><td>graphRef、zoomRange、gridMode、selectionMode、snapToGrid。</td></tr>
+<tr><td>PropertyInspector</td><td>targetRef、schemaRef、groupingMode、editPolicy。</td></tr>
+<tr><td>AssetBrowser</td><td>assetQuery、filterKinds、thumbnailMode、sortMode。</td></tr>
+</tbody>
+</table>
+
+<h3>7.8 Feedback / Progress</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>ProgressBar</td><td>value、min、max、indeterminate、showLabel。</td></tr>
+<tr><td>Spinner</td><td>active、size、label。</td></tr>
+<tr><td>Toast</td><td>message、severity、duration、dismissible。</td></tr>
+<tr><td>Alert</td><td>title、message、severity、actions、dismissible。</td></tr>
+<tr><td>Tooltip</td><td>content、placement、delay、triggerMode。</td></tr>
+<tr><td>StatusIndicator</td><td>status、label、iconAssetId、severityMapping。</td></tr>
+<tr><td>NotificationCenter</td><td>sourceRef、maxItems、grouping、retentionPolicy。</td></tr>
+</tbody>
+</table>
+
+<h3>7.9 Overlay / Floating UI</h3>
+<table>
+<thead><tr><th>元件</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>Popover</td><td>anchorNodeId、placement、dismissPolicy、triggerMode。</td></tr>
+<tr><td>ContextMenu</td><td>items、targetKinds、placement、dismissPolicy。</td></tr>
+<tr><td>Drawer</td><td>placement、modal、size、dismissible。</td></tr>
+<tr><td>FloatingPanel</td><td>anchorMode、position、draggable、resizable。</td></tr>
+<tr><td>TooltipOverlay</td><td>targetNodeId、content、placement、delay。</td></tr>
+<tr><td>ModalOverlay</td><td>backdrop、blocking、dismissPolicy、focusTrap。</td></tr>
+</tbody>
+</table>
+
+<h3>7.10 Interaction / Behavior</h3>
+<table>
+<thead><tr><th>元件／定義</th><th>專屬屬性</th></tr></thead>
+<tbody>
+<tr><td>ShortcutBinding</td><td>keySequence、modifiers、scope、commandRef。</td></tr>
+<tr><td>CommandBinding</td><td>commandRef、inputMapping、executionPolicy。</td></tr>
+<tr><td>DragHandle</td><td>dragMode、allowedTargets、constraints、payloadMapping。</td></tr>
+<tr><td>DropTarget</td><td>acceptedKinds、dropPolicy、validationRuleRef。</td></tr>
+<tr><td>SelectionModel</td><td>selectionMode、selectedRefs、selectionChangedEvent。</td></tr>
+<tr><td>StateController</td><td>stateSchemaRef、initialState、transitionRules。</td></tr>
+</tbody>
+</table>
+
+<h3>7.11 Specialized Containers</h3>
+<table>
+<thead><tr><th>元件</th><th>用途與屬性</th></tr></thead>
+<tbody>
+<tr><td>DockWorkspace</td><td>停駐面板管理；dockAreas、layoutState、allowedDockTargets。</td></tr>
+<tr><td>DocumentWorkspace</td><td>多文件工作區；documentRefs、activeDocumentId、tabPolicy。</td></tr>
+<tr><td>EditorWorkspace</td><td>編輯器工作區；panelLayoutRef、toolContext、workspaceProfile。</td></tr>
+<tr><td>AssetWorkspace</td><td>資源工作區；assetQuery、previewMode、importQueueRef。</td></tr>
+<tr><td>ViewportWorkspace</td><td>多視窗視覺化工作區；viewportRefs、activeViewportId、syncPolicy。</td></tr>
+<tr><td>DebugWorkspace</td><td>除錯工作區；logSourceRefs、traceRef、breakpointPolicy。</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card" id="style">
+<h2>8. Style & Theme Editor</h2>
+<p>UI 配色與外觀設計是 Editor 的正式功能，不應被限制在 Event & Logic Editor 內。</p>
+
+<h3>8.1 Style 屬性分類</h3>
+<table>
+<thead><tr><th>分類</th><th>屬性</th></tr></thead>
+<tbody>
+<tr><td>Color</td><td>foregroundColor、backgroundColor、borderColor、accentColor、opacity。</td></tr>
+<tr><td>Typography</td><td>fontFamily、fontSize、fontWeight、lineHeight、letterSpacing、textDecoration。</td></tr>
+<tr><td>Spacing</td><td>margin、padding、gap。</td></tr>
+<tr><td>Border</td><td>borderWidth、borderStyle、borderRadius。</td></tr>
+<tr><td>Shadow</td><td>shadowColor、shadowOffset、shadowBlur、shadowSpread。</td></tr>
+<tr><td>Appearance</td><td>visibility、opacity、cursor、overflow、blendMode（如支援）。</td></tr>
+<tr><td>State Style</td><td>normal、hover、pressed、focused、selected、disabled、error。</td></tr>
+<tr><td>Transition</td><td>transitionProperty、duration、easing、delay。</td></tr>
+</tbody>
+</table>
+
+<h3>8.2 Theme Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>themeId</code></td><td>主題穩定識別碼。</td></tr>
+<tr><td><code>name</code></td><td>主題名稱。</td></tr>
+<tr><td><code>colorTokens</code></td><td>語意化色彩，例如 primary、surface、text、danger。</td></tr>
+<tr><td><code>typographyTokens</code></td><td>標準字型、字級及文字樣式。</td></tr>
+<tr><td><code>spacingTokens</code></td><td>統一間距尺度。</td></tr>
+<tr><td><code>componentStyles</code></td><td>各元件種類的預設樣式。</td></tr>
+<tr><td><code>stateStyles</code></td><td>互動狀態樣式。</td></tr>
+<tr><td><code>themeVersion</code></td><td>主題版本。</td></tr>
+</tbody>
+</table>
+
+<h3>8.3 樣式優先順序</h3>
+<p>建議採用可預測的樣式合併規則：</p>
+<div class="diagram">Runtime Appearance
+  = Theme Defaults
+  + Component Kind Defaults
+  + Shared Style Reference
+  + Node-Level Overrides
+  + Runtime State Styles</div>
+<p>實際優先順序應固定並文件化。若使用者修改共用 Theme，系統應能識別受影響元件，並提示預覽與驗證。</p>
+</section>
+
+<section class="card" id="assets">
+<h2>9. Asset / Resource Manager</h2>
+<p>SVG、PNG、JPG/JPEG、WebP、GIF 等圖檔都統一透過 Asset / Resource Manager 匯入與管理。UI 節點不應直接依賴容易失效的暫存路徑。</p>
+
+<h3>9.1 支援的資源類型</h3>
+<table>
+<thead><tr><th>格式</th><th>常見用途</th><th>注意事項</th></tr></thead>
+<tbody>
+<tr><td>SVG</td><td>Icon、Logo、可縮放向量圖。</td><td>匯入時應限制 Script、外部資源引用與不受信任的內容。</td></tr>
+<tr><td>PNG</td><td>透明背景圖片、圖示、介面貼圖。</td><td>檢查尺寸、色彩資訊與透明通道。</td></tr>
+<tr><td>JPG / JPEG</td><td>照片、背景及不需透明通道的圖片。</td><td>有損壓縮；不保留透明通道。</td></tr>
+<tr><td>WebP</td><td>較小體積的點陣圖片，可依編碼支援透明或動畫。</td><td>依實際解碼器能力確認格式支援。</td></tr>
+<tr><td>GIF</td><td>簡單動畫或相容性需求。</td><td>動畫播放、色彩與透明處理取決於 Runtime 支援。</td></tr>
+<tr><td>Font</td><td>文字字型資源。</td><td>檢查授權、格式與字型載入政策。</td></tr>
+<tr><td>Other</td><td>未來可擴充的資源類型。</td><td>必須先由 Asset Type Registry 宣告處理方式。</td></tr>
+</tbody>
+</table>
+
+<h3>9.2 Asset Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>assetId</code></td><td>資源穩定識別碼。</td></tr>
+<tr><td><code>name</code></td><td>資源顯示名稱。</td></tr>
+<tr><td><code>assetType</code></td><td>Image、Vector、Font、Animation 等類型。</td></tr>
+<tr><td><code>format</code></td><td>SVG、PNG、JPEG、WebP、GIF 等格式。</td></tr>
+<tr><td><code>sourcePath</code></td><td>原始檔案位置；僅供來源追蹤。</td></tr>
+<tr><td><code>importedPath</code></td><td>匯入後由系統管理的資源位置或 URI。</td></tr>
+<tr><td><code>contentHash</code></td><td>內容雜湊，用於變更偵測及重複資源判斷。</td></tr>
+<tr><td><code>metadata</code></td><td>尺寸、色彩通道、動畫影格數、MIME type 等。</td></tr>
+<tr><td><code>usageRefs</code></td><td>引用此資源的 UI 節點與屬性。</td></tr>
+<tr><td><code>importStatus</code></td><td>Pending、Imported、Warning、Failed、Missing。</td></tr>
+<tr><td><code>licenseInfo</code></td><td>授權或來源備註（如適用）。</td></tr>
+</tbody>
+</table>
+
+<h3>9.3 Asset Manager 功能</h3>
+<ul>
+  <li>Import：匯入一個或多個資源。</li>
+  <li>Preview：顯示縮圖、尺寸、格式及相關中繼資料。</li>
+  <li>Replace：替換資源內容，並檢查引用相容性。</li>
+  <li>Relink：重新指定遺失的來源或資源位置。</li>
+  <li>Find Usage：查找哪些 UI 節點正在使用資源。</li>
+  <li>Duplicate Detection：依內容雜湊或規則識別重複資源。</li>
+  <li>Remove：移除未使用資源，或先提示受影響的引用。</li>
+  <li>Validate：檢查資源遺失、格式不支援及匯入失敗。</li>
+</ul>
+
+<h3>9.4 UI 節點與資源的關係</h3>
+<div class="diagram">UI Node
+  └── properties.iconAssetId
+         └── Asset Registry
+              ├── assetId
+              ├── assetType
+              ├── importedPath
+              ├── metadata
+              └── importStatus</div>
+
+<div class="callout">
+<strong>重要：</strong>UI 節點應儲存 <code>assetId</code>，而不是將原始檔案路徑當成唯一識別。當檔案搬移、重新匯入或替換時，系統才能維持引用穩定並追蹤受影響元件。
+</div>
+</section>
+
+<section class="card" id="events">
+<h2>10. Event System</h2>
+<p>事件定義應採用結構化資料，而非只將觸發條件寫成自由文字。事件觸發後可以連接 UI Logic、Command 或資料更新流程。</p>
+
+<h3>10.1 Trigger 類型</h3>
+<table>
+<thead><tr><th>分類</th><th>事件範例</th></tr></thead>
+<tbody>
+<tr><td>Pointer</td><td>Click、DoubleClick、MouseDown、MouseUp、MouseMove。</td></tr>
+<tr><td>Keyboard</td><td>KeyDown、KeyUp、ShortcutActivated。</td></tr>
+<tr><td>Input</td><td>ValueChanged、TextChanged、SelectionChanged、Submitted。</td></tr>
+<tr><td>Focus</td><td>FocusIn、FocusOut、Activated。</td></tr>
+<tr><td>Drag & Drop</td><td>DragStarted、DragMoved、DropEntered、DropAccepted、DropRejected。</td></tr>
+<tr><td>Lifecycle</td><td>Created、Mounted、Shown、Hidden、Disposed。</td></tr>
+<tr><td>Data</td><td>DataLoaded、DataUpdated、BindingFailed。</td></tr>
+<tr><td>Custom</td><td>使用者定義的具名事件。</td></tr>
+</tbody>
+</table>
+
+<h3>10.2 Trigger Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>eventId</code></td><td>事件定義 ID。</td></tr>
+<tr><td><code>sourceNodeId</code></td><td>事件來源 UI 節點。</td></tr>
+<tr><td><code>eventType</code></td><td>事件種類。</td></tr>
+<tr><td><code>modifiers</code></td><td>Ctrl、Shift、Alt、Meta 等修飾鍵。</td></tr>
+<tr><td><code>mouseButton</code></td><td>Left、Middle、Right 等滑鼠按鍵。</td></tr>
+<tr><td><code>scope</code></td><td>Local、Parent、Global 或指定範圍。</td></tr>
+<tr><td><code>phase</code></td><td>Capture、Target、Bubble（如事件模型支援）。</td></tr>
+<tr><td><code>conditionRef</code></td><td>可選的觸發條件。</td></tr>
+<tr><td><code>logicRef</code></td><td>觸發後執行的邏輯圖參照。</td></tr>
+</tbody>
+</table>
+
+<h3>10.3 複合觸發範例</h3>
+<p>例如 Ctrl + Shift + 滑鼠左鍵按下，應拆成可驗證的欄位，而不是只存成一段字串：</p>
+<div class="diagram">eventType: MouseDown
+modifiers: [Ctrl, Shift]
+mouseButton: Left
+scope: Local
+phase: Target</div>
+
+<h3>10.4 Event Output</h3>
+<p>依元件種類定義可用輸出，例如 <code>onTriggered</code>、<code>onClicked</code>、<code>onChanged</code>、<code>onSubmitted</code>、<code>onSelectionChanged</code>、<code>onDropAccepted</code>。系統應驗證事件與元件種類是否相容。</p>
+</section>
+
+<section class="card" id="logic">
+<h2>11. UI Logic</h2>
+<p>UI Logic 是 Editor 內的邏輯編輯模組。它負責描述事件觸發後的處理流程，不取代 UI Structure、Style 或 Asset 管理。</p>
+
+<h3>11.1 Logic Node 類型</h3>
+<table>
+<thead><tr><th>Logic Node</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>Start / Event Input</td><td>接收事件觸發。</td></tr>
+<tr><td>SetProperty</td><td>修改目標節點屬性。</td></tr>
+<tr><td>GetProperty</td><td>讀取節點或資料屬性。</td></tr>
+<tr><td>Condition</td><td>判斷布林條件。</td></tr>
+<tr><td>Branch</td><td>依條件選擇流程分支。</td></tr>
+<tr><td>Sequence</td><td>依定義順序執行多個步驟。</td></tr>
+<tr><td>Delay</td><td>延遲執行；須受 Runtime 執行政策限制。</td></tr>
+<tr><td>EmitEvent</td><td>發送自訂事件。</td></tr>
+<tr><td>CallCommand</td><td>呼叫已註冊的命令。</td></tr>
+<tr><td>MapData</td><td>轉換或映射資料。</td></tr>
+<tr><td>Validate</td><td>執行資料或狀態驗證。</td></tr>
+<tr><td>TryCatch</td><td>處理允許捕捉的執行錯誤。</td></tr>
+<tr><td>Return / End</td><td>結束流程並輸出結果。</td></tr>
+</tbody>
+</table>
+
+<h3>11.2 Logic Flow 範例</h3>
+<p>使用者點擊設定按鈕後顯示 Settings Window：</p>
+<div class="diagram">Button.onTriggered
+    ↓
+SetProperty
+    targetNodeId: SettingsWindow
+    property: visible
+    value: true</div>
+
+<h3>11.3 Logic Node 共用欄位</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>logicNodeId</code></td><td>邏輯節點 ID。</td></tr>
+<tr><td><code>logicKind</code></td><td>邏輯節點種類。</td></tr>
+<tr><td><code>inputPorts</code></td><td>輸入資料與執行介面。</td></tr>
+<tr><td><code>outputPorts</code></td><td>輸出資料與執行介面。</td></tr>
+<tr><td><code>config</code></td><td>此類型邏輯節點的專屬設定。</td></tr>
+<tr><td><code>executionPolicy</code></td><td>執行時機、重複執行與取消規則。</td></tr>
+<tr><td><code>errorPolicy</code></td><td>錯誤處理政策。</td></tr>
+</tbody>
+</table>
+
+<p>邏輯連線必須檢查資料型別、執行流程、循環及無效參照。涉及非同步作業時，需明確定義取消、錯誤與完成事件。</p>
+</section>
+
+<section class="card" id="binding">
+<h2>12. Data Binding</h2>
+<p>Data Binding 連接資料來源與 UI 元件屬性，讓 UI 可以讀取資料並依更新政策同步顯示。資料綁定與事件邏輯應分開建模，但可互相引用。</p>
+
+<h3>12.1 Binding Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>bindingId</code></td><td>綁定 ID。</td></tr>
+<tr><td><code>sourceRef</code></td><td>資料來源參照。</td></tr>
+<tr><td><code>sourcePath</code></td><td>資料來源欄位路徑。</td></tr>
+<tr><td><code>targetNodeId</code></td><td>目標 UI 節點。</td></tr>
+<tr><td><code>targetProperty</code></td><td>目標屬性，例如 value、text、visible。</td></tr>
+<tr><td><code>direction</code></td><td>OneWay、TwoWay、OneTime。</td></tr>
+<tr><td><code>valueType</code></td><td>預期資料型別。</td></tr>
+<tr><td><code>conversionRule</code></td><td>必要時進行型別轉換。</td></tr>
+<tr><td><code>updatePolicy</code></td><td>即時、事件觸發、手動或批次更新。</td></tr>
+<tr><td><code>fallbackValue</code></td><td>來源缺值時的預設值。</td></tr>
+<tr><td><code>validationPolicy</code></td><td>值域與格式驗證政策。</td></tr>
+<tr><td><code>errorPolicy</code></td><td>綁定失敗時的處理方式。</td></tr>
+</tbody>
+</table>
+
+<h3>12.2 綁定方向</h3>
+<ul>
+  <li><strong>OneWay：</strong>資料來源更新 UI。</li>
+  <li><strong>TwoWay：</strong>依定義同步 UI 與資料來源；須防止更新迴圈。</li>
+  <li><strong>OneTime：</strong>初始化或指定時機讀取一次。</li>
+</ul>
+
+<h3>12.3 驗證規則</h3>
+<ul>
+  <li>來源與目標參照必須存在。</li>
+  <li>來源型別必須能與目標屬性相容，或有明確轉換規則。</li>
+  <li>TwoWay 綁定必須確認目標屬性可寫入。</li>
+  <li>更新循環須有明確的防護機制。</li>
+  <li>缺值、錯誤與延遲更新行為必須可設定或採用明確預設。</li>
+</ul>
+</section>
+
+<section class="card" id="inspector">
+<h2>13. Inspector / Property Schema</h2>
+<p>Inspector 應依選取節點的 <code>uiKind</code> 動態載入專屬 Property Schema。不要為所有元件固定顯示相同欄位。</p>
+
+<h3>13.1 Inspector 頁籤</h3>
+<table>
+<thead><tr><th>頁籤</th><th>顯示內容</th></tr></thead>
+<tbody>
+<tr><td>General</td><td>名稱、類型、可見性、啟用狀態、無障礙屬性。</td></tr>
+<tr><td>Layout</td><td>尺寸、間距、對齊、定位及父 Slot 限制。</td></tr>
+<tr><td>Style</td><td>顏色、字型、邊框、陰影、狀態樣式與 Theme 參照。</td></tr>
+<tr><td>Assets</td><td>圖檔、Icon、Font 及其他資源參照。</td></tr>
+<tr><td>Events & Logic</td><td>事件來源、觸發條件、邏輯圖與命令參照。</td></tr>
+<tr><td>Data Binding</td><td>資料來源、目標屬性、方向、更新政策與錯誤處理。</td></tr>
+<tr><td>Accessibility</td><td>Accessible Name、Role、Description 及鍵盤操作資訊。</td></tr>
+<tr><td>Advanced</td><td>Metadata、擴充屬性、版本與診斷資訊。</td></tr>
+</tbody>
+</table>
+
+<h3>13.2 Property Schema 建議欄位</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>propertyKey</code></td><td>穩定屬性識別碼。</td></tr>
+<tr><td><code>displayName</code></td><td>Inspector 顯示名稱。</td></tr>
+<tr><td><code>valueType</code></td><td>String、Boolean、Number、Color、Enum、AssetRef 等。</td></tr>
+<tr><td><code>defaultValue</code></td><td>預設值。</td></tr>
+<tr><td><code>constraints</code></td><td>最小值、最大值、格式或允許值。</td></tr>
+<tr><td><code>visibleWhen</code></td><td>欄位顯示條件。</td></tr>
+<tr><td><code>enabledWhen</code></td><td>欄位可編輯條件。</td></tr>
+<tr><td><code>editorKind</code></td><td>適用的屬性編輯器。</td></tr>
+<tr><td><code>validationRules</code></td><td>欄位驗證規則。</td></tr>
+<tr><td><code>affects</code></td><td>此屬性可能影響的模組或產物。</td></tr>
+</tbody>
+</table>
+
+<h3>13.3 動態顯示範例</h3>
+<ul>
+  <li>選取 Button：顯示文字、Icon、Variant、Disabled、Click Event。</li>
+  <li>選取 Image：顯示 Asset、Fit Mode、Aspect Ratio、Fallback Asset。</li>
+  <li>選取 TextInput：顯示 Value、Placeholder、Max Length、Input Mode、Validation。</li>
+  <li>選取 Viewport3D：顯示 Scene、Camera、Navigation Mode、Render Mode。</li>
+</ul>
+</section>
+
+<section class="card" id="validation">
+<h2>14. Validation</h2>
+<p>Validation 應是可重複執行的規格檢查流程，而不是只顯示一個通過／失敗圖示。</p>
+
+<h3>14.1 驗證範圍</h3>
+<table>
+<thead><tr><th>檢查類別</th><th>檢查項目</th></tr></thead>
+<tbody>
+<tr><td>Identity</td><td>Node ID、Slot ID、Asset ID、Binding ID 是否唯一且有效。</td></tr>
+<tr><td>Hierarchy</td><td>根節點、父子關係、Slot 歸屬及循環。</td></tr>
+<tr><td>Slot</td><td>子節點類型、最小數量、最大數量與容器限制。</td></tr>
+<tr><td>Properties</td><td>必要屬性、型別、範圍與 Enum 值。</td></tr>
+<tr><td>Style</td><td>Theme 參照、樣式型別、缺失 Token 及不相容設定。</td></tr>
+<tr><td>Assets</td><td>資源是否存在、格式是否受支援、匯入狀態與引用是否有效。</td></tr>
+<tr><td>Events</td><td>事件種類、觸發欄位與來源元件是否相容。</td></tr>
+<tr><td>Logic</td><td>連線型別、必要輸入、無效參照、不可達流程及循環政策。</td></tr>
+<tr><td>Binding</td><td>來源、目標、資料型別、寫入權限與更新循環。</td></tr>
+<tr><td>Accessibility</td><td>必要標籤、角色與鍵盤操作支援。</td></tr>
+<tr><td>Version</td><td>規格變更後，相關測試與產物是否仍然有效。</td></tr>
+</tbody>
+</table>
+
+<h3>14.2 驗證狀態</h3>
+<table>
+<thead><tr><th>狀態</th><th>意義</th></tr></thead>
+<tbody>
+<tr><td>Valid</td><td>已通過目前所執行的檢查。</td></tr>
+<tr><td>Warning</td><td>存在非阻斷性問題或建議改善事項。</td></tr>
+<tr><td>Invalid</td><td>存在阻斷性錯誤，需修正後才能通過。</td></tr>
+<tr><td>Stale</td><td>依賴規格或來源已變更，舊驗證結果不再能代表目前版本。</td></tr>
+<tr><td>NotValidated</td><td>尚未執行驗證。</td></tr>
+</tbody>
+</table>
+
+<h3>14.3 變更與失效追蹤</h3>
+<p>UI 結構、Style、Asset、Event、Logic 或 Binding 改變時，系統應依依賴關係標記受影響的驗證結果、BDD / TDD、預覽快取與生成產物為 Stale。只有重新執行相應檢查後，才可更新驗證狀態。</p>
+
+<div class="callout">
+AI 不應在缺少必要規格或遇到互相矛盾的設定時自行猜測核心行為。應回報缺項、指出衝突，並在已定義的限制內提出修正方案。
+</div>
+</section>
+
+<section class="card" id="data-model">
+<h2>15. Canonical UI Data Model</h2>
+<p>Architecture Canvas、Editor、Viewer、Inspector、AI 與 Validation 應使用一致的 UI 定義及 ID 參照。各畫面可以有自己的視圖狀態，但不能各自維護互相矛盾的元件定義。</p>
+
+<h3>15.1 核心資料集合</h3>
+<div class="diagram">UI Definition
+├── UI Layer Reference
+├── Root Node ID
+├── UI Nodes[]
+│   ├── Properties
+│   ├── Slot Definitions[]
+│   ├── Style Reference
+│   ├── Asset References[]
+│   ├── Event References[]
+│   └── Binding References[]
+├── Component Definitions[]
+├── Theme Definitions[]
+├── Style Definitions[]
+├── Asset Registry[]
+├── Event Definitions[]
+├── Logic Graphs[]
+├── Data Bindings[]
+├── Validation Reports[]
+└── Version / Dependency Metadata</div>
+
+<h3>15.2 UI Definition Schema</h3>
+<table>
+<thead><tr><th>欄位</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td><code>uiDefinitionId</code></td><td>UI 定義唯一 ID。</td></tr>
+<tr><td><code>schemaVersion</code></td><td>資料結構版本。</td></tr>
+<tr><td><code>rootNodeId</code></td><td>UI 根節點。</td></tr>
+<tr><td><code>nodes</code></td><td>UI 節點集合。</td></tr>
+<tr><td><code>components</code></td><td>可重用元件定義。</td></tr>
+<tr><td><code>themes</code></td><td>主題集合。</td></tr>
+<tr><td><code>styles</code></td><td>樣式集合。</td></tr>
+<tr><td><code>assets</code></td><td>資源登錄表或其參照。</td></tr>
+<tr><td><code>events</code></td><td>事件定義。</td></tr>
+<tr><td><code>logicGraphs</code></td><td>邏輯圖定義。</td></tr>
+<tr><td><code>bindings</code></td><td>資料綁定定義。</td></tr>
+<tr><td><code>bddRefs / tddRefs</code></td><td>行為需求及測試案例參照。</td></tr>
+<tr><td><code>validationStatus</code></td><td>最近一次驗證結果。</td></tr>
+<tr><td><code>dependencyRefs</code></td><td>外部資料、命令或其他模組的依賴參照。</td></tr>
+</tbody>
+</table>
+
+<h3>15.3 關注點分離</h3>
+<ul>
+  <li>UI Definition：描述 UI 是什麼。</li>
+  <li>Architecture Assignment：描述 UI Layer 在架構中的歸屬與依賴。</li>
+  <li>Editor Workspace State：描述面板、選取狀態與工作區佈局。</li>
+  <li>Viewer Runtime State：描述預覽或執行時的暫態狀態。</li>
+  <li>Asset Registry：描述資源身分、匯入位置及使用關係。</li>
+  <li>Validation Report：描述指定版本、指定檢查範圍的驗證證據。</li>
+</ul>
+</section>
+
+<section class="card" id="workflow">
+<h2>16. 操作流程</h2>
+
+<h3>16.1 建立與編輯 UI</h3>
+<div class="diagram">Create / Select UI Layer
+        ↓
+Open Editor
+        ↓
+Create / Edit UI Structure
+        ↓
+Configure Slots & Properties
+        ↓
+Edit Style & Theme
+        ↓
+Import / Assign Assets
+        ↓
+Configure Events & Logic
+        ↓
+Configure Data Bindings
+        ↓
+Validate
+        ↓
+Preview in Viewer
+        ↓
+Save Version</div>
+
+<h3>16.2 修改既有資源</h3>
+<div class="diagram">Select Asset
+    ↓
+Inspect Metadata & Usage References
+    ↓
+Replace / Relink / Edit Import Settings
+    ↓
+Check Referencing UI Nodes
+    ↓
+Revalidate
+    ↓
+Refresh Preview</div>
+
+<h3>16.3 UI 修改後的依賴追蹤</h3>
+<p>當元件結構、樣式、事件、資源或資料綁定發生變更時，系統應透過依賴關係找出受影響項目，避免只更新畫面而遺漏規格與測試。</p>
+</section>
+
+<section class="card" id="roadmap">
+<h2>17. 實作優先順序</h2>
+<table>
+<thead><tr><th>階段</th><th>建議交付項目</th><th>完成條件</th></tr></thead>
+<tbody>
+<tr><td>P0 — 資料骨架</td><td>UI Definition、Node Schema、UI Kind Registry、Slot Schema、穩定 ID。</td><td>可建立、儲存與載入合法的 UI 樹。</td></tr>
+<tr><td>P1 — Structure Editor</td><td>元件新增、刪除、複製、拖放、Slot 驗證。</td><td>結構變更可持續保存且不產生非法層級。</td></tr>
+<tr><td>P2 — Style & Theme</td><td>配色、字型、尺寸、狀態樣式、Theme 參照。</td><td>樣式可重用，並能在預覽中正確呈現。</td></tr>
+<tr><td>P3 — Asset Manager</td><td>匯入、預覽、替換、Relink、Usage Reference。</td><td>資源以穩定 ID 引用，遺失資源可被檢出。</td></tr>
+<tr><td>P4 — Viewer</td><td>UI 呈現、互動預覽、模擬資料、執行期診斷。</td><td>可在隔離的預覽環境測試 UI。</td></tr>
+<tr><td>P5 — Event & Logic</td><td>事件定義、Logic Graph、型別與執行流程檢查。</td><td>互動流程可重現並能追蹤錯誤。</td></tr>
+<tr><td>P6 — Data Binding</td><td>來源與目標參照、更新政策、型別轉換、錯誤處理。</td><td>綁定錯誤與更新循環可被識別。</td></tr>
+<tr><td>P7 — Validation / Testing</td><td>完整驗證、BDD / TDD 關聯、Stale 追蹤。</td><td>驗證結果可追溯至明確版本與證據。</td></tr>
+<tr><td>P8 — AI Integration</td><td>依 Schema 生成 UI、資源指派建議、事件與綁定生成。</td><td>AI 輸出先經結構驗證，不直接宣告成功。</td></tr>
+</tbody>
+</table>
+
+<h3>最終設計原則</h3>
+<div class="callout">
+SGGenAxis UI System 應將 UI 結構、視覺樣式、資源、事件、邏輯、資料綁定與執行狀態分開建模，再透過穩定 ID 與明確依賴關係整合。Editor 提供統一編輯入口，Viewer 提供獨立預覽入口；兩者共用同一份 Canonical UI Definition，以支援可擴充的元件系統、AI 輔助生成與可驗證的開發流程。
+</div>
+</section>
+
+</main>
+</div>
+
+<footer>
+SGGenAxis · UI System Specification · Design Proposal
+</footer>
+</body>
+</html>

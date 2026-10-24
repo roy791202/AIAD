@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<sgenaxisArch format="sgenaxis.arch" formatVersion="1">
+  <meta formSize="1280x720" gridSize="8" product_pass="false" encoding="xml" />
+  <nodes>
+    <node id="n-api" name="API" kind="API" x="40" y="80" collapsed="false" role="Protocol Adapter" status="未驗證" layerRef="n-layer-api" moduleRef="n-layer-api-mod-a" order="0">
+      <description>Packed into Module Slot A</description>
+      <inputs>
+        <port id="n-api-in" name="request" label="request" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-api-out" name="response" label="response" direction="output" />
+      </outputs>
+    </node>
+    <node id="n-api-2" name="API B" kind="API" x="40" y="200" collapsed="false" role="Protocol Adapter" status="未驗證" layerRef="n-layer-api" moduleRef="n-layer-api-mod-b" order="0">
+      <inputs>
+        <port id="n-api-2-in" name="request" label="request" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-api-2-out" name="response" label="response" direction="output" />
+      </outputs>
+    </node>
+    <node id="n-contract" name="Contract draft" kind="Contract" x="40" y="320" collapsed="false" role="Schema" status="未驗證">
+      <description>Unassigned draft node (moduleRef null)</description>
+      <inputs>
+        <port id="n-contract-in" name="in" label="in" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-contract-out" name="out" label="out" direction="output" />
+      </outputs>
+    </node>
+    <node id="n-ui" name="UI Layer" kind="UI" x="40" y="440" collapsed="false" role="Presentation" status="未驗證" uiLayerId="n-ui" uiDefinitionRef="design/main.sgendesign" themeRef="" schemaVersion="1" validationStatus="unchecked">
+      <description>UI Layer entry (UI-bhv §2)</description>
+      <inputs>
+        <port id="n-ui-in" name="props" label="props" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-ui-out" name="events" label="events" direction="output" />
+      </outputs>
+    </node>
+    <node id="n-layer-api" name="Layer · API" kind="Layer" x="320" y="80" collapsed="false" role="Pack API" status="未驗證" packsKind="API">
+      <inputs>
+        <port id="n-layer-api-in" name="in" label="in" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-layer-api-out" name="out" label="out" direction="output" />
+      </outputs>
+      <modules>
+        <module slotId="n-layer-api-slot-a" name="Module Slot A" moduleId="n-layer-api-mod-a" order="0" collapsed="false">
+          <member id="n-api" />
+        </module>
+        <module slotId="n-layer-api-slot-b" name="Module Slot B" moduleId="n-layer-api-mod-b" order="1" collapsed="false">
+          <member id="n-api-2" />
+        </module>
+      </modules>
+    </node>
+    <node id="n-app" name="Application" kind="Application" x="640" y="160" collapsed="false" role="Use-case Orchestration" status="未驗證">
+      <inputs>
+        <port id="n-app-in" name="command" label="command" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-app-out" name="result" label="result" direction="output" />
+      </outputs>
+    </node>
+  </nodes>
+  <edges>
+    <edge id="e-layer-app" fromNode="n-layer-api" fromPort="n-layer-api-out" toNode="n-app" toPort="n-app-in" />
+  </edges>
+</sgenaxisArch>

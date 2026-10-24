@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGenAxis</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Titlebar chrome: menubar + toolbar (Workbench QMenuBar + QToolBar hierarchy) -->
+    <header class="titlebar" id="app-titlebar">
+      <div class="menubar desktop-menubar" role="menubar" aria-label="主選單">
+        <div class="menubar-left">
+          <div class="brand menubar-brand" title="SGenAxis">
+            <span class="brand-mark" aria-hidden="true"></span>
+            SGenAxis
+          </div>
+
+          <div class="menu-wrap" data-menu="檔案">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">檔案</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="file.new" role="menuitem"><span>新增專案</span><span class="shortcut">Ctrl+N</span></button>
+              <button type="button" class="menu-action" data-cmd="file.open" role="menuitem"><span>開啟專案目錄…</span><span class="shortcut">Ctrl+O</span></button>
+              <button type="button" class="menu-action" data-cmd="file.save" role="menuitem"><span>儲存設定</span><span class="shortcut">Ctrl+S</span></button>
+              <div class="menu-sep" role="separator"></div>
+              <button type="button" class="menu-action" data-cmd="scene.saveXml" role="menuitem"><span>儲存場景到專案 (.sgs)</span></button>
+              <button type="button" class="menu-action" data-cmd="scene.openXml" role="menuitem"><span>開啟專案場景 (.sgs)</span></button>
+              <button type="button" class="menu-action" data-cmd="scene.save" role="menuitem"><span>儲存場景套件到專案 (.sg＋.sgml＋.sgui)</span></button>
+              <button type="button" class="menu-action" data-cmd="scene.open" role="menuitem"><span>開啟專案場景套件</span></button>
+              <div class="menu-sep" role="separator"></div>
+              <button type="button" class="menu-action" data-cmd="file.quit" role="menuitem"><span>結束</span><span class="shortcut">Alt+F4</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="編輯">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">編輯</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="edit.undo" role="menuitem" title="尚未實作／NOT RUN"><span>復原（尚未實作／NOT RUN）</span><span class="shortcut">Ctrl+Z</span></button>
+              <button type="button" class="menu-action" data-cmd="edit.redo" role="menuitem" title="尚未實作／NOT RUN"><span>重做（尚未實作／NOT RUN）</span><span class="shortcut">Ctrl+Y</span></button>
+              <div class="menu-sep" role="separator"></div>
+              <button type="button" class="menu-action" data-cmd="edit.selectAll" role="menuitem" title="尚未實作／NOT RUN"><span>全選變更（尚未實作／NOT RUN）</span></button>
+              <button type="button" class="menu-action" data-cmd="edit.clear" role="menuitem" title="尚未實作／NOT RUN"><span>清除選取（尚未實作／NOT RUN）</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="專案">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">專案</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="project.switch" role="menuitem"><span>切換專案…</span></button>
+              <button type="button" class="menu-action" data-cmd="project.rescan" role="menuitem"><span>重新掃描儲存庫</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="模組">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">模組</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="nav.git" data-panel="git" role="menuitem"><span>Git 工作台</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.spec" data-panel="spec" role="menuitem"><span>ModuleSpec</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.report" data-panel="report" role="menuitem"><span>模組／系統報告</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.arch" data-panel="arch" role="menuitem"><span>模組架構圖</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.uidesign" data-panel="uidesign" role="menuitem"><span>UI 設計工具</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.listen" data-panel="listen" role="menuitem"><span>監聽投影</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.settings" data-panel="settings" role="menuitem"><span>設定</span></button>
+              <button type="button" class="menu-action" data-cmd="nav.ports" data-panel="ports" role="menuitem"><span>Ports 檢視</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="工項">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">工項</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="work.new" data-panel="board" role="menuitem"><span>新增工項</span></button>
+              <button type="button" class="menu-action" data-cmd="work.assign" data-panel="agent" role="menuitem"><span>指派 Agent</span></button>
+              <button type="button" class="menu-action" data-cmd="work.tags" role="menuitem"><span>批次 BDD／TDD 標籤</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="視窗">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">視窗</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="win.uiEditor" data-panel="uidesign" role="menuitem"><span>UI Editor</span></button>
+              <button type="button" class="menu-action" data-cmd="win.uiViewer" data-panel="uidesign" role="menuitem"><span>UI Viewer</span></button>
+              <div class="menu-sep" role="separator"></div>
+              <button type="button" class="menu-action" data-cmd="win.reset" role="menuitem"><span>重設佈局</span></button>
+              <button type="button" class="menu-action" data-cmd="win.inspector" role="menuitem"><span>顯隱 Inspector</span></button>
+            </div>
+          </div>
+
+          <div class="menu-wrap" data-menu="說明">
+            <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">說明</button>
+            <div class="menu-dropdown" role="menu">
+              <button type="button" class="menu-action" data-cmd="help.about" role="menuitem"><span>關於 SGenAxis</span></button>
+              <button type="button" class="menu-action" data-cmd="help.arch" role="menuitem"><span>架構說明</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Project context toolbar (Workbench desktop-toolbar / path-box row) -->
+      <div class="toolbar desktop-toolbar" aria-label="工具列">
+        <div class="toolbar-left">
+          <span class="toolbar-label label">專案：</span>
+          <span class="project-combo chip" id="project-bind-chip" title="專案綁定狀態">
+            <span class="dot warn" id="project-bind-dot" aria-hidden="true"></span>
+            <span id="project-bind-label">未綁定</span>
+          </span>
+          <span class="path-box" id="project-path-box" title="目前專案根（未綁定時可讀）">
+            <span class="path-folder" aria-hidden="true"></span>
+            <span class="path" id="project-path">（未綁定 project_root — 請開啟專案）</span>
+          </span>
+        </div>
+        <div class="toolbar-right">
+          <button type="button" class="tool-btn" data-cmd="project.switch">開啟專案…</button>
+          <button type="button" class="tool-btn primary" data-cmd="work.assign" data-panel="agent">Agent 派工</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="body" id="shell-body">
+      <!-- Sidebar — Workbench IA SSOT: Agent → Tasks Status → 佈版 → 架構 → UI設計；次要降級下部 -->
+      <nav class="sidebar" id="sidebar" aria-label="側欄" data-nav-main-path="1" data-nav-ssot="workbench">
+        <button type="button" class="nav-item nav-main" data-panel="agent" id="nav-agent" aria-selected="false" title="開啟 Agent 派工">
+          <span class="nav-ico" aria-hidden="true"></span>
+          <span>Agent 派工</span>
+          <span class="meta" id="nav-agent-meta">Idle</span>
+        </button>
+
+        <div class="side-section collapsible" id="sec-tasks-status" data-open="true">
+          <div class="side-section-header">
+            <button type="button" class="side-section-toggle" id="btn-tasks-toggle" aria-expanded="true" aria-controls="tasks-status-body" title="點擊收闔／展開 Tasks Status">
+              <span class="section-chevron" aria-hidden="true"></span>
+              <span>Tasks Status</span>
+            </button>
+            <button type="button" class="section-badge-action" id="btn-clear-status-filter" title="清除篩選（顯示全部工項）">全部 (<span id="nav-board-meta">0</span>)</button>
+          </div>
+          <div class="status-list" id="tasks-status-body" role="listbox" aria-label="工項燈號篩選（四態＋總覽／已驗收）">
+            <button type="button" class="status-item active" data-panel="board" data-filter="overview" role="option" aria-selected="true" title="總覽">
+              <span class="status-item-left">
+                <span class="overview-dots" aria-hidden="true"><i class="dot gray"></i><i class="dot yellow"></i><i class="dot red"></i><i class="dot green"></i><i class="dot accepted"></i></span>
+                <span class="status-label">總覽</span>
+              </span>
+              <span class="counter-badge badge-gray" data-count-for="overview">0</span>
+            </button>
+            <button type="button" class="status-item" data-panel="board" data-filter="gray" role="option" aria-selected="false" title="待辦" data-zone-filter="1">
+              <span class="status-item-left">
+                <span class="dot gray" aria-hidden="true"></span>
+                <span class="status-label">待辦</span>
+              </span>
+              <span class="counter-badge badge-gray" data-count-for="gray">0</span>
+            </button>
+            <button type="button" class="status-item" data-panel="board" data-filter="yellow" role="option" aria-selected="false" title="進行中" data-zone-filter="1">
+              <span class="status-item-left">
+                <span class="dot yellow" aria-hidden="true"></span>
+                <span class="status-label">進行中</span>
+              </span>
+              <span class="counter-badge badge-yellow" data-count-for="yellow">0</span>
+            </button>
+            <button type="button" class="status-item" data-panel="board" data-filter="red" role="option" aria-selected="false" title="Bug" data-zone-filter="1">
+              <span class="status-item-left">
+                <span class="dot red" aria-hidden="true"></span>
+                <span class="status-label">Bug</span>
+              </span>
+              <span class="counter-badge badge-red" data-count-for="red">0</span>
+            </button>
+            <button type="button" class="status-item" data-panel="board" data-filter="green" role="option" aria-selected="false" title="已完成" data-zone-filter="1">
+              <span class="status-item-left">
+                <span class="dot green" aria-hidden="true"></span>
+                <span class="status-label">已完成</span>
+              </span>
+              <span class="counter-badge badge-green" data-count-for="green">0</span>
+            </button>
+            <button type="button" class="status-item" data-panel="board" data-filter="accepted" role="option" aria-selected="false" title="已驗收">
+              <span class="status-item-left">
+                <span class="dot accepted" aria-hidden="true"></span>
+                <span class="status-label">已驗收</span>
+              </span>
+              <span class="counter-badge badge-accepted" data-count-for="accepted">0</span>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="nav-item nav-main" data-panel="deploy" id="nav-deploy" aria-selected="false" title="佈版／部署（能力・產物・狀態）">
+          <span class="nav-ico" aria-hidden="true"></span>
+          <span>佈版</span>
+          <span class="meta" id="nav-deploy-meta">—</span>
+        </button>
+        <button type="button" class="nav-item nav-main" data-panel="arch" id="nav-arch" aria-selected="false" title="模組架構圖排後面">
+          <span class="nav-ico" aria-hidden="true"></span>
+          <span>模組架構圖</span>
+          <span class="tag-chip">稍後</span>
+        </button>
+        <div class="side-section collapsible" id="sec-uidesign" data-open="true">
+          <div class="side-section-header">
+            <button type="button" class="side-section-toggle" id="btn-uidesign-toggle" aria-expanded="true" aria-controls="uidesign-side-body" title="點擊收闔／展開 UI 設計工具">
+              <span class="section-chevron" aria-hidden="true"></span>
+              <span>UI 設計工具</span>
+            </button>
+            <button type="button" class="section-badge-action" id="btn-uidesign-open" data-panel="uidesign" title="開啟 UI 設計工具主區">
+              <span id="nav-uidesign-meta">—</span>
+            </button>
+          </div>
+          <div class="uidesign-side-body" id="uidesign-side-body" aria-label="UI 設計工具">
+            <div class="status-list uidesign-mode-list" role="listbox" aria-label="Editor／Viewer">
+              <button type="button" class="status-item active" id="nav-uidesign-designer" data-panel="uidesign" data-uidesign-mode="designer" role="option" aria-selected="true" title="Editor（UI 結構／樣式／資源／事件）">
+                <span class="status-item-left">
+                  <span class="status-label">Editor</span>
+                </span>
+                <span class="tag-chip">編輯</span>
+              </button>
+              <button type="button" class="status-item" id="nav-uidesign-viewer" data-panel="uidesign" data-uidesign-mode="viewer" role="option" aria-selected="false" title="Viewer 預覽／互動">
+                <span class="status-item-left">
+                  <span class="status-label">Viewer</span>
+                </span>
+                <span class="tag-chip">預覽</span>
+              </button>
+            </div>
+            <div class="uidesign-widget-groups" id="sec-uidesign-widgets" data-open="true" aria-label="Widget Box">
+              <div class="uidesign-widgets-label">元件（Widget Box）</div>
+              <details class="uidesign-cat" open>
+                <summary>文件</summary>
+                <button type="button" class="designer-item" data-palette="Form">Form</button>
+                <button type="button" class="designer-item" data-palette="Group">Group</button>
+              </details>
+              <details class="uidesign-cat" open>
+                <summary>輸入</summary>
+                <button type="button" class="designer-item" data-palette="Button">Button</button>
+                <button type="button" class="designer-item" data-palette="LineEdit">LineEdit</button>
+                <button type="button" class="designer-item" data-palette="CheckBox">CheckBox</button>
+                <button type="button" class="designer-item" data-palette="ComboBox">ComboBox</button>
+                <button type="button" class="designer-item" data-palette="Slider">Slider</button>
+              </details>
+              <details class="uidesign-cat" open>
+                <summary>顯示</summary>
+                <button type="button" class="designer-item" data-palette="Label">Label</button>
+                <button type="button" class="designer-item" data-palette="ProgressBar">ProgressBar</button>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="side-secondary" data-nav-secondary="1" id="sec-nav-secondary">
+          <div class="side-section">次要</div>
+          <button type="button" class="nav-item nav-secondary" data-panel="git" id="nav-git" aria-selected="false">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>Git 工作台</span>
+          </button>
+          <button type="button" class="nav-item nav-secondary" data-panel="spec" id="nav-spec" aria-selected="false" title="ModuleSpec／契約唯讀（核准後不可原地改）">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>ModuleSpec</span>
+            <span class="meta" id="nav-spec-meta">—</span>
+          </button>
+          <button type="button" class="nav-item nav-secondary" data-panel="report" id="nav-report" aria-selected="false" title="模組／系統報告（pd_report 投影；不回寫規格）">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>報告</span>
+            <span class="meta" id="nav-report-meta">—</span>
+          </button>
+          <button type="button" class="nav-item nav-secondary" data-panel="settings" id="nav-settings" aria-selected="false">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>設定</span>
+          </button>
+          <button type="button" class="nav-item nav-secondary" data-panel="ports" id="nav-ports" aria-selected="false" title="Ports／adapter 註冊狀態投影">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>Ports 檢視</span>
+            <span class="meta" id="nav-ports-meta">—</span>
+          </button>
+          <button type="button" class="nav-item nav-secondary" data-panel="listen" id="nav-listen" aria-selected="false" title="FS／Git／Agent 監聽投影（Command only；降級次要）">
+            <span class="nav-ico" aria-hidden="true"></span>
+            <span>監聽</span>
+            <span class="meta" id="nav-listen-meta">—</span>
+          </button>
+        </div>
+      </nav>
+
+      <div
+        class="split-grip"
+        id="split-sidebar"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="調整側欄寬度"
+        aria-controls="sidebar"
+        tabindex="0"
+        title="拖曳調整側欄寬度"
+      ></div>
+
+      <!-- Main panels -->
+      <main class="main" id="main">
+        <section class="panel active" id="panel-board" data-panel="board" aria-label="工項看板">
+          <div class="panel-head">
+            <h1 id="board-section-title">工項看板 · 總覽</h1>
+            <button type="button" class="tool-btn" data-cmd="work.new" id="btn-board-add">+ 新增工項</button>
+          </div>
+          <p class="lede">本機 PROJECT-BOARD 工項燈號投影（PD-BOARD-LIVE-01）— 讀 <code>#board-snapshot</code>；不依賴 :8788／:28789；預設不寫回板。</p>
+          <div class="board-live-bar" id="board-live-bar">
+            <label class="field board-path-field">
+              <span>本機板路徑</span>
+              <input type="text" id="board-path-input" autocomplete="off" spellcheck="false"
+                placeholder="docs/PROJECT-BOARD.html" aria-label="本機看板檔路徑" />
+            </label>
+            <button type="button" class="tool-btn primary" id="btn-load-local-board" data-cmd="board.load">載入本機看板</button>
+            <span class="hint" id="board-live-status" role="status">尚未載入</span>
+          </div>
+          <div id="board-projection" class="board-projection" aria-live="polite" data-filter="overview">
+            <div class="empty board-empty-state" id="board-empty" data-empty="board">
+              <strong id="board-empty-title">尚無工項</strong>
+              <p id="board-empty-body">此燈號尚無工項，可隨時追加。載入本機看板（經 board Command）或新增工項；瀏覽器模式無 IPC；不崩潰。</p>
+              <div class="actions">
+                <button type="button" class="tool-btn primary" data-cmd="board.load" data-empty-action="load-board">載入本機看板</button>
+                <button type="button" class="tool-btn" data-cmd="work.new" data-empty-action="add-task">新增工項</button>
+                <button type="button" class="tool-btn" data-panel="agent" data-empty-action="goto-agent">前往 Agent 派工</button>
+              </div>
+            </div>
+            <div id="board-error" class="empty error-state" data-empty="board-error" hidden>
+              <strong>投影載入失敗</strong>
+              <p id="board-error-body">無法取得看板投影。可重試或切回其他主路徑。</p>
+              <div class="actions">
+                <button type="button" class="tool-btn primary" id="btn-board-retry" data-cmd="board.load" data-empty-action="retry-board">重試載入</button>
+                <button type="button" class="tool-btn" data-panel="git" data-empty-action="goto-git">Git 工作台</button>
+              </div>
+            </div>
+            <div id="board-counts" class="board-counts task-overview" hidden>
+              <span class="zone-chip" data-zone="gray"><b id="cnt-gray">0</b> 灰</span>
+              <span class="zone-chip" data-zone="blue"><b id="cnt-blue">0</b> 藍</span>
+              <span class="zone-chip" data-zone="yellow"><b id="cnt-yellow">0</b> 黃</span>
+              <span class="zone-chip" data-zone="red"><b id="cnt-red">0</b> 紅</span>
+              <span class="zone-chip" data-zone="green"><b id="cnt-green">0</b> 綠</span>
+            </div>
+            <!-- PD-SHELL-BOARD-01: dense table aligned with Workbench viewTaskBoard / #gitTable -->
+            <div class="table-viewport board-table-viewport" id="board-table-viewport" hidden>
+              <table class="board-table" id="board-table" aria-label="工項表">
+                <thead>
+                  <tr>
+                    <th class="col-lights">燈號</th>
+                    <th class="col-status">狀態</th>
+                    <th class="col-title">工項</th>
+                    <th class="col-files">修改的檔案</th>
+                    <th class="col-bdd">BDD</th>
+                    <th class="col-tdd">TDD</th>
+                    <th class="col-created">建立時間</th>
+                    <th class="col-completed">完成時間</th>
+                    <th class="col-note">備註</th>
+                  </tr>
+                </thead>
+                <tbody id="board-tasks" class="board-tasks"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-agent" data-panel="agent" aria-label="Agent 派工" hidden>
+          <h1>Agent 派工 · Run</h1>
+          <p class="lede">選 Cli｜Mcp＋設定 DryRun｜Live → invoke <code>start_run</code>（帶選中工項）→ DispatchHost → EXEC；Live 未核准／路徑無效可讀拒絕。取消／崩潰須對帳；UI 不直呼 CLI／MCP adapters。</p>
+          <div class="agent-dispatch" id="run-panel" data-run-state="idle">
+            <div class="run-toolbar" role="toolbar" aria-label="Run 工具列">
+              <fieldset class="provider-pick">
+                <legend>Provider</legend>
+                <label><input type="radio" name="provider" value="cli" checked /> Cli</label>
+                <label><input type="radio" name="provider" value="mcp" /> Mcp</label>
+              </fieldset>
+              <div class="actions run-actions">
+                <button type="button" class="tool-btn primary" id="btn-dry-run" data-cmd="work.assign">Agent 派工</button>
+                <button type="button" class="tool-btn" id="btn-cancel-run" data-cmd="agent.cancel" disabled>取消</button>
+              </div>
+              <span class="run-class-badge" id="run-class-badge" data-class="idle" title="結束分類 ok／cancelled／crashed／failed">分類：idle</span>
+            </div>
+            <div class="empty" id="agent-empty" data-empty="agent">
+              <strong>尚無進行中的 Run</strong>
+              <p>無真資料亦可點下方動作；串流／取消／結束分類經 Tauri commands。瀏覽器模式無 IPC（NOT RUN），不會崩潰。</p>
+              <div class="actions">
+                <button type="button" class="tool-btn primary" data-cmd="work.assign" data-empty-action="dry-run">Agent 派工</button>
+                <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+                <button type="button" class="tool-btn" data-panel="settings" data-empty-action="goto-settings">設定 Provider</button>
+              </div>
+            </div>
+            <div class="run-stream" id="run-stream" hidden>
+              <h2 class="run-subhead">Chunk 串流</h2>
+              <pre id="agent-log" class="agent-log" aria-label="Run 事件串流" aria-live="polite"></pre>
+            </div>
+            <p class="run-status-line" id="run-status-line" role="status"></p>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-deploy" data-panel="deploy" aria-label="佈版" hidden>
+          <h1>佈版／部署</h1>
+          <p class="lede">部署能力、產物與狀態投影。經 <code>deploy_status</code>／<code>deploy_check</code>／<code>list_artifacts</code>；UI 不直呼 OS。未接 Adapter 顯示未支援。（遠端農場／完整設計工具不做。）</p>
+
+          <div class="deploy-toolbar" role="toolbar" aria-label="佈版工具列">
+            <button type="button" class="tool-btn primary" id="deploy-check" data-cmd="deploy.check">檢查部署設定</button>
+            <button type="button" class="tool-btn" id="deploy-refresh" data-cmd="deploy.refresh">重新整理</button>
+            <span class="deploy-support-badge" id="deploy-support-badge" title="Adapter／平台支援狀態">狀態：—</span>
+          </div>
+
+          <div class="deploy-layout" id="deploy-layout" hidden>
+            <div class="deploy-pane" aria-label="部署能力">
+              <h2 class="deploy-subhead">能力 <span class="meta" id="deploy-cap-count">0</span></h2>
+              <ul class="deploy-cap-list" id="deploy-capabilities" hidden></ul>
+              <div class="empty deploy-pane-empty" id="deploy-cap-empty" data-empty="deploy-cap">
+                <strong>尚無能力資料</strong>
+                <p>Adapter 就緒後由此列出可查詢／可檢查能力。</p>
+              </div>
+            </div>
+            <div class="deploy-pane" aria-label="部署產物">
+              <h2 class="deploy-subhead">產物 <span class="meta" id="deploy-art-count">0</span></h2>
+              <ul class="deploy-art-list" id="deploy-artifacts" hidden></ul>
+              <div class="empty deploy-pane-empty" id="deploy-art-empty" data-empty="deploy-art">
+                <strong>尚無已驗證產物</strong>
+                <p>經 <code>list_artifacts</code> 投影；無產物時保持空態。</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty" id="deploy-empty" data-empty="deploy" data-deploy-state="unsupported">
+            <strong id="deploy-empty-title">部署適配器未支援</strong>
+            <p id="deploy-empty-body">未接 Adapter 或 command 未就緒。檢查按鈕走 Tauri command，不直呼 OS。</p>
+            <div class="actions">
+              <button type="button" class="tool-btn primary" data-cmd="deploy.check" data-empty-action="check-deploy">檢查部署設定</button>
+              <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+            </div>
+          </div>
+
+          <p class="deploy-status-line" id="deploy-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-arch" data-panel="arch" aria-label="架構圖" hidden>
+          <div class="arch-toolbar" role="toolbar" aria-label="架構圖工具列">
+            <button type="button" class="tool-btn primary" id="arch-refresh" data-cmd="arch.refresh">重新整理投影</button>
+            <button type="button" class="tool-btn" id="arch-edit" aria-pressed="false" title="允許框選／拖曳移動／連線／新增">編輯草稿</button>
+            <button type="button" class="tool-btn" id="arch-save-xml" title="匯出架構圖 XML（default.sgml）">儲存 XML</button>
+            <button type="button" class="tool-btn" id="arch-load-xml" title="開啟架構圖 XML">開啟 XML</button>
+            <input type="file" id="arch-xml-file" accept=".xml,.sgml,.sgenarch.xml,application/xml,text/xml" hidden />
+            <button type="button" class="tool-btn tool-btn-icon" id="arch-fit" title="適合視窗（全部）">
+              <img src="icons/arch/frame_all.svg" alt="" width="16" height="16" />
+            </button>
+            <button type="button" class="tool-btn tool-btn-icon" id="arch-zoom-in" title="放大">
+              <img src="icons/arch/zoom_in.svg" alt="" width="16" height="16" />
+            </button>
+            <button type="button" class="tool-btn tool-btn-icon" id="arch-zoom-out" title="縮小">
+              <img src="icons/arch/zoom_out.svg" alt="" width="16" height="16" />
+            </button>
+            <button type="button" class="tool-btn tool-btn-icon" id="arch-focus-selected" title="聚焦選取節點" disabled>
+              <img src="icons/arch/frame_selected.svg" alt="" width="16" height="16" />
+            </button>
+            <button type="button" class="tool-btn" id="arch-arrange-auto" title="依選取範圍自動橫／縱排列（需≥2）" disabled>自動排列</button>
+            <button type="button" class="tool-btn" id="arch-arrange-h" title="選取節點橫向排列" disabled>橫排</button>
+            <button type="button" class="tool-btn" id="arch-arrange-v" title="選取節點縱向排列" disabled>縱排</button>
+            <label class="uidesign-grid-label" for="archFormSize" title="最小底板；Grid 可隨內容無限延伸">
+              底板
+              <select id="archFormSize" aria-label="架構畫板最小底板（Grid 無限延伸）">
+                <option value="800x600">800×600</option>
+                <option value="800x800">800×800</option>
+                <option value="1280x720" selected>1280×720</option>
+                <option value="1920x1080">1920×1080</option>
+                <option value="2560x1440">2560×1440</option>
+              </select>
+            </label>
+            <label class="uidesign-grid-label" for="archGridSize" title="Grid 格距">
+              Grid
+              <select id="archGridSize" aria-label="架構 Grid 格距">
+                <option value="0">關</option>
+                <option value="8" selected>8px</option>
+                <option value="16">16px</option>
+                <option value="24">24px</option>
+              </select>
+            </label>
+            <button type="button" class="tool-btn" id="arch-delete-node" disabled title="刪除選取節點（Delete）">刪除</button>
+            <div class="arch-add-wrap" id="arch-add-wrap">
+              <button type="button" class="tool-btn primary" id="arch-add-node" aria-haspopup="dialog" aria-expanded="false" aria-controls="arch-kind-picker" title="開啟節點類別面板（圖示 11 種）">＋節點</button>
+              <!-- 隱藏欄位：與圖示面板同步（測試／狀態） -->
+              <select id="archAddKind" hidden aria-hidden="true" tabindex="-1">
+                <option value="API">API</option>
+                <option value="Contract">Contract</option>
+                <option value="UI" selected>UI</option>
+                <option value="Command">Command</option>
+                <option value="Query">Query</option>
+                <option value="Application">Application</option>
+                <option value="Domain">Domain</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="ACL">ACL</option>
+                <option value="Custom">Custom</option>
+                <option value="Layer">Layer</option>
+              </select>
+              <select id="archLayerPacksKind" hidden aria-hidden="true" tabindex="-1">
+                <option value="API" selected>API</option>
+                <option value="Contract">Contract</option>
+                <option value="UI">UI</option>
+                <option value="Command">Command</option>
+                <option value="Query">Query</option>
+                <option value="Application">Application</option>
+                <option value="Domain">Domain</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="ACL">ACL</option>
+                <option value="Custom">Custom</option>
+              </select>
+              <div class="arch-kind-picker" id="arch-kind-picker" role="dialog" aria-label="選擇節點類別" hidden>
+                <div class="arch-kind-picker-head">
+                  <strong id="arch-kind-picker-title">選擇節點類別</strong>
+                  <button type="button" class="tool-btn" id="arch-kind-picker-close" title="關閉">✕</button>
+                </div>
+                <div class="arch-kind-grid" id="arch-kind-grid" role="listbox" aria-label="11 種節點"></div>
+                <div class="arch-kind-packs" id="arch-kind-packs" hidden>
+                  <p class="hint">Layer · 選擇 packs 屬性後新增</p>
+                  <div class="arch-kind-grid arch-kind-grid--packs" id="arch-packs-grid" role="listbox" aria-label="Layer packs"></div>
+                  <button type="button" class="tool-btn" id="arch-kind-packs-back">← 返回類別</button>
+                </div>
+              </div>
+            </div>
+            <span class="arch-live-badge" id="arch-live-badge" title="僅 Command 投影可標 live">來源：—</span>
+            <span class="arch-xml-path" title="架構圖 SSOT＝XML（預設 default.sgml）">XML：<code id="arch-xml-path">default.sgml</code></span>
+          </div>
+          <div class="arch-kind-filter" id="arch-kind-filter" role="toolbar" aria-label="依類別篩選節點">
+            <button type="button" class="arch-filter-chip is-active" data-arch-filter="all" title="顯示全部">全部</button>
+            <!-- chips filled by JS（11 種圖示） -->
+          </div>
+          <div class="arch-workspace" id="arch-workspace">
+            <aside class="arch-unassigned" id="arch-unassigned" aria-label="未分配 Nodes">
+              <header class="arch-unassigned-head">
+                <strong>未分配 Nodes</strong>
+                <span class="hint" id="arch-unassigned-count">0</span>
+              </header>
+              <p class="hint arch-unassigned-hint">草稿可無 Module；拖入 Module Slot 設定 moduleRef（不刪節點）</p>
+              <div class="arch-unassigned-list" id="arch-unassigned-list" role="list"></div>
+            </aside>
+            <div class="arch-canvas-shell" id="arch-canvas-shell">
+              <div class="designer-board arch-board" id="archBoard" data-grid="8">
+                <div class="designer-ruler-corner" aria-hidden="true"></div>
+                <div class="designer-ruler designer-ruler-h" id="archRulerH" aria-label="水平量尺"></div>
+                <div class="designer-ruler designer-ruler-v" id="archRulerV" aria-label="垂直量尺"></div>
+                <div class="designer-artboard arch-artboard" id="archArtboard">
+                  <div class="arch-stage-wrap" id="archStageWrap">
+                    <div class="arch-stage" id="archStage" data-w="1280" data-h="720">
+                      <div class="arch-guides" id="archGuides" aria-hidden="true"></div>
+                      <svg class="arch-edges-svg" id="archEdgesSvg" aria-hidden="true"></svg>
+                      <div class="arch-nodes" id="archNodes"></div>
+                      <div class="arch-marquee" id="archMarquee" hidden aria-hidden="true"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="panel-uidesign" data-panel="uidesign" aria-label="UI 設計工具" hidden>
+          <div class="uidesign-modes" role="tablist" aria-label="Editor／Viewer">
+            <button type="button" class="uidesign-mode is-active" id="uidesign-mode-designer" data-uidesign-mode="designer" role="tab" aria-selected="true">Editor</button>
+            <button type="button" class="uidesign-mode" id="uidesign-mode-viewer" data-uidesign-mode="viewer" role="tab" aria-selected="false">Viewer</button>
+          </div>
+
+          <div class="uidesign-toolbar" role="toolbar" aria-label="UI 設計工具工具列">
+            <button type="button" class="tool-btn primary" id="uidesign-save" data-cmd="uidesign.save" title="儲存 design/main.sgendesign">儲存 .sgendesign</button>
+            <button type="button" class="tool-btn" id="uidesign-load" data-cmd="uidesign.load" title="開啟 .sgendesign">開啟 .sgendesign</button>
+            <button type="button" class="tool-btn" id="uidesign-build" data-cmd="uidesign.build" title="Build 可互動溝通預覽">Build 預覽</button>
+            <button type="button" class="tool-btn" id="uidesign-ask" data-cmd="uidesign.ask" title="Ask Agent → BDD／工項草稿">Ask Agent</button>
+            <button type="button" class="tool-btn" id="uidesign-delete" data-cmd="uidesign.delete" title="刪除選取 (Delete)">刪除</button>
+            <button type="button" class="tool-btn" id="uidesign-dup" data-cmd="uidesign.dup" title="複製 (Ctrl+D)">複製</button>
+            <button type="button" class="tool-btn" id="uidesign-raise" data-cmd="uidesign.raise" title="上移層級">↑層</button>
+            <button type="button" class="tool-btn" id="uidesign-lower" data-cmd="uidesign.lower" title="下移層級">↓層</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.left" title="對齊左">左</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.hmid" title="水平置中">中</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.right" title="對齊右">右</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.top" title="對齊上">上</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.vmid" title="垂直置中">豎中</button>
+            <button type="button" class="tool-btn" data-cmd="uidesign.align.bottom" title="對齊下">下</button>
+            <select id="desLayoutMode" aria-label="簡易 layout" title="Form layout">
+              <option value="none">layout:none</option>
+              <option value="hbox">layout:hbox</option>
+              <option value="vbox">layout:vbox</option>
+              <option value="grid">layout:grid</option>
+            </select>
+            <label class="uidesign-grid-label" for="desFormSize" title="Form 文件大小；外圍 Grid 無限延伸">
+              Form
+              <select id="desFormSize" aria-label="Form 文件大小（外圍 Grid 無限延伸）">
+                <option value="800x600" selected>800×600</option>
+                <option value="800x800">800×800</option>
+                <option value="1024x768">1024×768</option>
+                <option value="1280x720">1280×720</option>
+                <option value="1366x768">1366×768</option>
+                <option value="1440x900">1440×900</option>
+                <option value="1600x900">1600×900</option>
+                <option value="1920x1080">1920×1080</option>
+                <option value="2560x1440">2560×1440</option>
+                <option value="custom">自訂（Inspector W×H）</option>
+              </select>
+            </label>
+            <label class="uidesign-grid-label" for="desGridSize" title="畫布 Grid 格距（吸附）">
+              Grid
+              <select id="desGridSize" aria-label="Grid 格距">
+                <option value="0">關</option>
+                <option value="4">4px</option>
+                <option value="8" selected>8px</option>
+                <option value="10">10px</option>
+                <option value="16">16px</option>
+                <option value="20">20px</option>
+                <option value="25">25px</option>
+                <option value="32">32px</option>
+              </select>
+            </label>
+            <span class="uidesign-status-badge" id="uidesign-status-badge" title="設計狀態（非驗收 PASS）">狀態：—</span>
+          </div>
+
+          <p class="uidesign-path-line" id="uidesign-path-line">設計檔：<code id="uidesign-path">design/main.sgendesign</code></p>
+
+          <div id="uidesign-designer" class="designer-shell designer-shell--stage" data-uidesign-pane="designer">
+            <div class="designer-stage" aria-label="Form 畫布">
+              <div class="designer-stage-bar" id="designer-stage-bar">
+                <span id="designStateLabel">目前設計：Untitled Form</span>
+              </div>
+              <div class="designer-canvas" id="designCanvas">
+                <div class="designer-board" id="designBoard" data-grid="8">
+                  <div class="designer-ruler-corner" aria-hidden="true"></div>
+                  <div class="designer-ruler designer-ruler-h" id="designRulerH" aria-label="水平量尺"></div>
+                  <div class="designer-ruler designer-ruler-v" id="designRulerV" aria-label="垂直量尺"></div>
+                  <div class="designer-artboard" id="designArtboard">
+                    <div class="form-frame is-selected" id="designForm" data-node-id="node-form-root">
+                      <div class="form-grid" id="designGrid" aria-hidden="true"></div>
+                      <div class="design-guides" id="designGuides" aria-hidden="true"></div>
+                      <span class="form-tag" id="designFormTag">Form</span>
+                      <div class="design-nodes" id="designNodes"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="uidesign-status-line" id="uidesign-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-listen" data-panel="listen" aria-label="監聽投影" hidden>
+          <h1>監聽投影</h1>
+          <p class="lede">FS／Git／Agent 經 <code>listen_get_projection</code>（Command／EventBridge）；無事件→空態。禁 UI 自建 notify。</p>
+
+          <div class="listen-toolbar" role="toolbar" aria-label="監聽工具列">
+            <button type="button" class="tool-btn primary" id="listen-refresh" data-cmd="listen.refresh">重新整理投影</button>
+            <span class="listen-status-badge" id="listen-status-badge" title="empty｜ok">狀態：—</span>
+          </div>
+
+          <div class="listen-layout" id="listen-layout" hidden>
+            <dl class="listen-grid" id="listen-grid" aria-label="監聽欄位">
+              <div><dt>FS path</dt><dd id="listen-fs-path">—</dd></div>
+              <div><dt>FS burst</dt><dd id="listen-fs-burst">—</dd></div>
+              <div><dt>Git root</dt><dd id="listen-git-root">—</dd></div>
+              <div><dt>Git burst</dt><dd id="listen-git-burst">—</dd></div>
+              <div><dt>Agent run</dt><dd id="listen-agent-run">—</dd></div>
+              <div><dt>Agent kind</dt><dd id="listen-agent-kind">—</dd></div>
+              <div><dt>Classification</dt><dd id="listen-agent-class">—</dd></div>
+              <div><dt>Pending reconcile</dt><dd id="listen-reconcile">—</dd></div>
+              <div><dt>Host FS watch</dt><dd id="listen-host-fs">—</dd></div>
+              <div><dt>Host Git watch</dt><dd id="listen-host-git">—</dd></div>
+              <div><dt>Agent bridge</dt><dd id="listen-host-agent">—</dd></div>
+              <div><dt>Generation</dt><dd id="listen-generation">—</dd></div>
+            </dl>
+            <p class="listen-note" id="listen-note" hidden></p>
+          </div>
+
+          <div class="empty" id="listen-empty" data-empty="listen">
+            <strong>尚無監聽事件</strong>
+            <p>無 DomainEvent 時為空態。Agent 經 poll_chunks→橋接；宿主 FS／Git watch 未接時標 NOT RUN。不在瀏覽器自建 notify。</p>
+            <div class="actions">
+              <button type="button" class="tool-btn primary" data-cmd="listen.refresh" data-empty-action="refresh-listen">重新整理投影</button>
+              <button type="button" class="tool-btn" data-panel="agent" data-empty-action="goto-agent">Agent 派工</button>
+              <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+            </div>
+          </div>
+          <p class="listen-status-line" id="listen-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-spec" data-panel="spec" aria-label="ModuleSpec" hidden>
+          <h1>ModuleSpec／契約</h1>
+          <p class="lede">唯讀規格投影。核准版不可原地改（回 REPLAN）；修訂走下方另入口。經 <code>spec_*</code> Tauri commands；UI 不直改權威資料。</p>
+
+          <div class="spec-toolbar" role="toolbar" aria-label="Spec 工具列">
+            <button type="button" class="tool-btn primary" id="spec-load" data-cmd="spec.load">載入範例 Spec</button>
+            <button type="button" class="tool-btn" id="spec-refresh" data-cmd="spec.refresh">重新整理投影</button>
+            <button type="button" class="tool-btn" id="spec-approve" data-cmd="spec.approve" disabled>核准選取修訂</button>
+            <span class="spec-lock-badge" id="spec-lock-badge" title="核准後不可原地改">鎖：—</span>
+          </div>
+
+          <div class="spec-layout" id="spec-layout" hidden>
+            <div class="spec-pane" aria-label="修訂列表">
+              <h2 class="spec-subhead">修訂 <span class="meta" id="spec-rev-count">0</span></h2>
+              <ul class="spec-rev-list" id="spec-revisions" hidden></ul>
+              <div class="empty spec-pane-empty" id="spec-rev-empty" data-empty="spec-rev">
+                <strong>尚無修訂</strong>
+                <p>載入範例 ModuleSpec 後顯示修訂列。</p>
+              </div>
+            </div>
+            <div class="spec-pane" aria-label="契約唯讀">
+              <h2 class="spec-subhead" id="spec-detail-title">契約</h2>
+              <div id="spec-module-meta" class="spec-module-meta" hidden></div>
+              <ul class="spec-contract-list" id="spec-contracts" hidden></ul>
+              <div class="empty spec-pane-empty" id="spec-contract-empty" data-empty="spec-contract">
+                <strong>未選修訂</strong>
+                <p>選取左側修訂以檢視契約（核准版唯讀）。</p>
+              </div>
+              <div class="spec-mutate-bar" id="spec-mutate-bar" hidden>
+                <label class="field">
+                  <span>嘗試原地改契約正文（核准應拒）</span>
+                  <input type="text" id="spec-try-body" autocomplete="off" spellcheck="false" placeholder="新正文…" aria-label="嘗試原地改契約正文" />
+                </label>
+                <button type="button" class="tool-btn" id="spec-try-edit" data-cmd="spec.tryEdit">嘗試原地改</button>
+              </div>
+              <fieldset class="spec-revise-box" id="spec-revise-box" hidden>
+                <legend>修訂另入口（revise）</legend>
+                <p class="hint">不改核准版；從基線產新 Draft 版本。</p>
+                <label class="field">
+                  <span>新修訂 id</span>
+                  <input type="text" id="spec-revise-id" value="rev-v2" autocomplete="off" aria-label="新修訂 id" />
+                </label>
+                <label class="field">
+                  <span>版本標籤</span>
+                  <input type="text" id="spec-revise-label" value="v2" autocomplete="off" aria-label="版本標籤" />
+                </label>
+                <label class="field">
+                  <span>新契約正文（選填；空白＝複製基線）</span>
+                  <input type="text" id="spec-revise-body" autocomplete="off" placeholder="留空則複製基線契約" aria-label="新契約正文" />
+                </label>
+                <button type="button" class="tool-btn primary" id="spec-revise" data-cmd="spec.revise">建立新修訂</button>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="empty" id="spec-empty" data-empty="spec">
+            <strong>尚未載入 Spec</strong>
+            <p>點「載入範例 Spec」經 <code>spec_load_fixture</code> 投影。瀏覽器模式無 IPC 時不崩潰。</p>
+            <div class="actions">
+              <button type="button" class="tool-btn primary" data-cmd="spec.load" data-empty-action="load-spec">載入範例 Spec</button>
+              <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+            </div>
+          </div>
+
+          <p class="spec-status-line" id="spec-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-report" data-panel="report" aria-label="模組／系統報告" hidden>
+          <h1>模組／系統報告</h1>
+          <p class="lede">經 <code>project_pd_report</code> 呼叫 <code>tools/pd_report</code> 產生唯讀 HTML／MD 投影。空 evid → <strong>NOT RUN</strong>；不回寫 SPEC／EVID。</p>
+
+          <div class="report-toolbar" role="toolbar" aria-label="報告工具列">
+            <button type="button" class="tool-btn primary" id="report-open-empty" data-cmd="report.openEmpty" title="fixture=not_run">開啟空證據報告</button>
+            <button type="button" class="tool-btn" id="report-open-happy" data-cmd="report.openHappy" title="fixture=happy">開啟有證據報告</button>
+            <span class="report-status-badge" id="report-status-badge" title="evidence_status">狀態：—</span>
+          </div>
+
+          <div class="report-layout" id="report-layout" hidden>
+            <div class="report-meta" id="report-meta" aria-label="報告來源">
+              <p><span class="label">evidence_status</span> <code id="report-evid-status">—</code></p>
+              <p><span class="label">write_back</span> <code id="report-write-back">false</code></p>
+              <p><span class="label">fingerprint</span> <code id="report-fingerprint">—</code></p>
+              <p><span class="label">html</span> <code id="report-html-path">—</code></p>
+              <p><span class="label">md</span> <code id="report-md-path">—</code></p>
+            </div>
+            <div class="report-preview-pane" aria-label="報告預覽">
+              <h2 class="report-subhead">Markdown 投影</h2>
+              <pre class="report-preview" id="report-md-body" tabindex="0">（尚未投影）</pre>
+            </div>
+          </div>
+
+          <div class="empty" id="report-empty" data-empty="report" data-report-state="idle">
+            <strong id="report-empty-title">尚未開啟報告投影</strong>
+            <p id="report-empty-body">點「開啟空證據報告」驗證空 evid → NOT RUN；或「開啟有證據報告」。瀏覽器模式無 IPC 時顯示 NOT RUN 空態，不崩潰、不回寫規格。</p>
+            <div class="actions">
+              <button type="button" class="tool-btn primary" data-cmd="report.openEmpty" data-empty-action="open-report-empty">開啟空證據報告</button>
+              <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+            </div>
+          </div>
+
+          <p class="report-status-line" id="report-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-git" data-panel="git" aria-label="Git 工作台" hidden>
+          <h1>Git 工作台</h1>
+          <p class="lede">工作樹摘要、選取 diff、分支。Commit／Push 需明確核准（GitWriteApproval）；UI 不直呼 git CLI；不做 force push。</p>
+
+          <div class="git-toolbar" role="toolbar" aria-label="Git 工具列">
+            <label class="git-repo-field">
+              <span>儲存庫</span>
+              <input type="text" id="git-repo" autocomplete="off" spellcheck="false" placeholder="空白＝行程 current_dir" aria-label="Git 儲存庫路徑" />
+            </label>
+            <button type="button" class="tool-btn" id="git-refresh" data-cmd="git.refresh">重新整理</button>
+            <span class="git-branch" id="git-branch" title="目前分支">分支：—</span>
+            <span class="git-write-gate" id="git-write-gate" title="PD-GIT-02／WRITE-UI">寫入：關閉</span>
+            <button type="button" class="tool-btn" id="git-commit" disabled title="需明確核准才可 commit（git_write_commit）" aria-disabled="true">Commit</button>
+            <button type="button" class="tool-btn" id="git-push" disabled title="需明確核准才可 push（git_write_push）；無 force" aria-disabled="true">Push</button>
+          </div>
+
+          <div class="git-approve" id="git-approve" hidden role="dialog" aria-modal="true" aria-labelledby="git-approve-title">
+            <h2 class="git-subhead" id="git-approve-title">審核寫入</h2>
+            <p class="git-approve-lede" id="git-approve-lede">需明確核准才會呼叫 GitWritePort。</p>
+            <label class="field git-approve-field" id="git-approve-msg-wrap">
+              <span>Commit message</span>
+              <input type="text" id="git-approve-message" autocomplete="off" spellcheck="true" placeholder="簡短說明" aria-label="Commit message" />
+            </label>
+            <label class="field git-approve-field" id="git-approve-remote-wrap" hidden>
+              <span>Remote</span>
+              <input type="text" id="git-approve-remote" autocomplete="off" spellcheck="false" value="origin" aria-label="Push remote" />
+            </label>
+            <label class="field git-approve-field" id="git-approve-refspec-wrap" hidden>
+              <span>Refspec（選填；禁止 +force）</span>
+              <input type="text" id="git-approve-refspec" autocomplete="off" spellcheck="false" placeholder="例如 main" aria-label="Push refspec" />
+            </label>
+            <div class="git-approve-actions">
+              <button type="button" class="tool-btn primary" id="git-approve-confirm">核准並執行</button>
+              <button type="button" class="tool-btn" id="git-approve-cancel">拒絕</button>
+            </div>
+          </div>
+
+          <div class="git-layout">
+            <div class="git-files" aria-label="工作樹變更">
+              <h2 class="git-subhead">變更 <span class="meta" id="git-entry-count">0</span></h2>
+              <ul class="git-entry-list" id="git-entries" hidden></ul>
+              <div class="empty git-empty" id="git-empty" data-empty="git">
+                <strong>無變更資料</strong>
+                <p>開啟 Tauri 後按「重新整理」；經 <code>git_workbench_summary</code>／GitPort 投影，不經頁面呼叫 git。</p>
+              </div>
+            </div>
+            <div class="git-diff-pane" aria-label="選取 diff">
+              <h2 class="git-subhead" id="git-diff-title">Diff（全部）</h2>
+              <pre class="diff-view" id="git-diff-body" tabindex="0">（尚未載入）</pre>
+            </div>
+          </div>
+          <p class="git-status-line" id="git-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-ports" data-panel="ports" aria-label="Ports 檢視" hidden>
+          <h1>Ports 檢視</h1>
+          <p class="lede">已註冊 Port／adapter 狀態投影。經 <code>ports_status</code> Command；UI <strong>不</strong>直列 OS。無資料→空態可讀。</p>
+
+          <div class="ports-toolbar" role="toolbar" aria-label="Ports 工具列">
+            <button type="button" class="tool-btn primary" id="ports-refresh" data-cmd="ports.refresh">重新整理</button>
+            <span class="ports-status-badge" id="ports-status-badge" title="投影狀態">狀態：—</span>
+          </div>
+
+          <div class="ports-layout" id="ports-layout" hidden>
+            <h2 class="ports-subhead">註冊 <span class="meta" id="ports-entry-count">0</span></h2>
+            <ul class="ports-list" id="ports-entries" hidden></ul>
+          </div>
+
+          <div class="empty" id="ports-empty" data-empty="ports" data-ports-state="empty">
+            <strong id="ports-empty-title">尚無註冊 Port</strong>
+            <p id="ports-empty-body">空態可接受。開啟 Tauri 後按「重新整理」經 <code>ports_status</code> 投影；瀏覽器模式無 IPC 時保持空態，不崩潰、不列 OS。</p>
+            <div class="actions">
+              <button type="button" class="tool-btn primary" data-cmd="ports.refresh" data-empty-action="refresh-ports">重新整理</button>
+              <button type="button" class="tool-btn" data-panel="board" data-empty-action="goto-board">回到工項看板</button>
+            </div>
+          </div>
+
+          <p class="ports-status-line" id="ports-status-line" role="status"></p>
+        </section>
+
+        <section class="panel" id="panel-settings" data-panel="settings" aria-label="設定" hidden>
+          <h1>設定</h1>
+          <p class="lede">CLI 路徑／MCP 端點／執行模式（DryRun｜Live）。無效路徑不可存為作用中；秘密不進投影。經 <code>host_get_settings</code>／<code>host_set_agent_settings</code> 持久化。</p>
+
+          <div class="settings-mode-bar" id="settings-mode-bar" aria-live="polite">
+            <span class="settings-mode-label">目前模式</span>
+            <span class="settings-mode-badge" id="settings-mode-badge" data-mode="dry-run">DryRun</span>
+            <span class="meta" id="settings-active-meta">agent_active=false</span>
+          </div>
+
+          <div class="settings-grid" id="settings-form">
+            <fieldset class="settings-block" data-partition="mode">
+              <legend>執行模式（DryRun｜Live）</legend>
+              <div class="settings-mode-radios" role="radiogroup" aria-label="Agent 執行模式">
+                <label class="mode-choice">
+                  <input type="radio" name="settings-run-mode" id="mode-dry-run" value="dry-run" checked />
+                  <span>DryRun</span>
+                  <span class="mode-hint">模擬事件；不真起程／不真連 MCP</span>
+                </label>
+                <label class="mode-choice">
+                  <input type="radio" name="settings-run-mode" id="mode-live" value="live" />
+                  <span>Live</span>
+                  <span class="mode-hint">存為作用中後才核准真啟動（路徑／端點須有效）</span>
+                </label>
+              </div>
+              <label class="field">
+                <span>專案根 project_root（本機目錄；非 /demo/root）</span>
+                <input type="text" id="settings-project-root" autocomplete="off" spellcheck="false" placeholder="（未綁定 — 由開啟專案寫入）" aria-label="專案根路徑" />
+              </label>
+              <label class="field">
+                <span>看板路徑 board_path（本機檔；相對路徑依 project_root；非 URL）</span>
+                <input type="text" id="settings-board-path" autocomplete="off" placeholder="docs/PROJECT-BOARD.html" />
+              </label>
+            </fieldset>
+
+            <fieldset class="settings-block" data-partition="cli">
+              <legend>CLI（Provider A）</legend>
+              <label class="field">
+                <span>作用中工具</span>
+                <select id="cli-selected" aria-label="作用中 CLI 工具">
+                  <option value="claude">Claude</option>
+                  <option value="cursor-agent">cursor-agent</option>
+                  <option value="codex">Codex</option>
+                  <option value="antigravity">Antigravity</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Claude 路徑</span>
+                <input type="text" id="cli-claude-path" autocomplete="off" placeholder="例如 C:\tools\claude.exe" />
+              </label>
+              <label class="field">
+                <span>cursor-agent 路徑</span>
+                <input type="text" id="cli-cursor-path" autocomplete="off" placeholder="cursor-agent 可執行檔" />
+              </label>
+              <label class="field">
+                <span>Codex 路徑</span>
+                <input type="text" id="cli-codex-path" autocomplete="off" placeholder="codex 可執行檔" />
+              </label>
+              <label class="field">
+                <span>Antigravity 路徑</span>
+                <input type="text" id="cli-antigravity-path" autocomplete="off" placeholder="antigravity 可執行檔" />
+              </label>
+            </fieldset>
+
+            <fieldset class="settings-block" data-partition="mcp">
+              <legend>MCP（Provider B · 地端）</legend>
+              <label class="field">
+                <span>傳輸</span>
+                <select id="mcp-transport" aria-label="MCP 傳輸">
+                  <option value="stdio">stdio</option>
+                  <option value="local-http-sse">local HTTP／SSE</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>伺服器名稱</span>
+                <input type="text" id="mcp-server" autocomplete="off" placeholder="local-agent" />
+              </label>
+              <label class="field">
+                <span>端點</span>
+                <input type="text" id="mcp-endpoint" autocomplete="off" placeholder="stdio://… 或 http://127.0.0.1:&lt;port&gt;/sse" />
+              </label>
+              <label class="field">
+                <span>核准工具表（逗號分隔）</span>
+                <input type="text" id="mcp-allowlist" autocomplete="off" placeholder="list_tools, read" />
+              </label>
+              <label class="field">
+                <span>Secret（僅本機；不進投影）</span>
+                <input type="password" id="mcp-secret" autocomplete="off" placeholder="可選 token" />
+              </label>
+              <p class="hint" id="mcp-secret-hint">投影只顯示 has_secret，不回傳 token 值。勿使用 :8788／:8787。</p>
+            </fieldset>
+          </div>
+
+          <div class="actions settings-actions">
+            <button type="button" class="tool-btn primary" id="settings-activate" data-cmd="settings.activate">存為作用中（Live）</button>
+            <button type="button" class="tool-btn" id="settings-draft" data-cmd="settings.draft">僅存草稿（DryRun）</button>
+            <button type="button" class="tool-btn" id="settings-revoke" data-cmd="settings.revoke">切回 DryRun</button>
+            <button type="button" class="tool-btn" id="settings-project" data-cmd="settings.project">檢視投影</button>
+          </div>
+          <p class="hint" id="settings-status" role="status">開啟面板時載入 host settings；無效路徑／:8788／:8787 不可存為作用中。</p>
+        </section>
+      </main>
+
+      <div
+        class="split-grip"
+        id="split-inspector"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="調整 Inspector 寬度"
+        aria-controls="inspector"
+        tabindex="0"
+        title="拖曳調整 Inspector 寬度"
+      ></div>
+
+      <!-- Inspector（工項證據＋UI 設計節點屬性共用） -->
+      <aside class="inspector" id="inspector" aria-label="Inspector">
+        <h2>Inspector</h2>
+        <div class="card" id="inspector-selection">
+          <b id="inspector-sel-title">未選取</b>
+          <span id="inspector-sel-body">選中工項或模組後，詳情與下一步會顯示於此。</span>
+        </div>
+        <div class="card" id="inspector-arch" hidden>
+          <b>架構節點</b>
+          <div class="arch-insp-tabs" role="tablist" aria-label="Inspector 頁籤">
+            <button type="button" class="is-active" data-arch-tab="basic" role="tab" aria-selected="true">Basic</button>
+            <button type="button" data-arch-tab="io" role="tab" aria-selected="false">I/O</button>
+            <button type="button" data-arch-tab="assign" role="tab" aria-selected="false">Assign</button>
+            <button type="button" data-arch-tab="layout" role="tab" aria-selected="false">Layout</button>
+          </div>
+          <div class="arch-insp-panel is-active" data-arch-panel="basic">
+            <label class="designer-row">Name<input id="archNodeName" type="text"></label>
+            <label class="designer-row"><span id="archNodeTypeLabel"></span>
+              <input id="archNodeType" type="text" readonly aria-label="節點類別（Layer 才顯示 Node Type）" title="一般節點只顯示類別名；Node Type 僅 Layer。要換請＋節點">
+            </label>
+            <label class="designer-row" id="archLayerPacksRow" hidden>packs :
+              <select id="archNodePacksKind" aria-label="Layer packs 屬性（空 Layer 可改）" title="Layer 的 Node Type／packs；有成員後鎖定">
+                <option value="API">API</option>
+                <option value="Contract">Contract</option>
+                <option value="UI">UI</option>
+                <option value="Command">Command</option>
+                <option value="Query">Query</option>
+                <option value="Application">Application</option>
+                <option value="Domain">Domain</option>
+                <option value="Infrastructure">Infrastructure</option>
+                <option value="ACL">ACL</option>
+                <option value="Custom">Custom</option>
+              </select>
+            </label>
+            <label class="designer-row">Id<input id="archNodeId" type="text" readonly></label>
+            <label class="designer-row">Description<textarea id="archNodeDesc" rows="2" placeholder="節點責任與使用情境"></textarea></label>
+            <div id="archUiLayerPanel" class="arch-ui-layer-panel" hidden>
+              <b>UI Layer</b>
+              <p class="hint">架構畫布只放 UI Layer；元件編輯請開 Editor／Viewer（UI-bhv §2）。</p>
+              <label class="designer-row">uiLayerId<input id="archUiLayerId" type="text" readonly title="= nodeId"></label>
+              <label class="designer-row">uiDefinitionRef<input id="archUiDefinitionRef" type="text" placeholder="design/main.sgendesign" title="Canonical UI Definition 相對路徑"></label>
+              <label class="designer-row">themeRef<input id="archUiThemeRef" type="text" placeholder="（選用）"></label>
+              <div class="arch-ui-layer-actions">
+                <button type="button" class="tool-btn primary" id="arch-open-ui-editor" title="Open Editor">Open Editor</button>
+                <button type="button" class="tool-btn" id="arch-open-ui-viewer" title="Open Viewer">Open Viewer</button>
+              </div>
+            </div>
+            <p class="hint" id="archNodeHint">左 input／右 output。類別建立後不可改；Node Type 僅 Layer。</p>
+          </div>
+          <div class="arch-insp-panel" data-arch-panel="io" hidden>
+            <div class="arch-port-lists">
+              <div><b>Inputs</b><ul id="archInList"></ul></div>
+              <div><b>Outputs</b><ul id="archOutList"></ul></div>
+            </div>
+          </div>
+          <div class="arch-insp-panel" data-arch-panel="assign" hidden>
+            <label class="designer-row">layerRef<input id="archNodeLayerRef" type="text" readonly title="Architecture Assignment"></label>
+            <label class="designer-row">moduleRef<input id="archNodeModuleRef" type="text" readonly title="Module ID；未分配為空"></label>
+            <div id="archLayerMembers" class="arch-layer-members-panel" hidden></div>
+          </div>
+          <div class="arch-insp-panel" data-arch-panel="layout" hidden>
+            <label class="designer-row arch-check"><input id="archNodeCollapsed" type="checkbox"> 收合（類別名＋可展開；僅 UI Layout）</label>
+            <label class="designer-row">order<input id="archNodeOrder" type="number" step="1" title="Module 內水平順序"></label>
+            <p class="hint">座標／順序屬 UI Layout；不代表執行順序。</p>
+          </div>
+          <button type="button" class="tool-btn" id="arch-inspector-delete" title="刪除選取節點">刪除節點</button>
+        </div>
+        <div class="card" id="inspector-design" hidden>
+          <b>設計節點</b>
+          <div class="designer-prop-tabs" role="tablist">
+            <button type="button" class="is-active" data-design-tab="props">Properties</button>
+            <button type="button" data-design-tab="behavior">Behavior</button>
+            <button type="button" data-design-tab="testing">Testing</button>
+          </div>
+          <div class="designer-prop-panel is-active" id="designTabProps" data-tab-panel="props">
+            <label class="designer-row">Name<input id="desName" type="text" value="Form"></label>
+            <label class="designer-row">Type<input id="desType" type="text" value="Form" readonly></label>
+            <label class="designer-row">Id<input id="desId" type="text" value="node-form-root" readonly></label>
+            <div class="designer-split">
+              <label class="designer-row">X<input id="desX" type="number" value="0"></label>
+              <label class="designer-row">Y<input id="desY" type="number" value="0"></label>
+            </div>
+            <div class="designer-split">
+              <label class="designer-row">W<input id="desW" type="number" value="800"></label>
+              <label class="designer-row">H<input id="desH" type="number" value="600"></label>
+            </div>
+            <label class="designer-row">zIndex<input id="desZ" type="number" value="0"></label>
+          </div>
+          <div class="designer-prop-panel" id="designTabBehavior" data-tab-panel="behavior" hidden>
+            <label class="designer-row">Behavior hints<textarea id="desBehavior" rows="4" placeholder="hover, click…"></textarea></label>
+          </div>
+          <div class="designer-prop-panel" id="designTabTesting" data-tab-panel="testing" hidden>
+            <label class="designer-row">BDD hint<textarea id="desBdd" rows="3" placeholder="Given… When… Then…"></textarea></label>
+            <label class="designer-row">TDD hint<textarea id="desTdd" rows="3" placeholder="單元／契約測註記"></textarea></label>
+          </div>
+          <div class="designer-ask-box">
+            <label class="designer-row">Ask note<textarea id="desAskNote" rows="2" placeholder="向 Agent 描述需求…"></textarea></label>
+            <pre class="designer-ask-out" id="desAskOut" hidden></pre>
+          </div>
+        </div>
+        <div class="card" id="inspector-evidence" aria-live="polite">
+          <b>證據摘要</b>
+          <div id="evid-overall" class="evid-overall">—</div>
+          <ul id="evid-lines" class="evid-lines" hidden></ul>
+          <p id="evid-meta" class="evid-meta">選取工項後顯示 NOT RUN／未測／PASS；Provider Success ≠ 產品綠燈。</p>
+        </div>
+        <div class="card">
+          <b>IPC</b>
+          <span id="ipc-status">偵測中…</span>
+        </div>
+        <div class="card">
+          <b>PD-CMD-01 · PD-EVID-UI-01 · PD-SPEC-UI-01</b>
+          Vanilla → Tauri command → Core／EXEC／EVID／SPEC 唯讀投影。
+        </div>
+      </aside>
+    </div>
+
+    <footer class="statusbar window-statusbar" aria-label="狀態列">
+      <span class="statusbar-item seg" title="專案綁定">
+        <span class="statusbar-dot lamp" id="status-lamp" aria-hidden="true"></span>
+        <span id="status-project">專案：未綁定</span>
+        <span id="status-scene-dirty" hidden>場景：未存檔</span>
+      </span>
+      <span class="statusbar-item seg statusbar-agent" id="status-agent" title="Agent 狀態">Agent：離線</span>
+      <span class="statusbar-item msg" id="status-msg" role="status">就緒 — 瀏覽器／Tauri 殼導覽模式</span>
+    </footer>
+  </div>
+
+  <div id="toast-root" aria-live="polite" aria-relevant="additions"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
