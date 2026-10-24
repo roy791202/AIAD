@@ -31,6 +31,11 @@ def test_arch_xml_codec_and_ui():
     assert 'archAttr("uiLayerId"' in js
     assert 'archAttr("uiDefinitionRef"' in js
     assert 'archAttr("themeRef"' in js
+    assert 'archAttr("deploymentType"' in js
+    assert 'archAttr("executionStatus"' in js
+    assert 'archAttr("workflowStatus"' in js
+    assert 'archAttr("displayLamp"' in js
+    assert "<events>" in js
     assert 'archAttr("direction"' in js
     html = HTML.read_text(encoding="utf-8")
     assert 'id="arch-save-xml"' in html
@@ -57,3 +62,7 @@ def test_sample_sgenarch_xml_fixture():
     assert 'kind="UI"' in raw
     assert "uiDefinitionRef=" in raw
     assert "uiLayerId=" in raw
+    assert 'kind="WorkItem"' in raw
+    assert "workflowStatus=" in raw
+    assert "<events>" in raw
+    assert "<event" in raw

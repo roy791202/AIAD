@@ -79,9 +79,8 @@
     "nav.arch": "切到模組架構圖",
     "arch.saveXml": "匯出架構圖 XML（.sgenarch.xml）",
     "arch.loadXml": "開啟架構圖 XML",
-    "nav.uidesign": "切到 UI Editor／Viewer（設計稿非產品證據）",
-    "win.uiEditor": "視窗 → UI Editor（編輯 Canonical UI Definition）",
-    "win.uiViewer": "視窗 → UI Viewer（預覽／互動）",
+    "win.uiEditor": "視窗 → UI 編輯（獨立 UI 設計工具視窗）",
+    "win.uiViewer": "視窗 → UI 預覽（獨立 Viewer 視窗）",
     "nav.listen": "切到監聽投影",
     "nav.settings": "切到設定",
     "nav.ports": "切到 Ports 檢視",
@@ -158,6 +157,24 @@
 
   const invoke = getInvoke();
   const hasIpc = !!invoke;
+
+  /** OS 獨立視窗：index.html?standalone=uidesign&mode=…&path=…（可拖出主視窗） */
+  function readUiDesignStandaloneQuery() {
+    try {
+      const q = new URLSearchParams(window.location.search || "");
+      if (q.get("standalone") !== "uidesign") return null;
+      return {
+        mode: q.get("mode") === "viewer" ? "viewer" : "designer",
+        path: q.get("path") || "design/main.sgendesign",
+      };
+    } catch (_e) {
+      return null;
+    }
+  }
+  const UIDESIGN_STANDALONE = readUiDesignStandaloneQuery();
+  function isUiDesignStandalone() {
+    return !!UIDESIGN_STANDALONE;
+  }
 
   function unboundProjectMessage() {
     return "未綁定 project_root — 請先「開啟專案」或於設定寫入專案根（勿使用 /demo/root）";
@@ -3330,6 +3347,8 @@
     "Infrastructure",
     "ACL",
     "Custom",
+    "WorkItem",
+    "Deployment",
     "Layer",
   ];
   const ARCH_PACKABLE_KINDS = ARCH_NODE_KINDS.filter(function (k) {
@@ -3348,8 +3367,79 @@
     Infrastructure: ARCH_KIND_ICON_BASE + "Infrastructure.svg",
     ACL: ARCH_KIND_ICON_BASE + "ACL.svg",
     Custom: ARCH_KIND_ICON_BASE + "Custom.svg",
+    WorkItem: ARCH_KIND_ICON_BASE + "WorkItem.svg",
+    Deployment: ARCH_KIND_ICON_BASE + "Deployment.svg",
     Layer: ARCH_KIND_ICON_BASE + "Layer.svg",
   };
+  /** Tasks Node.html：workflow／test 與 displayLamp 分開 */
+  const WORKITEM_WORKFLOW_STATUSES = [
+    "NotStarted",
+    "InProgress",
+    "Blocked",
+    "PendingDecision",
+    "PendingApproval",
+    "Completed",
+    "Cancelled",
+  ];
+  const WORKITEM_TEST_STATUSES = [
+    "NotRun",
+    "Running",
+    "Passed",
+    "Failed",
+    "Stale",
+    "Skipped",
+  ];
+  const WORKITEM_LAMPS = ["Gray", "Yellow", "Red", "Green", "Orange"];
+  /** 佈署.pdf：DeploymentType registry（Inspector／驗證讀同一份定義） */
+  const DEPLOYMENT_TYPES = [
+    "local",
+    "desktop",
+    "web",
+    "container",
+    "server",
+    "cloud",
+  ];
+  const DEPLOYMENT_NODE_REGISTRY = {
+    local: { label: "Local", strategies: ["replace"] },
+    desktop: { label: "Desktop", strategies: ["replace"] },
+    web: { label: "Web", strategies: ["replace", "rolling", "blue-green", "canary"] },
+    container: {
+      label: "Container",
+      strategies: ["replace", "rolling", "blue-green", "canary"],
+    },
+    server: {
+      label: "Server",
+      strategies: ["replace", "rolling", "blue-green"],
+    },
+    cloud: {
+      label: "Cloud",
+      strategies: ["replace", "rolling", "blue-green", "canary"],
+    },
+  };
+  const DEPLOYMENT_FIELD_KEYS = [
+    "deploymentType",
+    "targetRef",
+    "enabled",
+    "inputArtifact",
+    "artifactType",
+    "version",
+    "checksumPolicy",
+    "environment",
+    "runtime",
+    "configProfile",
+    "secretRefs",
+    "strategy",
+    "preDeployChecks",
+    "healthCheck",
+    "rollbackPolicy",
+    "approvalPolicy",
+    "timeoutSeconds",
+    "retryPolicy",
+    "resourceLimits",
+    "costBudget",
+    "executionStatus",
+    "lastRunRef",
+  ];
   const ARCH_KIND_ALIASES = { Api: "API", api: "API", ACL: "ACL" };
   const ARCH_KIND_IO = {
     API: {
@@ -3402,6 +3492,16 @@
       inLabel: "manifest",
       outLabel: "capability",
     },
+    WorkItem: {
+      role: "Work Item · Lamp · Event Log",
+      inLabel: "context",
+      outLabel: "result",
+    },
+    Deployment: {
+      role: "Deploy Target · Strategy · Status",
+      inLabel: "artifact",
+      outLabel: "deployResult",
+    },
     Layer: {
       role: "Pack same Node Type · inter-Layer 單線",
       inLabel: "in",
@@ -3437,6 +3537,8 @@
   let archMarquee = null; /* { x0,y0,x1,y1 } stage coords */
   let archMemberDrag = null; /* { nodeId, layerId, startX, startY } */
   let archTrayDrag = null; /* Unassigned → Module：{ nodeId, startX, startY } */
+  /** 未分配 tree：kind 群組展開狀態（預設展開） */
+  const archUnassignedTreeOpen = Object.create(null);
   let archLink = null;
   let archSelectedId = null; /* primary（Inspector） */
   let archSelectedIds = []; /* 多選；含 primary */
@@ -3457,6 +3559,8 @@
       },
       nodes: [],
       edges: [],
+      /* Tasks Node.html：歷史獨立於節點本體 */
+      events: [],
     };
   }
 
@@ -3515,6 +3619,65 @@
         archAttr("themeRef", n.themeRef || "") +
         archAttr("schemaVersion", n.schemaVersion || "") +
         archAttr("validationStatus", n.validationStatus || "") +
+        archAttr("deploymentType", n.deploymentType || "") +
+        archAttr("targetRef", n.targetRef || "") +
+        archAttr(
+          "enabled",
+          n.kind === "Deployment"
+            ? n.enabled === false
+              ? "false"
+              : "true"
+            : ""
+        ) +
+        archAttr("inputArtifact", n.inputArtifact || "") +
+        archAttr("artifactType", n.artifactType || "") +
+        archAttr("version", n.version || "") +
+        archAttr("checksumPolicy", n.checksumPolicy || "") +
+        archAttr("environment", n.environment || "") +
+        archAttr("runtime", n.runtime || "") +
+        archAttr("configProfile", n.configProfile || "") +
+        archAttr("secretRefs", n.secretRefs || "") +
+        archAttr("strategy", n.strategy || "") +
+        archAttr("preDeployChecks", n.preDeployChecks || "") +
+        archAttr("healthCheck", n.healthCheck || "") +
+        archAttr("rollbackPolicy", n.rollbackPolicy || "") +
+        archAttr("approvalPolicy", n.approvalPolicy || "") +
+        archAttr(
+          "timeoutSeconds",
+          n.timeoutSeconds != null && n.timeoutSeconds !== ""
+            ? String(n.timeoutSeconds)
+            : ""
+        ) +
+        archAttr("retryPolicy", n.retryPolicy || "") +
+        archAttr("resourceLimits", n.resourceLimits || "") +
+        archAttr("costBudget", n.costBudget || "") +
+        archAttr("executionStatus", n.executionStatus || "") +
+        archAttr("lastRunRef", n.lastRunRef || "") +
+        archAttr("workflowStatus", n.workflowStatus || "") +
+        archAttr("testStatus", n.testStatus || "") +
+        archAttr("displayLamp", n.displayLamp || "") +
+        archAttr("priority", n.priority || "") +
+        archAttr("acceptanceCriteria", n.acceptanceCriteria || "") +
+        archAttr("buildDate", n.buildDate || "") +
+        archAttr("modifiedDate", n.modifiedDate || "") +
+        archAttr("completedDate", n.completedDate || "") +
+        archAttr("parentNodeId", n.parentNodeId || "") +
+        archAttr("parentRefs", n.parentRefs || "") +
+        archAttr("dependencyRefs", n.dependencyRefs || "") +
+        archAttr("blockerNote", n.blockerNote || "") +
+        archAttr(
+          "inputTokens",
+          n.inputTokens != null && n.inputTokens !== ""
+            ? String(n.inputTokens)
+            : ""
+        ) +
+        archAttr(
+          "outputTokens",
+          n.outputTokens != null && n.outputTokens !== ""
+            ? String(n.outputTokens)
+            : ""
+        ) +
+        archAttr("apiCost", n.apiCost || "") +
         ">\n";
       if (n.description) {
         xml +=
@@ -3583,6 +3746,39 @@
         " />\n";
     });
     xml += "  </edges>\n";
+    xml += "  <events>\n";
+    (d.events || []).forEach(function (ev) {
+      if (!ev) return;
+      xml +=
+        "    <event" +
+        archAttr("id", ev.eventId || ev.id) +
+        archAttr("entityRef", ev.entityRef || "") +
+        archAttr("eventType", ev.eventType || "") +
+        archAttr("timestamp", ev.timestamp || "") +
+        archAttr("actorType", ev.actorType || "") +
+        archAttr("actorRef", ev.actorRef || "") +
+        archAttr("correlationId", ev.correlationId || "") +
+        archAttr(
+          "schemaVersion",
+          ev.schemaVersion != null ? String(ev.schemaVersion) : ""
+        ) +
+        ">\n";
+      if (ev.payload != null) {
+        let payloadText = "";
+        try {
+          payloadText =
+            typeof ev.payload === "string"
+              ? ev.payload
+              : JSON.stringify(ev.payload);
+        } catch (_e) {
+          payloadText = String(ev.payload);
+        }
+        xml +=
+          "      <payload>" + escapeXml(payloadText) + "</payload>\n";
+      }
+      xml += "    </event>\n";
+    });
+    xml += "  </events>\n";
     xml += "</sgenaxisArch>\n";
     return xml;
   }
@@ -3649,11 +3845,63 @@
         themeRef: archXmlAttr(nel, "themeRef", "") || null,
         schemaVersion: archXmlAttr(nel, "schemaVersion", "") || null,
         validationStatus: archXmlAttr(nel, "validationStatus", "") || null,
+        deploymentType: archXmlAttr(nel, "deploymentType", "") || null,
+        targetRef: archXmlAttr(nel, "targetRef", "") || null,
+        enabled:
+          kind === "Deployment"
+            ? archXmlAttr(nel, "enabled", "true") !== "false"
+            : null,
+        inputArtifact: archXmlAttr(nel, "inputArtifact", "") || null,
+        artifactType: archXmlAttr(nel, "artifactType", "") || null,
+        version: archXmlAttr(nel, "version", "") || null,
+        checksumPolicy: archXmlAttr(nel, "checksumPolicy", "") || null,
+        environment: archXmlAttr(nel, "environment", "") || null,
+        runtime: archXmlAttr(nel, "runtime", "") || null,
+        configProfile: archXmlAttr(nel, "configProfile", "") || null,
+        secretRefs: archXmlAttr(nel, "secretRefs", "") || null,
+        strategy: archXmlAttr(nel, "strategy", "") || null,
+        preDeployChecks: archXmlAttr(nel, "preDeployChecks", "") || null,
+        healthCheck: archXmlAttr(nel, "healthCheck", "") || null,
+        rollbackPolicy: archXmlAttr(nel, "rollbackPolicy", "") || null,
+        approvalPolicy: archXmlAttr(nel, "approvalPolicy", "") || null,
+        timeoutSeconds: (function () {
+          const t = archXmlAttr(nel, "timeoutSeconds", "");
+          return t === "" ? null : Number(t) || 0;
+        })(),
+        retryPolicy: archXmlAttr(nel, "retryPolicy", "") || null,
+        resourceLimits: archXmlAttr(nel, "resourceLimits", "") || null,
+        costBudget: archXmlAttr(nel, "costBudget", "") || null,
+        executionStatus: archXmlAttr(nel, "executionStatus", "") || null,
+        lastRunRef: archXmlAttr(nel, "lastRunRef", "") || null,
+        workflowStatus: archXmlAttr(nel, "workflowStatus", "") || null,
+        testStatus: archXmlAttr(nel, "testStatus", "") || null,
+        displayLamp: archXmlAttr(nel, "displayLamp", "") || null,
+        priority: archXmlAttr(nel, "priority", "") || null,
+        acceptanceCriteria:
+          archXmlAttr(nel, "acceptanceCriteria", "") || null,
+        buildDate: archXmlAttr(nel, "buildDate", "") || null,
+        modifiedDate: archXmlAttr(nel, "modifiedDate", "") || null,
+        completedDate: archXmlAttr(nel, "completedDate", "") || null,
+        parentNodeId: archXmlAttr(nel, "parentNodeId", "") || null,
+        parentRefs: archXmlAttr(nel, "parentRefs", "") || null,
+        dependencyRefs: archXmlAttr(nel, "dependencyRefs", "") || null,
+        blockerNote: archXmlAttr(nel, "blockerNote", "") || null,
+        inputTokens: (function () {
+          const t = archXmlAttr(nel, "inputTokens", "");
+          return t === "" ? null : Number(t) || 0;
+        })(),
+        outputTokens: (function () {
+          const t = archXmlAttr(nel, "outputTokens", "");
+          return t === "" ? null : Number(t) || 0;
+        })(),
+        apiCost: archXmlAttr(nel, "apiCost", "") || null,
         inputs: [],
         outputs: [],
         memberIds: [],
       };
       if (kind === "UI") ensureUiLayerFields(node);
+      if (kind === "Deployment") ensureDeploymentFields(node);
+      if (kind === "WorkItem") ensureWorkItemFields(node);
       nel.querySelectorAll("inputs > port").forEach(function (p) {
         const label =
           archXmlAttr(p, "label", "") ||
@@ -3736,6 +3984,31 @@
         toPort: archXmlAttr(eel, "toPort", ""),
       });
     });
+    doc.events = [];
+    root.querySelectorAll("events > event").forEach(function (eel) {
+      const payloadEl = eel.querySelector("payload");
+      let payload = {};
+      if (payloadEl) {
+        const rawPayload = (payloadEl.textContent || "").trim();
+        try {
+          payload = rawPayload ? JSON.parse(rawPayload) : {};
+        } catch (_e) {
+          payload = { text: rawPayload };
+        }
+      }
+      doc.events.push({
+        eventId: archXmlAttr(eel, "id", "evt-" + doc.events.length),
+        entityRef: archXmlAttr(eel, "entityRef", ""),
+        eventType: archXmlAttr(eel, "eventType", ""),
+        timestamp: archXmlAttr(eel, "timestamp", ""),
+        actorType: archXmlAttr(eel, "actorType", "user"),
+        actorRef: archXmlAttr(eel, "actorRef", ""),
+        correlationId: archXmlAttr(eel, "correlationId", "") || null,
+        schemaVersion:
+          Number(archXmlAttr(eel, "schemaVersion", "1")) || 1,
+        payload: payload,
+      });
+    });
     return doc;
   }
 
@@ -3746,7 +4019,9 @@
     });
     doc.nodes.forEach(function (n) {
       if (n && n.kind === "Layer") ensureLayerModules(n);
+      if (n && n.kind === "WorkItem") ensureWorkItemFields(n);
     });
+    if (!Array.isArray(doc.events)) doc.events = [];
     if (!doc.meta) doc.meta = {};
     doc.meta.encoding = "xml";
     archDoc = doc;
@@ -4246,16 +4521,182 @@
     }
   }
 
-  /** 一般節點只顯示類別名；UI → UI Layer（UI-bhv）；Node Type 僅 Layer。 */
+  /** 一般節點只顯示類別名；UI → UI Layer；WorkItem → Work Item；Node Type 僅 Layer。 */
   function formatArchNodeType(kind, node) {
     const k = normalizeArchKind(kind) || String(kind || "").trim() || "—";
     if (k === "Layer") return "Node Type : Layer";
     if (k === "UI") return "UI Layer";
+    if (k === "WorkItem") return "Work Item";
+    if (k === "Deployment") return "Deployment";
     return k;
   }
 
   function isArchUiLayerNode(node) {
     return !!(node && normalizeArchKind(node.kind) === "UI");
+  }
+
+  function isArchDeploymentNode(node) {
+    return !!(node && normalizeArchKind(node.kind) === "Deployment");
+  }
+
+  function isArchWorkItemNode(node) {
+    return !!(node && normalizeArchKind(node.kind) === "WorkItem");
+  }
+
+  /** Tasks Node.html §08：阻塞＞待決策＞進行中＞綠燈＞灰；Stale／Failed 不得綠燈 */
+  function computeDisplayLamp(node) {
+    const wf = String((node && node.workflowStatus) || "NotStarted");
+    const ts = String((node && node.testStatus) || "NotRun");
+    if (wf === "Blocked") return "Red";
+    if (wf === "PendingDecision" || wf === "PendingApproval") return "Orange";
+    if (wf === "InProgress" || ts === "Running") return "Yellow";
+    if (ts === "Passed") return "Green";
+    return "Gray";
+  }
+
+  function ensureWorkItemFields(node) {
+    if (!isArchWorkItemNode(node)) return node;
+    if (
+      WORKITEM_WORKFLOW_STATUSES.indexOf(node.workflowStatus) < 0
+    ) {
+      node.workflowStatus = "NotStarted";
+    }
+    if (WORKITEM_TEST_STATUSES.indexOf(node.testStatus) < 0) {
+      node.testStatus = "NotRun";
+    }
+    if (node.priority == null || node.priority === "") node.priority = "medium";
+    if (node.acceptanceCriteria == null) node.acceptanceCriteria = "";
+    if (node.buildDate == null) node.buildDate = "";
+    if (node.modifiedDate == null) node.modifiedDate = "";
+    if (node.completedDate == null) node.completedDate = "";
+    if (node.parentRefs == null) node.parentRefs = "";
+    if (node.dependencyRefs == null) node.dependencyRefs = "";
+    if (node.blockerNote == null) node.blockerNote = "";
+    if (node.inputTokens == null) node.inputTokens = 0;
+    if (node.outputTokens == null) node.outputTokens = 0;
+    if (node.apiCost == null) node.apiCost = "";
+    if (!node.schemaVersion) node.schemaVersion = "1";
+    if (node.description == null) node.description = "";
+    node.displayLamp = computeDisplayLamp(node);
+    return node;
+  }
+
+  function appendArchEvent(entityRef, eventType, payload) {
+    if (!archDoc.events) archDoc.events = [];
+    archSeq += 1;
+    const evt = {
+      eventId: "evt-" + Date.now() + "-" + archSeq,
+      entityRef: entityRef || "",
+      eventType: eventType || "node.property.updated",
+      timestamp: new Date().toISOString(),
+      actorType: "user",
+      actorRef: "local",
+      correlationId: null,
+      schemaVersion: 1,
+      payload: payload || {},
+    };
+    archDoc.events.push(evt);
+    return evt;
+  }
+
+  function listArchEventsForNode(nodeId, limit) {
+    const max = limit == null ? 40 : limit;
+    return (archDoc.events || [])
+      .filter(function (e) {
+        return e && e.entityRef === nodeId;
+      })
+      .slice(-max)
+      .reverse();
+  }
+
+  function renderArchWorkItemHistory(node) {
+    const host = document.getElementById("archWorkItemHistory");
+    if (!host) return;
+    if (!isArchWorkItemNode(node)) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    const events = listArchEventsForNode(node.id, 30);
+    if (!events.length) {
+      host.innerHTML =
+        '<p class="hint">尚無事件（編輯屬性後寫入 Event Log，不塞進節點本體）。</p>';
+      return;
+    }
+    host.innerHTML =
+      "<b>History（Event Log）</b><ul class=\"arch-event-list\">" +
+      events
+        .map(function (e) {
+          return (
+            "<li><code>" +
+            escapeHtml(e.eventType || "") +
+            "</code> · " +
+            escapeHtml((e.timestamp || "").replace("T", " ").slice(0, 19)) +
+            "</li>"
+          );
+        })
+        .join("") +
+      "</ul>";
+  }
+
+  function normalizeDeploymentType(t) {
+    const s = String(t || "").trim().toLowerCase();
+    return DEPLOYMENT_TYPES.indexOf(s) >= 0 ? s : "desktop";
+  }
+
+  function ensureDeploymentFields(node) {
+    if (!isArchDeploymentNode(node)) return node;
+    node.deploymentType = normalizeDeploymentType(node.deploymentType);
+    if (node.targetRef == null) node.targetRef = "";
+    if (node.enabled == null) node.enabled = true;
+    if (node.inputArtifact == null) node.inputArtifact = "";
+    if (!node.artifactType) node.artifactType = "exe";
+    if (node.version == null) node.version = "";
+    if (!node.checksumPolicy) node.checksumPolicy = "sha256";
+    if (!node.environment) node.environment = "development";
+    if (node.runtime == null) node.runtime = "";
+    if (node.configProfile == null) node.configProfile = "";
+    if (node.secretRefs == null) node.secretRefs = "";
+    if (!node.strategy) node.strategy = "replace";
+    if (node.preDeployChecks == null) node.preDeployChecks = "";
+    if (node.healthCheck == null) node.healthCheck = "";
+    if (node.rollbackPolicy == null) node.rollbackPolicy = "";
+    if (node.approvalPolicy == null) node.approvalPolicy = "";
+    if (node.timeoutSeconds == null || node.timeoutSeconds === "") {
+      node.timeoutSeconds = 600;
+    }
+    if (node.retryPolicy == null) node.retryPolicy = "";
+    if (node.resourceLimits == null) node.resourceLimits = "";
+    if (node.costBudget == null) node.costBudget = "";
+    if (!node.executionStatus) node.executionStatus = "Idle";
+    if (node.lastRunRef == null) node.lastRunRef = "";
+    if (!node.schemaVersion) node.schemaVersion = "1";
+    const def = DEPLOYMENT_NODE_REGISTRY[node.deploymentType];
+    if (def && def.strategies.indexOf(node.strategy) < 0) {
+      node.strategy = def.strategies[0] || "replace";
+    }
+    return node;
+  }
+
+  function syncDeploymentStrategyOptions(deploymentType, selected) {
+    const sel = document.getElementById("archDepStrategy");
+    if (!sel) return;
+    const def =
+      DEPLOYMENT_NODE_REGISTRY[normalizeDeploymentType(deploymentType)] ||
+      DEPLOYMENT_NODE_REGISTRY.desktop;
+    const want = selected || "replace";
+    sel.innerHTML = "";
+    (def.strategies || ["replace"]).forEach(function (s) {
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      if (s === want) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if ((def.strategies || []).indexOf(want) < 0 && sel.options.length) {
+      sel.selectedIndex = 0;
+    }
   }
 
   function ensureUiLayerFields(node) {
@@ -4270,12 +4711,229 @@
     return node;
   }
 
-  function openArchUiLayer(mode) {
-    const node = findArchNode(archSelectedId);
+  function isUiDesignWindowOpen() {
+    if (isUiDesignStandalone()) return true;
+    const win = document.getElementById("uidesign-window");
+    return !!(win && !win.hidden);
+  }
+
+  function applyUiDesignStandaloneShell() {
+    if (!isUiDesignStandalone()) return;
+    document.documentElement.classList.add("is-uidesign-standalone");
+    document.body.classList.add("is-uidesign-standalone");
+    const app = document.getElementById("app");
+    if (app) app.setAttribute("hidden", "");
+    const win = document.getElementById("uidesign-window");
+    if (win) {
+      win.hidden = false;
+      win.classList.add("is-os-window");
+    }
+    const chrome = document.getElementById("uidesign-window-chrome");
+    if (chrome) chrome.hidden = true;
+  }
+
+  function closeUiDesignWindow() {
+    if (isUiDesignStandalone()) {
+      const g = window.__TAURI__;
+      const getCurrent =
+        g &&
+        g.webviewWindow &&
+        typeof g.webviewWindow.getCurrentWebviewWindow === "function"
+          ? g.webviewWindow.getCurrentWebviewWindow
+          : null;
+      if (getCurrent) {
+        try {
+          const cur = getCurrent();
+          if (cur && typeof cur.close === "function") {
+            cur.close();
+            return;
+          }
+        } catch (_e) {
+          /* fall through */
+        }
+      }
+      window.close();
+      return;
+    }
+    const win = document.getElementById("uidesign-window");
+    if (win) win.hidden = true;
+    setDesignInspectorActive(false);
+    setUidesignWidgetsVisible(false);
+    setStatus("已關閉 UI 設計工具視窗");
+  }
+
+  function openUiDesignWindowEmbedded(mode, opts) {
+    const win = document.getElementById("uidesign-window");
+    const titleEl = document.getElementById("uidesign-window-title");
+    const panel = document.getElementById("panel-uidesign");
+    const viewer = mode === "viewer";
+    const quiet = opts && opts.quiet;
+    if (win) win.hidden = false;
+    if (panel) {
+      panel.classList.add("is-active");
+      panel.removeAttribute("hidden");
+    }
+    if (titleEl && !isUiDesignStandalone()) {
+      titleEl.textContent = viewer ? "UI 預覽" : "UI 編輯";
+    }
+    setUidesignMode(viewer ? "viewer" : "designer");
+    if (opts && opts.path) setUidesignPathDisplay(opts.path);
+    renderDesignCanvas();
+    if (!viewer) {
+      fillDesignProps();
+      setDesignInspectorActive(true);
+    }
+    if (!quiet) {
+      toast(
+        isUiDesignStandalone()
+          ? viewer
+            ? "UI 預覽（獨立 OS 視窗）"
+            : "UI 編輯（獨立 OS 視窗）"
+          : viewer
+            ? "已開啟 UI 預覽視窗（內嵌；無 Tauri 時）"
+            : "已開啟 UI 編輯視窗（內嵌；無 Tauri 時）"
+      );
+    }
+    setStatus(
+      viewer ? "UI 預覽視窗" : "UI 編輯視窗"
+    );
+  }
+
+  function tryOpenUiDesignOsWindow(mode, opts) {
+    if (isUiDesignStandalone()) {
+      return Promise.resolve(false);
+    }
+    const g = window.__TAURI__;
+    const WW =
+      g && g.webviewWindow && g.webviewWindow.WebviewWindow
+        ? g.webviewWindow.WebviewWindow
+        : null;
+    if (!WW) return Promise.resolve(false);
+    const viewer = mode === "viewer";
+    const label = viewer ? "ui-viewer" : "ui-editor";
+    const path =
+      (opts && opts.path) ||
+      UIDESIGN_DESIGN_REL ||
+      "design/main.sgendesign";
+    const title = viewer ? "SGenAxis — UI 預覽" : "SGenAxis — UI 編輯";
+    const qs = new URLSearchParams();
+    qs.set("standalone", "uidesign");
+    qs.set("mode", viewer ? "viewer" : "designer");
+    qs.set("path", path);
+
+    function focusExisting(existing) {
+      return Promise.resolve()
+        .then(function () {
+          return existing.setTitle ? existing.setTitle(title) : null;
+        })
+        .catch(function () {
+          /* ignore */
+        })
+        .then(function () {
+          return existing.show ? existing.show() : null;
+        })
+        .catch(function () {
+          /* ignore */
+        })
+        .then(function () {
+          return existing.setFocus ? existing.setFocus() : null;
+        })
+        .catch(function () {
+          /* ignore */
+        })
+        .then(function () {
+          toast(viewer ? "已聚焦 UI 預覽視窗" : "已聚焦 UI 編輯視窗");
+          setStatus(
+            viewer ? "UI 預覽（獨立 OS 視窗）" : "UI 編輯（獨立 OS 視窗）"
+          );
+          return true;
+        });
+    }
+
+    return Promise.resolve()
+      .then(function () {
+        return typeof WW.getByLabel === "function"
+          ? WW.getByLabel(label)
+          : null;
+      })
+      .then(function (existing) {
+        if (existing) return focusExisting(existing);
+        return new Promise(function (resolve) {
+          let settled = false;
+          function done(ok) {
+            if (settled) return;
+            settled = true;
+            resolve(!!ok);
+          }
+          try {
+            const w = new WW(label, {
+              url: "index.html?" + qs.toString(),
+              title: title,
+              width: 1120,
+              height: 780,
+              minWidth: 720,
+              minHeight: 480,
+              center: true,
+              focus: true,
+              resizable: true,
+              decorations: true,
+            });
+            if (w && typeof w.once === "function") {
+              w.once("tauri://created", function () {
+                toast(
+                  viewer
+                    ? "已開啟 UI 預覽（可拖出主視窗）"
+                    : "已開啟 UI 編輯（可拖出主視窗）"
+                );
+                setStatus(
+                  viewer
+                    ? "UI 預覽（獨立 OS 視窗）"
+                    : "UI 編輯（獨立 OS 視窗）"
+                );
+                done(true);
+              });
+              w.once("tauri://error", function () {
+                done(false);
+              });
+            }
+            setTimeout(function () {
+              done(true);
+            }, 2000);
+          } catch (_err) {
+            done(false);
+          }
+        });
+      })
+      .catch(function () {
+        return false;
+      });
+  }
+
+  function openUiDesignWindow(mode, opts) {
+    opts = opts || {};
+    if (isUiDesignStandalone()) {
+      openUiDesignWindowEmbedded(mode, opts);
+      return;
+    }
+    tryOpenUiDesignOsWindow(mode, opts).then(function (ok) {
+      if (ok) {
+        const win = document.getElementById("uidesign-window");
+        if (win) win.hidden = true;
+        setDesignInspectorActive(false);
+        return;
+      }
+      openUiDesignWindowEmbedded(mode, opts);
+    });
+  }
+
+  function openArchUiLayer(mode, nodeId) {
+    const id = nodeId || archSelectedId;
+    const node = findArchNode(id);
     if (!isArchUiLayerNode(node)) {
       toast("請先選取 UI Layer 節點");
       return;
     }
+    selectArchNode(node.id);
     ensureUiLayerFields(node);
     const refEl = document.getElementById("archUiDefinitionRef");
     if (refEl && refEl.value.trim()) {
@@ -4284,18 +4942,13 @@
     const themeEl = document.getElementById("archUiThemeRef");
     if (themeEl) node.themeRef = themeEl.value.trim();
     persistArchDraft();
-    showPanel("uidesign");
-    setUidesignMode(mode === "viewer" ? "viewer" : "designer");
-    setUidesignPathDisplay(
-      node.uiDefinitionRef || "design/main.sgendesign"
-    );
-    toast(
-      mode === "viewer"
-        ? "Open Viewer：「" + (node.name || node.id) + "」"
-        : "Open Editor：「" + (node.name || node.id) + "」"
-    );
+    openUiDesignWindow(mode === "viewer" ? "viewer" : "designer", {
+      path: node.uiDefinitionRef || "design/main.sgendesign",
+    });
     setStatus(
-      (mode === "viewer" ? "UI Viewer ← " : "UI Editor ← ") +
+      (mode === "viewer" ? "UI 預覽 ← " : "UI 編輯 ← ") +
+        (node.name || node.id) +
+        " · " +
         (node.uiDefinitionRef || node.id)
     );
   }
@@ -4568,7 +5221,7 @@
     const n = layerAllMemberIds(L).length;
     node.x = (Number(L.x) || 0) + 24;
     node.y = (Number(L.y) || 0) + 48 + (n % 4) * 28;
-    toast("已取出 → 未分配（moduleRef=null）");
+    toast("已取出 → 草稿（moduleRef=null）");
     return true;
   }
 
@@ -4678,6 +5331,81 @@
         if (theme) theme.value = node.themeRef || "";
       }
     }
+    const wiPanel = document.getElementById("archWorkItemPanel");
+    if (wiPanel) {
+      const isWi = isArchWorkItemNode(node);
+      wiPanel.hidden = !isWi;
+      if (isWi) {
+        ensureWorkItemFields(node);
+        const setVal = function (id, v) {
+          const el = document.getElementById(id);
+          if (el) el.value = v == null ? "" : String(v);
+        };
+        setVal("archWiWorkflow", node.workflowStatus);
+        setVal("archWiTest", node.testStatus);
+        setVal("archWiLamp", node.displayLamp);
+        setVal("archWiPriority", node.priority);
+        setVal("archWiAcceptance", node.acceptanceCriteria);
+        setVal("archWiBuildDate", node.buildDate);
+        setVal("archWiModifiedDate", node.modifiedDate);
+        setVal("archWiCompletedDate", node.completedDate);
+        setVal("archWiParentRefs", node.parentRefs);
+        setVal("archWiDepRefs", node.dependencyRefs);
+        setVal("archWiBlocker", node.blockerNote);
+        setVal("archWiInTok", node.inputTokens);
+        setVal("archWiOutTok", node.outputTokens);
+        setVal("archWiCost", node.apiCost);
+        const lampDot = document.getElementById("archWiLampDot");
+        if (lampDot) {
+          lampDot.className =
+            "arch-lamp-dot lamp-" +
+            String(node.displayLamp || "Gray").toLowerCase();
+          lampDot.title = node.displayLamp || "Gray";
+        }
+        renderArchWorkItemHistory(node);
+      } else {
+        const hist = document.getElementById("archWorkItemHistory");
+        if (hist) {
+          hist.hidden = true;
+          hist.innerHTML = "";
+        }
+      }
+    }
+    const depPanel = document.getElementById("archDeploymentPanel");
+    if (depPanel) {
+      const isDep = isArchDeploymentNode(node);
+      depPanel.hidden = !isDep;
+      if (isDep) {
+        ensureDeploymentFields(node);
+        const setVal = function (id, v) {
+          const el = document.getElementById(id);
+          if (el) el.value = v == null ? "" : String(v);
+        };
+        setVal("archDepType", node.deploymentType);
+        setVal("archDepTargetRef", node.targetRef);
+        const en = document.getElementById("archDepEnabled");
+        if (en) en.checked = node.enabled !== false;
+        setVal("archDepInputArtifact", node.inputArtifact);
+        setVal("archDepArtifactType", node.artifactType);
+        setVal("archDepVersion", node.version);
+        setVal("archDepChecksum", node.checksumPolicy);
+        setVal("archDepEnvironment", node.environment);
+        setVal("archDepRuntime", node.runtime);
+        setVal("archDepConfigProfile", node.configProfile);
+        setVal("archDepSecretRefs", node.secretRefs);
+        syncDeploymentStrategyOptions(node.deploymentType, node.strategy);
+        setVal("archDepPreChecks", node.preDeployChecks);
+        setVal("archDepHealth", node.healthCheck);
+        setVal("archDepRollback", node.rollbackPolicy);
+        setVal("archDepApproval", node.approvalPolicy);
+        setVal("archDepTimeout", node.timeoutSeconds);
+        setVal("archDepRetry", node.retryPolicy);
+        setVal("archDepResources", node.resourceLimits);
+        setVal("archDepCost", node.costBudget);
+        setVal("archDepExecStatus", node.executionStatus);
+        setVal("archDepLastRun", node.lastRunRef);
+      }
+    }
     if (hint) {
       const io = ARCH_KIND_IO[node.kind];
       const role = node.role || (io && io.role) || "";
@@ -4696,6 +5424,22 @@
         hint.textContent =
           "UI Layer · Open Editor／Viewer · ref=" +
           (node.uiDefinitionRef || "—");
+      } else if (isArchWorkItemNode(node)) {
+        hint.textContent =
+          "Work Item · lamp=" +
+          (node.displayLamp || "Gray") +
+          " · wf=" +
+          (node.workflowStatus || "NotStarted") +
+          " · test=" +
+          (node.testStatus || "NotRun");
+      } else if (isArchDeploymentNode(node)) {
+        hint.textContent =
+          "Deployment · " +
+          (node.deploymentType || "desktop") +
+          " · " +
+          (node.executionStatus || "Idle") +
+          " · strategy=" +
+          (node.strategy || "replace");
       } else {
         hint.textContent =
           (role ? role + " · " : "") +
@@ -5166,6 +5910,83 @@
       if (theme) node.themeRef = theme.value.trim();
       node.uiLayerId = node.uiLayerId || node.id;
     }
+    if (isArchWorkItemNode(node)) {
+      const before = {
+        workflowStatus: node.workflowStatus,
+        testStatus: node.testStatus,
+        displayLamp: node.displayLamp,
+        priority: node.priority,
+        acceptanceCriteria: node.acceptanceCriteria,
+        blockerNote: node.blockerNote,
+      };
+      const getVal = function (id) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : "";
+      };
+      node.workflowStatus = getVal("archWiWorkflow") || node.workflowStatus;
+      node.testStatus = getVal("archWiTest") || node.testStatus;
+      node.priority = getVal("archWiPriority") || node.priority;
+      node.acceptanceCriteria = getVal("archWiAcceptance");
+      node.buildDate = getVal("archWiBuildDate");
+      node.modifiedDate =
+        getVal("archWiModifiedDate") || new Date().toISOString().slice(0, 10);
+      node.completedDate = getVal("archWiCompletedDate");
+      node.parentRefs = getVal("archWiParentRefs");
+      node.dependencyRefs = getVal("archWiDepRefs");
+      node.blockerNote = getVal("archWiBlocker");
+      const it = Number(getVal("archWiInTok"));
+      if (!Number.isNaN(it)) node.inputTokens = it;
+      const ot = Number(getVal("archWiOutTok"));
+      if (!Number.isNaN(ot)) node.outputTokens = ot;
+      node.apiCost = getVal("archWiCost");
+      ensureWorkItemFields(node);
+      const changes = [];
+      Object.keys(before).forEach(function (k) {
+        if (String(before[k] || "") !== String(node[k] || "")) {
+          changes.push({
+            field: k,
+            before: before[k],
+            after: node[k],
+          });
+        }
+      });
+      if (changes.length) {
+        appendArchEvent(node.id, "node.property.updated", { changes: changes });
+      }
+    }
+    if (isArchDeploymentNode(node)) {
+      ensureDeploymentFields(node);
+      const getVal = function (id) {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : "";
+      };
+      const typeEl = document.getElementById("archDepType");
+      if (typeEl) node.deploymentType = normalizeDeploymentType(typeEl.value);
+      node.targetRef = getVal("archDepTargetRef");
+      const en = document.getElementById("archDepEnabled");
+      if (en) node.enabled = !!en.checked;
+      node.inputArtifact = getVal("archDepInputArtifact");
+      node.artifactType = getVal("archDepArtifactType") || node.artifactType;
+      node.version = getVal("archDepVersion");
+      node.checksumPolicy = getVal("archDepChecksum") || node.checksumPolicy;
+      node.environment = getVal("archDepEnvironment") || node.environment;
+      node.runtime = getVal("archDepRuntime");
+      node.configProfile = getVal("archDepConfigProfile");
+      node.secretRefs = getVal("archDepSecretRefs");
+      node.strategy = getVal("archDepStrategy") || node.strategy;
+      node.preDeployChecks = getVal("archDepPreChecks");
+      node.healthCheck = getVal("archDepHealth");
+      node.rollbackPolicy = getVal("archDepRollback");
+      node.approvalPolicy = getVal("archDepApproval");
+      const to = Number(getVal("archDepTimeout"));
+      if (!Number.isNaN(to)) node.timeoutSeconds = to;
+      node.retryPolicy = getVal("archDepRetry");
+      node.resourceLimits = getVal("archDepResources");
+      node.costBudget = getVal("archDepCost");
+      node.executionStatus =
+        getVal("archDepExecStatus") || node.executionStatus;
+      ensureDeploymentFields(node);
+    }
     persistArchDraft();
     renderArchDag();
     selectArchNode(node.id);
@@ -5185,61 +6006,363 @@
     });
   }
 
-  function renderArchUnassigned() {
-    const list = document.getElementById("arch-unassigned-list");
-    const countEl = document.getElementById("arch-unassigned-count");
-    if (!list) return;
-    const nodes = listUnassignedArchNodes().filter(function (n) {
-      return archNodePassesFilter(n);
-    });
-    if (countEl) countEl.textContent = String(nodes.length);
-    list.innerHTML = "";
-    if (!nodes.length) {
-      const empty = document.createElement("p");
-      empty.className = "hint";
-      empty.textContent = "沒有未分配節點";
-      list.appendChild(empty);
-      return;
+  /** 與 Node→Layer 相同：packsKind 必須吻合（已打包者可改槽／換 Layer）。 */
+  function canAcceptNodeInLayer(node, layer) {
+    if (!node || !layer || layer.kind !== "Layer") return false;
+    if (node.kind === "Layer" || node.id === layer.id) return false;
+    const packs = normalizeArchKind(layer.packsKind);
+    return !!(packs && node.kind === packs);
+  }
+
+  function clearArchTreeDropHighlights() {
+    document
+      .querySelectorAll(".arch-tree-drop.is-drop-target")
+      .forEach(function (el) {
+        el.classList.remove("is-drop-target");
+      });
+  }
+
+  function findArchTreeDropTarget(clientX, clientY, dragNodeId) {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el || !el.closest) return null;
+    const draft = el.closest("[data-tree-draft]");
+    if (draft) return { type: "draft", el: draft };
+    const mod = el.closest("[data-tree-module]");
+    if (mod) {
+      const layerId = mod.getAttribute("data-layer-id");
+      const slotId = mod.getAttribute("data-slot-id");
+      const layer = findArchNode(layerId);
+      const node = findArchNode(dragNodeId);
+      if (!layer || !node || !canAcceptNodeInLayer(node, layer)) return null;
+      return { type: "module", layer: layer, slotId: slotId, el: mod };
     }
-    nodes.forEach(function (n) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className =
-        "arch-unassigned-chip" +
-        (getArchSelectedIds().indexOf(n.id) >= 0 ? " is-selected" : "");
-      chip.setAttribute("role", "listitem");
-      chip.setAttribute("data-node-id", n.id);
-      chip.innerHTML =
+    const layerEl = el.closest("[data-tree-layer]");
+    if (layerEl) {
+      const layerId = layerEl.getAttribute("data-layer-id");
+      const layer = findArchNode(layerId);
+      const node = findArchNode(dragNodeId);
+      if (!layer || !node || !canAcceptNodeInLayer(node, layer)) return null;
+      return { type: "layer", layer: layer, el: layerEl };
+    }
+    return null;
+  }
+
+  function applyArchTreeDrop(dragNodeId, drop) {
+    const node = findArchNode(dragNodeId);
+    if (!node || !drop) return false;
+    if (drop.type === "draft") {
+      const hit = findArchModuleContaining(dragNodeId);
+      if (!hit) return false;
+      unpackNodeFromLayer(dragNodeId, hit.layer);
+      persistArchDraft();
+      return true;
+    }
+    if (drop.type === "layer" || drop.type === "module") {
+      const layer = drop.layer;
+      const slotId = drop.type === "module" ? drop.slotId : null;
+      if (!canAcceptNodeInLayer(node, layer)) {
+        toast(
+          "無法移入：Layer 只收 " +
+            (layer.packsKind || "?") +
+            "（目前 " +
+            node.kind +
+            "）"
+        );
+        return false;
+      }
+      if (findArchLayerContaining(node.id)) {
+        movePackedNodeToSlot(node.id, layer, slotId);
+      } else {
+        packNodeIntoLayer(node, layer, slotId);
+      }
+      if (layer && layer.id) archUnassignedTreeOpen["layer:" + layer.id] = true;
+      if (slotId) archUnassignedTreeOpen["mod:" + slotId] = true;
+      persistArchDraft();
+      return true;
+    }
+    return false;
+  }
+
+  function wireArchTreeNodeDrag(chip, n) {
+    chip.addEventListener("click", function () {
+      if (archTrayDrag) return;
+      selectArchNode(n.id);
+      focusArchSelectedNode();
+    });
+    chip.addEventListener("pointerdown", function (ev) {
+      if (ev.button !== 0) return;
+      if (n.kind === "Layer") return;
+      ev.preventDefault();
+      archTrayDrag = {
+        nodeId: n.id,
+        startX: ev.clientX,
+        startY: ev.clientY,
+      };
+      document.body.classList.add("is-arch-dragging");
+      try {
+        chip.setPointerCapture(ev.pointerId);
+      } catch (_e) {
+        /* ignore */
+      }
+    });
+  }
+
+  function makeArchTreeTwist(key, open, onToggle) {
+    const twist = document.createElement("button");
+    twist.type = "button";
+    twist.className = "arch-tree-twist";
+    twist.innerHTML = '<span class="arch-tree-chevron" aria-hidden="true"></span>';
+    twist.title = open ? "收合" : "展開";
+    twist.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      onToggle(!open);
+    });
+    return twist;
+  }
+
+  function makeArchTreeRow(opts) {
+    const depth = opts.depth || 0;
+    const wrap = document.createElement("div");
+    wrap.className =
+      "arch-tree-node" + (opts.open ? " is-open" : "");
+    wrap.setAttribute("role", "treeitem");
+    wrap.setAttribute(
+      "aria-expanded",
+      opts.hasKids ? (opts.open ? "true" : "false") : "false"
+    );
+    wrap.style.setProperty("--arch-tree-depth", String(depth));
+
+    const row = document.createElement("div");
+    row.className = "arch-tree-row";
+
+    if (opts.hasKids) {
+      row.appendChild(
+        makeArchTreeTwist(opts.openKey, opts.open, function (next) {
+          archUnassignedTreeOpen[opts.openKey] = next;
+          renderArchUnassigned();
+        })
+      );
+    } else {
+      const spacer = document.createElement("span");
+      spacer.className = "arch-tree-twist is-leaf";
+      spacer.setAttribute("aria-hidden", "true");
+      row.appendChild(spacer);
+    }
+
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className =
+      "arch-unassigned-chip arch-tree-leaf arch-tree-drop" +
+      (opts.selected ? " is-selected" : "") +
+      (opts.dropClass ? " " + opts.dropClass : "");
+    Object.keys(opts.attrs || {}).forEach(function (k) {
+      chip.setAttribute(k, opts.attrs[k]);
+    });
+    chip.innerHTML = opts.html || "";
+    chip.title = opts.title || "";
+    if (opts.onChip) opts.onChip(chip);
+    row.appendChild(chip);
+    wrap.appendChild(row);
+
+    if (opts.hasKids) {
+      const children = document.createElement("div");
+      children.className = "arch-tree-children";
+      children.setAttribute("role", "group");
+      if (!opts.open) children.hidden = true;
+      (opts.children || []).forEach(function (childEl) {
+        children.appendChild(childEl);
+      });
+      wrap.appendChild(children);
+    }
+    return wrap;
+  }
+
+  function renderArchTreeMemberRow(n, depth) {
+    return makeArchTreeRow({
+      depth: depth,
+      hasKids: false,
+      open: false,
+      openKey: "n:" + n.id,
+      selected: getArchSelectedIds().indexOf(n.id) >= 0,
+      attrs: {
+        "data-node-id": n.id,
+        "data-tree-node": "1",
+      },
+      html:
         '<img src="' +
         escapeHtml(archKindIconSrc(n.kind)) +
         '" alt="" width="14" height="14" />' +
         "<span>" +
         escapeHtml(n.name || n.id) +
         '</span><em>' +
-        escapeHtml(n.kind || "") +
-        "</em>";
-      chip.title = "選取；編輯模式下拖到 Module Slot 設定 moduleRef";
-      chip.addEventListener("click", function () {
-        selectArchNode(n.id);
-        focusArchSelectedNode();
-      });
-      chip.addEventListener("pointerdown", function (ev) {
-        if (ev.button !== 0 || !archEditMode) return;
-        ev.preventDefault();
-        archTrayDrag = {
-          nodeId: n.id,
-          startX: ev.clientX,
-          startY: ev.clientY,
-        };
-        document.body.classList.add("is-arch-dragging");
-        try {
-          chip.setPointerCapture(ev.pointerId);
-        } catch (_e) {
-          /* ignore */
-        }
-      });
-      list.appendChild(chip);
+        escapeHtml(formatArchNodeType(n.kind) || n.kind || "") +
+        "</em>",
+      title: "拖到 Layer／Module（須同 packsKind）＝移入；拖到草稿＝取出",
+      onChip: function (chip) {
+        wireArchTreeNodeDrag(chip, n);
+      },
     });
+  }
+
+  function renderArchTreeModuleBranch(layer, mod, depth) {
+    const memberIds = sortedModuleMemberIds(mod).filter(function (mid) {
+      const mn = findArchNode(mid);
+      return mn && archNodePassesFilter(mn);
+    });
+    const openKey = "mod:" + (mod.slotId || mod.moduleId);
+    const open =
+      archUnassignedTreeOpen[openKey] == null
+        ? true
+        : !!archUnassignedTreeOpen[openKey];
+    const kids = memberIds.map(function (mid) {
+      return renderArchTreeMemberRow(findArchNode(mid), depth + 1);
+    });
+    return makeArchTreeRow({
+      depth: depth,
+      hasKids: true,
+      open: open,
+      openKey: openKey,
+      selected: false,
+      dropClass: "is-module-drop",
+      attrs: {
+        "data-tree-module": "1",
+        "data-layer-id": layer.id,
+        "data-slot-id": mod.slotId || "",
+      },
+      html:
+        "<span>" +
+        escapeHtml(mod.name || mod.slotId || "Module") +
+        '</span><em class="arch-tree-count">' +
+        memberIds.length +
+        "</em>",
+      title:
+        "Module Slot（只收 " +
+        (layer.packsKind || "?") +
+        "）— 拖入 Node 同畫布規則",
+      onChip: function (chip) {
+        chip.addEventListener("click", function () {
+          selectArchNode(layer.id);
+        });
+      },
+      children: kids,
+    });
+  }
+
+  function renderArchTreeLayerBranch(layer, depth) {
+    const mods = ensureLayerModules(layer);
+    const openKey = "layer:" + layer.id;
+    const open =
+      archUnassignedTreeOpen[openKey] == null
+        ? true
+        : !!archUnassignedTreeOpen[openKey];
+    const kids = mods.map(function (mod) {
+      return renderArchTreeModuleBranch(layer, mod, depth + 1);
+    });
+    const nMem = layerAllMemberIds(layer).filter(function (mid) {
+      const mn = findArchNode(mid);
+      return mn && archNodePassesFilter(mn);
+    }).length;
+    return makeArchTreeRow({
+      depth: depth,
+      hasKids: true,
+      open: open,
+      openKey: openKey,
+      selected: getArchSelectedIds().indexOf(layer.id) >= 0,
+      dropClass: "is-layer-drop",
+      attrs: {
+        "data-tree-layer": "1",
+        "data-layer-id": layer.id,
+      },
+      html:
+        '<img src="' +
+        escapeHtml(archKindIconSrc("Layer")) +
+        '" alt="" width="14" height="14" />' +
+        "<span>" +
+        escapeHtml(layer.name || formatArchLayerPacks(layer) || layer.id) +
+        '</span><em>' +
+        escapeHtml(formatArchLayerPacks(layer) || "") +
+        ' · ' +
+        nMem +
+        "</em>",
+      title:
+        "Layer（packs=" +
+        (layer.packsKind || "?") +
+        "）— 拖入同屬性 Node＝子節點／打包",
+      onChip: function (chip) {
+        chip.addEventListener("click", function () {
+          selectArchNode(layer.id);
+          focusArchSelectedNode();
+        });
+      },
+      children: kids,
+    });
+  }
+
+  function renderArchTreeDraftBranch(draftNodes, depth) {
+    const openKey = "draft";
+    const open =
+      archUnassignedTreeOpen[openKey] == null
+        ? true
+        : !!archUnassignedTreeOpen[openKey];
+    const kids = draftNodes.map(function (n) {
+      return renderArchTreeMemberRow(n, depth + 1);
+    });
+    return makeArchTreeRow({
+      depth: depth,
+      hasKids: true,
+      open: open,
+      openKey: openKey,
+      selected: false,
+      dropClass: "is-draft-drop",
+      attrs: {
+        "data-tree-draft": "1",
+      },
+      html:
+        "<span>草稿</span><em class=\"arch-tree-count\">" +
+        draftNodes.length +
+        "</em>",
+      title: "尚未歸屬 Module 的 Node；拖到此處＝從 Layer 取出",
+      onChip: function () {},
+      children: kids,
+    });
+  }
+
+  function renderArchUnassigned() {
+    const list = document.getElementById("arch-unassigned-list");
+    const countEl = document.getElementById("arch-unassigned-count");
+    if (!list) return;
+    syncArchAssignmentsFromModules(archDoc);
+    const layers = (archDoc.nodes || []).filter(function (n) {
+      return n && n.kind === "Layer" && archNodePassesFilter(n);
+    });
+    layers.sort(function (a, b) {
+      return String(a.name || a.id).localeCompare(String(b.name || b.id));
+    });
+    const draft = listUnassignedArchNodes().filter(function (n) {
+      return archNodePassesFilter(n);
+    });
+    let total = draft.length;
+    layers.forEach(function (L) {
+      total += layerAllMemberIds(L).filter(function (mid) {
+        const mn = findArchNode(mid);
+        return mn && archNodePassesFilter(mn);
+      }).length;
+    });
+    if (countEl) countEl.textContent = String(total);
+    list.innerHTML = "";
+    list.setAttribute("role", "tree");
+    clearArchTreeDropHighlights();
+    if (!layers.length && !draft.length) {
+      const empty = document.createElement("p");
+      empty.className = "hint";
+      empty.textContent = "尚無 Layer／節點";
+      list.appendChild(empty);
+      return;
+    }
+    layers.forEach(function (L) {
+      list.appendChild(renderArchTreeLayerBranch(L, 0));
+    });
+    list.appendChild(renderArchTreeDraftBranch(draft, 0));
   }
 
   function portAnchor(node, portId, side) {
@@ -5489,6 +6612,24 @@
         "</em><em>" +
         escapeHtml(n.status || "") +
         "</em></div>" +
+        (n.kind === "UI"
+          ? '<button type="button" class="arch-ui-edit" data-ui-edit="1" title="Edit — 開啟獨立 UI 編輯視窗" aria-label="Edit UI Layer">Edit</button>'
+          : "") +
+        (n.kind === "WorkItem"
+          ? (function () {
+              ensureWorkItemFields(n);
+              const lamp = n.displayLamp || "Gray";
+              return (
+                '<span class="arch-lamp-dot lamp-' +
+                escapeHtml(String(lamp).toLowerCase()) +
+                '" title="displayLamp=' +
+                escapeHtml(lamp) +
+                '" aria-label="lamp ' +
+                escapeHtml(lamp) +
+                '"></span>'
+              );
+            })()
+          : "") +
         '<button type="button" class="arch-node-expand" aria-expanded="' +
         (!n.collapsed ? "true" : "false") +
         '" title="' +
@@ -5511,6 +6652,7 @@
         if (
           ev.target.closest(".arch-port") ||
           ev.target.closest(".arch-node-expand") ||
+          ev.target.closest(".arch-ui-edit") ||
           ev.target.closest(".arch-module-toggle") ||
           ev.target.closest(".arch-add-module") ||
           ev.target.closest(".arch-module-node")
@@ -5563,6 +6705,13 @@
           persistArchDraft();
           renderArchDag();
           selectArchNode(n.id);
+        }
+      );
+      el.querySelector(".arch-ui-edit")?.addEventListener(
+        "click",
+        function (ev) {
+          ev.stopPropagation();
+          openArchUiLayer("editor", n.id);
         }
       );
       el.querySelectorAll(".arch-module-toggle").forEach(function (btn) {
@@ -5655,6 +6804,21 @@
   }
 
   function onArchPointerMove(ev) {
+    if (archTrayDrag) {
+      const moved =
+        Math.abs(ev.clientX - archTrayDrag.startX) +
+        Math.abs(ev.clientY - archTrayDrag.startY);
+      clearArchTreeDropHighlights();
+      if (moved > 6) {
+        const t = findArchTreeDropTarget(
+          ev.clientX,
+          ev.clientY,
+          archTrayDrag.nodeId
+        );
+        if (t && t.el) t.el.classList.add("is-drop-target");
+      }
+      return;
+    }
     if (archMarquee) {
       const p = clientToArchStage(ev.clientX, ev.clientY);
       archMarquee.x1 = p.x;
@@ -5710,23 +6874,38 @@
 
   function onArchPointerUp(ev) {
     if (archTrayDrag) {
-      const node = findArchNode(archTrayDrag.nodeId);
+      const dragId = archTrayDrag.nodeId;
+      const node = findArchNode(dragId);
       const moved =
         Math.abs(ev.clientX - archTrayDrag.startX) +
         Math.abs(ev.clientY - archTrayDrag.startY);
+      clearArchTreeDropHighlights();
       if (node && moved > 6) {
-        const drop = findLayerDropTarget(node, ev.clientX, ev.clientY);
-        if (drop && drop.layer && canPackNodeIntoLayer(node, drop.layer)) {
-          packNodeIntoLayer(node, drop.layer, drop.slotId);
-          persistArchDraft();
-        } else if (drop && drop.layer) {
-          toast(
-            "無法打包：Layer 只收 " +
-              (drop.layer.packsKind || "?") +
-              "（目前 " +
-              node.kind +
-              "）"
-          );
+        const treeDrop = findArchTreeDropTarget(
+          ev.clientX,
+          ev.clientY,
+          dragId
+        );
+        if (treeDrop) {
+          applyArchTreeDrop(dragId, treeDrop);
+        } else if (archEditMode) {
+          const drop = findLayerDropTarget(node, ev.clientX, ev.clientY);
+          if (drop && drop.layer && canAcceptNodeInLayer(node, drop.layer)) {
+            if (findArchLayerContaining(node.id)) {
+              movePackedNodeToSlot(node.id, drop.layer, drop.slotId);
+            } else if (canPackNodeIntoLayer(node, drop.layer)) {
+              packNodeIntoLayer(node, drop.layer, drop.slotId);
+            }
+            persistArchDraft();
+          } else if (drop && drop.layer) {
+            toast(
+              "無法打包：Layer 只收 " +
+                (drop.layer.packsKind || "?") +
+                "（目前 " +
+                node.kind +
+                "）"
+            );
+          }
         }
       }
       archTrayDrag = null;
@@ -5888,6 +7067,15 @@
       node.name = "UI Layer";
       ensureUiLayerFields(node);
     }
+    if (k === "WorkItem") {
+      node.name = "Work Item";
+      ensureWorkItemFields(node);
+      appendArchEvent(id, "node.created", { kind: "WorkItem" });
+    }
+    if (k === "Deployment") {
+      node.name = "Deployment";
+      ensureDeploymentFields(node);
+    }
     archDoc.nodes.push(node);
     persistArchDraft();
     renderArchDag();
@@ -5897,7 +7085,11 @@
         ? "已新增 Layer（" + formatArchLayerPacks(node) + "）"
         : k === "UI"
           ? "已新增 UI Layer"
-          : "已新增 " + k
+          : k === "WorkItem"
+            ? "已新增 Work Item"
+            : k === "Deployment"
+              ? "已新增 Deployment Node"
+              : "已新增 " + k
     );
   }
 
@@ -6524,11 +7716,58 @@
       "archNodeOrder",
       "archUiDefinitionRef",
       "archUiThemeRef",
+      "archDepType",
+      "archDepTargetRef",
+      "archDepEnabled",
+      "archDepInputArtifact",
+      "archDepArtifactType",
+      "archDepVersion",
+      "archDepChecksum",
+      "archDepEnvironment",
+      "archDepRuntime",
+      "archDepConfigProfile",
+      "archDepSecretRefs",
+      "archDepStrategy",
+      "archDepPreChecks",
+      "archDepHealth",
+      "archDepRollback",
+      "archDepApproval",
+      "archDepTimeout",
+      "archDepRetry",
+      "archDepResources",
+      "archDepCost",
+      "archDepExecStatus",
+      "archWiWorkflow",
+      "archWiTest",
+      "archWiPriority",
+      "archWiAcceptance",
+      "archWiBuildDate",
+      "archWiModifiedDate",
+      "archWiCompletedDate",
+      "archWiParentRefs",
+      "archWiDepRefs",
+      "archWiBlocker",
+      "archWiInTok",
+      "archWiOutTok",
+      "archWiCost",
     ].forEach(function (id) {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener("change", applyArchInspectorInputs);
     });
+    document.getElementById("archDepType")?.addEventListener(
+      "change",
+      function () {
+        const node = findArchNode(archSelectedId);
+        const t = normalizeDeploymentType(
+          (document.getElementById("archDepType") || {}).value
+        );
+        syncDeploymentStrategyOptions(
+          t,
+          node && node.strategy ? node.strategy : "replace"
+        );
+      }
+    );
     document
       .getElementById("arch-open-ui-editor")
       ?.addEventListener("click", function () {
@@ -6569,7 +7808,10 @@
     const title = document.getElementById("arch-kind-picker-title");
     if (grid) grid.hidden = false;
     if (packs) packs.hidden = true;
-    if (title) title.textContent = "選擇節點類別（11）";
+    if (title) {
+      title.textContent =
+        "選擇節點類別（" + ARCH_NODE_KINDS.length + "）";
+    }
   }
 
   function showArchPacksStep() {
@@ -6597,7 +7839,11 @@
           ? "Layer（打包；需選 packs）"
           : kind === "UI"
             ? "UI Layer（架構入口 → Editor／Viewer）"
-            : kind;
+            : kind === "WorkItem"
+              ? "Work Item（燈號／Event Log）"
+              : kind === "Deployment"
+                ? "Deployment Node（佈署目標／策略／狀態）"
+                : kind;
       const img = document.createElement("img");
       img.src = archKindIconSrc(kind);
       img.alt = "";
@@ -6611,7 +7857,9 @@
           ? "Layer"
           : kind === "UI"
             ? String(i + 1).padStart(2, "0") + " UI Layer"
-            : String(i + 1).padStart(2, "0") + " " + kind;
+            : kind === "WorkItem"
+              ? String(i + 1).padStart(2, "0") + " Work Item"
+              : String(i + 1).padStart(2, "0") + " " + kind;
       btn.appendChild(img);
       btn.appendChild(lab);
       btn.addEventListener("click", function () {
@@ -7560,11 +8808,13 @@
   function setUidesignMode(mode) {
     uidesignChromeMode = mode === "viewer" ? "viewer" : "designer";
     const panel = document.getElementById("panel-uidesign");
+    const win = document.getElementById("uidesign-window");
     const designer = document.getElementById("uidesign-designer");
     const canvas = document.getElementById("designCanvas");
     const editBar = document.querySelector(
       "#panel-uidesign .uidesign-toolbar"
     );
+    const titleEl = document.getElementById("uidesign-window-title");
     const btns = document.querySelectorAll("[data-uidesign-mode]");
     btns.forEach(function (b) {
       const on = b.getAttribute("data-uidesign-mode") === uidesignChromeMode;
@@ -7579,14 +8829,23 @@
         uidesignChromeMode === "viewer"
       );
     }
+    if (win) {
+      win.classList.toggle(
+        "uidesign-window-viewer",
+        uidesignChromeMode === "viewer"
+      );
+    }
+    if (titleEl && isUiDesignWindowOpen()) {
+      titleEl.textContent =
+        uidesignChromeMode === "viewer" ? "UI 預覽" : "UI 編輯";
+    }
     if (designer) {
       designer.classList.toggle("is-preview", uidesignChromeMode === "viewer");
     }
     if (canvas) {
       canvas.classList.toggle("is-preview", uidesignChromeMode === "viewer");
     }
-    const onUi =
-      panel && panel.classList.contains("active") && !panel.hidden;
+    const onUi = isUiDesignWindowOpen();
     if (uidesignChromeMode === "viewer") {
       setUidesignWidgetsVisible(false);
       if (inspector) {
@@ -8063,10 +9322,7 @@
           t.tagName === "SELECT" ||
           t.isContentEditable);
       if (typing) return;
-      const onUi = document.querySelector(
-        '.panel.active[data-panel="uidesign"]'
-      );
-      if (!onUi) return;
+      if (!isUiDesignWindowOpen()) return;
       if (ev.key === "Delete" || ev.key === "Backspace") {
         ev.preventDefault();
         deleteSelectedDesignNode();
@@ -8612,8 +9868,85 @@
     }
   }
 
+  const SIDE_TAB_BY_PANEL = {
+    arch: "diagram",
+    board: "tasks",
+    git: "git",
+    settings: "settings",
+  };
+
+  function setSideDrawerOpen(open) {
+    const side = document.getElementById("sidebar");
+    if (!side) return;
+    side.setAttribute("data-drawer-open", open ? "true" : "false");
+  }
+
+  function isSideDrawerOpen() {
+    const side = document.getElementById("sidebar");
+    return !side || side.getAttribute("data-drawer-open") !== "false";
+  }
+
+  function syncSideTabs(panelId) {
+    const sideKey = SIDE_TAB_BY_PANEL[panelId] || null;
+    document
+      .querySelectorAll(".side-tab[data-side-tab]")
+      .forEach(function (tab) {
+        const on =
+          sideKey != null && tab.getAttribute("data-side-tab") === sideKey;
+        tab.setAttribute("aria-selected", on ? "true" : "false");
+      });
+    document
+      .querySelectorAll(".side-tab-panel[data-side-panel]")
+      .forEach(function (panel) {
+        const on =
+          sideKey != null && panel.getAttribute("data-side-panel") === sideKey;
+        if (on) {
+          panel.removeAttribute("hidden");
+        } else {
+          panel.setAttribute("hidden", "");
+        }
+      });
+    const more = document.getElementById("sec-nav-secondary");
+    if (more) {
+      more.classList.toggle("has-active-secondary", !sideKey && !!panelId);
+    }
+    if (sideKey) {
+      setSideDrawerOpen(true);
+      setSideMoreOpen(false);
+    }
+  }
+
+  function setSideMoreOpen(open) {
+    const side = document.getElementById("sidebar");
+    const wrap = document.getElementById("sec-nav-secondary");
+    const toggle = document.getElementById("side-more-toggle");
+    const menu = document.getElementById("side-more-menu");
+    if (!toggle || !menu) return;
+    const next = !!open;
+    if (side) side.classList.toggle("is-more-open", next);
+    if (wrap) wrap.classList.toggle("is-open", next);
+    toggle.setAttribute("aria-expanded", next ? "true" : "false");
+    if (next) {
+      menu.removeAttribute("hidden");
+      setSideDrawerOpen(true);
+      document.querySelectorAll(".side-tab[data-side-tab]").forEach(function (tab) {
+        tab.setAttribute("aria-selected", "false");
+      });
+    } else {
+      menu.setAttribute("hidden", "");
+    }
+  }
+
   function showPanel(panelId, opts) {
     if (!PANEL_TITLES[panelId]) return;
+    /* UI 設計改為獨立視窗：不佔主區 panel，也不從側欄進入 */
+    if (panelId === "uidesign") {
+      openUiDesignWindow(
+        (opts && opts.uidesignMode) || uidesignChromeMode || "designer",
+        opts
+      );
+      return;
+    }
     const quiet = opts && opts.quiet;
     document.querySelectorAll(".panel").forEach(function (panel) {
       const match = panel.dataset.panel === panelId;
@@ -8628,7 +9961,11 @@
       const selected = btn.dataset.panel === panelId;
       btn.setAttribute("aria-selected", selected ? "true" : "false");
     });
-    // Tasks Status：僅板面篩選；UI Editor／Viewer 同型 status-item，勿一併清掉
+    syncSideTabs(panelId);
+    if (SIDE_TAB_BY_PANEL[panelId] && !(opts && opts.keepMoreOpen)) {
+      setSideMoreOpen(false);
+    }
+    // Tasks Status：僅板面篩選
     if (panelId !== "board") {
       document
         .querySelectorAll(".status-item[data-filter]")
@@ -8638,14 +9975,6 @@
         });
     } else {
       updateFilterChrome(boardFilter);
-    }
-    if (panelId !== "uidesign") {
-      document
-        .querySelectorAll(".uidesign-mode-list .status-item")
-        .forEach(function (btn) {
-          btn.classList.remove("active");
-          btn.setAttribute("aria-selected", "false");
-        });
     }
     const title = PANEL_TITLES[panelId];
     setStatus("主區：" + title);
@@ -8714,25 +10043,7 @@
       setReportStatusBadge("狀態：NOT RUN", "warn");
       setNavReportMeta("NOT RUN");
     }
-    if (panelId === "uidesign") {
-      if (uidesignChromeMode === "viewer") {
-        setUidesignMode("viewer");
-      } else {
-        setUidesignMode("designer");
-      }
-      renderDesignCanvas();
-      fillDesignProps();
-      setUidesignStatusBadge(
-        uidesignChromeMode === "viewer"
-          ? "狀態：Viewer 預覽（非驗收 PASS）"
-          : "狀態：Editor（非驗收 PASS）",
-        "ok"
-      );
-      setNavUidesignMeta(
-        uidesignChromeMode === "viewer" ? "Viewer" : "Editor"
-      );
-    } else {
-      /* 側欄 UI 設計區塊與 Tasks Status 相同：收闔狀態保留，不因切面板而整段消失 */
+    if (!isUiDesignWindowOpen()) {
       setDesignInspectorActive(false);
       if (inspector && inspectorDisplayBeforeViewer !== "") {
         inspector.style.display =
@@ -8754,14 +10065,15 @@
       const btn = wrap.querySelector(".menu-btn");
       if (btn) btn.setAttribute("aria-expanded", "false");
     });
+    setSideMoreOpen(false);
   }
 
   /**
    * PD-REMAIN-WIN-RESET-01 — default chrome layout (local UI state; no OS／adapter).
-   * Restores: board panel, overview filter, Inspector visible, Tasks Status open, menus closed.
+   * Restores: Diagram tab, overview filter, Inspector visible, menus closed.
    */
   const DEFAULT_CHROME_LAYOUT = {
-    panel: "board",
+    panel: "arch",
     boardFilter: "overview",
     inspectorVisible: true,
     tasksStatusOpen: true,
@@ -8769,8 +10081,6 @@
 
   function applyDefaultChromeLayout() {
     const appEl = document.getElementById("app");
-    const tasksSec = document.getElementById("sec-tasks-status");
-    const tasksToggle = document.getElementById("btn-tasks-toggle");
 
     closeMenus();
     if (pendingGitWrite) {
@@ -8788,21 +10098,13 @@
         if (bodyEl) bodyEl.classList.add("is-inspector-collapsed");
       }
     }
-    applyShellColumnWidths(240, 390);
+    applyShellColumnWidths(260, 390);
     persistShellLayout();
-
-    if (tasksSec) {
-      const open = !!DEFAULT_CHROME_LAYOUT.tasksStatusOpen;
-      tasksSec.setAttribute("data-open", open ? "true" : "false");
-      if (tasksToggle) {
-        tasksToggle.setAttribute("aria-expanded", open ? "true" : "false");
-      }
-    }
 
     boardFilter = FILTER_TITLES[DEFAULT_CHROME_LAYOUT.boardFilter]
       ? DEFAULT_CHROME_LAYOUT.boardFilter
       : "overview";
-    showPanel(DEFAULT_CHROME_LAYOUT.panel || "board", { quiet: true });
+    showPanel(DEFAULT_CHROME_LAYOUT.panel || "arch", { quiet: true });
     updateFilterChrome(boardFilter);
     if (lastBoard) {
       renderBoard(lastBoard);
@@ -9283,95 +10585,65 @@
         }
         return;
       }
-      if (cmd === "nav.uidesign" || cmd === "win.uiEditor") {
-        showPanel("uidesign", { quiet: true });
-        setUidesignMode("designer");
-        renderDesignCanvas();
-        fillDesignProps();
+      if (cmd === "win.uiEditor") {
+        openUiDesignWindow("designer");
         return;
       }
       if (cmd === "win.uiViewer") {
-        showPanel("uidesign", { quiet: true });
-        setUidesignMode("viewer");
-        renderDesignCanvas();
+        openUiDesignWindow("viewer");
         return;
       }
       if (cmd === "uidesign.refresh") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("viewer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("viewer");
+        else setUidesignMode("viewer");
         cmdUidesignRefresh();
         return;
       }
       if (cmd === "uidesign.embed") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("viewer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("viewer");
+        else setUidesignMode("viewer");
         cmdUidesignEmbed();
         return;
       }
       if (cmd === "uidesign.open") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("viewer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("viewer");
+        else setUidesignMode("viewer");
         cmdUidesignOpen();
         return;
       }
       if (cmd === "uidesign.save") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         cmdUidesignSave();
         return;
       }
       if (cmd === "uidesign.load") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         cmdUidesignLoad();
         return;
       }
       if (cmd === "uidesign.build") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         cmdUidesignBuild();
         return;
       }
       if (cmd === "uidesign.ask") {
-        const onUi = document.querySelector(
-          '.panel.active[data-panel="uidesign"]'
-        );
-        if (!onUi) showPanel("uidesign", { quiet: true });
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         cmdUidesignAsk();
         return;
       }
       if (cmd === "uidesign.delete") {
-        if (!document.querySelector('.panel.active[data-panel="uidesign"]')) {
-          showPanel("uidesign", { quiet: true });
-        }
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         deleteSelectedDesignNode();
         return;
       }
       if (cmd === "uidesign.dup") {
-        if (!document.querySelector('.panel.active[data-panel="uidesign"]')) {
-          showPanel("uidesign", { quiet: true });
-        }
-        setUidesignMode("designer");
+        if (!isUiDesignWindowOpen()) openUiDesignWindow("designer");
+        else setUidesignMode("designer");
         duplicateSelectedDesignNode();
         return;
       }
@@ -9557,8 +10829,22 @@
   });
 
   document.querySelectorAll(".nav-item[data-panel]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      showPanel(btn.dataset.panel);
+    btn.addEventListener("click", function (ev) {
+      const panel = btn.dataset.panel;
+      if (!panel) return;
+      /* 直書主分頁：再點一次收合抽屜（DVE／VS Code 行為） */
+      if (
+        btn.classList.contains("side-tab") &&
+        btn.getAttribute("data-side-tab") &&
+        btn.getAttribute("aria-selected") === "true" &&
+        isSideDrawerOpen() &&
+        !document.getElementById("sidebar")?.classList.contains("is-more-open")
+      ) {
+        ev.stopPropagation();
+        setSideDrawerOpen(false);
+        return;
+      }
+      showPanel(panel);
     });
   });
 
@@ -9578,38 +10864,60 @@
     });
   }
 
-  const tasksToggle = document.getElementById("btn-tasks-toggle");
-  const tasksSec = document.getElementById("sec-tasks-status");
-  if (tasksToggle && tasksSec) {
-    tasksToggle.addEventListener("click", function () {
-      const open = tasksSec.getAttribute("data-open") !== "false";
-      const next = !open;
-      tasksSec.setAttribute("data-open", next ? "true" : "false");
-      tasksToggle.setAttribute("aria-expanded", next ? "true" : "false");
-      // Clicking the section header also opens the board (prototype: Tasks Status)
-      showPanel("board", { quiet: true });
-    });
-  }
-
-  // UI 設計工具：與 Tasks Status 相同 — 標題收闔／展開，並切到主區
-  const uidesignToggle = document.getElementById("btn-uidesign-toggle");
-  const uidesignSec = document.getElementById("sec-uidesign");
-  if (uidesignToggle && uidesignSec) {
-    uidesignToggle.addEventListener("click", function () {
-      const open = uidesignSec.getAttribute("data-open") !== "false";
-      const next = !open;
-      uidesignSec.setAttribute("data-open", next ? "true" : "false");
-      uidesignToggle.setAttribute("aria-expanded", next ? "true" : "false");
-      showPanel("uidesign", { quiet: true });
-    });
-  }
-  const uidesignOpenBtn = document.getElementById("btn-uidesign-open");
-  if (uidesignOpenBtn) {
-    uidesignOpenBtn.addEventListener("click", function (ev) {
+  const sideMoreToggle = document.getElementById("side-more-toggle");
+  if (sideMoreToggle) {
+    sideMoreToggle.addEventListener("click", function (ev) {
       ev.stopPropagation();
-      showPanel("uidesign", { quiet: true });
+      const side = document.getElementById("sidebar");
+      const open = side && side.classList.contains("is-more-open");
+      if (open && isSideDrawerOpen()) {
+        setSideMoreOpen(false);
+        setSideDrawerOpen(false);
+        return;
+      }
+      setSideMoreOpen(true);
     });
   }
+  document.getElementById("side-more-menu")?.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+  });
+
+  document
+    .getElementById("uidesign-window-close")
+    ?.addEventListener("click", function () {
+      closeUiDesignWindow();
+    });
+  (function wireUiDesignWindowDrag() {
+    const chrome = document.getElementById("uidesign-window-chrome");
+    const win = document.getElementById("uidesign-window");
+    if (!chrome || !win) return;
+    let drag = null;
+    chrome.addEventListener("pointerdown", function (ev) {
+      if (ev.button !== 0) return;
+      if (ev.target.closest(".uidesign-window-close")) return;
+      const r = win.getBoundingClientRect();
+      drag = {
+        ox: ev.clientX - r.left,
+        oy: ev.clientY - r.top,
+      };
+      try {
+        chrome.setPointerCapture(ev.pointerId);
+      } catch (_e) {
+        /* ignore */
+      }
+      ev.preventDefault();
+    });
+    chrome.addEventListener("pointermove", function (ev) {
+      if (!drag) return;
+      win.style.left = Math.max(0, ev.clientX - drag.ox) + "px";
+      win.style.top = Math.max(0, ev.clientY - drag.oy) + "px";
+      win.style.right = "auto";
+      win.style.transform = "none";
+    });
+    chrome.addEventListener("pointerup", function () {
+      drag = null;
+    });
+  })();
 
   // btn-board-retry uses data-cmd="board.load" (handled by runCommand)
 
@@ -9769,11 +11077,33 @@
     });
   }
 
+  try {
+    applyUiDesignStandaloneShell();
+  } catch (_standaloneShell) {
+    /* ignore */
+  }
+
   // PD-UIDESIGNER: wire Designer shell (palette／props／mode).
   try {
     wireDesignerUi();
   } catch (_wireUi) {
     /* panel may be absent in stripped shells */
+  }
+
+  if (UIDESIGN_STANDALONE) {
+    try {
+      openUiDesignWindowEmbedded(UIDESIGN_STANDALONE.mode, {
+        path: UIDESIGN_STANDALONE.path,
+        quiet: true,
+      });
+      setStatus(
+        UIDESIGN_STANDALONE.mode === "viewer"
+          ? "UI 預覽（獨立 OS 視窗 · 可拖出主視窗）"
+          : "UI 編輯（獨立 OS 視窗 · 可拖出主視窗）"
+      );
+    } catch (_standaloneOpen) {
+      /* ignore */
+    }
   }
 
   try {

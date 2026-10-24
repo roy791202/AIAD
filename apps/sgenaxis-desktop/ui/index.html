@@ -59,7 +59,6 @@
               <button type="button" class="menu-action" data-cmd="nav.spec" data-panel="spec" role="menuitem"><span>ModuleSpec</span></button>
               <button type="button" class="menu-action" data-cmd="nav.report" data-panel="report" role="menuitem"><span>模組／系統報告</span></button>
               <button type="button" class="menu-action" data-cmd="nav.arch" data-panel="arch" role="menuitem"><span>模組架構圖</span></button>
-              <button type="button" class="menu-action" data-cmd="nav.uidesign" data-panel="uidesign" role="menuitem"><span>UI 設計工具</span></button>
               <button type="button" class="menu-action" data-cmd="nav.listen" data-panel="listen" role="menuitem"><span>監聽投影</span></button>
               <button type="button" class="menu-action" data-cmd="nav.settings" data-panel="settings" role="menuitem"><span>設定</span></button>
               <button type="button" class="menu-action" data-cmd="nav.ports" data-panel="ports" role="menuitem"><span>Ports 檢視</span></button>
@@ -78,8 +77,8 @@
           <div class="menu-wrap" data-menu="視窗">
             <button type="button" class="menu-btn" role="menuitem" aria-haspopup="true" aria-expanded="false">視窗</button>
             <div class="menu-dropdown" role="menu">
-              <button type="button" class="menu-action" data-cmd="win.uiEditor" data-panel="uidesign" role="menuitem"><span>UI Editor</span></button>
-              <button type="button" class="menu-action" data-cmd="win.uiViewer" data-panel="uidesign" role="menuitem"><span>UI Viewer</span></button>
+              <button type="button" class="menu-action" data-cmd="win.uiEditor" role="menuitem"><span>UI 編輯</span></button>
+              <button type="button" class="menu-action" data-cmd="win.uiViewer" role="menuitem"><span>UI 預覽</span></button>
               <div class="menu-sep" role="separator"></div>
               <button type="button" class="menu-action" data-cmd="win.reset" role="menuitem"><span>重設佈局</span></button>
               <button type="button" class="menu-action" data-cmd="win.inspector" role="menuitem"><span>顯隱 Inspector</span></button>
@@ -117,157 +116,144 @@
     </header>
 
     <div class="body" id="shell-body">
-      <!-- Sidebar — Workbench IA SSOT: Agent → Tasks Status → 佈版 → 架構 → UI設計；次要降級下部 -->
-      <nav class="sidebar" id="sidebar" aria-label="側欄" data-nav-main-path="1" data-nav-ssot="workbench">
-        <button type="button" class="nav-item nav-main" data-panel="agent" id="nav-agent" aria-selected="false" title="開啟 Agent 派工">
-          <span class="nav-ico" aria-hidden="true"></span>
-          <span>Agent 派工</span>
-          <span class="meta" id="nav-agent-meta">Idle</span>
-        </button>
-
-        <div class="side-section collapsible" id="sec-tasks-status" data-open="true">
-          <div class="side-section-header">
-            <button type="button" class="side-section-toggle" id="btn-tasks-toggle" aria-expanded="true" aria-controls="tasks-status-body" title="點擊收闔／展開 Tasks Status">
-              <span class="section-chevron" aria-hidden="true"></span>
-              <span>Tasks Status</span>
+      <!-- Sidebar — 上方橫向分頁籤 + 下方內容；其餘進「更多」 -->
+      <nav class="sidebar" id="sidebar" aria-label="側欄" data-nav-main-path="1" data-nav-ssot="side-tabs" data-drawer-open="true">
+        <div class="side-rail side-tabs-bar" id="side-rail" aria-label="側欄分頁">
+          <div class="side-tabs" role="tablist" aria-label="主區分頁" aria-orientation="horizontal" id="side-tabs">
+            <button type="button" class="side-tab nav-item nav-main" role="tab" data-panel="arch" data-side-tab="diagram" id="nav-arch" aria-selected="true" aria-controls="side-panel-diagram" title="Diagram／架構圖">
+              <span class="side-tab-label">Diagram</span>
             </button>
-            <button type="button" class="section-badge-action" id="btn-clear-status-filter" title="清除篩選（顯示全部工項）">全部 (<span id="nav-board-meta">0</span>)</button>
-          </div>
-          <div class="status-list" id="tasks-status-body" role="listbox" aria-label="工項燈號篩選（四態＋總覽／已驗收）">
-            <button type="button" class="status-item active" data-panel="board" data-filter="overview" role="option" aria-selected="true" title="總覽">
-              <span class="status-item-left">
-                <span class="overview-dots" aria-hidden="true"><i class="dot gray"></i><i class="dot yellow"></i><i class="dot red"></i><i class="dot green"></i><i class="dot accepted"></i></span>
-                <span class="status-label">總覽</span>
-              </span>
-              <span class="counter-badge badge-gray" data-count-for="overview">0</span>
+            <button type="button" class="side-tab nav-item nav-main" role="tab" data-panel="board" data-side-tab="tasks" id="nav-tasks" aria-selected="false" aria-controls="sec-tasks-status" title="Tasks status／工項燈號">
+              <span class="side-tab-label">Tasks status</span>
+              <span class="side-tab-badge meta" id="nav-board-meta">0</span>
             </button>
-            <button type="button" class="status-item" data-panel="board" data-filter="gray" role="option" aria-selected="false" title="待辦" data-zone-filter="1">
-              <span class="status-item-left">
-                <span class="dot gray" aria-hidden="true"></span>
-                <span class="status-label">待辦</span>
-              </span>
-              <span class="counter-badge badge-gray" data-count-for="gray">0</span>
+            <button type="button" class="side-tab nav-item nav-main" role="tab" data-panel="git" data-side-tab="git" id="nav-git" aria-selected="false" aria-controls="side-panel-git" title="Git status">
+              <span class="side-tab-label">Git status</span>
             </button>
-            <button type="button" class="status-item" data-panel="board" data-filter="yellow" role="option" aria-selected="false" title="進行中" data-zone-filter="1">
-              <span class="status-item-left">
-                <span class="dot yellow" aria-hidden="true"></span>
-                <span class="status-label">進行中</span>
-              </span>
-              <span class="counter-badge badge-yellow" data-count-for="yellow">0</span>
-            </button>
-            <button type="button" class="status-item" data-panel="board" data-filter="red" role="option" aria-selected="false" title="Bug" data-zone-filter="1">
-              <span class="status-item-left">
-                <span class="dot red" aria-hidden="true"></span>
-                <span class="status-label">Bug</span>
-              </span>
-              <span class="counter-badge badge-red" data-count-for="red">0</span>
-            </button>
-            <button type="button" class="status-item" data-panel="board" data-filter="green" role="option" aria-selected="false" title="已完成" data-zone-filter="1">
-              <span class="status-item-left">
-                <span class="dot green" aria-hidden="true"></span>
-                <span class="status-label">已完成</span>
-              </span>
-              <span class="counter-badge badge-green" data-count-for="green">0</span>
-            </button>
-            <button type="button" class="status-item" data-panel="board" data-filter="accepted" role="option" aria-selected="false" title="已驗收">
-              <span class="status-item-left">
-                <span class="dot accepted" aria-hidden="true"></span>
-                <span class="status-label">已驗收</span>
-              </span>
-              <span class="counter-badge badge-accepted" data-count-for="accepted">0</span>
+            <button type="button" class="side-tab nav-item nav-main" role="tab" data-panel="settings" data-side-tab="settings" id="nav-settings" aria-selected="false" aria-controls="side-panel-settings" title="Setting／設定">
+              <span class="side-tab-label">Setting</span>
             </button>
           </div>
+          <button type="button" class="side-tab side-rail-more" id="side-more-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="side-more-menu" title="其他面板">
+            <span class="side-tab-label">更多</span>
+          </button>
         </div>
 
-        <button type="button" class="nav-item nav-main" data-panel="deploy" id="nav-deploy" aria-selected="false" title="佈版／部署（能力・產物・狀態）">
-          <span class="nav-ico" aria-hidden="true"></span>
-          <span>佈版</span>
-          <span class="meta" id="nav-deploy-meta">—</span>
-        </button>
-        <button type="button" class="nav-item nav-main" data-panel="arch" id="nav-arch" aria-selected="false" title="模組架構圖排後面">
-          <span class="nav-ico" aria-hidden="true"></span>
-          <span>模組架構圖</span>
-          <span class="tag-chip">稍後</span>
-        </button>
-        <div class="side-section collapsible" id="sec-uidesign" data-open="true">
-          <div class="side-section-header">
-            <button type="button" class="side-section-toggle" id="btn-uidesign-toggle" aria-expanded="true" aria-controls="uidesign-side-body" title="點擊收闔／展開 UI 設計工具">
-              <span class="section-chevron" aria-hidden="true"></span>
-              <span>UI 設計工具</span>
-            </button>
-            <button type="button" class="section-badge-action" id="btn-uidesign-open" data-panel="uidesign" title="開啟 UI 設計工具主區">
-              <span id="nav-uidesign-meta">—</span>
-            </button>
-          </div>
-          <div class="uidesign-side-body" id="uidesign-side-body" aria-label="UI 設計工具">
-            <div class="status-list uidesign-mode-list" role="listbox" aria-label="Editor／Viewer">
-              <button type="button" class="status-item active" id="nav-uidesign-designer" data-panel="uidesign" data-uidesign-mode="designer" role="option" aria-selected="true" title="Editor（UI 結構／樣式／資源／事件）">
-                <span class="status-item-left">
-                  <span class="status-label">Editor</span>
-                </span>
-                <span class="tag-chip">編輯</span>
-              </button>
-              <button type="button" class="status-item" id="nav-uidesign-viewer" data-panel="uidesign" data-uidesign-mode="viewer" role="option" aria-selected="false" title="Viewer 預覽／互動">
-                <span class="status-item-left">
-                  <span class="status-label">Viewer</span>
-                </span>
-                <span class="tag-chip">預覽</span>
-              </button>
+        <div class="side-drawer" id="side-drawer">
+          <div class="side-tab-body" id="side-tab-body">
+            <div class="side-tab-panel" id="side-panel-diagram" data-side-panel="diagram" role="tabpanel" aria-labelledby="nav-arch">
+              <header class="side-drawer-head">
+                <span class="side-panel-title">Diagram</span>
+              </header>
+              <aside class="arch-unassigned arch-tree-pane" id="arch-unassigned" aria-label="架構樹">
+                <header class="arch-unassigned-head">
+                  <strong>架構樹</strong>
+                  <span class="hint" id="arch-unassigned-count">0</span>
+                </header>
+                <div class="arch-unassigned-tree" id="arch-unassigned-list" role="tree" aria-label="架構樹 Layer→Module→Node"></div>
+              </aside>
             </div>
-            <div class="uidesign-widget-groups" id="sec-uidesign-widgets" data-open="true" aria-label="Widget Box">
-              <div class="uidesign-widgets-label">元件（Widget Box）</div>
-              <details class="uidesign-cat" open>
-                <summary>文件</summary>
-                <button type="button" class="designer-item" data-palette="Form">Form</button>
-                <button type="button" class="designer-item" data-palette="Group">Group</button>
-              </details>
-              <details class="uidesign-cat" open>
-                <summary>輸入</summary>
-                <button type="button" class="designer-item" data-palette="Button">Button</button>
-                <button type="button" class="designer-item" data-palette="LineEdit">LineEdit</button>
-                <button type="button" class="designer-item" data-palette="CheckBox">CheckBox</button>
-                <button type="button" class="designer-item" data-palette="ComboBox">ComboBox</button>
-                <button type="button" class="designer-item" data-palette="Slider">Slider</button>
-              </details>
-              <details class="uidesign-cat" open>
-                <summary>顯示</summary>
-                <button type="button" class="designer-item" data-palette="Label">Label</button>
-                <button type="button" class="designer-item" data-palette="ProgressBar">ProgressBar</button>
-              </details>
+            <div class="side-tab-panel side-section" id="sec-tasks-status" data-side-panel="tasks" data-open="true" role="tabpanel" aria-labelledby="nav-tasks" hidden>
+              <div class="side-section-header side-drawer-head">
+                <span class="side-panel-title">Tasks status</span>
+                <button type="button" class="section-badge-action" id="btn-clear-status-filter" title="清除篩選（顯示全部工項）">全部</button>
+              </div>
+              <div class="status-list" id="tasks-status-body" role="listbox" aria-label="工項燈號篩選（四態＋總覽／已驗收）">
+                <button type="button" class="status-item active" data-panel="board" data-filter="overview" role="option" aria-selected="true" title="總覽">
+                  <span class="status-item-left">
+                    <span class="overview-dots" aria-hidden="true"><i class="dot gray"></i><i class="dot yellow"></i><i class="dot red"></i><i class="dot green"></i><i class="dot accepted"></i></span>
+                    <span class="status-label">總覽</span>
+                  </span>
+                  <span class="counter-badge badge-gray" data-count-for="overview">0</span>
+                </button>
+                <button type="button" class="status-item" data-panel="board" data-filter="gray" role="option" aria-selected="false" title="待辦" data-zone-filter="1">
+                  <span class="status-item-left">
+                    <span class="dot gray" aria-hidden="true"></span>
+                    <span class="status-label">待辦</span>
+                  </span>
+                  <span class="counter-badge badge-gray" data-count-for="gray">0</span>
+                </button>
+                <button type="button" class="status-item" data-panel="board" data-filter="yellow" role="option" aria-selected="false" title="進行中" data-zone-filter="1">
+                  <span class="status-item-left">
+                    <span class="dot yellow" aria-hidden="true"></span>
+                    <span class="status-label">進行中</span>
+                  </span>
+                  <span class="counter-badge badge-yellow" data-count-for="yellow">0</span>
+                </button>
+                <button type="button" class="status-item" data-panel="board" data-filter="red" role="option" aria-selected="false" title="Bug" data-zone-filter="1">
+                  <span class="status-item-left">
+                    <span class="dot red" aria-hidden="true"></span>
+                    <span class="status-label">Bug</span>
+                  </span>
+                  <span class="counter-badge badge-red" data-count-for="red">0</span>
+                </button>
+                <button type="button" class="status-item" data-panel="board" data-filter="green" role="option" aria-selected="false" title="已完成" data-zone-filter="1">
+                  <span class="status-item-left">
+                    <span class="dot green" aria-hidden="true"></span>
+                    <span class="status-label">已完成</span>
+                  </span>
+                  <span class="counter-badge badge-green" data-count-for="green">0</span>
+                </button>
+                <button type="button" class="status-item" data-panel="board" data-filter="accepted" role="option" aria-selected="false" title="已驗收">
+                  <span class="status-item-left">
+                    <span class="dot accepted" aria-hidden="true"></span>
+                    <span class="status-label">已驗收</span>
+                  </span>
+                  <span class="counter-badge badge-accepted" data-count-for="accepted">0</span>
+                </button>
+              </div>
+            </div>
+            <div class="side-tab-panel" id="side-panel-git" data-side-panel="git" role="tabpanel" aria-labelledby="nav-git" hidden>
+              <header class="side-drawer-head">
+                <span class="side-panel-title">Git status</span>
+              </header>
+              <p class="hint side-tab-hint">分支／diff／寫入閘在主區。</p>
+            </div>
+            <div class="side-tab-panel" id="side-panel-settings" data-side-panel="settings" role="tabpanel" aria-labelledby="nav-settings" hidden>
+              <header class="side-drawer-head">
+                <span class="side-panel-title">Setting</span>
+              </header>
+              <p class="hint side-tab-hint">CLI／MCP／DryRun｜Live 在主區。</p>
             </div>
           </div>
-        </div>
 
-        <div class="side-secondary" data-nav-secondary="1" id="sec-nav-secondary">
-          <div class="side-section">次要</div>
-          <button type="button" class="nav-item nav-secondary" data-panel="git" id="nav-git" aria-selected="false">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>Git 工作台</span>
-          </button>
-          <button type="button" class="nav-item nav-secondary" data-panel="spec" id="nav-spec" aria-selected="false" title="ModuleSpec／契約唯讀（核准後不可原地改）">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>ModuleSpec</span>
-            <span class="meta" id="nav-spec-meta">—</span>
-          </button>
-          <button type="button" class="nav-item nav-secondary" data-panel="report" id="nav-report" aria-selected="false" title="模組／系統報告（pd_report 投影；不回寫規格）">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>報告</span>
-            <span class="meta" id="nav-report-meta">—</span>
-          </button>
-          <button type="button" class="nav-item nav-secondary" data-panel="settings" id="nav-settings" aria-selected="false">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>設定</span>
-          </button>
-          <button type="button" class="nav-item nav-secondary" data-panel="ports" id="nav-ports" aria-selected="false" title="Ports／adapter 註冊狀態投影">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>Ports 檢視</span>
-            <span class="meta" id="nav-ports-meta">—</span>
-          </button>
-          <button type="button" class="nav-item nav-secondary" data-panel="listen" id="nav-listen" aria-selected="false" title="FS／Git／Agent 監聽投影（Command only；降級次要）">
-            <span class="nav-ico" aria-hidden="true"></span>
-            <span>監聽</span>
-            <span class="meta" id="nav-listen-meta">—</span>
-          </button>
+          <div class="side-more side-secondary" data-nav-secondary="1" id="sec-nav-secondary">
+            <div class="side-more-menu" id="side-more-menu" role="menu" aria-label="其他面板" hidden>
+              <header class="side-drawer-head">
+                <span class="side-panel-title">更多</span>
+              </header>
+              <button type="button" class="nav-item nav-secondary" data-panel="agent" id="nav-agent" role="menuitem" aria-selected="false" title="開啟 Agent 派工">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>Agent 派工</span>
+                <span class="meta" id="nav-agent-meta">Idle</span>
+              </button>
+              <button type="button" class="nav-item nav-secondary" data-panel="deploy" id="nav-deploy" role="menuitem" aria-selected="false" title="佈版／部署（能力・產物・狀態）">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>佈版</span>
+                <span class="meta" id="nav-deploy-meta">—</span>
+              </button>
+              <button type="button" class="nav-item nav-secondary" data-panel="spec" id="nav-spec" role="menuitem" aria-selected="false" title="ModuleSpec／契約唯讀（核准後不可原地改）">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>ModuleSpec</span>
+                <span class="meta" id="nav-spec-meta">—</span>
+              </button>
+              <button type="button" class="nav-item nav-secondary" data-panel="report" id="nav-report" role="menuitem" aria-selected="false" title="模組／系統報告（pd_report 投影；不回寫規格）">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>報告</span>
+                <span class="meta" id="nav-report-meta">—</span>
+              </button>
+              <button type="button" class="nav-item nav-secondary" data-panel="ports" id="nav-ports" role="menuitem" aria-selected="false" title="Ports／adapter 註冊狀態投影">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>Ports 檢視</span>
+                <span class="meta" id="nav-ports-meta">—</span>
+              </button>
+              <button type="button" class="nav-item nav-secondary" data-panel="listen" id="nav-listen" role="menuitem" aria-selected="false" title="FS／Git／Agent 監聽投影（Command only；降級次要）">
+                <span class="nav-ico" aria-hidden="true"></span>
+                <span>監聽</span>
+                <span class="meta" id="nav-listen-meta">—</span>
+              </button>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -284,7 +270,7 @@
 
       <!-- Main panels -->
       <main class="main" id="main">
-        <section class="panel active" id="panel-board" data-panel="board" aria-label="工項看板">
+        <section class="panel" id="panel-board" data-panel="board" aria-label="工項看板" hidden>
           <div class="panel-head">
             <h1 id="board-section-title">工項看板 · 總覽</h1>
             <button type="button" class="tool-btn" data-cmd="work.new" id="btn-board-add">+ 新增工項</button>
@@ -420,7 +406,7 @@
           <p class="deploy-status-line" id="deploy-status-line" role="status"></p>
         </section>
 
-        <section class="panel" id="panel-arch" data-panel="arch" aria-label="架構圖" hidden>
+        <section class="panel active" id="panel-arch" data-panel="arch" aria-label="架構圖">
           <div class="arch-toolbar" role="toolbar" aria-label="架構圖工具列">
             <button type="button" class="tool-btn primary" id="arch-refresh" data-cmd="arch.refresh">重新整理投影</button>
             <button type="button" class="tool-btn" id="arch-edit" aria-pressed="false" title="允許框選／拖曳移動／連線／新增">編輯草稿</button>
@@ -463,7 +449,7 @@
             </label>
             <button type="button" class="tool-btn" id="arch-delete-node" disabled title="刪除選取節點（Delete）">刪除</button>
             <div class="arch-add-wrap" id="arch-add-wrap">
-              <button type="button" class="tool-btn primary" id="arch-add-node" aria-haspopup="dialog" aria-expanded="false" aria-controls="arch-kind-picker" title="開啟節點類別面板（圖示 11 種）">＋節點</button>
+              <button type="button" class="tool-btn primary" id="arch-add-node" aria-haspopup="dialog" aria-expanded="false" aria-controls="arch-kind-picker" title="開啟節點類別面板">＋節點</button>
               <!-- 隱藏欄位：與圖示面板同步（測試／狀態） -->
               <select id="archAddKind" hidden aria-hidden="true" tabindex="-1">
                 <option value="API">API</option>
@@ -476,6 +462,8 @@
                 <option value="Infrastructure">Infrastructure</option>
                 <option value="ACL">ACL</option>
                 <option value="Custom">Custom</option>
+                <option value="WorkItem">Work Item</option>
+                <option value="Deployment">Deployment</option>
                 <option value="Layer">Layer</option>
               </select>
               <select id="archLayerPacksKind" hidden aria-hidden="true" tabindex="-1">
@@ -489,13 +477,15 @@
                 <option value="Infrastructure">Infrastructure</option>
                 <option value="ACL">ACL</option>
                 <option value="Custom">Custom</option>
+                <option value="WorkItem">Work Item</option>
+                <option value="Deployment">Deployment</option>
               </select>
               <div class="arch-kind-picker" id="arch-kind-picker" role="dialog" aria-label="選擇節點類別" hidden>
                 <div class="arch-kind-picker-head">
                   <strong id="arch-kind-picker-title">選擇節點類別</strong>
                   <button type="button" class="tool-btn" id="arch-kind-picker-close" title="關閉">✕</button>
                 </div>
-                <div class="arch-kind-grid" id="arch-kind-grid" role="listbox" aria-label="11 種節點"></div>
+                <div class="arch-kind-grid" id="arch-kind-grid" role="listbox" aria-label="節點類別"></div>
                 <div class="arch-kind-packs" id="arch-kind-packs" hidden>
                   <p class="hint">Layer · 選擇 packs 屬性後新增</p>
                   <div class="arch-kind-grid arch-kind-grid--packs" id="arch-packs-grid" role="listbox" aria-label="Layer packs"></div>
@@ -511,14 +501,6 @@
             <!-- chips filled by JS（11 種圖示） -->
           </div>
           <div class="arch-workspace" id="arch-workspace">
-            <aside class="arch-unassigned" id="arch-unassigned" aria-label="未分配 Nodes">
-              <header class="arch-unassigned-head">
-                <strong>未分配 Nodes</strong>
-                <span class="hint" id="arch-unassigned-count">0</span>
-              </header>
-              <p class="hint arch-unassigned-hint">草稿可無 Module；拖入 Module Slot 設定 moduleRef（不刪節點）</p>
-              <div class="arch-unassigned-list" id="arch-unassigned-list" role="list"></div>
-            </aside>
             <div class="arch-canvas-shell" id="arch-canvas-shell">
               <div class="designer-board arch-board" id="archBoard" data-grid="8">
                 <div class="designer-ruler-corner" aria-hidden="true"></div>
@@ -537,92 +519,6 @@
               </div>
             </div>
           </div>
-        </section>
-
-        <section class="panel" id="panel-uidesign" data-panel="uidesign" aria-label="UI 設計工具" hidden>
-          <div class="uidesign-modes" role="tablist" aria-label="Editor／Viewer">
-            <button type="button" class="uidesign-mode is-active" id="uidesign-mode-designer" data-uidesign-mode="designer" role="tab" aria-selected="true">Editor</button>
-            <button type="button" class="uidesign-mode" id="uidesign-mode-viewer" data-uidesign-mode="viewer" role="tab" aria-selected="false">Viewer</button>
-          </div>
-
-          <div class="uidesign-toolbar" role="toolbar" aria-label="UI 設計工具工具列">
-            <button type="button" class="tool-btn primary" id="uidesign-save" data-cmd="uidesign.save" title="儲存 design/main.sgendesign">儲存 .sgendesign</button>
-            <button type="button" class="tool-btn" id="uidesign-load" data-cmd="uidesign.load" title="開啟 .sgendesign">開啟 .sgendesign</button>
-            <button type="button" class="tool-btn" id="uidesign-build" data-cmd="uidesign.build" title="Build 可互動溝通預覽">Build 預覽</button>
-            <button type="button" class="tool-btn" id="uidesign-ask" data-cmd="uidesign.ask" title="Ask Agent → BDD／工項草稿">Ask Agent</button>
-            <button type="button" class="tool-btn" id="uidesign-delete" data-cmd="uidesign.delete" title="刪除選取 (Delete)">刪除</button>
-            <button type="button" class="tool-btn" id="uidesign-dup" data-cmd="uidesign.dup" title="複製 (Ctrl+D)">複製</button>
-            <button type="button" class="tool-btn" id="uidesign-raise" data-cmd="uidesign.raise" title="上移層級">↑層</button>
-            <button type="button" class="tool-btn" id="uidesign-lower" data-cmd="uidesign.lower" title="下移層級">↓層</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.left" title="對齊左">左</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.hmid" title="水平置中">中</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.right" title="對齊右">右</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.top" title="對齊上">上</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.vmid" title="垂直置中">豎中</button>
-            <button type="button" class="tool-btn" data-cmd="uidesign.align.bottom" title="對齊下">下</button>
-            <select id="desLayoutMode" aria-label="簡易 layout" title="Form layout">
-              <option value="none">layout:none</option>
-              <option value="hbox">layout:hbox</option>
-              <option value="vbox">layout:vbox</option>
-              <option value="grid">layout:grid</option>
-            </select>
-            <label class="uidesign-grid-label" for="desFormSize" title="Form 文件大小；外圍 Grid 無限延伸">
-              Form
-              <select id="desFormSize" aria-label="Form 文件大小（外圍 Grid 無限延伸）">
-                <option value="800x600" selected>800×600</option>
-                <option value="800x800">800×800</option>
-                <option value="1024x768">1024×768</option>
-                <option value="1280x720">1280×720</option>
-                <option value="1366x768">1366×768</option>
-                <option value="1440x900">1440×900</option>
-                <option value="1600x900">1600×900</option>
-                <option value="1920x1080">1920×1080</option>
-                <option value="2560x1440">2560×1440</option>
-                <option value="custom">自訂（Inspector W×H）</option>
-              </select>
-            </label>
-            <label class="uidesign-grid-label" for="desGridSize" title="畫布 Grid 格距（吸附）">
-              Grid
-              <select id="desGridSize" aria-label="Grid 格距">
-                <option value="0">關</option>
-                <option value="4">4px</option>
-                <option value="8" selected>8px</option>
-                <option value="10">10px</option>
-                <option value="16">16px</option>
-                <option value="20">20px</option>
-                <option value="25">25px</option>
-                <option value="32">32px</option>
-              </select>
-            </label>
-            <span class="uidesign-status-badge" id="uidesign-status-badge" title="設計狀態（非驗收 PASS）">狀態：—</span>
-          </div>
-
-          <p class="uidesign-path-line" id="uidesign-path-line">設計檔：<code id="uidesign-path">design/main.sgendesign</code></p>
-
-          <div id="uidesign-designer" class="designer-shell designer-shell--stage" data-uidesign-pane="designer">
-            <div class="designer-stage" aria-label="Form 畫布">
-              <div class="designer-stage-bar" id="designer-stage-bar">
-                <span id="designStateLabel">目前設計：Untitled Form</span>
-              </div>
-              <div class="designer-canvas" id="designCanvas">
-                <div class="designer-board" id="designBoard" data-grid="8">
-                  <div class="designer-ruler-corner" aria-hidden="true"></div>
-                  <div class="designer-ruler designer-ruler-h" id="designRulerH" aria-label="水平量尺"></div>
-                  <div class="designer-ruler designer-ruler-v" id="designRulerV" aria-label="垂直量尺"></div>
-                  <div class="designer-artboard" id="designArtboard">
-                    <div class="form-frame is-selected" id="designForm" data-node-id="node-form-root">
-                      <div class="form-grid" id="designGrid" aria-hidden="true"></div>
-                      <div class="design-guides" id="designGuides" aria-hidden="true"></div>
-                      <span class="form-tag" id="designFormTag">Form</span>
-                      <div class="design-nodes" id="designNodes"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p class="uidesign-status-line" id="uidesign-status-line" role="status"></p>
         </section>
 
         <section class="panel" id="panel-listen" data-panel="listen" aria-label="監聽投影" hidden>
@@ -993,10 +889,126 @@
                 <option value="Infrastructure">Infrastructure</option>
                 <option value="ACL">ACL</option>
                 <option value="Custom">Custom</option>
+                <option value="WorkItem">Work Item</option>
+                <option value="Deployment">Deployment</option>
               </select>
             </label>
             <label class="designer-row">Id<input id="archNodeId" type="text" readonly></label>
             <label class="designer-row">Description<textarea id="archNodeDesc" rows="2" placeholder="節點責任與使用情境"></textarea></label>
+            <div id="archWorkItemPanel" class="arch-workitem-panel" hidden>
+              <b>Work Item</b>
+              <p class="hint">Tasks Node：Node Store 狀態與 Event Log 分離；燈號由 workflow／test 推導。</p>
+              <label class="designer-row">workflowStatus
+                <select id="archWiWorkflow" aria-label="workflowStatus">
+                  <option value="NotStarted">NotStarted</option>
+                  <option value="InProgress">InProgress</option>
+                  <option value="Blocked">Blocked</option>
+                  <option value="PendingDecision">PendingDecision</option>
+                  <option value="PendingApproval">PendingApproval</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label class="designer-row">testStatus
+                <select id="archWiTest" aria-label="testStatus">
+                  <option value="NotRun">NotRun</option>
+                  <option value="Running">Running</option>
+                  <option value="Passed">Passed</option>
+                  <option value="Failed">Failed</option>
+                  <option value="Stale">Stale</option>
+                  <option value="Skipped">Skipped</option>
+                </select>
+              </label>
+              <label class="designer-row">displayLamp
+                <span class="arch-lamp-row">
+                  <span id="archWiLampDot" class="arch-lamp-dot lamp-gray" title="Gray" aria-hidden="true"></span>
+                  <input id="archWiLamp" type="text" readonly title="推導值，不可手改">
+                </span>
+              </label>
+              <label class="designer-row">priority
+                <select id="archWiPriority" aria-label="priority">
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                  <option value="critical">critical</option>
+                </select>
+              </label>
+              <label class="designer-row">acceptanceCriteria<textarea id="archWiAcceptance" rows="2" placeholder="可驗證的完成條件"></textarea></label>
+              <label class="designer-row">buildDate<input id="archWiBuildDate" type="date"></label>
+              <label class="designer-row">modifiedDate<input id="archWiModifiedDate" type="date"></label>
+              <label class="designer-row">completedDate<input id="archWiCompletedDate" type="date"></label>
+              <label class="designer-row">parentRefs<input id="archWiParentRefs" type="text" placeholder="父工項 id（逗號分隔）"></label>
+              <label class="designer-row">dependencyRefs<input id="archWiDepRefs" type="text" placeholder="相依節點／工項 id"></label>
+              <label class="designer-row">blockerNote<textarea id="archWiBlocker" rows="2" placeholder="阻塞／待決策說明"></textarea></label>
+              <label class="designer-row">inputTokens<input id="archWiInTok" type="number" min="0" step="1" placeholder="彙總讀取"></label>
+              <label class="designer-row">outputTokens<input id="archWiOutTok" type="number" min="0" step="1" placeholder="彙總讀取"></label>
+              <label class="designer-row">apiCost<input id="archWiCost" type="text" placeholder="彙總／估算標註"></label>
+              <div id="archWorkItemHistory" class="arch-workitem-history" hidden></div>
+            </div>
+            <div id="archDeploymentPanel" class="arch-deployment-panel" hidden>
+              <b>Deployment Node</b>
+              <p class="hint">獨立部署設定（佈署.pdf）：類型 Schema → Inspector；非側欄佈版面板。</p>
+              <label class="designer-row">deploymentType
+                <select id="archDepType" aria-label="deploymentType">
+                  <option value="local">local</option>
+                  <option value="desktop">desktop</option>
+                  <option value="web">web</option>
+                  <option value="container">container</option>
+                  <option value="server">server</option>
+                  <option value="cloud">cloud</option>
+                </select>
+              </label>
+              <label class="designer-row">targetRef<input id="archDepTargetRef" type="text" placeholder="目標環境資源參照"></label>
+              <label class="designer-row arch-check"><input id="archDepEnabled" type="checkbox" checked> enabled</label>
+              <label class="designer-row">inputArtifact<input id="archDepInputArtifact" type="text" placeholder="Build Node 產物參照"></label>
+              <label class="designer-row">artifactType
+                <select id="archDepArtifactType" aria-label="artifactType">
+                  <option value="exe">exe</option>
+                  <option value="package">package</option>
+                  <option value="container-image">container image</option>
+                  <option value="web-bundle">web bundle</option>
+                </select>
+              </label>
+              <label class="designer-row">version<input id="archDepVersion" type="text" placeholder="Release ID／版本"></label>
+              <label class="designer-row">checksumPolicy<input id="archDepChecksum" type="text" placeholder="sha256｜none"></label>
+              <label class="designer-row">environment
+                <select id="archDepEnvironment" aria-label="environment">
+                  <option value="development">development</option>
+                  <option value="staging">staging</option>
+                  <option value="production">production</option>
+                </select>
+              </label>
+              <label class="designer-row">runtime<input id="archDepRuntime" type="text" placeholder="Runtime 版本"></label>
+              <label class="designer-row">configProfile<input id="archDepConfigProfile" type="text" placeholder="設定檔參照"></label>
+              <label class="designer-row">secretRefs<input id="archDepSecretRefs" type="text" placeholder="憑證參照（不明文）" title="僅存參照，不存明文"></label>
+              <label class="designer-row">strategy
+                <select id="archDepStrategy" aria-label="strategy">
+                  <option value="replace">replace</option>
+                  <option value="rolling">rolling</option>
+                  <option value="blue-green">blue-green</option>
+                  <option value="canary">canary</option>
+                </select>
+              </label>
+              <label class="designer-row">preDeployChecks<input id="archDepPreChecks" type="text" placeholder="部署前檢查規則"></label>
+              <label class="designer-row">healthCheck<input id="archDepHealth" type="text" placeholder="健康檢查"></label>
+              <label class="designer-row">rollbackPolicy<input id="archDepRollback" type="text" placeholder="失敗回復規則"></label>
+              <label class="designer-row">approvalPolicy<input id="archDepApproval" type="text" placeholder="人工核准策略"></label>
+              <label class="designer-row">timeoutSeconds<input id="archDepTimeout" type="number" min="0" step="1" placeholder="秒"></label>
+              <label class="designer-row">retryPolicy<input id="archDepRetry" type="text" placeholder="重試次數／間隔"></label>
+              <label class="designer-row">resourceLimits<input id="archDepResources" type="text" placeholder="CPU／記憶體限制"></label>
+              <label class="designer-row">costBudget<input id="archDepCost" type="text" placeholder="成本預算"></label>
+              <label class="designer-row">executionStatus
+                <select id="archDepExecStatus" aria-label="executionStatus">
+                  <option value="Idle">Idle</option>
+                  <option value="Queued">Queued</option>
+                  <option value="Running">Running</option>
+                  <option value="Succeeded">Succeeded</option>
+                  <option value="Failed">Failed</option>
+                  <option value="RolledBack">RolledBack</option>
+                </select>
+              </label>
+              <label class="designer-row">lastRunRef<input id="archDepLastRun" type="text" readonly placeholder="最近執行紀錄"></label>
+            </div>
             <div id="archUiLayerPanel" class="arch-ui-layer-panel" hidden>
               <b>UI Layer</b>
               <p class="hint">架構畫布只放 UI Layer；元件編輯請開 Editor／Viewer（UI-bhv §2）。</p>
@@ -1004,8 +1016,8 @@
               <label class="designer-row">uiDefinitionRef<input id="archUiDefinitionRef" type="text" placeholder="design/main.sgendesign" title="Canonical UI Definition 相對路徑"></label>
               <label class="designer-row">themeRef<input id="archUiThemeRef" type="text" placeholder="（選用）"></label>
               <div class="arch-ui-layer-actions">
-                <button type="button" class="tool-btn primary" id="arch-open-ui-editor" title="Open Editor">Open Editor</button>
-                <button type="button" class="tool-btn" id="arch-open-ui-viewer" title="Open Viewer">Open Viewer</button>
+                <button type="button" class="tool-btn primary" id="arch-open-ui-editor" title="Edit — 開啟獨立 UI 編輯視窗">Edit</button>
+                <button type="button" class="tool-btn" id="arch-open-ui-viewer" title="開啟獨立 UI 預覽視窗">Open Viewer</button>
               </div>
             </div>
             <p class="hint" id="archNodeHint">左 input／右 output。類別建立後不可改；Node Type 僅 Layer。</p>
@@ -1087,6 +1099,118 @@
       <span class="statusbar-item seg statusbar-agent" id="status-agent" title="Agent 狀態">Agent：離線</span>
       <span class="statusbar-item msg" id="status-msg" role="status">就緒 — 瀏覽器／Tauri 殼導覽模式</span>
     </footer>
+  </div>
+
+  <!-- UI Editor／Viewer：獨立浮動視窗（UI Layer Edit／視窗→UI 編輯；非側欄） -->
+  <div id="uidesign-window" class="uidesign-window" hidden role="dialog" aria-modal="true" aria-labelledby="uidesign-window-title">
+    <div class="uidesign-window-chrome" id="uidesign-window-chrome">
+      <span class="uidesign-window-title" id="uidesign-window-title">UI 編輯</span>
+      <button type="button" class="uidesign-window-close" id="uidesign-window-close" title="關閉 UI 設計工具">×</button>
+    </div>
+    <div class="uidesign-window-body">
+      <aside class="uidesign-widget-groups" id="sec-uidesign-widgets" data-open="true" aria-label="Widget Box">
+        <div class="uidesign-widgets-label">元件（Widget Box）</div>
+        <details class="uidesign-cat" open>
+          <summary>文件</summary>
+          <button type="button" class="designer-item" data-palette="Form">Form</button>
+          <button type="button" class="designer-item" data-palette="Group">Group</button>
+        </details>
+        <details class="uidesign-cat" open>
+          <summary>輸入</summary>
+          <button type="button" class="designer-item" data-palette="Button">Button</button>
+          <button type="button" class="designer-item" data-palette="LineEdit">LineEdit</button>
+          <button type="button" class="designer-item" data-palette="CheckBox">CheckBox</button>
+          <button type="button" class="designer-item" data-palette="ComboBox">ComboBox</button>
+          <button type="button" class="designer-item" data-palette="Slider">Slider</button>
+        </details>
+        <details class="uidesign-cat" open>
+          <summary>顯示</summary>
+          <button type="button" class="designer-item" data-palette="Label">Label</button>
+          <button type="button" class="designer-item" data-palette="ProgressBar">ProgressBar</button>
+        </details>
+      </aside>
+      <section class="uidesign-panel" id="panel-uidesign" data-panel="uidesign" aria-label="UI 設計工具">
+        <div class="uidesign-modes" role="tablist" aria-label="Editor／Viewer">
+          <button type="button" class="uidesign-mode is-active" id="uidesign-mode-designer" data-uidesign-mode="designer" role="tab" aria-selected="true">Editor</button>
+          <button type="button" class="uidesign-mode" id="uidesign-mode-viewer" data-uidesign-mode="viewer" role="tab" aria-selected="false">Viewer</button>
+        </div>
+        <div class="uidesign-toolbar" role="toolbar" aria-label="UI 設計工具工具列">
+          <button type="button" class="tool-btn primary" id="uidesign-save" data-cmd="uidesign.save" title="儲存 design/main.sgendesign">儲存 .sgendesign</button>
+          <button type="button" class="tool-btn" id="uidesign-load" data-cmd="uidesign.load" title="開啟 .sgendesign">開啟 .sgendesign</button>
+          <button type="button" class="tool-btn" id="uidesign-build" data-cmd="uidesign.build" title="Build 可互動溝通預覽">Build 預覽</button>
+          <button type="button" class="tool-btn" id="uidesign-ask" data-cmd="uidesign.ask" title="Ask Agent → BDD／工項草稿">Ask Agent</button>
+          <button type="button" class="tool-btn" id="uidesign-delete" data-cmd="uidesign.delete" title="刪除選取 (Delete)">刪除</button>
+          <button type="button" class="tool-btn" id="uidesign-dup" data-cmd="uidesign.dup" title="複製 (Ctrl+D)">複製</button>
+          <button type="button" class="tool-btn" id="uidesign-raise" data-cmd="uidesign.raise" title="上移層級">↑層</button>
+          <button type="button" class="tool-btn" id="uidesign-lower" data-cmd="uidesign.lower" title="下移層級">↓層</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.left" title="對齊左">左</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.hmid" title="水平置中">中</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.right" title="對齊右">右</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.top" title="對齊上">上</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.vmid" title="垂直置中">豎中</button>
+          <button type="button" class="tool-btn" data-cmd="uidesign.align.bottom" title="對齊下">下</button>
+          <select id="desLayoutMode" aria-label="簡易 layout" title="Form layout">
+            <option value="none">layout:none</option>
+            <option value="hbox">layout:hbox</option>
+            <option value="vbox">layout:vbox</option>
+            <option value="grid">layout:grid</option>
+          </select>
+          <label class="uidesign-grid-label" for="desFormSize" title="Form 文件大小；外圍 Grid 無限延伸">
+            Form
+            <select id="desFormSize" aria-label="Form 文件大小（外圍 Grid 無限延伸）">
+              <option value="800x600" selected>800×600</option>
+              <option value="800x800">800×800</option>
+              <option value="1024x768">1024×768</option>
+              <option value="1280x720">1280×720</option>
+              <option value="1366x768">1366×768</option>
+              <option value="1440x900">1440×900</option>
+              <option value="1600x900">1600×900</option>
+              <option value="1920x1080">1920×1080</option>
+              <option value="2560x1440">2560×1440</option>
+              <option value="custom">自訂（Inspector W×H）</option>
+            </select>
+          </label>
+          <label class="uidesign-grid-label" for="desGridSize" title="畫布 Grid 格距（吸附）">
+            Grid
+            <select id="desGridSize" aria-label="Grid 格距">
+              <option value="0">關</option>
+              <option value="4">4px</option>
+              <option value="8" selected>8px</option>
+              <option value="10">10px</option>
+              <option value="16">16px</option>
+              <option value="20">20px</option>
+              <option value="25">25px</option>
+              <option value="32">32px</option>
+            </select>
+          </label>
+          <span class="uidesign-status-badge" id="uidesign-status-badge" title="設計狀態（非驗收 PASS）">狀態：—</span>
+        </div>
+        <p class="uidesign-path-line" id="uidesign-path-line">設計檔：<code id="uidesign-path">design/main.sgendesign</code></p>
+        <div id="uidesign-designer" class="designer-shell designer-shell--stage" data-uidesign-pane="designer">
+          <div class="designer-stage" aria-label="Form 畫布">
+            <div class="designer-stage-bar" id="designer-stage-bar">
+              <span id="designStateLabel">目前設計：Untitled Form</span>
+            </div>
+            <div class="designer-canvas" id="designCanvas">
+              <div class="designer-board" id="designBoard" data-grid="8">
+                <div class="designer-ruler-corner" aria-hidden="true"></div>
+                <div class="designer-ruler designer-ruler-h" id="designRulerH" aria-label="水平量尺"></div>
+                <div class="designer-ruler designer-ruler-v" id="designRulerV" aria-label="垂直量尺"></div>
+                <div class="designer-artboard" id="designArtboard">
+                  <div class="form-frame is-selected" id="designForm" data-node-id="node-form-root">
+                    <div class="form-grid" id="designGrid" aria-hidden="true"></div>
+                    <div class="design-guides" id="designGuides" aria-hidden="true"></div>
+                    <span class="form-tag" id="designFormTag">Form</span>
+                    <div class="design-nodes" id="designNodes"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="uidesign-status-line" id="uidesign-status-line" role="status"></p>
+      </section>
+    </div>
   </div>
 
   <div id="toast-root" aria-live="polite" aria-relevant="additions"></div>

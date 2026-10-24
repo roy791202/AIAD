@@ -12,7 +12,7 @@ JS = UI / "app.js"
 CSS = UI / "styles.css"
 PERM = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "permissions" / "dispatch.toml"
 
-# Order ≡ docs/節點類型定義整理.pdf 01–10
+# Order ≡ docs/節點類型定義整理.pdf 01–10 + WorkItem（Tasks Node）+ Deployment（佈署.pdf）
 KINDS = [
     "API",
     "Contract",
@@ -24,6 +24,8 @@ KINDS = [
     "Infrastructure",
     "ACL",
     "Custom",
+    "WorkItem",
+    "Deployment",
 ]
 
 
@@ -128,6 +130,13 @@ def test_arch_spec_assignment_and_unassigned():
     assert "layoutOrder" in js
     assert "listUnassignedArchNodes" in js
     assert "renderArchUnassigned" in js
+    assert "canAcceptNodeInLayer" in js
+    assert "applyArchTreeDrop" in js
+    assert "findArchTreeDropTarget" in js
+    assert "renderArchTreeLayerBranch" in js
+    assert "data-tree-layer" in js
+    assert "data-tree-module" in js
+    assert "data-tree-draft" in js
     assert "archTrayDrag" in js
     assert "syncArchAssignmentsFromModules" in js
     assert "assignNodeToModule" in js
@@ -135,6 +144,9 @@ def test_arch_spec_assignment_and_unassigned():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="arch-unassigned"' in html
     assert 'id="arch-unassigned-list"' in html
+    assert "架構樹" in html
+    assert "arch-unassigned-tree" in html
+    assert 'role="tree"' in html
     assert 'id="archNodeLayerRef"' in html
     assert 'id="archNodeModuleRef"' in html
     assert 'id="archNodeOrder"' in html
@@ -145,6 +157,10 @@ def test_arch_spec_assignment_and_unassigned():
     assert ".arch-workspace" in css
     assert ".arch-unassigned" in css
     assert ".arch-unassigned-chip" in css
+    assert ".arch-tree-leaf" in css
+    assert ".arch-tree-drop" in css
+    assert ".arch-unassigned-tree" in css
+    assert "is-drop-target" in css
 
 
 def test_arch_marquee_multiselect_and_group_move():
@@ -178,8 +194,8 @@ def test_arch_arrange_selection():
     assert "自動排列" in html
 
 
-def test_arch_kind_picker_graphical_eleven_icons():
-    """＋節點開啟圖示面板；11 種對應 ui/icons/arch/{Kind}.svg（源自 D:/AIAD/icon）。"""
+def test_arch_kind_picker_graphical_icons():
+    """＋節點開啟圖示面板；類別對應 ui/icons/arch/{Kind}.svg。"""
     html = HTML.read_text(encoding="utf-8")
     assert 'id="arch-add-node"' in html
     assert 'id="arch-kind-picker"' in html
@@ -190,12 +206,70 @@ def test_arch_kind_picker_graphical_eleven_icons():
     assert "wireArchKindPicker" in js
     assert "renderArchKindPickerGrid" in js
     assert "icons/arch/" in js
+    assert "DEPLOYMENT_NODE_REGISTRY" in js
     css = CSS.read_text(encoding="utf-8")
     assert ".arch-kind-picker" in css
     assert ".arch-kind-tile" in css
     icons_dir = ROOT / "apps" / "sgenaxis-desktop" / "ui" / "icons" / "arch"
     for k in KINDS + ["Layer"]:
         assert (icons_dir / f"{k}.svg").is_file(), f"missing icon for {k}"
+
+
+def test_deployment_node_inspector_and_registry():
+    """佈署.pdf：Deployment Node Type + Inspector 專屬屬性 + registry。"""
+    js = JS.read_text(encoding="utf-8")
+    assert '"Deployment"' in js
+    assert "ensureDeploymentFields" in js
+    assert "isArchDeploymentNode" in js
+    assert "DEPLOYMENT_TYPES" in js
+    assert "deploymentType" in js
+    assert "executionStatus" in js
+    assert 'archAttr("deploymentType"' in js
+    html = HTML.read_text(encoding="utf-8")
+    assert 'id="archDeploymentPanel"' in html
+    assert 'id="archDepType"' in html
+    assert 'value="Deployment"' in html
+    css = CSS.read_text(encoding="utf-8")
+    assert ".arch-deployment-panel" in css
+    fixture = ROOT / "fixtures" / "sgenaxis-arch" / "sample.sgenarch.xml"
+    raw = fixture.read_text(encoding="utf-8")
+    assert 'kind="Deployment"' in raw
+    assert "deploymentType=" in raw
+
+
+def test_workitem_node_lamp_and_event_log():
+    """Tasks Node.html：WorkItem Node Store + displayLamp + append-only Event Log。"""
+    js = JS.read_text(encoding="utf-8")
+    assert '"WorkItem"' in js
+    assert "ensureWorkItemFields" in js
+    assert "isArchWorkItemNode" in js
+    assert "computeDisplayLamp" in js
+    assert "appendArchEvent" in js
+    assert "listArchEventsForNode" in js
+    assert "renderArchWorkItemHistory" in js
+    assert "WORKITEM_WORKFLOW_STATUSES" in js
+    assert "WORKITEM_TEST_STATUSES" in js
+    assert 'archAttr("workflowStatus"' in js
+    assert 'archAttr("displayLamp"' in js
+    assert "events > event" in js
+    html = HTML.read_text(encoding="utf-8")
+    assert 'id="archWorkItemPanel"' in html
+    assert 'id="archWiWorkflow"' in html
+    assert 'id="archWiLamp"' in html
+    assert 'id="archWorkItemHistory"' in html
+    assert 'value="WorkItem"' in html
+    css = CSS.read_text(encoding="utf-8")
+    assert ".arch-workitem-panel" in css
+    assert ".arch-lamp-dot" in css
+    assert ".lamp-red" in css
+    assert ".lamp-orange" in css
+    fixture = ROOT / "fixtures" / "sgenaxis-arch" / "sample.sgenarch.xml"
+    raw = fixture.read_text(encoding="utf-8")
+    assert 'kind="WorkItem"' in raw
+    assert "workflowStatus=" in raw
+    assert "displayLamp=" in raw
+    assert "<events>" in raw
+    assert 'eventType="node.created"' in raw
 
 
 def test_arch_delete_node_and_kind_filter():
@@ -293,12 +367,14 @@ def test_arch_grid_infinite_extend():
 
 
 def test_ui_bhv_arch_ui_layer_entry():
-    """UI-bhv §2：架構畫布 UI Layer + Open Editor／Viewer；Designer→Editor。"""
+    """UI-bhv：UI Layer 節點 Edit → 獨立視窗；視窗→UI 編輯；無側欄入口。"""
     js = JS.read_text(encoding="utf-8")
     assert 'if (k === "UI") return "UI Layer"' in js or 'return "UI Layer"' in js
     assert "ensureUiLayerFields" in js
     assert "openArchUiLayer" in js
+    assert "openUiDesignWindow" in js
     assert "isArchUiLayerNode" in js
+    assert "arch-ui-edit" in js
     assert 'archAttr("uiLayerId"' in js
     assert 'archAttr("uiDefinitionRef"' in js
     assert 'cmd === "win.uiEditor"' in js
@@ -307,10 +383,11 @@ def test_ui_bhv_arch_ui_layer_entry():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="archUiLayerPanel"' in html
     assert 'id="arch-open-ui-editor"' in html
-    assert 'id="arch-open-ui-viewer"' in html
+    assert 'id="uidesign-window"' in html
     assert 'data-cmd="win.uiEditor"' in html
-    assert 'data-cmd="win.uiViewer"' in html
-    assert ">Editor</span>" in html or ">Editor<" in html
+    assert "UI 編輯" in html
+    assert 'id="sec-uidesign"' not in html
     css = CSS.read_text(encoding="utf-8")
     assert ".arch-ui-layer-panel" in css
-    assert ".arch-ui-layer-actions" in css
+    assert ".arch-ui-edit" in css
+    assert ".uidesign-window" in css

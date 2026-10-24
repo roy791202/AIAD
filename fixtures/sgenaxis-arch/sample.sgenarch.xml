@@ -37,6 +37,24 @@
         <port id="n-ui-out" name="events" label="events" direction="output" />
       </outputs>
     </node>
+    <node id="n-work" name="Tasks Node P0" kind="WorkItem" x="40" y="560" collapsed="false" role="Work Item · Lamp · Event Log" status="進行中" workflowStatus="InProgress" testStatus="NotRun" displayLamp="Yellow" priority="high" acceptanceCriteria="Inspector + Event Log + XML round-trip" buildDate="2026-10-24" modifiedDate="2026-10-25" completedDate="" parentRefs="" dependencyRefs="n-ui" blockerNote="" inputTokens="0" outputTokens="0" apiCost="" schemaVersion="1">
+      <description>Work Item (Tasks Node.html) — lamp derived; history in Event Log</description>
+      <inputs>
+        <port id="n-work-in" name="context" label="context" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-work-out" name="result" label="result" direction="output" />
+      </outputs>
+    </node>
+    <node id="n-deploy" name="Deploy Desktop" kind="Deployment" x="40" y="680" collapsed="false" role="Deploy Target · Strategy · Status" status="未驗證" deploymentType="desktop" targetRef="packaging/windows/portable" enabled="true" inputArtifact="sgenaxis-desktop.exe" artifactType="exe" version="0.1.0" checksumPolicy="sha256" environment="development" runtime="" configProfile="" secretRefs="" strategy="replace" preDeployChecks="" healthCheck="" rollbackPolicy="" approvalPolicy="" timeoutSeconds="600" retryPolicy="" resourceLimits="" costBudget="" executionStatus="Idle" lastRunRef="" schemaVersion="1">
+      <description>Deployment Node (佈署.pdf)</description>
+      <inputs>
+        <port id="n-deploy-in" name="artifact" label="artifact" direction="input" />
+      </inputs>
+      <outputs>
+        <port id="n-deploy-out" name="deployResult" label="deployResult" direction="output" />
+      </outputs>
+    </node>
     <node id="n-layer-api" name="Layer · API" kind="Layer" x="320" y="80" collapsed="false" role="Pack API" status="未驗證" packsKind="API">
       <inputs>
         <port id="n-layer-api-in" name="in" label="in" direction="input" />
@@ -65,4 +83,12 @@
   <edges>
     <edge id="e-layer-app" fromNode="n-layer-api" fromPort="n-layer-api-out" toNode="n-app" toPort="n-app-in" />
   </edges>
+  <events>
+    <event id="evt-sample-1" entityRef="n-work" eventType="node.created" timestamp="2026-10-24T12:00:00.000Z" actorType="user" actorRef="fixture" correlationId="" schemaVersion="1">
+      <payload>{"kind":"WorkItem"}</payload>
+    </event>
+    <event id="evt-sample-2" entityRef="n-work" eventType="node.property.updated" timestamp="2026-10-25T04:00:00.000Z" actorType="user" actorRef="fixture" correlationId="" schemaVersion="1">
+      <payload>{"changes":[{"field":"workflowStatus","before":"NotStarted","after":"InProgress"}]}</payload>
+    </event>
+  </events>
 </sgenaxisArch>
