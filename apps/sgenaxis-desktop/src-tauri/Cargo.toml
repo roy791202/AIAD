@@ -1,0 +1,51 @@
+# Standalone package (not a member of ../Cargo.toml workspace).
+# Empty [workspace] keeps `cargo test --lib` runnable from this directory.
+[workspace]
+
+[package]
+name = "sgenaxis-desktop"
+version = "0.1.0"
+description = "SGenAxis desktop shell — Tauri 2 host (core + ports/adapters re-export)"
+authors = ["SGenAxis"]
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "sgenaxis_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# PD-WIRE-OPEN-01: native folder dialog inside Tauri command (not JS／plugin→OS)
+rfd = "0.15"
+# PD-DIRTY-01: pure core (no Tauri / OS types inside the core crate)
+sgenaxis-core = { path = "../crates/sgenaxis-core" }
+# PD-ADAPT-01: Ports (traits) + Adapters (fake/std) — host wires at boot; Core must not import adapters
+sgenaxis-ports = { path = "../crates/sgenaxis-ports" }
+sgenaxis-adapters = { path = "../crates/sgenaxis-adapters" }
+# PD-EXEC-CLI: Agent Provider A (CLI) — DryRun default
+# PD-REMAIN-LIVE-SPAWN-01: real-spawn (DispatchHost→EXEC→StdProcess)
+# PD-REMAIN-LIVE-MCP-01: real-mcp (DispatchHost→McpAgentAdapter Live)
+sgenaxis-exec = { path = "../crates/sgenaxis-exec", features = ["real-spawn", "real-mcp"] }
+# PD-LISTEN-01: FS／Git／AgentChunk → debounce → DomainEvent／Dirty
+sgenaxis-listen = { path = "../crates/sgenaxis-listen" }
+# PD-WORK-01: project registry / root bind / execution lease
+sgenaxis-work = { path = "../crates/sgenaxis-work" }
+# PD-HOST-01: lifecycle / settings store / restricted IPC
+sgenaxis-host = { path = "../crates/sgenaxis-host" }
+# PD-GUARD-01: envelope／path allow vs protect gate (pure; no OS)
+sgenaxis-guard = { path = "../crates/sgenaxis-guard" }
+# PD-EVID-01: evidence classify + store + version bind + green gate
+sgenaxis-evid = { path = "../crates/sgenaxis-evid" }
+# PD-SPEC-01: ModuleSpec / contract load; approved revisions immutable
+sgenaxis-spec = { path = "../crates/sgenaxis-spec" }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true

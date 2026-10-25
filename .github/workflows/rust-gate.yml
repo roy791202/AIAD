@@ -1,0 +1,34 @@
+name: Rust baseline gate
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rust-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Record runtime versions
+        run: |
+          python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustc --version --verbose
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate baseline gate
+        run: python -m unittest discover -s tests -p test_rust_baseline_gate.py -v
+      - name: Rust workspace
+        working-directory: apps/sgenaxis-desktop
+        run: cargo test --workspace --locked
+      - name: EXEC feature matrix
+        working-directory: apps/sgenaxis-desktop
+        run: cargo test -p sgenaxis-exec --all-features --lib --locked
+      - name: Independent Tauri host
+        working-directory: apps/sgenaxis-desktop/src-tauri
+        run: cargo test --lib --locked

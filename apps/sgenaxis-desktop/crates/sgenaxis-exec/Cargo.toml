@@ -1,0 +1,23 @@
+[package]
+name = "sgenaxis-exec"
+version = "0.1.0"
+description = "SGenAxis Agent EXEC — AgentPort + CliAgentAdapter + McpAgentAdapter (§6.3 A/B)"
+edition = "2021"
+rust-version = "1.77.2"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+## Opt-in real ProcessPort spawn (not used by default tests). DryRun is always available.
+real-spawn = []
+## Opt-in live MCP client via McpClientPort (stdio / local HTTP／SSE). Default tests DryRun only.
+real-mcp = []
+
+[dependencies]
+sgenaxis-ports = { path = "../sgenaxis-ports" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# std-adapters enabled so live smoke can use StdProcess + PATH probe (PD-LIVE-CLI-SMOKE-01).
+sgenaxis-adapters = { path = "../sgenaxis-adapters", default-features = false, features = ["std-adapters"] }

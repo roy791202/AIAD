@@ -1,0 +1,30 @@
+//! SGenAxis **Ports** — OS / CLI boundary traits (stage 2.5 / PD-ADAPT-01 / PD-DEPLOY-PORT-01).
+//!
+//! Traits only: no `std::fs`, no `std::process`, no `std::path::PathBuf` in the
+//! public surface. Paths and IDs are `String` / opaque handles so Core / domain
+//! code can depend on this crate without importing OS types.
+//!
+//! Adapters live in `sgenaxis-adapters`. Core must **not** depend on adapters.
+
+#![forbid(unsafe_code)]
+
+mod deploy;
+mod error;
+mod fs;
+mod git;
+mod path;
+mod process;
+
+pub use deploy::{
+    unsupported_platform_reason, windows_wix_artifact_relpath, windows_wix_supported, DeployCapability,
+    DeployPlatform, DeployPort, DeployStatus, DeploySupport, WINDOWS_WIX_FORMAT,
+    WINDOWS_WIX_PACKAGER, WINDOWS_WIX_PRODUCT_VERSION,
+};
+pub use error::PortError;
+pub use fs::FileSystemPort;
+pub use git::{
+    GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval,
+    GitWritePort,
+};
+pub use path::PathPort;
+pub use process::{ProcessId, ProcessOutput, ProcessPort};

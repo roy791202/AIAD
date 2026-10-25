@@ -1,0 +1,297 @@
+//! PD-GIT-02 TDD — approval gate, push-fail preserves state, credential redaction.
+//!
+//! Temp dirs only for StdGitWrite; never touches user repos.
+
+use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
+
+use crate::fake::FakeGitWrite;
+use crate::git_write::{
+    redact_credentials, GatedGitWrite, GIT_WRITE_GATED_MSG, GIT_WRITE_NOT_APPROVED_MSG,
+};
+
+#[cfg(feature = "std-adapters")]
+use crate::StdGitWrite;
+
+#[test]
+fn redact_credentials_strips_url_userinfo_and_tokens() {
+    let raw = "fatal: Authentication failed for 'https://alice:s3cretTOKEN@github.com/org/repo.git'\n\
+               Authorization: Bearer leaky-jwt-value\n\
+               password=hunter2 token=abc123";
+    let clean = redact_credentials(raw);
+    assert!(!clean.contains("s3cretTOKEN"), "password must not leak: {clean}");
+    assert!(!clean.contains("leaky-jwt-value"), "bearer must not leak: {clean}");
+    assert!(!clean.contains("hunter2"), "password= must not leak: {clean}");
+    assert!(!clean.contains("abc123"), "token= must not leak: {clean}");
+    assert!(
+        clean.contains("***") || clean.contains("[REDACTED]"),
+        "expected redaction markers: {clean}"
+    );
+}
+
+#[test]
+fn gated_git_write_blocks_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let c = w.commit("/any", "msg", GitWriteApproval::granted());
+    assert!(matches!(c, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let p = w.push("/any", "origin", Some("main"), GitWriteApproval::granted());
+    assert!(matches!(p, Err(PortError::PermissionDenied(_))));
+}
+
+#[test]
+fn fake_write_denies_without_approval() {
+    let w = FakeGitWrite::new();
+    let err = w
+        .commit("/r", "x", GitWriteApproval::denied())
+        .expect_err("must deny");
+    assert!(
+        matches!(err, PortError::PermissionDenied(ref m) if m == GIT_WRITE_NOT_APPROVED_MSG)
+    );
+    assert!(w.local_commit_count("/r") == 0);
+    let err = w
+        .push("/r", "origin", None, GitWriteApproval::denied())
+        .expect_err("must deny");
+    assert!(matches!(err, PortError::PermissionDenied(_)));
+}
+
+#[test]
+fn fake_write_commit_when_approved() {
+    let w = FakeGitWrite::new();
+    w.commit("/r", "feat: one", GitWriteApproval::granted())
+        .expect("approved commit");
+    assert_eq!(w.local_commit_count("/r"), 1);
+    assert_eq!(w.last_commit_message("/r").as_deref(), Some("feat: one"));
+}
+
+#[test]
+fn fake_push_failure_preserves_local_commits_and_redacts() {
+    let w = FakeGitWrite::new();
+    w.commit("/r", "local keep", GitWriteApproval::granted())
+        .unwrap();
+    assert_eq!(w.local_commit_count("/r"), 1);
+
+    w.fail_next_push(
+        "/r",
+        "remote rejected: https://ci:p@ssw0rd@example.com/r.git Authentication failed",
+    );
+    let err = w
+        .push("/r", "origin", None, GitWriteApproval::granted())
+        .expect_err("injected push fail");
+
+    // Failure preserves local state (INV: 遠端寫入失敗保留本機 commit).
+    assert_eq!(w.local_commit_count("/r"), 1);
+    assert_eq!(w.last_commit_message("/r").as_deref(), Some("local keep"));
+
+    let rendered = err.to_string();
+    assert!(
+        !rendered.contains("p@ssw0rd"),
+        "credential leaked in error: {rendered}"
+    );
+    assert!(
+        matches!(err, PortError::Git(_)),
+        "push failures surface as Git errors"
+    );
+}
+
+#[test]
+fn fake_approved_push_clears_fail_flag() {
+    let w = FakeGitWrite::new();
+    w.commit("/r", "ok", GitWriteApproval::granted()).unwrap();
+    w.push("/r", "origin", Some("HEAD:main"), GitWriteApproval::granted())
+        .expect("push ok");
+    assert_eq!(w.push_count("/r"), 1);
+}
+
+#[cfg(feature = "std-adapters")]
+mod std_write_temp {
+    use super::*;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static SEQ: AtomicU64 = AtomicU64::new(0);
+
+    fn unique_temp(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let n = SEQ.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("sgenaxis-pd-git-02-{label}-{nanos}-{n}"))
+    }
+
+    fn git(cwd: &Path, args: &[&str]) {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(cwd)
+            .output()
+            .expect("spawn git");
+        assert!(
+            out.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    fn init_identity(repo: &Path) {
+        git(repo, &["config", "user.email", "pd-git-02@test.local"]);
+        git(repo, &["config", "user.name", "PD-GIT-02 Test"]);
+        // Avoid signing / hooks in temp fixtures.
+        git(repo, &["config", "commit.gpgsign", "false"]);
+    }
+
+    fn make_worktree_with_bare_remote() -> (PathBuf, PathBuf) {
+        let root = unique_temp("pair");
+        fs::create_dir_all(&root).unwrap();
+        let bare = root.join("remote.git");
+        let work = root.join("work");
+        fs::create_dir_all(&work).unwrap();
+
+        // Pin bare default to `main` so clone checks out a real branch (bare
+        // `git init` often leaves HEAD → master while we only push `main`).
+        git(
+            &root,
+            &["init", "--bare", "-b", "main", bare.to_str().unwrap()],
+        );
+        git(&work, &["init", "-b", "main"]);
+        init_identity(&work);
+        fs::write(work.join("a.txt"), "v1\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "seed"]);
+        git(
+            &work,
+            &[
+                "remote",
+                "add",
+                "origin",
+                bare.to_str().expect("utf8 path"),
+            ],
+        );
+        git(&work, &["push", "-u", "origin", "main"]);
+        (work, bare)
+    }
+
+    #[test]
+    fn std_write_denies_without_approval_no_mutation() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let before = Command::new("git")
+            .args(["-C", repo, "rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        let head_before = String::from_utf8_lossy(&before.stdout).trim().to_string();
+
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        let w = StdGitWrite::new();
+        let err = w
+            .commit(repo, "should not land", GitWriteApproval::denied())
+            .expect_err("denied");
+        assert!(matches!(err, PortError::PermissionDenied(_)));
+
+        let after = Command::new("git")
+            .args(["-C", repo, "rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        let head_after = String::from_utf8_lossy(&after.stdout).trim().to_string();
+        assert_eq!(head_before, head_after, "unapproved commit must not mutate");
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_approved_commit_and_push() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "v2\n").unwrap();
+
+        let w = StdGitWrite::new();
+        w.commit(repo, "feat: v2", GitWriteApproval::granted())
+            .expect("commit");
+        w.push(repo, "origin", Some("main"), GitWriteApproval::granted())
+            .expect("push");
+
+        let log = Command::new("git")
+            .args(["-C", repo, "log", "-1", "--pretty=%s"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&log.stdout).trim(),
+            "feat: v2"
+        );
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_push_non_fast_forward_preserves_local_commit() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let root = work.parent().unwrap();
+
+        // Advance remote independently (fixture may force-push; StdGitWrite never does).
+        let other = root.join("other");
+        let clone = Command::new("git")
+            .args([
+                "clone",
+                bare.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ])
+            .current_dir(root)
+            .output()
+            .expect("spawn clone");
+        assert!(
+            clone.status.success(),
+            "clone failed: {}",
+            String::from_utf8_lossy(&clone.stderr)
+        );
+        init_identity(&other);
+        fs::write(other.join("remote-only.txt"), "x\n").unwrap();
+        git(&other, &["add", "remote-only.txt"]);
+        git(&other, &["commit", "-m", "remote advance"]);
+        // Force only in fixture setup to create divergence; product path forbids force.
+        git(&other, &["push", "--force", "origin", "HEAD:main"]);
+
+        fs::write(work.join("a.txt"), "local-ahead\n").unwrap();
+        let w = StdGitWrite::new();
+        w.commit(repo, "local only", GitWriteApproval::granted())
+            .unwrap();
+        let head = Command::new("git")
+            .args(["-C", repo, "rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        let local_head = String::from_utf8_lossy(&head.stdout).trim().to_string();
+
+        let err = w
+            .push(repo, "origin", Some("main"), GitWriteApproval::granted())
+            .expect_err("non-ff push must fail");
+        assert!(matches!(err, PortError::Git(_)));
+
+        let head2 = Command::new("git")
+            .args(["-C", repo, "rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&head2.stdout).trim(),
+            local_head,
+            "push failure must preserve local commit"
+        );
+        let subj = Command::new("git")
+            .args(["-C", repo, "log", "-1", "--pretty=%s"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&subj.stdout).trim(),
+            "local only"
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn std_write_redacts_credentials_in_errors() {
+        // Unit-level via the same helper StdGitWrite uses — injected stderr path.
+        let dirty = "fatal: could not read Password for 'https://bot:ghp_LEAKEDSECRET@host/r.git'";
+        let clean = crate::git_write::redact_credentials(dirty);
+        assert!(!clean.contains("ghp_LEAKEDSECRET"));
+        assert!(!clean.contains("bot:ghp_"));
+    }
+}

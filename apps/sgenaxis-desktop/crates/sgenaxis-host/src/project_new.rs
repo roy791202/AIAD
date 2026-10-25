@@ -1,0 +1,189 @@
+//! PD-REMAIN-FILE-NEW-01 / PD-BUG-FILE-NEW-01 — create a local project directory
+//! via [`FileSystemPort`].
+//!
+//! UI must not touch the filesystem; Tauri command calls into this module, then
+//! persists `project_root` through [`crate::settings`] / `host_set_settings`.
+
+use std::path::{Component, Path, PathBuf};
+
+use sgenaxis_ports::FileSystemPort;
+
+use crate::error::HostError;
+
+/// Normalize／validate a candidate path for「新增專案」(no FS yet).
+pub fn normalize_new_project_path(raw: &str) -> Result<String, HostError> {
+    let path = raw.trim();
+    if path.is_empty() {
+        return Err(HostError::Settings(
+            "project path is empty — choose a folder name for 新增專案".into(),
+        ));
+    }
+    if path == "/demo/root" {
+        return Err(HostError::Settings(
+            "project_root must not be hardcoded /demo/root — bind a real project root".into(),
+        ));
+    }
+    if path.starts_with("http://")
+        || path.starts_with("https://")
+        || path.contains("://")
+        || path.contains(":8788")
+        || path.contains(":8787")
+    {
+        return Err(HostError::Settings(
+            "project_root must be a local directory path (not URL / cloud)".into(),
+        ));
+    }
+    Ok(path.to_string())
+}
+
+/// Validate a single path segment used as the new project folder name.
+pub fn normalize_project_folder_name(raw: &str) -> Result<String, HostError> {
+    let name = raw.trim();
+    if name.is_empty() {
+        return Err(HostError::Settings(
+            "project folder name is empty — enter a name for 新增專案".into(),
+        ));
+    }
+    if name == "." || name == ".." {
+        return Err(HostError::Settings(
+            "project folder name must not be . or ..".into(),
+        ));
+    }
+    if name.contains('/') || name.contains('\\') || name.contains(':') {
+        return Err(HostError::Settings(
+            "project folder name must be a single path segment (no separators)".into(),
+        ));
+    }
+    if name == "demo" {
+        // Keep /demo/root rejection path clear when joined under odd parents.
+    }
+    let p = Path::new(name);
+    if p.components().any(|c| !matches!(c, Component::Normal(_))) {
+        return Err(HostError::Settings(
+            "project folder name contains illegal path components".into(),
+        ));
+    }
+    Ok(name.to_string())
+}
+
+/// Join parent directory + folder name into a candidate project root path.
+pub fn join_new_project_path(parent: &str, name: &str) -> Result<String, HostError> {
+    let parent = normalize_new_project_path(parent)?;
+    let name = normalize_project_folder_name(name)?;
+    let mut buf = PathBuf::from(&parent);
+    buf.push(&name);
+    let joined = buf.to_string_lossy().to_string();
+    if joined.replace('\\', "/") == "/demo/root" {
+        return Err(HostError::Settings(
+            "project_root must not be hardcoded /demo/root — bind a real project root".into(),
+        ));
+    }
+    normalize_new_project_path(&joined)
+}
+
+/// Create (or ensure) a project directory through [`FileSystemPort`].
+///
+/// If `path` already exists as a **file** (e.g. Save-dialog residue), removes it
+/// via [`FileSystemPort::remove_file`] then [`FileSystemPort::create_dir_all`].
+///
+/// Returns the normalized absolute／local path string suitable for
+/// `HostSettings.project_root`. Does **not** mutate settings.
+pub fn create_new_project_root(
+    fs: &dyn FileSystemPort,
+    raw: &str,
+) -> Result<String, HostError> {
+    let path = normalize_new_project_path(raw)?;
+    if fs.is_file(&path).unwrap_or(false) {
+        fs.remove_file(&path).map_err(|e| {
+            HostError::Settings(format!("無法移除殘留檔「{path}」以便建立目錄：{e}"))
+        })?;
+    }
+    fs.create_dir_all(&path).map_err(|e| {
+        HostError::Settings(format!("無法建立專案目錄「{path}」：{e}"))
+    })?;
+    Ok(path)
+}
+
+/// Create under `parent`/`name` (PD-BUG-FILE-NEW-01).
+pub fn create_new_project_under(
+    fs: &dyn FileSystemPort,
+    parent: &str,
+    name: &str,
+) -> Result<String, HostError> {
+    let path = join_new_project_path(parent, name)?;
+    create_new_project_root(fs, &path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sgenaxis_adapters::FakeFileSystem;
+    use sgenaxis_ports::FileSystemPort;
+
+    #[test]
+    fn empty_path_is_readable_error() {
+        let err = normalize_new_project_path("  ").unwrap_err();
+        assert!(err.to_string().contains("empty"), "{err}");
+    }
+
+    #[test]
+    fn demo_root_rejected() {
+        let err = normalize_new_project_path("/demo/root").unwrap_err();
+        assert!(err.to_string().contains("/demo/root"), "{err}");
+    }
+
+    #[test]
+    fn url_rejected() {
+        let err = normalize_new_project_path("https://cloud.example/p").unwrap_err();
+        assert!(err.to_string().contains("local"), "{err}");
+    }
+
+    #[test]
+    fn create_via_fake_fs() {
+        let fs = FakeFileSystem::new();
+        let path = create_new_project_root(&fs, "/work/new-proj").unwrap();
+        assert_eq!(path, "/work/new-proj");
+        assert!(fs.exists("/work/new-proj").unwrap());
+        assert_eq!(fs.mkdir_count(), 1);
+    }
+
+    #[test]
+    fn create_rejects_demo_before_fs() {
+        let fs = FakeFileSystem::new();
+        let err = create_new_project_root(&fs, "/demo/root").unwrap_err();
+        assert!(err.to_string().contains("/demo/root"), "{err}");
+        assert_eq!(fs.mkdir_count(), 0);
+    }
+
+    #[test]
+    fn create_under_parent_name() {
+        let fs = FakeFileSystem::new();
+        let path = create_new_project_under(&fs, "/work", "MyProj").unwrap();
+        let norm = path.replace('\\', "/");
+        assert_eq!(norm, "/work/MyProj");
+        assert!(fs.exists(&path).unwrap());
+    }
+
+    #[test]
+    fn empty_name_rejected() {
+        let err = join_new_project_path("/work", "  ").unwrap_err();
+        assert!(err.to_string().contains("empty"), "{err}");
+    }
+
+    #[test]
+    fn name_with_separator_rejected() {
+        let err = join_new_project_path("/work", "a/b").unwrap_err();
+        assert!(err.to_string().contains("segment"), "{err}");
+    }
+
+    #[test]
+    fn create_replaces_existing_file_residue() {
+        let fs = FakeFileSystem::new();
+        fs.write_atomic("/work/NewProject", b"").unwrap();
+        assert!(fs.is_file("/work/NewProject").unwrap());
+        let path = create_new_project_root(&fs, "/work/NewProject").unwrap();
+        assert_eq!(path, "/work/NewProject");
+        assert!(!fs.is_file("/work/NewProject").unwrap());
+        assert!(fs.exists("/work/NewProject").unwrap());
+    }
+}
