@@ -14,6 +14,7 @@
 
 mod error;
 mod model;
+pub mod packet;
 mod projection;
 mod store;
 

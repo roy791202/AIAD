@@ -25,6 +25,7 @@ pub mod git_board_sync;
 pub mod guard_cmd;
 pub mod ipc;
 pub mod lifecycle;
+pub mod module_packet;
 pub mod ports_view;
 pub mod project_new;
 pub mod scene_doc;

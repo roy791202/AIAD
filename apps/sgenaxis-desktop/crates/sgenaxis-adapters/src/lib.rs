@@ -14,6 +14,7 @@
 
 pub mod compose;
 pub mod fake;
+pub mod ess_codec;
 pub mod git_summary;
 pub mod git_write;
 
