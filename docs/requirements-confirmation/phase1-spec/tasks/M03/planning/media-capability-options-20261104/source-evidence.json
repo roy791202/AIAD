@@ -1,0 +1,422 @@
+{
+  "evidence": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "start": 3670,
+      "end": 3690,
+      "snippet": "  /** 圖示來源：D:\\\\AIAD\\\\icon → 打包於 ui/icons/arch/{Kind}.svg */\n  const ARCH_KIND_ICON_BASE = \"icons/arch/\";\n  const ARCH_KIND_ICONS = {\n    API: ARCH_KIND_ICON_BASE + \"API.svg\",\n    Contract: ARCH_KIND_ICON_BASE + \"Contract.svg\",\n    UI: ARCH_KIND_ICON_BASE + \"UI.svg\",\n    Command: ARCH_KIND_ICON_BASE + \"Command.svg\",\n    Query: ARCH_KIND_ICON_BASE + \"Query.svg\",\n    Application: ARCH_KIND_ICON_BASE + \"Application.svg\",\n    Domain: ARCH_KIND_ICON_BASE + \"Domain.svg\",\n    Infrastructure: ARCH_KIND_ICON_BASE + \"Infrastructure.svg\",\n    ACL: ARCH_KIND_ICON_BASE + \"ACL.svg\",\n    Custom: ARCH_KIND_ICON_BASE + \"Custom.svg\",\n    WorkItem: ARCH_KIND_ICON_BASE + \"WorkItem.svg\",\n    Deployment: ARCH_KIND_ICON_BASE + \"Deployment.svg\",\n    CodeFile: ARCH_KIND_ICON_BASE + \"CodeFile.svg\",\n    Test: ARCH_KIND_ICON_BASE + \"Test.svg\",\n    Build: ARCH_KIND_ICON_BASE + \"Build.svg\",\n    AITask: ARCH_KIND_ICON_BASE + \"AITask.svg\",\n    Layer: ARCH_KIND_ICON_BASE + \"Layer.svg\",\n  };",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "start": 11134,
+      "end": 11139,
+      "snippet": "  function archKindIconSrc(kind) {\n    return ARCH_KIND_ICONS[kind] || ARCH_KIND_ICONS.Custom;\n  }\n\n  function archKindShortLabel(kind, i) {\n    if (kind === \"Layer\") return \"Layer\";",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "start": 11164,
+      "end": 11191,
+      "snippet": "    const host = document.getElementById(\"arch-node-strip-grid\");\n    if (!host) return;\n    host.innerHTML = \"\";\n    ARCH_NODE_KINDS.forEach(function (kind, i) {\n      const btn = document.createElement(\"button\");\n      btn.type = \"button\";\n      btn.className = \"arch-node-strip-tile\";\n      btn.setAttribute(\"role\", \"option\");\n      btn.setAttribute(\"data-arch-kind\", kind);\n      btn.title = archKindTitle(kind);\n      const img = document.createElement(\"img\");\n      img.src = archKindIconSrc(kind);\n      img.alt = \"\";\n      img.width = 14;\n      img.height = 14;\n      img.decoding = \"async\";\n      const lab = document.createElement(\"span\");\n      lab.className = \"arch-node-strip-tile-label\";\n      lab.textContent = archKindShortLabel(kind, i);\n      btn.appendChild(img);\n      btn.appendChild(lab);\n      btn.addEventListener(\"click\", function () {\n        const kindEl = document.getElementById(\"archAddKind\");\n        if (kindEl) kindEl.value = kind;\n        addArchNode(kind);\n      });\n      host.appendChild(btn);\n    });",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "start": 10722,
+      "end": 10737,
+      "snippet": "    });\n    document.getElementById(\"arch-xml-file\")?.addEventListener(\"change\", function (ev) {\n      const file = ev.target.files && ev.target.files[0];\n      if (!file) return;\n      const reader = new FileReader();\n      reader.onload = function () {\n        importArchXmlText(String(reader.result || \"\"), file.name);\n        ev.target.value = \"\";\n      };\n      reader.onerror = function () {\n        toast(\"讀取 XML 失敗\");\n        ev.target.value = \"\";\n      };\n      reader.readAsText(file, \"UTF-8\");\n    });\n    document.getElementById(\"arch-delete-node\")?.addEventListener(\"click\", function () {",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "start": 13323,
+      "end": 13348,
+      "snippet": "  async function cmdUidesignBuild() {\n    applyPropsFromInputs();\n    if (!invoke) {\n      setUidesignStatus(\n        \"瀏覽器模式：uidesign_build_preview NOT RUN（需 Tauri）\",\n        true\n      );\n      toast(\"Build NOT RUN（無 IPC）\");\n      return;\n    }\n    try {\n      const args = {\n        doc: designDoc,\n        name: \"main\",\n        open_after: true,\n      };\n      if (cachedProjectRoot) args.project_root = cachedProjectRoot;\n      const dto = await invoke(\"uidesign_build_preview\", { args: args });\n      if (dto && dto.product_pass === true) {\n        setUidesignStatus(\"契約違反：preview 不得 product_pass=true\", true);\n        return;\n      }\n      setUidesignStatus(\n        ((dto && dto.message) || \"已 Build\") +\n          (dto && dto.path ? \" → \" + dto.path : \"\") +\n          \"（溝通用 · 非正式 PASS）\",",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135",
+      "start": 2108,
+      "end": 2127,
+      "snippet": "pub fn uidesign_build_preview(\n    host: State<'_, HostState>,\n    args: UiDesignBuildArgs,\n) -> Result<UiDesignBuildDto, String> {\n    authorize(\"uidesign_build_preview\").map_err(|e| e.to_string())?;\n    let root = host.inner.lock().map_err(|_| poison_host())?;\n    let project_root =\n        resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;\n    let name = args.name.as_deref().unwrap_or(\"main\");\n    let path = build_preview_file(root.fs(), &project_root, &args.doc, name)\n        .map_err(|e| e.to_string())?;\n    let mut opened = false;\n    if args.open_after {\n        // Preview HTML is under design/build — open via OS association (not product PASS).\n        #[cfg(target_os = \"windows\")]\n        {\n            opened = std::process::Command::new(\"cmd\")\n                .args([\"/C\", \"start\", \"\", &path])\n                .spawn()\n                .is_ok();",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3",
+      "start": 124,
+      "end": 134,
+      "snippet": "            commands::deploy_status,\n            commands::deploy_check,\n            commands::list_artifacts,\n            commands::ports_status,\n            commands::uidesign_package_status,\n            commands::uidesign_open_package,\n            commands::uidesign_save_design,\n            commands::uidesign_load_design,\n            commands::uidesign_build_preview,\n            commands::uidesign_ask_agent,\n            commands::scene_save,",
+      "layer": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac",
+      "start": 335,
+      "end": 365,
+      "snippet": "pub fn build_preview_file(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    doc: &DesignDoc,\n    name: &str,\n) -> Result<String, HostError> {\n    let safe = name\n        .trim()\n        .chars()\n        .map(|c| {\n            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {\n                c\n            } else {\n                '_'\n            }\n        })\n        .collect::<String>();\n    let safe = if safe.is_empty() { \"main\".into() } else { safe };\n    let rel = format!(\"design/build/{safe}.preview.html\");\n    let path = join_project_rel(project_root, &rel)?;\n    let html = build_preview_html(doc)?;\n    if let Some(parent) = std::path::Path::new(&path).parent() {\n        let parent_s = parent.to_string_lossy();\n        if !parent_s.is_empty() {\n            fs.create_dir_all(&parent_s)\n                .map_err(|e| HostError::Settings(format!(\"mkdir preview: {e}\")))?;\n        }\n    }\n    fs.write_atomic(&path, html.as_bytes())\n        .map_err(|e| HostError::Settings(format!(\"write preview: {e}\")))?;\n    Ok(path)",
+      "layer": "STATIC_SOURCE_ONLY"
+    }
+  ],
+  "assets": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/icons/brand/splash.png",
+      "sha256": "db186ad818f730ea41d31bc336b4c011b32c9e37b951fe05bca2f4c79784f0ab",
+      "bytes": 83083,
+      "use": "Existing bundled visual asset; candidate fixture seed only, not imported-material proof"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/icons/arch/UI.svg",
+      "sha256": "6dd5f7fb0cbf94491c4de34585b4eddc705eca30c71573ea3fda3b283132cb48",
+      "bytes": 1497,
+      "use": "Existing bundled visual asset; candidate fixture seed only, not imported-material proof"
+    }
+  ],
+  "dependency_inventory": [
+    {
+      "path": "apps/sgenaxis-desktop/Cargo.toml",
+      "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5",
+      "sections": {}
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/Cargo.toml",
+      "sha256": "f95e326789af256595d6c78011909e3475293f2ce8188c39e5d5260a0d7732c9",
+      "sections": {
+        "dependencies": {
+          "sgenaxis-ports": {
+            "path": "../sgenaxis-ports"
+          },
+          "sgenaxis-spec": {
+            "path": "../sgenaxis-spec"
+          },
+          "roxmltree": "=0.20.0"
+        },
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-core/Cargo.toml",
+      "sha256": "5c9fe5fde6835ba6f0c3d4b533f96450e11dd55f59a834766d5dc93d39a7769a",
+      "sections": {
+        "dependencies": {},
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-evid/Cargo.toml",
+      "sha256": "43e5ff2ca6bb23ab6967c78b3973238ec44c0344c3c92be0e02b26291d1760c7",
+      "sections": {
+        "dependencies": {},
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-exec/Cargo.toml",
+      "sha256": "6ed3b473ba62f77a11af1ee5af8e30865d53f0ee3b10c55a658982258e159f2f",
+      "sections": {
+        "dependencies": {
+          "sgenaxis-ports": {
+            "path": "../sgenaxis-ports"
+          },
+          "serde": {
+            "version": "1",
+            "features": [
+              "derive"
+            ]
+          },
+          "serde_json": "1"
+        },
+        "dev-dependencies": {
+          "sgenaxis-adapters": {
+            "path": "../sgenaxis-adapters",
+            "default-features": false,
+            "features": [
+              "std-adapters"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-guard/Cargo.toml",
+      "sha256": "1eb99c4acc7c8ba0fa0ee71cf5e56d1f14ebf9587fe91107b34f3b91a22e4b3b",
+      "sections": {
+        "dependencies": {},
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "sha256": "0758fd59a4e27614382d2ade2f76d203b172b5d9a458c4c6f7fd4485a0aae8fe",
+      "sections": {
+        "dependencies": {
+          "serde": {
+            "version": "1",
+            "features": [
+              "derive"
+            ]
+          },
+          "serde_json": {
+            "version": "1",
+            "features": [
+              "raw_value"
+            ]
+          },
+          "sgenaxis-ports": {
+            "path": "../sgenaxis-ports"
+          },
+          "sgenaxis-adapters": {
+            "path": "../sgenaxis-adapters",
+            "default-features": false
+          },
+          "sgenaxis-exec": {
+            "path": "../sgenaxis-exec"
+          },
+          "sgenaxis-guard": {
+            "path": "../sgenaxis-guard"
+          },
+          "sgenaxis-spec": {
+            "path": "../sgenaxis-spec"
+          },
+          "sgenaxis-work": {
+            "path": "../sgenaxis-work"
+          }
+        },
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-listen/Cargo.toml",
+      "sha256": "789bad11e28d3a1f649a67c86673515ea1cf2077790f29dd3978204555369101",
+      "sections": {
+        "dependencies": {
+          "sgenaxis-core": {
+            "path": "../sgenaxis-core"
+          },
+          "sgenaxis-exec": {
+            "path": "../sgenaxis-exec"
+          },
+          "notify": {
+            "version": "6.1.1",
+            "optional": true
+          }
+        },
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/Cargo.toml",
+      "sha256": "e6a6ed2db80498cdb5f4059d5b28dabbcdee624b6712cf8f85535cad62a860bd",
+      "sections": {
+        "dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/Cargo.toml",
+      "sha256": "954756472c63ee3b36aafb248fcd8e5398cfa80582fcfcfdf441daef5a11fe98",
+      "sections": {
+        "dependencies": {
+          "serde": {
+            "version": "1",
+            "features": [
+              "derive"
+            ]
+          },
+          "serde_json": "1",
+          "sha2": "0.10.9"
+        },
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/Cargo.toml",
+      "sha256": "549644fcaa27cf9e58fc3c39b91630ec5d7ff07dfc1975995a577178c8812d45",
+      "sections": {
+        "dependencies": {
+          "sgenaxis-ports": {
+            "path": "../sgenaxis-ports"
+          }
+        },
+        "dev-dependencies": {}
+      }
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+      "sha256": "a345a17fe1aca9b22b3f31180daba3fba379d9a25f5697f1ca9c8bd0cf873a01",
+      "sections": {
+        "build-dependencies": {
+          "tauri-build": {
+            "version": "2",
+            "features": []
+          }
+        },
+        "dependencies": {
+          "tauri": {
+            "version": "2",
+            "features": []
+          },
+          "serde": {
+            "version": "1",
+            "features": [
+              "derive"
+            ]
+          },
+          "serde_json": "1",
+          "uuid": {
+            "version": "=1.29.0",
+            "features": [
+              "v4"
+            ]
+          },
+          "syn": {
+            "version": "=2.0.119",
+            "default-features": false,
+            "features": [
+              "full",
+              "parsing",
+              "visit"
+            ]
+          },
+          "proc-macro2": {
+            "version": "=1.0.107",
+            "features": [
+              "span-locations"
+            ]
+          },
+          "rfd": "0.15",
+          "sgenaxis-core": {
+            "path": "../crates/sgenaxis-core"
+          },
+          "sgenaxis-ports": {
+            "path": "../crates/sgenaxis-ports"
+          },
+          "sgenaxis-adapters": {
+            "path": "../crates/sgenaxis-adapters"
+          },
+          "sgenaxis-exec": {
+            "path": "../crates/sgenaxis-exec",
+            "features": [
+              "real-spawn",
+              "real-mcp"
+            ]
+          },
+          "sgenaxis-listen": {
+            "path": "../crates/sgenaxis-listen"
+          },
+          "sgenaxis-work": {
+            "path": "../crates/sgenaxis-work"
+          },
+          "sgenaxis-host": {
+            "path": "../crates/sgenaxis-host"
+          },
+          "sgenaxis-guard": {
+            "path": "../crates/sgenaxis-guard"
+          },
+          "sgenaxis-evid": {
+            "path": "../crates/sgenaxis-evid"
+          },
+          "sgenaxis-spec": {
+            "path": "../crates/sgenaxis-spec"
+          }
+        }
+      }
+    }
+  ],
+  "transitive_png_consumers": [
+    {
+      "name": "ico",
+      "version": "0.6.0",
+      "dependencies": [
+        "byteorder",
+        "png"
+      ]
+    },
+    {
+      "name": "muda",
+      "version": "0.20.0",
+      "dependencies": [
+        "crossbeam-channel",
+        "dpi",
+        "gtk",
+        "keyboard-types",
+        "objc2",
+        "objc2-app-kit",
+        "objc2-core-foundation",
+        "objc2-foundation",
+        "once_cell",
+        "png",
+        "serde",
+        "thiserror 2.0.21",
+        "windows-sys 0.61.2"
+      ]
+    },
+    {
+      "name": "png",
+      "version": "0.18.1",
+      "dependencies": [
+        "bitflags 2.13.2",
+        "crc32fast",
+        "fdeflate",
+        "flate2",
+        "miniz_oxide 0.8.9"
+      ]
+    },
+    {
+      "name": "tauri-codegen",
+      "version": "2.7.4",
+      "dependencies": [
+        "base64 0.23.1",
+        "brotli",
+        "ico",
+        "json-patch",
+        "plist",
+        "png",
+        "proc-macro2",
+        "quote",
+        "semver",
+        "serde",
+        "serde_json",
+        "sha2",
+        "syn 2.0.119",
+        "tauri-utils",
+        "thiserror 2.0.21",
+        "time",
+        "url",
+        "uuid",
+        "walkdir"
+      ]
+    },
+    {
+      "name": "tray-icon",
+      "version": "0.25.1",
+      "dependencies": [
+        "crossbeam-channel",
+        "dirs",
+        "libappindicator",
+        "muda",
+        "objc2",
+        "objc2-app-kit",
+        "objc2-core-foundation",
+        "objc2-core-graphics",
+        "objc2-foundation",
+        "once_cell",
+        "png",
+        "serde",
+        "thiserror 2.0.21",
+        "windows-sys 0.61.2"
+      ]
+    }
+  ],
+  "lock": {
+    "path": "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+    "sha256": "85f6daa9b5ee95aa37950bf2f92a9f90e9a8187361dd4395306cc867c053849a"
+  },
+  "limitation": "Manifest/lock/source inspection is not feature activation, target runtime, imported-media support, or decode/render proof. NOT_PROVEN never means unsupported."
+}

@@ -1,0 +1,19 @@
+# M03 typed observation candidate
+
+Status: **PROPOSED_PENDING_OWNER**. Bounded author planning preparation only. Existing `viewer-action-review` remains `PASS_DOCUMENT_SCOPE_PENDING_OWNER` in its trusted fixture scope. This candidate extends that document proof domain; it does not reinterpret the review as failed.
+
+Author: `/root/m03_viewer_intent_typed_packet`. Independent verifier: NOT RUN. All checks here are author document checks, not acceptance. Product implementation, native/UI/IPC, build, packaging and valid behavioral RED: NOT RUN. Module completion: false. Parent Yellow remains unchanged.
+
+Open `index.html` for the unified human projection and embedded ModuleSpec. `observation-contract.json` defines every observation field read by the model. `document_model.py` is a proposed document oracle wrapper around the unchanged previous oracle, not product code, an approved Skeleton, or a public product schema.
+
+Run from this directory: `python -B checker.py`. Rebuild projection/fixtures/results and seal: `python -B build_packet.py`. No cache cleanup or original edits are performed. `artifact-hashes.json` excludes itself and `seal.json`; the seal binds the manifest. Stored preserved-input hashes cover original integration/review files (excluding existing cache artifacts), AGENTS, current-state and a board snapshot. Product hashes use `M01/planning/s2-green/source-current.json` (796 entries). Current HEAD is `5b709343a890503ebbe24a802e43cda5647df124`; authority snapshot HEAD `31babe87a7ef1e40a0d4bedc523077e7a45d63ab` is historical, so per-file hashes are the product preservation evidence.
+
+The three original diagnostics now reject with schema-valid complete DependencyNotReady responses, unchanged complete state, and no calls/commit. Their original successful results and after states remain available in `before-after-diagnostics.json`. New missing/type/enum/closed/U64/precedence cases are independently authored in this candidate, with complete expected responses, expected states and expected call traces; this means newly authored cases, not an independent verification role.
+
+All 77 original cases and 30 previous reviewer cases preserve complete responses and states. Malformed revision observations now reject earlier: the exact call-trace differences are listed in `prior-trace-changes.json`. This is an explicit **proposed policy change**, not a silent equivalence claim. Well-typed legitimate false, provider failure, stale identity, unknown node type, closed viewer, sequence/replay and overflow semantics retain the prior model behavior.
+
+Owner must approve closed record fields, enum choices, eager all-observation admission, error dependency mappings and precedence before any executable Skeleton. Unknown node type and non-ui scope remain typed open strings with existing unsupported-action semantics. Unknown delivery-change/action enum values are malformed. Provider record and node capabilities are closed; absent optional resource flags remain absent, and present resource flags must be nonempty strings. Empty/invalid numeric canonical text and empty error text are proposed malformed C1 observations. These are candidate-only decisions.
+
+Authenticity, trusted source binding, acquisition timing and atomic delivery recheck/commit remain unverified premises. Typed structure is not authority. No FileCommit, ACK, save, history mutation or release approval is introduced. Next gate is Owner adoption followed by separately approved Skeleton and valid RED, then separate implementation and independent acceptance sessions.
+
+Valid RED must build and fail for missing required product behavior, not missing dependencies, stubs, schema tools or environment. This candidate's deliberate negative document fixtures are not product RED evidence. Gherkin/stubs are pending native automation; `pending-automation.json` lists remaining work.

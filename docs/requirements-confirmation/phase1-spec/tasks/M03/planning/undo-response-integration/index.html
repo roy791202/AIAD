@@ -1,0 +1,421 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M03 Undo</title><style>body{max-width:1100px;margin:40px auto;font:16px system-ui;background:#101721;color:#dbe6f3}section{border:1px solid #415166;padding:20px;margin:16px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}h1,h2{color:#f0c465}</style><h1>M03 · Undo response integration</h1><p>PROPOSED_PENDING_REACCEPTANCE_AND_OWNER · FullDraft MISSING · Product tests NOT RUN</p><section><h2>identity</h2><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;task&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+  &quot;slice&quot;: &quot;design_document_undo response integration candidate&quot;,
+  &quot;state&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+  &quot;author&quot;: &quot;m03_next_command_packet&quot;,
+  &quot;independent_acceptance&quot;: &quot;NOT RUN&quot;
+}</pre></section><section><h2>intent</h2><pre>&quot;One complete command request/response schema root and candidate evidence model, not product implementation.&quot;</pre></section><section><h2>architecture</h2><pre>{
+  &quot;hexagonal&quot;: &quot;UI → trusted Tauri driving adapter → M03 binding input port → M04 document owner → M05 material retention output port → adapters&quot;,
+  &quot;dependency&quot;: &quot;M03 depends on owner/retention abstractions; WORK remains authoritative mutable document/history; M05 owns material pin/root records. UI only immutable projection.&quot;,
+  &quot;mutation&quot;: &quot;Only M04 calls existing WORK Undo; M03 cannot own duplicate state.&quot;,
+  &quot;transaction&quot;: &quot;Precommit failures preserve content/history; confirmed commit advances revision and moves one undo entry to redo; retention failure cannot undo that fact. No persistence or baseline ACK.&quot;,
+  &quot;diagrams&quot;: {
+    &quot;hexagonal&quot;: &quot;[UI] -&gt; [M03 input binding] -&gt; [M04 owner / WORK SSOT] -&gt; [M05 ports] &lt;- [retention adapter]&quot;,
+    &quot;dependency&quot;: &quot;M03 -&gt; M04 input port -&gt; WORK domain; M04 -&gt; M05 output port &lt;- adapters; UI receives projection only&quot;
+  }
+}</pre></section><section><h2>contract</h2><pre>{
+  &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+  &quot;command&quot;: &quot;design_document_undo&quot;,
+  &quot;M04_command&quot;: &quot;document_undo&quot;,
+  &quot;request_mapping&quot;: {
+    &quot;session_uuid&quot;: &quot;authorized server binding session_uuid&quot;,
+    &quot;expected_revision&quot;: &quot;request.expected_revision&quot;,
+    &quot;request_id&quot;: &quot;request.request_id&quot;
+  },
+  &quot;precedence&quot;: [
+    &quot;Trusted caller/window origin admission&quot;,
+    &quot;Outer bytes/depth then closed request and strict U64 validation&quot;,
+    &quot;Binding/generation/writer authority&quot;,
+    &quot;Authorized replay record match before new revision check; mismatched immutable capture ReplayConflict; in-flight InProgress&quot;,
+    &quot;For new request check expected revision, dependency readiness and capacity before reservation/Undo&quot;,
+    &quot;M04 checks editable/revision/history continuity/revision overflow; pin outgoing retention before commit through declared seam&quot;,
+    &quot;Exactly one M04 Undo; immutable issuer mutation receipt&quot;,
+    &quot;M05 complete old/new root set transition; report actual failed stage in order LiveRoots,UndoRoots,RedoRoots&quot;,
+    &quot;Return retained original result only to matching still-authorized caller; suppress revoked owner delivery&quot;
+  ],
+  &quot;limits&quot;: {
+    &quot;outer_utf8_bytes&quot;: 33554432,
+    &quot;outer_depth&quot;: 16,
+    &quot;keys_per_binding&quot;: 128,
+    &quot;keys_per_runtime&quot;: 1024,
+    &quot;eviction&quot;: false
+  },
+  &quot;transaction&quot;: &quot;Precommit failures preserve content/history; confirmed commit advances revision and moves one undo entry to redo; retention failure cannot undo that fact. No persistence or baseline ACK.&quot;,
+  &quot;replay&quot;: &quot;Key(binding_ref,session_uuid,operation,request_id), immutable typed capture including generation/revision. Original retained result replayed=true; no second Undo, no projection overwrite of newer state. Close/revoke ends authority. Runtime-only, no restart exactly-once.&quot;,
+  &quot;failure_mapping&quot;: {
+    &quot;precommit_known_rejection&quot;: &quot;closed v3 Error after exact mapping confirmation; zero mutation&quot;,
+    &quot;postcommit_roots_failure&quot;: &quot;AppliedRetentionDeferred at actual revision, actual pin and mutation proof&quot;,
+    &quot;uncertain_M04&quot;: &quot;Indeterminate, no false unchanged claim&quot;,
+    &quot;owner_loss_after_commit&quot;: &quot;retain evidence; no delivery to replacement window&quot;
+  },
+  &quot;new_port_policy&quot;: &quot;Any missing mutation receipt issuance, precommit retention seam, root-set verification or replay authority is PROPOSED_PENDING_REACCEPTANCE_AND_OWNER. No skeleton or product changes authorized.&quot;,
+  &quot;fullDraft&quot;: &quot;M03 complete FullDraft root integration remains MISSING; this one-command root does not close module.&quot;,
+  &quot;io_mapping&quot;: {
+    &quot;FileCommit&quot;: &quot;NOT APPLICABLE / NOT CALLED&quot;,
+    &quot;formal_save_ack&quot;: &quot;NOT APPLICABLE / NOT CALLED&quot;
+  }
+}</pre></section><section><h2>decisions</h2><pre>[
+  {
+    &quot;id&quot;: &quot;UNDO-D1&quot;,
+    &quot;before&quot;: &quot;Shared v3 generic MutationResult; command correlation implicit&quot;,
+    &quot;after&quot;: &quot;Preserve Applied/NoChange/AppliedRetentionDeferred wire vocabulary; add Undo-specific semantic proof checks; no invented UndoAppliedRetentionDeferred wire tag&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-D2&quot;,
+    &quot;before&quot;: &quot;U64 pattern permits oversized 20-digit text&quot;,
+    &quot;after&quot;: &quot;canonical checked integer range 0..18446744073709551615 at every reference; no JS Number&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-D3&quot;,
+    &quot;before&quot;: &quot;Root transfer failures could be mistaken for failed Undo&quot;,
+    &quot;after&quot;: &quot;Confirmed M04 commit remains actual R8; deferred M05 roots report stage/reason with actual pin/proof; no rollback&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-D4&quot;,
+    &quot;before&quot;: &quot;Save receipt model might be reused incorrectly&quot;,
+    &quot;after&quot;: &quot;No formal FileCommit/ACK/target/digest receipt on Undo; issuer mutation and root-set evidence only&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-D5&quot;,
+    &quot;before&quot;: &quot;Current WORK returns NoUndo error on empty history&quot;,
+    &quot;after&quot;: &quot;Reuse exact seven typed DomainRejected fragments: NotReady, InvalidInput, RevisionConflict, RevisionOverflow, Busy, NoUndo, Closed. fields is closed JSON object; InvalidInput requires field:string. NoUndo remains error, never NoChange. Command policy awaits Owner reacceptance.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;
+  }
+]</pre></section><section><h2>proof</h2><pre>{
+  &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+  &quot;issuer&quot;: &quot;M04 document owner; opaque records held server-side&quot;,
+  &quot;capture&quot;: {
+    &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+    &quot;document_uuid&quot;: &quot;doc-undo-a&quot;,
+    &quot;session_uuid&quot;: &quot;session-undo-a&quot;,
+    &quot;owner_generation&quot;: &quot;3&quot;,
+    &quot;operation&quot;: &quot;design_document_undo&quot;,
+    &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+    &quot;expected_revision&quot;: &quot;7&quot;,
+    &quot;workflow_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;,
+    &quot;transition_ordinal&quot;: &quot;0&quot;
+  },
+  &quot;mutation_receipt&quot;: {
+    &quot;proof_ref&quot;: &quot;mutation-undo-7-8&quot;,
+    &quot;before_revision&quot;: &quot;7&quot;,
+    &quot;after_revision&quot;: &quot;8&quot;,
+    &quot;before_semantic_digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+    &quot;after_semantic_digest&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;,
+    &quot;history_before&quot;: &quot;2&quot;,
+    &quot;history_after&quot;: &quot;1&quot;,
+    &quot;redo_before&quot;: &quot;0&quot;,
+    &quot;redo_after&quot;: &quot;1&quot;,
+    &quot;pin_id&quot;: &quot;pin-undo-7&quot;
+  },
+  &quot;pin_evidence&quot;: {
+    &quot;issuer&quot;: &quot;M05&quot;,
+    &quot;pin_id&quot;: &quot;pin-undo-7&quot;,
+    &quot;actual_state&quot;: &quot;Held&quot;,
+    &quot;evidence_receipt_id&quot;: &quot;pin-evidence-7&quot;,
+    &quot;operation_role&quot;: &quot;undo&quot;,
+    &quot;operation_ordinal&quot;: &quot;0&quot;
+  },
+  &quot;root_version_set&quot;: {
+    &quot;before&quot;: {
+      &quot;LiveDocuments&quot;: &quot;40&quot;,
+      &quot;UndoHistory&quot;: &quot;18&quot;,
+      &quot;RedoHistory&quot;: &quot;4&quot;,
+      &quot;RecoverySnapshots&quot;: &quot;9&quot;,
+      &quot;InFlightTransactions&quot;: &quot;11&quot;
+    },
+    &quot;after&quot;: {
+      &quot;LiveDocuments&quot;: &quot;41&quot;,
+      &quot;UndoHistory&quot;: &quot;19&quot;,
+      &quot;RedoHistory&quot;: &quot;5&quot;,
+      &quot;RecoverySnapshots&quot;: &quot;9&quot;,
+      &quot;InFlightTransactions&quot;: &quot;11&quot;
+    },
+    &quot;scope&quot;: &quot;doc-undo-a/session-undo-a&quot;,
+    &quot;provider_id&quot;: &quot;provider-a&quot;,
+    &quot;epoch&quot;: &quot;6&quot;,
+    &quot;completeness&quot;: &quot;Complete&quot;
+  },
+  &quot;rules&quot;: [
+    &quot;Capture immutable at authorization; sender/window origin established out-of-band, never trust request binding alone.&quot;,
+    &quot;M04 proof binds context, revision pair, semantic identity and history transition; M03 cannot mint success from an M05 receipt.&quot;,
+    &quot;M05 issuer proof binds actual pin, workflow operation, scope/provider/epoch and complete root version set; no selected per-kind latest version mixing.&quot;,
+    &quot;Verify stage-specific membership: restored content LiveDocuments, surviving history UndoHistory, outgoing content RedoHistory; retain union of old/new roots and all unresolved pins on uncertainty.&quot;,
+    &quot;Receipt mismatch after confirmed M04 commit means AppliedRetentionDeferred, not unchanged error. No artificial rollback or automatic release.&quot;,
+    &quot;If M04 commit cannot be established, return Indeterminate; preserve evidence and block automatic retry.&quot;,
+    &quot;Held is valid only with actual issuer attestation; unknown pin state stays unknown in server evidence. Never synthesize Held from transfer failure.&quot;,
+    &quot;Reject response with revision mismatching original issuer proof, even if wire schema accepts it.&quot;,
+    &quot;Operation ID uses existing UUIDv5 workflow namespace and role undo/ordinal; no retry ordinal invention.&quot;
+  ],
+  &quot;io&quot;: {
+    &quot;FileCommit&quot;: &quot;NOT CALLED&quot;,
+    &quot;formal_save_ack&quot;: &quot;NOT CALLED&quot;,
+    &quot;formal_root_transfer&quot;: &quot;NOT CALLED&quot;,
+    &quot;reason&quot;: &quot;Undo mutates in-memory document/history and retains material roots; it does not persist formal file bytes.&quot;
+  },
+  &quot;evidence_class&quot;: &quot;SYNTHETIC_DOCUMENT_FIXTURE; not an issuer receipt or runtime evidence&quot;
+}</pre></section><section><h2>bdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;UNDO-B1&quot;,
+    &quot;behavior&quot;: &quot;Restore prior state&quot;,
+    &quot;Given&quot;: &quot;a writable document at revision 7 with two Undo entries&quot;,
+    &quot;When&quot;: &quot;the owner requests Undo once&quot;,
+    &quot;Then&quot;: &quot;the prior content becomes revision 8 and one entry moves to Redo&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B2&quot;,
+    &quot;behavior&quot;: &quot;Retain committed outcome&quot;,
+    &quot;Given&quot;: &quot;Undo has changed content to revision 8&quot;,
+    &quot;When&quot;: &quot;retention of the outgoing history fails&quot;,
+    &quot;Then&quot;: &quot;revision 8 remains active with retention pending and the actual evidence is retained&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B3&quot;,
+    &quot;behavior&quot;: &quot;Replay without mutation&quot;,
+    &quot;Given&quot;: &quot;an authorized Undo request has a retained terminal outcome&quot;,
+    &quot;When&quot;: &quot;the identical request is repeated&quot;,
+    &quot;Then&quot;: &quot;the original outcome is returned and no further Undo occurs&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B4&quot;,
+    &quot;behavior&quot;: &quot;Reject stale input&quot;,
+    &quot;Given&quot;: &quot;an active revision differs from the requested revision&quot;,
+    &quot;When&quot;: &quot;a new Undo request is submitted&quot;,
+    &quot;Then&quot;: &quot;the request is rejected and content and history remain unchanged&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B5&quot;,
+    &quot;behavior&quot;: &quot;Reject unauthorized caller&quot;,
+    &quot;Given&quot;: &quot;a viewer lacks writer authority&quot;,
+    &quot;When&quot;: &quot;the viewer requests Undo&quot;,
+    &quot;Then&quot;: &quot;the request is denied without private proof disclosure&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B6&quot;,
+    &quot;behavior&quot;: &quot;Handle empty history&quot;,
+    &quot;Given&quot;: &quot;a writable document has no Undo history&quot;,
+    &quot;When&quot;: &quot;Undo is requested&quot;,
+    &quot;Then&quot;: &quot;the request is rejected as NoUndo and content and history remain unchanged&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B7&quot;,
+    &quot;behavior&quot;: &quot;Reject forged proof&quot;,
+    &quot;Given&quot;: &quot;a request contains a client supplied proof field&quot;,
+    &quot;When&quot;: &quot;Undo is requested&quot;,
+    &quot;Then&quot;: &quot;the malformed request is rejected before mutation&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-B8&quot;,
+    &quot;behavior&quot;: &quot;Preserve no-save boundary&quot;,
+    &quot;Given&quot;: &quot;a document has Undo history&quot;,
+    &quot;When&quot;: &quot;Undo is requested&quot;,
+    &quot;Then&quot;: &quot;no formal file save or formal save acknowledgement occurs&quot;
+  }
+]</pre></section><section><h2>tests</h2><pre>{
+  &quot;document_fixture&quot;: &quot;fixtures.json&quot;,
+  &quot;local_checker&quot;: &quot;check_documents.py&quot;,
+  &quot;levels&quot;: {
+    &quot;L0&quot;: &quot;document schema assertions only&quot;,
+    &quot;L1&quot;: &quot;NOT RUN&quot;,
+    &quot;L2&quot;: &quot;NOT RUN&quot;,
+    &quot;L3&quot;: &quot;NOT RUN&quot;,
+    &quot;L4&quot;: &quot;NOT RUN&quot;,
+    &quot;L5&quot;: &quot;NOT RUN&quot;
+  },
+  &quot;RED&quot;: &quot;NOT RUN; local document check is not valid product RED&quot;,
+  &quot;GREEN&quot;: &quot;NOT RUN&quot;
+}</pre></section><section><h2>acceptance</h2><pre>[
+  &quot;Complete local refs and closed response roots&quot;,
+  &quot;Strict U64 boundary vectors pass document checker&quot;,
+  &quot;No FileCommit proof injected&quot;,
+  &quot;Deferred outcome preserves actual committed revision/proof/pin&quot;,
+  &quot;Source manifest 796 entries unchanged&quot;,
+  &quot;No protected files modified&quot;,
+  &quot;Independent reviewer and Owner required before skeleton&quot;
+]</pre></section><section><h2>risks</h2><pre>[
+  &quot;Exact DomainRejected diagnostic mappings require Owner confirmation; NoUndo remains an error, never inferred NoChange.&quot;,
+  &quot;Current WORK has no integrated M03/M05 proof issuance; proposed seams need reacceptance&quot;,
+  &quot;FullDraft missing; module incomplete&quot;,
+  &quot;Document fixtures do not prove runtime&quot;
+]</pre></section><section><h2>scope</h2><pre>{
+  &quot;allowed&quot;: &quot;only this new packet directory&quot;,
+  &quot;protected&quot;: [
+    &quot;product&quot;,
+    &quot;board&quot;,
+    &quot;current-state&quot;,
+    &quot;all prior packages&quot;
+  ]
+}</pre></section><section><h2>coverage_categories</h2><pre>{
+  &quot;B1&quot;: &quot;Applicable&quot;,
+  &quot;B2&quot;: &quot;Applicable&quot;,
+  &quot;B3&quot;: &quot;Applicable&quot;,
+  &quot;B4&quot;: &quot;Applicable&quot;,
+  &quot;B5&quot;: &quot;Applicable&quot;,
+  &quot;B6&quot;: &quot;Applicable&quot;,
+  &quot;B7&quot;: &quot;Applicable&quot;,
+  &quot;B8&quot;: &quot;Applicable&quot;,
+  &quot;B9&quot;: &quot;Applicable; no postcommit fake rollback&quot;,
+  &quot;B10&quot;: &quot;Applicable&quot;,
+  &quot;B11&quot;: &quot;Deferred; runtime cross-version NOT RUN&quot;,
+  &quot;B12&quot;: &quot;Applicable&quot;
+}</pre></section><section><h2>work_error_map</h2><pre>[
+  {
+    &quot;WORK&quot;: &quot;NoUndo&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;NoUndo&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;RevisionOverflow&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;RevisionOverflow&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;Closed&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;Closed&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;RevisionConflict&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;RevisionConflict&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;NotReady&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;NotReady&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;Busy&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;Busy&quot;,
+          &quot;fields&quot;: {}
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;verified precommit only&quot;
+  },
+  {
+    &quot;WORK&quot;: &quot;InvalidInput(field)&quot;,
+    &quot;wire&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DomainRejected&quot;,
+        &quot;details&quot;: {
+          &quot;code&quot;: &quot;InvalidInput&quot;,
+          &quot;fields&quot;: {
+            &quot;field&quot;: &quot;expected_revision&quot;
+          }
+        }
+      },
+      &quot;replayed&quot;: false
+    },
+    &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+    &quot;effect&quot;: &quot;field allowlist required; no raw internal errors&quot;
+  }
+]</pre></section><section><h2>replay_lifecycle</h2><pre>[
+  {
+    &quot;id&quot;: &quot;UNDO-L1&quot;,
+    &quot;capture_revision&quot;: &quot;7&quot;,
+    &quot;terminal_revision&quot;: &quot;8&quot;,
+    &quot;current_revision&quot;: &quot;11&quot;,
+    &quot;same_request&quot;: true,
+    &quot;authorized&quot;: true,
+    &quot;expected&quot;: &quot;Return retained R7→R8 replayed=true; do not overwrite live R11 or perform another Undo. UI compares revision before rendering.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-L2&quot;,
+    &quot;capture_revision&quot;: &quot;7&quot;,
+    &quot;current_revision&quot;: &quot;11&quot;,
+    &quot;same_request&quot;: false,
+    &quot;authorized&quot;: true,
+    &quot;expected&quot;: &quot;New request stale revision rejected before mutation.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-L3&quot;,
+    &quot;capture_revision&quot;: &quot;7&quot;,
+    &quot;current_revision&quot;: &quot;11&quot;,
+    &quot;same_request&quot;: true,
+    &quot;changed_capture&quot;: true,
+    &quot;authorized&quot;: true,
+    &quot;expected&quot;: &quot;ReplayConflict; no mutation even if current revision differs.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-L4&quot;,
+    &quot;capture_revision&quot;: &quot;7&quot;,
+    &quot;terminal_revision&quot;: &quot;8&quot;,
+    &quot;authorized&quot;: false,
+    &quot;expected&quot;: &quot;UnauthorizedCaller; retain server evidence, suppress terminal proof delivery.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;UNDO-L5&quot;,
+    &quot;capture_revision&quot;: &quot;7&quot;,
+    &quot;current_revision&quot;: &quot;7&quot;,
+    &quot;inflight&quot;: true,
+    &quot;expected&quot;: &quot;InProgress only; no duplicate M04 Undo.&quot;
+  }
+]</pre></section><section><h2>source_lineage</h2><pre>&quot;M03 original scope remains planning only as recorded in current-state; effective v3 source sections copied in effective-source-extracts.json. No Owner approval inferred.&quot;</pre></section><script id="module-spec" type="application/json">{"identity": {"module": "M03", "task": "PD-P1-M03-PREP-01", "slice": "design_document_undo response integration candidate", "state": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "author": "m03_next_command_packet", "independent_acceptance": "NOT RUN"}, "intent": "One complete command request/response schema root and candidate evidence model, not product implementation.", "architecture": {"hexagonal": "UI → trusted Tauri driving adapter → M03 binding input port → M04 document owner → M05 material retention output port → adapters", "dependency": "M03 depends on owner/retention abstractions; WORK remains authoritative mutable document/history; M05 owns material pin/root records. UI only immutable projection.", "mutation": "Only M04 calls existing WORK Undo; M03 cannot own duplicate state.", "transaction": "Precommit failures preserve content/history; confirmed commit advances revision and moves one undo entry to redo; retention failure cannot undo that fact. No persistence or baseline ACK.", "diagrams": {"hexagonal": "[UI] -> [M03 input binding] -> [M04 owner / WORK SSOT] -> [M05 ports] \u003c- [retention adapter]", "dependency": "M03 -> M04 input port -> WORK domain; M04 -> M05 output port \u003c- adapters; UI receives projection only"}}, "contract": {"status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "command": "design_document_undo", "M04_command": "document_undo", "request_mapping": {"session_uuid": "authorized server binding session_uuid", "expected_revision": "request.expected_revision", "request_id": "request.request_id"}, "precedence": ["Trusted caller/window origin admission", "Outer bytes/depth then closed request and strict U64 validation", "Binding/generation/writer authority", "Authorized replay record match before new revision check; mismatched immutable capture ReplayConflict; in-flight InProgress", "For new request check expected revision, dependency readiness and capacity before reservation/Undo", "M04 checks editable/revision/history continuity/revision overflow; pin outgoing retention before commit through declared seam", "Exactly one M04 Undo; immutable issuer mutation receipt", "M05 complete old/new root set transition; report actual failed stage in order LiveRoots,UndoRoots,RedoRoots", "Return retained original result only to matching still-authorized caller; suppress revoked owner delivery"], "limits": {"outer_utf8_bytes": 33554432, "outer_depth": 16, "keys_per_binding": 128, "keys_per_runtime": 1024, "eviction": false}, "transaction": "Precommit failures preserve content/history; confirmed commit advances revision and moves one undo entry to redo; retention failure cannot undo that fact. No persistence or baseline ACK.", "replay": "Key(binding_ref,session_uuid,operation,request_id), immutable typed capture including generation/revision. Original retained result replayed=true; no second Undo, no projection overwrite of newer state. Close/revoke ends authority. Runtime-only, no restart exactly-once.", "failure_mapping": {"precommit_known_rejection": "closed v3 Error after exact mapping confirmation; zero mutation", "postcommit_roots_failure": "AppliedRetentionDeferred at actual revision, actual pin and mutation proof", "uncertain_M04": "Indeterminate, no false unchanged claim", "owner_loss_after_commit": "retain evidence; no delivery to replacement window"}, "new_port_policy": "Any missing mutation receipt issuance, precommit retention seam, root-set verification or replay authority is PROPOSED_PENDING_REACCEPTANCE_AND_OWNER. No skeleton or product changes authorized.", "fullDraft": "M03 complete FullDraft root integration remains MISSING; this one-command root does not close module.", "io_mapping": {"FileCommit": "NOT APPLICABLE / NOT CALLED", "formal_save_ack": "NOT APPLICABLE / NOT CALLED"}}, "decisions": [{"id": "UNDO-D1", "before": "Shared v3 generic MutationResult; command correlation implicit", "after": "Preserve Applied/NoChange/AppliedRetentionDeferred wire vocabulary; add Undo-specific semantic proof checks; no invented UndoAppliedRetentionDeferred wire tag", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER"}, {"id": "UNDO-D2", "before": "U64 pattern permits oversized 20-digit text", "after": "canonical checked integer range 0..18446744073709551615 at every reference; no JS Number", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER"}, {"id": "UNDO-D3", "before": "Root transfer failures could be mistaken for failed Undo", "after": "Confirmed M04 commit remains actual R8; deferred M05 roots report stage/reason with actual pin/proof; no rollback", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER"}, {"id": "UNDO-D4", "before": "Save receipt model might be reused incorrectly", "after": "No formal FileCommit/ACK/target/digest receipt on Undo; issuer mutation and root-set evidence only", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER"}, {"id": "UNDO-D5", "before": "Current WORK returns NoUndo error on empty history", "after": "Reuse exact seven typed DomainRejected fragments: NotReady, InvalidInput, RevisionConflict, RevisionOverflow, Busy, NoUndo, Closed. fields is closed JSON object; InvalidInput requires field:string. NoUndo remains error, never NoChange. Command policy awaits Owner reacceptance.", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER"}], "proof": {"status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "issuer": "M04 document owner; opaque records held server-side", "capture": {"binding_ref": "11111111-1111-4111-8111-111111111111", "document_uuid": "doc-undo-a", "session_uuid": "session-undo-a", "owner_generation": "3", "operation": "design_document_undo", "request_id": "22222222-2222-4222-8222-222222222222", "expected_revision": "7", "workflow_id": "33333333-3333-4333-8333-333333333333", "transition_ordinal": "0"}, "mutation_receipt": {"proof_ref": "mutation-undo-7-8", "before_revision": "7", "after_revision": "8", "before_semantic_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "after_semantic_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "history_before": "2", "history_after": "1", "redo_before": "0", "redo_after": "1", "pin_id": "pin-undo-7"}, "pin_evidence": {"issuer": "M05", "pin_id": "pin-undo-7", "actual_state": "Held", "evidence_receipt_id": "pin-evidence-7", "operation_role": "undo", "operation_ordinal": "0"}, "root_version_set": {"before": {"LiveDocuments": "40", "UndoHistory": "18", "RedoHistory": "4", "RecoverySnapshots": "9", "InFlightTransactions": "11"}, "after": {"LiveDocuments": "41", "UndoHistory": "19", "RedoHistory": "5", "RecoverySnapshots": "9", "InFlightTransactions": "11"}, "scope": "doc-undo-a/session-undo-a", "provider_id": "provider-a", "epoch": "6", "completeness": "Complete"}, "rules": ["Capture immutable at authorization; sender/window origin established out-of-band, never trust request binding alone.", "M04 proof binds context, revision pair, semantic identity and history transition; M03 cannot mint success from an M05 receipt.", "M05 issuer proof binds actual pin, workflow operation, scope/provider/epoch and complete root version set; no selected per-kind latest version mixing.", "Verify stage-specific membership: restored content LiveDocuments, surviving history UndoHistory, outgoing content RedoHistory; retain union of old/new roots and all unresolved pins on uncertainty.", "Receipt mismatch after confirmed M04 commit means AppliedRetentionDeferred, not unchanged error. No artificial rollback or automatic release.", "If M04 commit cannot be established, return Indeterminate; preserve evidence and block automatic retry.", "Held is valid only with actual issuer attestation; unknown pin state stays unknown in server evidence. Never synthesize Held from transfer failure.", "Reject response with revision mismatching original issuer proof, even if wire schema accepts it.", "Operation ID uses existing UUIDv5 workflow namespace and role undo/ordinal; no retry ordinal invention."], "io": {"FileCommit": "NOT CALLED", "formal_save_ack": "NOT CALLED", "formal_root_transfer": "NOT CALLED", "reason": "Undo mutates in-memory document/history and retains material roots; it does not persist formal file bytes."}, "evidence_class": "SYNTHETIC_DOCUMENT_FIXTURE; not an issuer receipt or runtime evidence"}, "bdd": [{"id": "UNDO-B1", "behavior": "Restore prior state", "Given": "a writable document at revision 7 with two Undo entries", "When": "the owner requests Undo once", "Then": "the prior content becomes revision 8 and one entry moves to Redo"}, {"id": "UNDO-B2", "behavior": "Retain committed outcome", "Given": "Undo has changed content to revision 8", "When": "retention of the outgoing history fails", "Then": "revision 8 remains active with retention pending and the actual evidence is retained"}, {"id": "UNDO-B3", "behavior": "Replay without mutation", "Given": "an authorized Undo request has a retained terminal outcome", "When": "the identical request is repeated", "Then": "the original outcome is returned and no further Undo occurs"}, {"id": "UNDO-B4", "behavior": "Reject stale input", "Given": "an active revision differs from the requested revision", "When": "a new Undo request is submitted", "Then": "the request is rejected and content and history remain unchanged"}, {"id": "UNDO-B5", "behavior": "Reject unauthorized caller", "Given": "a viewer lacks writer authority", "When": "the viewer requests Undo", "Then": "the request is denied without private proof disclosure"}, {"id": "UNDO-B6", "behavior": "Handle empty history", "Given": "a writable document has no Undo history", "When": "Undo is requested", "Then": "the request is rejected as NoUndo and content and history remain unchanged"}, {"id": "UNDO-B7", "behavior": "Reject forged proof", "Given": "a request contains a client supplied proof field", "When": "Undo is requested", "Then": "the malformed request is rejected before mutation"}, {"id": "UNDO-B8", "behavior": "Preserve no-save boundary", "Given": "a document has Undo history", "When": "Undo is requested", "Then": "no formal file save or formal save acknowledgement occurs"}], "tests": {"document_fixture": "fixtures.json", "local_checker": "check_documents.py", "levels": {"L0": "document schema assertions only", "L1": "NOT RUN", "L2": "NOT RUN", "L3": "NOT RUN", "L4": "NOT RUN", "L5": "NOT RUN"}, "RED": "NOT RUN; local document check is not valid product RED", "GREEN": "NOT RUN"}, "acceptance": ["Complete local refs and closed response roots", "Strict U64 boundary vectors pass document checker", "No FileCommit proof injected", "Deferred outcome preserves actual committed revision/proof/pin", "Source manifest 796 entries unchanged", "No protected files modified", "Independent reviewer and Owner required before skeleton"], "risks": ["Exact DomainRejected diagnostic mappings require Owner confirmation; NoUndo remains an error, never inferred NoChange.", "Current WORK has no integrated M03/M05 proof issuance; proposed seams need reacceptance", "FullDraft missing; module incomplete", "Document fixtures do not prove runtime"], "scope": {"allowed": "only this new packet directory", "protected": ["product", "board", "current-state", "all prior packages"]}, "coverage_categories": {"B1": "Applicable", "B2": "Applicable", "B3": "Applicable", "B4": "Applicable", "B5": "Applicable", "B6": "Applicable", "B7": "Applicable", "B8": "Applicable", "B9": "Applicable; no postcommit fake rollback", "B10": "Applicable", "B11": "Deferred; runtime cross-version NOT RUN", "B12": "Applicable"}, "work_error_map": [{"WORK": "NoUndo", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "NoUndo", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations"}, {"WORK": "RevisionOverflow", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "RevisionOverflow", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations"}, {"WORK": "Closed", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "Closed", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations"}, {"WORK": "RevisionConflict", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "RevisionConflict", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations"}, {"WORK": "NotReady", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "NotReady", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "unchanged only with verified precommit rejection; NotReady reserved/unreachable in implemented WORK operations"}, {"WORK": "Busy", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "Busy", "fields": {}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "verified precommit only"}, {"WORK": "InvalidInput(field)", "wire": {"ok": false, "error": {"code": "DomainRejected", "details": {"code": "InvalidInput", "fields": {"field": "expected_revision"}}}, "replayed": false}, "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "effect": "field allowlist required; no raw internal errors"}], "replay_lifecycle": [{"id": "UNDO-L1", "capture_revision": "7", "terminal_revision": "8", "current_revision": "11", "same_request": true, "authorized": true, "expected": "Return retained R7→R8 replayed=true; do not overwrite live R11 or perform another Undo. UI compares revision before rendering."}, {"id": "UNDO-L2", "capture_revision": "7", "current_revision": "11", "same_request": false, "authorized": true, "expected": "New request stale revision rejected before mutation."}, {"id": "UNDO-L3", "capture_revision": "7", "current_revision": "11", "same_request": true, "changed_capture": true, "authorized": true, "expected": "ReplayConflict; no mutation even if current revision differs."}, {"id": "UNDO-L4", "capture_revision": "7", "terminal_revision": "8", "authorized": false, "expected": "UnauthorizedCaller; retain server evidence, suppress terminal proof delivery."}, {"id": "UNDO-L5", "capture_revision": "7", "current_revision": "7", "inflight": true, "expected": "InProgress only; no duplicate M04 Undo."}], "source_lineage": "M03 original scope remains planning only as recorded in current-state; effective v3 source sections copied in effective-source-extracts.json. No Owner approval inferred."}</script></html>

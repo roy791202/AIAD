@@ -1,0 +1,855 @@
+{
+  "identity": {
+    "module": "M03",
+    "task": "PD-P1-M03-PREP-01",
+    "status": "PROPOSED_NOT_APPROVED_NOT_RUN"
+  },
+  "architecture": {
+    "hexagonal": "Editor/Viewer/test → input boundaries → HOST orchestration/codec → WORK domain projections; HOST → Ports ← native adapters; C1 only materializes codec representation, not live owner flow",
+    "dependency": "M01/S3 trusted document/session binding + M02 verified snapshot + M05 materials feed future M03 projection; M04/M07 observe completed content mutation",
+    "ownership": "C1 moves no ownership. Full document owner retains authority; Viewer is detached projection",
+    "mutation": "pure decode/encode creates temporary values only; future Editor explicit approved usecase, Viewer mock-only",
+    "transaction": "decode/validate temporary result then caller install only on success; preview refresh temporary projection then swap only on success; C1 does not upgrade formal save transaction"
+  },
+  "field_map": [
+    {
+      "wire": "/meta/gridSize",
+      "type": "Option<serde_json::Number>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain0 (grid off), integer/fraction numeric value under numeric representability guard; no clamp/round/default in codec",
+      "rust": "DesignMeta.grid_size, rename gridSize, default None, omit on serialize when None",
+      "owner": "M03 design metadata; Editor displays/project defaults without creating a content edit",
+      "evidence": "app.js:setDesignGridPx currently rounds/clamps UI input; this is observed behavior, not authorization to rewrite imported document"
+    },
+    {
+      "wire": "/meta/formSize",
+      "type": "Option<String>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain string spelling, no parse/rewrite/rounding in codec; geometry interpretation remains separate",
+      "rust": "DesignMeta.form_size, rename formSize, default None, omit None",
+      "owner": "stored design metadata; runtime must not silently reconcile it with root geometry",
+      "evidence": "app.js:setDesignFormSize/designFormSizeToken writes width x height metadata"
+    },
+    {
+      "wire": "/meta/guides",
+      "type": "Option<DesignGuides>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "present object requires v and h; numeric vectors preserve order and duplicate values; empty arrays valid",
+      "rust": "new HOST DesignGuides {pub v:Vec<serde_json::Number>,pub h:Vec<serde_json::Number>}; DesignMeta.guides optional",
+      "owner": "persistent design guides; no UI/global preference store authority",
+      "evidence": "app.js:ensureDesignGuidesMeta initializes v/h arrays"
+    },
+    {
+      "wire": "/nodes/*/scope",
+      "type": "Option<String>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain string, including unknown scope labels as data; unknown scope cannot grant Viewer action authority",
+      "rust": "DesignNode.scope default None, omit None",
+      "owner": "design node identity/ownership declaration, not caller authorization",
+      "evidence": "app.js imports/new nodes assign scope=ui"
+    },
+    {
+      "wire": "/nodes/*/uiExclusive",
+      "type": "Option<bool>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "false remains false, true remains true; no default true in codec",
+      "rust": "DesignNode.ui_exclusive, rename uiExclusive, default None, omit None",
+      "owner": "node metadata; cannot override architecture/document owner",
+      "evidence": "app.js imports/new nodes assign uiExclusive=true"
+    }
+  ],
+  "codec": {
+    "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+    "slice": "M03-C1-CODEC-PRESERVATION",
+    "format": "sgenaxis.design version1 retained; recognized current-UI fields become explicitly represented after Owner approval; no version auto-upgrade",
+    "public_functions": "parse_design_json(&str)->Result<DesignDoc,HostError>; serialize_design(&DesignDoc)->Result<String,HostError> unchanged. build_preview_html/save/load APIs unchanged and not upgraded to new persistence semantics.",
+    "unknown_policy": "Reject unknown members at root/meta/node/guides before a partial typed result. Existing props remains an intentionally open nested JSON data bag; preserve supported values, do not execute strings/keys. No new root extensions bag or plugin runtime.",
+    "duplicate_policy": "Reject duplicate keys at all levels, including props, with exact RFC6901 pointer. Do not accept duplicate-last-wins parsing as preservation.",
+    "optional_policy": "For five new fields: absence means None and omitted on serialize; explicit null invalid, including false/0/empty arrays preserved distinctly. Old pre-existing optional/default contracts remain unchanged and explicitly normalized in comparison.",
+    "numeric_policy": "H1 preserves numeric semantic value, not token formatting. Allow value only when the current HOST JSON representation can serialize/reparse it without decimal-value loss AND any mathematically integral value lies within[-9007199254740991,9007199254740991] for the JS consumer. Accept1.00/1E+03 if canonical decimal value is unchanged; reject9007199254740993, overflow, underflow or precision-losing decimal instead of silently rounding. No floating-point intermediate may be used as proof of decimal equality. Helpers remain private in the single HOST file.",
+    "number_examples": {
+      "accept": [
+        "0",
+        "-0",
+        "1.00",
+        "1E+03",
+        "0.5",
+        "0.1",
+        "9007199254740991"
+      ],
+      "reject": [
+        "9007199254740993",
+        "18446744073709551616",
+        "1e400",
+        "1e-400",
+        "0.100000000000000000000000000001"
+      ]
+    },
+    "proposed_limits": {
+      "input_UTF8_bytes": 16777216,
+      "output_UTF8_bytes": 16777216,
+      "depth_root0": 64,
+      "JSON_value_nodes_root1": 100000,
+      "single_decoded_string_UTF8_bytes": 1048576,
+      "single_number_token_bytes": 4096,
+      "authority": "new M03 recommendations, NOT inherited approval merely because another module uses these values"
+    },
+    "priority": "input size/UTF8/BOM -> grammar/duplicate/resource guards -> format/version -> known/unknown/type checks -> numeric representation -> typed document validate; no current-state mutation or file write before success",
+    "new_error_prefixes": {
+      "unknown": "DESIGN_CODEC_UNKNOWN_FIELD:<RFC6901>",
+      "duplicate": "DESIGN_CODEC_DUPLICATE_KEY:<RFC6901>",
+      "new_field_type": "DESIGN_CODEC_INVALID_FIELD:<RFC6901>",
+      "number": "DESIGN_NUMBER_UNREPRESENTABLE:<RFC6901>",
+      "resource": "DESIGN_CODEC_RESOURCE_LIMIT:<RFC6901>:<resource>"
+    },
+    "existing_errors": "Existing malformed JSON/format/version/product_pass=true refusal semantics and readable HostError::Settings remain; no new public HostError variant, no relaxed product_pass guard. New prefixes for newly rejected cases need Owner adoption.",
+    "success": "Decode fully representable input and serialize/reparse all business fields equal under explicit existing-default + canonical numeric semantics; preserve the five lost field paths and original node IDs/relationships/hints/props. Never silently delete unrepresented data.",
+    "failure": "Return HostError::Settings and no partial DesignDoc; caller remains responsible for installing a candidate only on full success. Source bytes untouched. This pure codec slice does not claim active-state, atomic file-save, UI, or formal snapshot acceptance.",
+    "codec_does_not_decide": [
+      "root form geometry versus disagreeing formSize UI preference",
+      "authority from scope/uiExclusive",
+      "binding/revision lifecycle",
+      "Viewer mock interaction schema",
+      "cross-file graph repairs or identity remaps",
+      "moving WORK/DispatchHost SSOT"
+    ]
+  },
+  "preview_authority": {
+    "status": "PROPOSED_H2_PLANNING_ONLY_NOT_READY_FOR_SKELETON",
+    "source": "extends original preview-contract-review proposal; not an adopted runtime design",
+    "document_owner": "Existing document application owner remains authoritative. Proposed future M03 design/binding representation in WORK and orchestration in HOST/DispatchHost must receive its own exact packet; H1 moves no ownership.",
+    "content": "Layout, persistent guide/grid/form metadata, declared props/interaction design are content. Their approved mutations advance the document content revision once and are observed by M04/M07 only at completed mutation boundaries.",
+    "ephemeral": "Selection/focus/playback progress, simulated Viewer control values and navigation are projections. They do not mark document dirty, enter content Undo, advance content revision, or trigger recovery snapshots. Legacy selection/updatedAt wire fields may be preserved for compatibility but are not authority or content-fingerprint input.",
+    "Editor": "Ordinary click selects a stable-ID item. Explicit authorized property/interaction editing crosses approved application mutation boundary with expected content revision; author-configured behavior is not executed by Editor selection.",
+    "Viewer": "Explicit mode entry creates detached mock state from an immutable design snapshot. Only allowlisted mock intents; no filesystem/AI/Git/plugin/process/Tauri arbitrary dispatch. Simulated values never write source props or become formal acceptance.",
+    "proposed_intent_envelope": [
+      "trusted project/document binding reference",
+      "content_revision",
+      "preview_session_id issued/bound by HOST",
+      "message_sequence monotonic within preview session",
+      "stable node_id",
+      "allowlisted action enum",
+      "bounded typed payload"
+    ],
+    "authority_guard": "UI-supplied strings do not authenticate owner/session/window. Native application boundary must bind actual sender and current document; M01/S3 context is a dependency, not a second registry created here.",
+    "outcomes": {
+      "EditorSelection": "view-only select, no mock effect",
+      "ViewerMockAccepted": "only detached preview state changes",
+      "StaleRevision": "reject intent; retain existing projection with stale badge, no source mutation",
+      "MissingBinding": "disable dependent action and explain missing source/target",
+      "AmbiguousStableId": "do not guess by label or map automatically",
+      "UnsupportedActionOrScope": "visible unsupported state; never fallback to arbitrary execution",
+      "MissingMaterial": "placeholder/warning and disable dependent action, never execute substitute content"
+    },
+    "refresh_transaction": "validate source binding/revision and supported capabilities -> build temporary immutable preview projection -> replace Viewer projection only on success. Failed refresh retains previous projection visibly stale; late completion must be rejected against current binding/revision/session.",
+    "cross_location": "stable IDs only; mapping missing/duplicate/stale produces explicit result and disables action; imported names do not establish same identity",
+    "future_scope": "Original M03 proposed design_binding.rs/preview-runtime/UI/Tauri paths remain candidate-only; H2 exact types/command DTOs/owner lifecycle/sequence and capability matrix still require later explicit packet, not authorized by adopting C1 codec recommendations."
+  },
+  "ui_schema": {
+    "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+    "component": "DesignEditorViewer (future H2)",
+    "role": "local project author/designer, no Git/programming requirement",
+    "fields": [
+      {
+        "name": "mode",
+        "values": [
+          "Editor",
+          "Viewer"
+        ],
+        "default": "Editor recommended",
+        "event": "explicit mode switch; Viewer mock state reset per new preview session"
+      },
+      {
+        "name": "bound document/revision",
+        "readonly": true,
+        "validation": "trusted active binding, no authority from labels"
+      },
+      {
+        "name": "refresh",
+        "disabled": "binding invalid or projection building",
+        "error": "stale/invalid/missing capability retains previous stale view"
+      },
+      {
+        "name": "cross-locate",
+        "disabled": "missing/ambiguous/stale stable ID mapping",
+        "event": "view navigation only, no content mutation"
+      },
+      {
+        "name": "status",
+        "states": [
+          "empty",
+          "ready communication-only",
+          "stale",
+          "unsupported",
+          "missing material",
+          "binding invalid"
+        ],
+        "rule": "visible text +accessible status, never product PASS"
+      }
+    ],
+    "H1_UI_changes": "NONE; codec acceptance does not authorize new UI behavior",
+    "GWT_map": {
+      "Editor click": "M03-A01",
+      "Viewer mock": "M03-A02",
+      "stale intent": "M03-A03",
+      "missing/ambiguous mapping": "M03-A04",
+      "failed refresh": "M03-A05"
+    }
+  },
+  "scope": {
+    "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+    "primary_module": "M03",
+    "slice": "C1 codec only",
+    "current_writes": [
+      "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/**",
+      "own M03 PREP board evidence with snapshot_safe/FileLock"
+    ],
+    "after_owner_adopts_C1_contract_and_scope_only": {
+      "existing_source": {
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs": "DesignMeta/DesignNode optional fields, new DesignGuides in this same module, private parse/serialize validation and directly affected same-file constructors/unit fixtures. No save/load/build-preview behavior expansion."
+      },
+      "new_tests": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs"
+      ],
+      "dependencies": "existing HOST serde/serde_json raw_value feature already present; no manifest/lock/dependency change",
+      "new_public_type_count": 1,
+      "existing_public_structs_changed": [
+        "DesignMeta",
+        "DesignNode"
+      ],
+      "functions_signatures_changed": 0
+    },
+    "protected": [
+      "all other product/source/tests",
+      "all WORK/lib/Ports/Adapters/M01/M02/M04/M05/M06/M07",
+      "all Tauri/UI and future preview-runtime/design_binding paths",
+      "save_design_file/load_design_file/build_preview_html behavior and persistence semantics",
+      "all manifests/locks/package/release artifacts"
+    ],
+    "future_H2": "NOT READY; proposal directions only; no runtime implementation scope approved",
+    "release_boundary": "C1 alone proves codec behavior, not full UI open/save preservation. Existing UI load/clamp/form synchronization must receive separate H2 integration tests before release; do not claim C1 native readiness",
+    "gate": "Owner adopts new C1 precision -> Skeleton/test fixture -> buildable intended RED -> read-only acceptance -> standing automatic implementation. No H2 automatic opening."
+  },
+  "bdd_tdd": [
+    {
+      "id": "M03-C1-T01",
+      "bdd": "M03-C1-B01",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "legacy supported baseline remains compatible",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "existing normalized domain/field values equal; no new optional keys synthesized",
+      "fixture": "baseline.fixture.json",
+      "mutation": null,
+      "expected": "existing normalized domain/field values equal; no new optional keys synthesized",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_01",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "regression",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T02",
+      "bdd": "M03-C1-B02",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "nested props positive control remains supported",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "nested props tree including array order retained",
+      "fixture": "baseline.fixture.json",
+      "mutation": {
+        "use": "../roundtrip-evidence/props-nested.input.json"
+      },
+      "expected": "nested props tree including array order retained",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_02",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "regression",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T03",
+      "bdd": "M03-C1-B03",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "all five currently lost UI fields are present",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "gridSize/formSize/guides and every node scope/uiExclusive semantically equal; all9 previously missing probe paths retained",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": null,
+      "expected": "gridSize/formSize/guides and every node scope/uiExclusive semantically equal; all9 previously missing probe paths retained",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_03",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T04",
+      "bdd": "M03-C1-B04",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "grid disabled explicitly",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "0 retained, never default8",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/meta/gridSize",
+        "value": 0
+      },
+      "expected": "0 retained, never default8",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_04",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T05",
+      "bdd": "M03-C1-B05",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "node declared non-exclusive explicitly",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "false retained, never default true",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/nodes/1/uiExclusive",
+        "value": false
+      },
+      "expected": "false retained, never default true",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_05",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T06",
+      "bdd": "M03-C1-B06",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "guides arrays empty",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "both empty arrays retained",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/meta/guides",
+        "value": {
+          "v": [],
+          "h": []
+        }
+      },
+      "expected": "both empty arrays retained",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_06",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T07",
+      "bdd": "M03-C1-B07",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "new optional fields absent in old file",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "None fields omitted on serialize; no default field creation",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "remove": [
+          "/meta/gridSize",
+          "/meta/formSize",
+          "/meta/guides",
+          "/nodes/*/scope",
+          "/nodes/*/uiExclusive"
+        ]
+      },
+      "expected": "None fields omitted on serialize; no default field creation",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_07",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T08",
+      "bdd": "M03-C1-B08",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "new field has wrong explicit type",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/meta/gridSize",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/meta/gridSize",
+        "value": "8"
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/meta/gridSize",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_08",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T09",
+      "bdd": "M03-C1-B09",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "new field has wrong explicit type",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/meta/guides",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/meta/guides",
+        "value": null
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/meta/guides",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_09",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T10",
+      "bdd": "M03-C1-B10",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "new field has wrong explicit type",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/nodes/1/uiExclusive",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/nodes/1/uiExclusive",
+        "value": "false"
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/nodes/1/uiExclusive",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_10",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T11",
+      "bdd": "M03-C1-B11",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "new field has wrong explicit type",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/nodes/1/scope",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/nodes/1/scope",
+        "value": 42
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_INVALID_FIELD:/nodes/1/scope",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_11",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T12",
+      "bdd": "M03-C1-B12",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "unknown named schema member cannot be discarded",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/futureRoot",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "add": "/futureRoot",
+        "value": {
+          "keep": "or reject"
+        }
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/futureRoot",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_12",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T13",
+      "bdd": "M03-C1-B13",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "unknown named schema member cannot be discarded",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/meta/futureMeta",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "add": "/meta/futureMeta",
+        "value": {
+          "keep": "or reject"
+        }
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/meta/futureMeta",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_13",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T14",
+      "bdd": "M03-C1-B14",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "unknown named schema member cannot be discarded",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/nodes/1/futureNode",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "add": "/nodes/1/futureNode",
+        "value": {
+          "keep": "or reject"
+        }
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/nodes/1/futureNode",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_14",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T15",
+      "bdd": "M03-C1-B15",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "unknown named schema member cannot be discarded",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/meta/guides/future",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "add": "/meta/guides/future",
+        "value": {
+          "keep": "or reject"
+        }
+      },
+      "expected": "HostError::Settings prefix DESIGN_CODEC_UNKNOWN_FIELD:/meta/guides/future",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_15",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T16",
+      "bdd": "M03-C1-B16",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "duplicate JSON keys at root or nested props",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "reject duplicate with precise pointer; dictionary construction cannot produce this fixture",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "raw_members": [
+          {
+            "pointer": "/format",
+            "recipe": "insert a second raw format member with value sgenaxis.design into the root, retaining the existing format member; do not parse through dictionary first"
+          },
+          {
+            "pointer": "/nodes/1/props/custom",
+            "recipe": "insert exact raw members custom:1 and custom:2 in the second node props object; keep the rest of the fixture unchanged"
+          }
+        ]
+      },
+      "expected": "reject duplicate with precise pointer; dictionary construction cannot produce this fixture",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_16",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T17",
+      "bdd": "M03-C1-B17",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "unrepresentable integer for JS consumer",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "DESIGN_NUMBER_UNREPRESENTABLE:/nodes/1/props/customNumber",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "raw_token": "9007199254740993",
+        "pointer": "/nodes/1/props/customNumber"
+      },
+      "expected": "DESIGN_NUMBER_UNREPRESENTABLE:/nodes/1/props/customNumber",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_17",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T18",
+      "bdd": "M03-C1-B18",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "precision-losing decimal",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "DESIGN_NUMBER_UNREPRESENTABLE:/nodes/1/props/customNumber",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "raw_token": "0.100000000000000000000000000001",
+        "pointer": "/nodes/1/props/customNumber"
+      },
+      "expected": "DESIGN_NUMBER_UNREPRESENTABLE:/nodes/1/props/customNumber",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_18",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T19",
+      "bdd": "M03-C1-B19",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "safe numeric spelling can canonicalize without value loss",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "canonical decimal value equal; raw spelling need not match",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "raw_tokens": [
+          "-0",
+          "1.00",
+          "1E+03",
+          "0.5",
+          "0.1",
+          "9007199254740991"
+        ]
+      },
+      "expected": "canonical decimal value equal; raw spelling need not match",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_19",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T20",
+      "bdd": "M03-C1-B20",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "product acceptance flag is forbidden",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "existing readable product_pass rejection; no preview/product PASS",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "replace": "/product_pass",
+        "value": true
+      },
+      "expected": "existing readable product_pass rejection; no preview/product PASS",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_20",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "regression",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T21",
+      "bdd": "M03-C1-B21",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "input byte cap boundary",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "<=16777216 accepted;16777217 DESIGN_CODEC_RESOURCE_LIMIT input bytes",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "values": [
+          16777215,
+          16777216,
+          16777217
+        ],
+        "recipe": "valid whitespace padded document, other limits within bounds"
+      },
+      "expected": "<=16777216 accepted;16777217 DESIGN_CODEC_RESOURCE_LIMIT input bytes",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_21",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T22",
+      "bdd": "M03-C1-B22",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "depth guard boundary, not serde default recursion failure",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "63/64 accepted;65/129 explicit depth resource error",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "values": [
+          63,
+          64,
+          65,
+          129
+        ],
+        "recipe": "raw nested props arrays, root depth0"
+      },
+      "expected": "63/64 accepted;65/129 explicit depth resource error",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_22",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T23",
+      "bdd": "M03-C1-B23",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "node/string/number resource boundaries",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "each resource at max valid if numeric representation is otherwise supported; max+1 resource rejection before typed mapping; do not mislabel invalid number fixtures as resource RED",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "value_nodes": [
+          99999,
+          100000,
+          100001
+        ],
+        "string_bytes": [
+          1048575,
+          1048576,
+          1048577
+        ],
+        "number_token_bytes": [
+          4095,
+          4096,
+          4097
+        ],
+        "recipe": "separate generator per resource, all other guards healthy; number token is 0.5 followed by n-3 zeroes, so4095/4096 characters still denote exactly0.5;4097 triggers resource rejection before representation mapping"
+      },
+      "expected": "each resource at max valid if numeric representation is otherwise supported; max+1 resource rejection before typed mapping; do not mislabel invalid number fixtures as resource RED",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_23",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-T24",
+      "bdd": "M03-C1-B24",
+      "requirement": "M03-GAP1 field preservation/no silent loss",
+      "given": "codec cannot mutate source bytes or caller-owned state",
+      "when": "parse, serialize and reparse through public codec without installing state",
+      "then": "full source/candidate snapshot unchanged on failure; no file/owner/Undo calls from pure codec",
+      "fixture": "ui-owned-fields.fixture.json",
+      "mutation": {
+        "inject": "unknown field/type rejection and valid roundtrip"
+      },
+      "expected": "full source/candidate snapshot unchanged on failure; no file/owner/Undo calls from pure codec",
+      "target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "test_name": "c1_24",
+      "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "RED": "After approved Skeleton and successful build, assertion reaches exact public result; new missing field/error behavior RED; existing baseline/props/product_pass controls are regression and may PASS. No fixture/compile/native setup error is valid RED.",
+      "kind": "behavior",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "authority_bdd": [
+    {
+      "id": "M03-A01",
+      "Given": "Editor mode bound to a design revision",
+      "When": "select an existing stable-ID control",
+      "Then": "selection only; no mock configured behavior, no dirty/Undo/snapshot revision"
+    },
+    {
+      "id": "M03-A02",
+      "Given": "explicit Viewer mode with permitted mock intent",
+      "When": "simulate a control value change",
+      "Then": "detached mock value changes; original design props/revision/hashes unchanged"
+    },
+    {
+      "id": "M03-A03",
+      "Given": "message references stale revision/session",
+      "When": "apply the preview intent",
+      "Then": "StaleRevision, no source mutation; no automatic refresh/merge/remap"
+    },
+    {
+      "id": "M03-A04",
+      "Given": "ID mapping missing or ambiguous",
+      "When": "cross-locate",
+      "Then": "explicit disabled/unresolved outcome; never guess from label"
+    },
+    {
+      "id": "M03-A05",
+      "Given": "previous valid preview and failed refresh candidate",
+      "When": "refresh validation fails",
+      "Then": "previous preview retained and visibly stale, not reported current"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "M03-CP1",
+      "status": "建議採用／未核准",
+      "proposal": "v1 explicitly represents five existing UI-owned fields with absence-preserving optional types; one DesignGuides type in HOST. No implicit value clamping/defaulting for new fields."
+    },
+    {
+      "id": "M03-CP2",
+      "status": "建議採用／未核准",
+      "proposal": "Reject unknown named/duplicate/unrepresentable content; props remains open data. Numeric canonical-value + JS safe-integer guard and resource limits are new proposals, not inherited approval. New precise error prefixes only after adoption."
+    },
+    {
+      "id": "M03-CP3",
+      "status": "建議採用／未核准",
+      "proposal": "First C1 slice is only existing HOST uidesign_doc.rs + new phase1_design_roundtrip.rs; no WORK/Tauri/UI/persistence/preview runtime changes. Owner adoption precedes Skeleton/valid RED; accepted stage then standing automatic implementation."
+    },
+    {
+      "id": "M03-CP4",
+      "status": "建議方向／H2仍需精確包",
+      "proposal": "Editor selects/edits through document owner; Viewer mock state detached; stable-ID/revision/session guard; M04/M07 only observe completed content commits. This direction does not approve an H2 runtime envelope or new owner registry."
+    }
+  ],
+  "results": {
+    "status": "CONTRACT_PROPOSAL_DELIVERED_PENDING_OWNER",
+    "at": "2026-11-01T14:00:12.079018+08:00",
+    "baseline_evidence": "existing7 controlled HOST codec probes:4 accepted loss cases,2 preserving controls,1 correct refusal; not rerun",
+    "source_unchanged": 796,
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "product_test_code_changed": 0,
+    "product_tests": "NOT RUN",
+    "formal_RED": "NOT RUN",
+    "native_UI": "NOT RUN",
+    "new_Skeleton_approval": false,
+    "current_scope": "M03 planning only; C1 proposal not adopted, H2 still needs exact packet",
+    "planned_cases": 24,
+    "additional_H2_behavior_cases": 5,
+    "module_complete": false
+  }
+}

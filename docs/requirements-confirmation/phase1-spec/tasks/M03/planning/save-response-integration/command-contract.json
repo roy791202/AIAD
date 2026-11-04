@@ -1,0 +1,64 @@
+{
+  "command": "design_document_save",
+  "status": "PROPOSED_PENDING_OWNER_AND_REACCEPTANCE",
+  "source_gap": "v3 response root has only ok:false; no successful Save wire branch exists. This candidate adds explicit complete result branches; it does not imply current runtime support.",
+  "precedence": [
+    "trusted sender/origin; denied => UnauthorizedCaller, no IO/detail disclosure",
+    "decoded envelope bytes/depth admission caps, then closed request/U64 range; no private diagnostics",
+    "binding/window/generation and writer authority",
+    "authorized retained request lookup; mismatch => ReplayConflict; in-flight => InProgress; lost record => UnverifiedOutcome",
+    "new request revision/dependency/capacity and FormalWrite reservation",
+    "server capture+encode+pin; no UI target/digest/proof accepted",
+    "existing IO commit; verify four receipt fields against server capture",
+    "verified receipt -> M05 formal root transfer -> captured semantic ACK",
+    "return only to still-authorized matching binding; otherwise retain server evidence for explicit reconciliation, never deliver proof to replacement window"
+  ],
+  "wire_choices": [
+    "Saved and CommittedAckDeferred use opaque proof_id, no raw target/journal/OS error or bytes. New SaveRejected is candidate closed diagnostic projection, not a change to public IO Port.",
+    "CommittedAckDeferred is ok:true for a verified persisted file but is not full saved/clean success. Consumer must inspect outcome. No automatic retry/release/rollback.",
+    "RootTransfer deferred retains Held save pin. SemanticAck deferred retains operation pin/proof record; exact pin lifecycle transfer evidence remains server-owned.",
+    "Mismatch/uncertain IO uses ok:false UnverifiedOutcome retry_allowed=false, not ordinary unchanged failure. UI gets no raw CommitError fields; server preserves every field byte-for-byte.",
+    "Read/CreateDirectory errors occur before replace_checked; no formal file commit is asserted, but Storage is still conservative uncertain response until explicit no-write evidence, not inferred from stage.",
+    "ResourceLimit exact token roots inherited; save command outer/request-key field mapping below. Unused viewer errors remain in shared error union for compatibility; no claim save emits them."
+  ],
+  "resource_matrix": [
+    {
+      "guard": "outer_request_utf8",
+      "field": "",
+      "limit": 33554432,
+      "count": "UTF8 serialized decoded outer request envelope; not transport preallocation"
+    },
+    {
+      "guard": "max_outer_depth",
+      "field": "",
+      "limit": 16,
+      "count": "decoded outer structural depth; no inner design_json on save request"
+    },
+    {
+      "guard": "request_keys_per_binding",
+      "field": "",
+      "limit": 128,
+      "count": "new request reservation count; retained authorized replay bypasses new reservation"
+    },
+    {
+      "guard": "request_keys_per_runtime",
+      "field": "",
+      "limit": 1024,
+      "count": "new runtime key count; no eviction"
+    }
+  ],
+  "resource_precedence": "outer bytes then outer depth then closed DTO/U64; binding authority before per-binding/runtime request-key capacities; per-binding before runtime; all before IO. Admission caps may reject before binding lookup but contain no private material diagnostics.",
+  "proof_checks": [
+    "receipt.target_path equals captured canonical target backed by separate alias-safe identity seam",
+    "receipt.previous_digest equals captured expected raw Option",
+    "receipt.committed_digest equals SHA256 exact encoded bytes; deliberately distinct from semantic digest",
+    "receipt.transaction_id nonempty",
+    "captured request/document/session/generation bound to issuer proof; never take proof fields from UI"
+  ],
+  "state_rules": [
+    "ACK captured revision and semantic digest only; no raw digest ACK",
+    "leave newer live revision/dirty and snapshot baseline unchanged",
+    "RecoveryRequired or mismatched receipt blocks matching target via approved future gate; no automatic clear/retry",
+    "No across-restart exactly-once or complete uncertainty attestation claimed"
+  ]
+}

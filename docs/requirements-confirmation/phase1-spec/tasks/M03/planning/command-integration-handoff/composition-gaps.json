@@ -1,0 +1,66 @@
+[
+  {
+    "id": "CIH-G1",
+    "commands": [
+      "design_viewer_begin",
+      "design_viewer_intent",
+      "design_viewer_refresh",
+      "design_viewer_close"
+    ],
+    "source_pointers": [
+      "preview-begin-correction/document_model.py::begin",
+      "viewer-action-typed-correction/document_model.py::provider_fault",
+      "viewer-refresh-integration/document_model.py::identity,refresh",
+      "viewer-close-integration/document_model.py::TUPLE,identity,close"
+    ],
+    "counterexample": "CIH-SEQ-001: refresh succeeds and retires old UUID; close with the same provider observation refuses M04_OWNER_INTEGRATION. Refresh identity has consumer/window/document/session/generation/revision/closed; close requires consumer/window_instance/project_uuid/root_instance/runtime_epoch/document_uuid/session_uuid/generation/preview_session/native_live/revoked. No bijection derives project/root/runtime epoch from refresh output.",
+    "missing_conditions": [
+      "Owner-adopted native observation input port carrying full root/window/session tuple at capture and delivery.",
+      "One authoritative ephemeral registry mapping retired/new preview slots to same consumer and full root tuple.",
+      "Explicit conversion policy for stale/can_act/closed versus preview_active/identity state.",
+      "Atomic replacement/close race linearization, old intent/close result ordering and slot count invariants.",
+      "New independent sequence review after exact seam adoption."
+    ],
+    "status": "PROPOSED_PENDING_OWNER"
+  },
+  {
+    "id": "CIH-G2",
+    "commands": [
+      "design_binding_transfer",
+      "design_editor_select",
+      "design_viewer_begin"
+    ],
+    "source_pointers": [
+      "binding-transfer-correction/module-spec.json",
+      "editor-select-integration/module-spec.json",
+      "preview-begin-correction/module-spec.json"
+    ],
+    "missing_conditions": [
+      "Adopt exact revocation scope and provider tuple; execute transfer output receipt against select/begin with fresh trusted generation observations.",
+      "Do not infer native revocation or stale delivery suppression from separately constructed fixtures."
+    ],
+    "status": "PROPOSED_PENDING_OWNER"
+  },
+  {
+    "id": "CIH-G3",
+    "commands": [
+      "design_candidate_prepare",
+      "design_candidate_install",
+      "design_document_undo",
+      "design_document_save",
+      "design_binding_close"
+    ],
+    "source_pointers": [
+      "candidate-install-correction/module-spec.json",
+      "undo-response-correction/module-spec.json",
+      "save-proof-correction/io-outcome-map.json",
+      "binding-close-integration/module-spec.json"
+    ],
+    "missing_conditions": [
+      "One adopted candidate/request-key/live/history root-accounting model across install→undo→save→close.",
+      "Preserve FileCommit versus ACK versus retention/deferred outcomes; no ErrorUnchanged claim after unverified IO.",
+      "Single shared error-root vocabulary and revalidation of older command schemas against newer typed overlays."
+    ],
+    "status": "PROPOSED_PENDING_OWNER"
+  }
+]

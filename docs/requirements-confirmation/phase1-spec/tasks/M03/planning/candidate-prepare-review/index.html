@@ -1,0 +1,58 @@
+<html lang="zh-Hant"><meta charset="utf-8"><title>M03 Candidate Prepare Independent Review</title><style>body{font:16px system-ui;max-width:1050px;margin:3rem auto;padding:1rem;line-height:1.6}pre{white-space:pre-wrap;background:#f3f4f6;padding:1rem}h1{color:#9a3412}</style><h1>CHANGES_REQUIRED — root UUID lexical end</h1><p>獨立文件審查；88 個新 probes，86 符合預期，2 個具體 root 反例。不是產品驗收、Owner 採納或 M03 全卡完成。</p><p>binding_ref 與 request_id 接尾換行仍被 root schema 接受。U64 和 7 種 typed DomainRejected 新反例檢查通過。slot replacement / replay 保留 OPEN_OWNER，不當成已批准規格衝突。</p><p><a href="verification.json">新 probe 結果</a> · <a href="probes.py">獨立 probes</a> · <a href="source-hashes.json">保全 hashes</a></p><pre>{
+  &quot;status&quot;: &quot;CHANGES_REQUIRED_LEXICAL_IDENTIFIERS_ONLY&quot;,
+  &quot;scope&quot;: &quot;design_candidate_prepare proposed document package only; no adoption or full-card acceptance&quot;,
+  &quot;author&quot;: &quot;/root/m03_candidate_prepare_packet&quot;,
+  &quot;reviewer&quot;: &quot;/root/m03_candidate_prepare_review&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;id&quot;: &quot;CP-R1&quot;,
+      &quot;severity&quot;: &quot;P2&quot;,
+      &quot;pointer&quot;: &quot;../candidate-prepare-integration/request.schema.json#/properties/binding_ref/pattern&quot;,
+      &quot;counterexample&quot;: &quot;canonical binding_ref followed by U+000A&quot;,
+      &quot;observed&quot;: &quot;accepted by unchanged root subset validator&quot;,
+      &quot;expected&quot;: &quot;reject extra LF using strict lexical end; add matching fixture at complete root&quot;,
+      &quot;reason&quot;: &quot;Canonical UUID authority reference must not admit trailing characters.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-R2&quot;,
+      &quot;severity&quot;: &quot;P2&quot;,
+      &quot;pointer&quot;: &quot;../candidate-prepare-integration/request.schema.json#/properties/request_id/pattern&quot;,
+      &quot;counterexample&quot;: &quot;canonical request_id followed by U+000A&quot;,
+      &quot;observed&quot;: &quot;accepted by unchanged root subset validator&quot;,
+      &quot;expected&quot;: &quot;reject extra LF using strict lexical end; add matching fixture at complete root&quot;,
+      &quot;reason&quot;: &quot;Exact request key lexical identity should not vary by trailing LF.&quot;
+    }
+  ],
+  &quot;open_owner&quot;: [
+    {
+      &quot;pointer&quot;: &quot;../candidate-prepare-integration/new-policy-choices.json#/3&quot;,
+      &quot;classification&quot;: &quot;PROPOSED_POLICY_NOT_APPROVED_CONFLICT&quot;,
+      &quot;required&quot;: &quot;Close slot replacement, old slot replay, consumed/revoked candidate response rendering/install authority before native envelope approval. Existing current auth/generation gates are present; retained replay before revision recheck is not itself a defect.&quot;
+    }
+  ],
+  &quot;limits&quot;: [
+    &quot;Inner model honestly covers decoded duplicate keys, exact Decimal tokens and per-token length, not full C1 resources/type/numeric representability or ESS. Original C1 24+12 remain NOT RERUN.&quot;,
+    &quot;trusted-fixture-authority issuer authenticity, dependency values and unsupported list are premises. Mutating both trusted premise and proof is not a security counterexample. No durable material pin or root transfer proved.&quot;,
+    &quot;M05 ReadResolved is proposed internal projection; absent provider yields DependencyNotReady; install pin seam remains distinct.&quot;,
+    &quot;Success only candidate slot; no content/history/commit/consume/formal IO/ACK. Native auth/late owner checks are fixture predicates, not actual runtime proof.&quot;,
+    &quot;Native unused/revoked and replaced-slot replay policy remains Owner decision; package correctly does not call these adopted.&quot;
+  ],
+  &quot;source&quot;: {
+    &quot;HEAD&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+    &quot;historical_authority&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+    &quot;source796&quot;: &quot;Candidate source-current describes historical796 inventory; review verifies listed hashes only, not fresh full796 product inventory. Parent handles full product inventory.&quot;,
+    &quot;M01&quot;: &quot;S2 green preserved; no M03 implementation authority inferred.&quot;
+  },
+  &quot;not_run&quot;: [
+    &quot;fullDraft&quot;,
+    &quot;product&quot;,
+    &quot;native&quot;,
+    &quot;RED&quot;,
+    &quot;GREEN&quot;,
+    &quot;build&quot;,
+    &quot;package&quot;,
+    &quot;install&quot;
+  ],
+  &quot;board&quot;: &quot;Read yellow PD-P1-M03-PREP-01; no board/current-state change; original scope preparation-only, not full product completion requirement.&quot;,
+  &quot;approval&quot;: &quot;No Owner adoption, no Skeleton, no self approval.&quot;
+}</pre></html>

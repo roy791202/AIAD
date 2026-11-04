@@ -1,0 +1,32 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M03 Candidate Install Independent Review</title><style>body{max-width:1060px;margin:40px auto;background:#111827;color:#e5e7eb;font:16px/1.6 system-ui}h1,h2{color:#93c5fd}article{padding:20px;background:#1f2937;border-radius:12px;margin:18px 0}a{color:#93c5fd}pre{white-space:pre-wrap}</style><h1>M03 候選安裝整合：獨立文件審查</h1><article><h2>CHANGES REQUIRED：僅文件 checker 範圍</h2><p>367 新獨立 probes：354 PASS / 13 FAIL（同一個 strict U64 finding）。作者 104 cases 未重跑冒充進度。不是 Owner 採納、產品驗收或完成。</p><p>獨立 reviewer /root/m03_candidate_install_review；作者 /root/m03_candidate_install_packet。</p></article><article><h2>Finding</h2><pre>[
+  {
+    &quot;id&quot;: &quot;CI-IR-F1&quot;,
+    &quot;priority&quot;: &quot;P2&quot;,
+    &quot;title&quot;: &quot;Python checker accepts terminal LF in claimed strict U64 roots&quot;,
+    &quot;source&quot;: [
+      &quot;candidate-install-integration/request.schema.json:$defs/U64Decimal/pattern and properties.expected_generation/expected_revision/pattern&quot;,
+      &quot;candidate-install-integration/response.schema.json:$defs/U64Decimal/pattern&quot;,
+      &quot;candidate-install-integration/schema_subset.py:24 re.search&quot;,
+      &quot;candidate-install-integration/check_documents.py:validate&quot;
+    ],
+    &quot;reproduce&quot;: &quot;python docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-install-review/check_review.py; inspect new-probes.json FAIL rows. Actual scalar has codepoints [55,10], not backslash plus n.&quot;,
+    &quot;expected&quot;: &quot;All 13 reachable U64 root occurrences reject string 7 followed by LF.&quot;,
+    &quot;observed&quot;: &quot;13/13 root occurrences accept LF in Python subset; CR/CRLF/U2028/U2029 reject. Node ECMAScript parsed same pattern rejects all five line endings. This is a document checker/schema portability defect, not evidence of product runtime admission.&quot;,
+    &quot;root_cause&quot;: &quot;New bounded regex uses dollar end anchor with Python re.search, despite save-proof correction having explicitly strict end assertion. Numeric grammar is not portable to the document checker.&quot;,
+    &quot;correction_direction&quot;: &quot;Reuse or reference already independently reviewed strict-end U64 grammar in save-proof-correction; keep max bound and canonical decimal rules. Do not add field-name runtime exceptions. Run root mutation matrix across every reachable numeric occurrence and preserve Python/ECMAScript distinction. No change to reviewed candidate in this review.&quot;
+  }
+]</pre></article><article><h2>通過的受限性質</h2><pre>[
+  &quot;Seven closed DomainRejected fields objects tested across both replay flags; reject strings, nulls, numbers and extra keys.&quot;,
+  &quot;Candidate unused/generation/revision and C1 readiness preconditions reject as declared. Immutable candidate raw/semantic capture and context tampering rejected against fixed issuer record.&quot;,
+  &quot;Verified NoChange explicitly new CI-P6 Owner policy; consumes candidate, keeps revision/history/Redo and commits zero. Not adopted by this review.&quot;,
+  &quot;Confirmed committed retention failures stay AppliedRetentionDeferred/consumed, commit once and retain pin. Unknown owner/proof/pin outcomes keep consume Unknown, no commit/delivery/release.&quot;,
+  &quot;Retained replay at live revision 9/max cannot render original revision 8; caller/writer/close/generation revocation prevents disclosure. No re-commit.&quot;,
+  &quot;Five material root kinds are checked against immutable issuer fixture; outgoing=before live, installed=after live, after Undo=before Undo union outgoing, after Redo empty; fenced recovery/inflight records unchanged.&quot;,
+  &quot;No FileCommit/formal save ACK/formal root transfer admitted.&quot;
+]</pre></article><article><h2>證據邊界</h2><pre>[
+  &quot;Native authentication, issuer lookup authenticity/completeness/current fencing are explicit trusted fixture premises; synchronously changing authority is not an attack and was not used for findings.&quot;,
+  &quot;Reducer assumes trusted admission and immutable capture association. Unknown retry prohibition is specified in policies/effective source, but no runtime scheduler or retry API exists in this document model.&quot;,
+  &quot;Root semantic relations derive concrete fixture equality and version/set relations; no runtime provider or generic concurrent unchanged-producer guarantee.&quot;,
+  &quot;Historical save/undo scoped PASS remains historical, not candidate/product acceptance. CI-P4 and CI-P6 remain NEW_POLICY_REQUIRES_OWNER.&quot;,
+  &quot;full Draft validation dependency absent; subset/Node regex probes are not full Draft conformance. Product tests/native/RED/GREEN/build/package/install NOT RUN.&quot;
+]</pre></article><article><h2>Checkout / authority</h2><pre>&quot;796 source files checked byte-for-byte against M01/planning/s2-green/source-current.json; zero drift. Current HEAD 5b709343a890503ebbe24a802e43cda5647df124 distinct from historical 31babe87a7ef1e40a0d4bedc523077e7a45d63ab. No board/current-state changes.&quot;</pre></article><article><a href="review.json">Review</a> · <a href="new-probes.json">New probes</a> · <a href="check_review.py">Reproducible checker</a> · <a href="verification.json">Verification</a> · <a href="reviewed-hashes.json">Reviewed hashes</a><p>PREP 黃燈、board、current-state、受審包與產品均未修改。</p></article></html>

@@ -1,0 +1,113 @@
+[
+  {
+    "original": {
+      "original": {
+        "requirement": "M03 lossless owner/Editor-Viewer authority",
+        "bdd": "M03-H2-B058",
+        "test": "M03-H2-T058",
+        "contract": "legacy",
+        "result": "PLANNED_NOT_RUN"
+      },
+      "original_behavior": "M03-H2-B058 uidesign_save_design\n    Scenario: M03-H2-T058\n      Given legacy typed doc/raw-root args\n      When old command invoked\n      Then DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "original_pointer": "h2-exact-design/module.feature Rule M03-H2-B058",
+      "explicit_mentions": [],
+      "candidate_behavior_links": [],
+      "verdict": "SINGLE_COMMAND_MIGRATION_GAP",
+      "gap": "Legacy typed ingress fail-closed commands have no dedicated recent command integration/review in the13-command candidate set; original B058-B060 remain independently unclosed."
+    },
+    "command": "uidesign_save_design",
+    "current_static": {
+      "handler": "apps/sgenaxis-desktop/src-tauri/src/commands.rs:2062",
+      "signature": "State<HostState>, UiDesignSaveArgs -> Result<UiDesignSaveDto,String>",
+      "helper": "save_design_file",
+      "dispatch": "Direct command -> sgenaxis_host helper -> FileSystemPort; no DispatchHost call in these handlers",
+      "caller": "No WebviewWindow argument; authorize(name) is IPC-name allowlist, not caller/writer ownership check",
+      "acl": "dispatch-default includes allow-uidesign-*; uidesign-window currently permits ui-editor and ui-viewer; actual ACL denial is framework boundary, not executed here",
+      "side_effects": "mkdir/write_atomic"
+    },
+    "planned_boundary": {
+      "status": "PROPOSED_PENDING_OWNER",
+      "accepted_legacy_invocation": "Return Err(String) carrying DESIGN_OWNER_REQUIRED before host lock/root resolution/default path/codec/FS/native; exact String content and any richer error envelope need Owner confirmation",
+      "pre_handler_denial": "ACL denied/malformed required args may fail before handler; no promise of DESIGN_OWNER_REQUIRED for calls Tauri never admits",
+      "caller": "Even current main/editor writer cannot authorize legacy typed/raw-root ingress; claimed writer/owner token cannot bypass",
+      "state": "Preserve owner document/revision/history/bindings/candidate/viewer registry/ephemeral selection and filesystem; no fallback/no OS open",
+      "future_route": "design_document_save -> M04_S2 persistence input; DependencyNotReady until wired",
+      "future_owner": "M04 document owner; M03 detached UI projections, no new command or port approved"
+    },
+    "after": "DEDICATED_DOCUMENT_MODEL_ONLY; original PLANNED_NOT_RUN unchanged"
+  },
+  {
+    "original": {
+      "original": {
+        "requirement": "M03 lossless owner/Editor-Viewer authority",
+        "bdd": "M03-H2-B059",
+        "test": "M03-H2-T059",
+        "contract": "legacy",
+        "result": "PLANNED_NOT_RUN"
+      },
+      "original_behavior": "M03-H2-B059 uidesign_load_design\n    Scenario: M03-H2-T059\n      Given legacy typed doc/raw-root args\n      When old command invoked\n      Then DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "original_pointer": "h2-exact-design/module.feature Rule M03-H2-B059",
+      "explicit_mentions": [],
+      "candidate_behavior_links": [],
+      "verdict": "SINGLE_COMMAND_MIGRATION_GAP",
+      "gap": "Legacy typed ingress fail-closed commands have no dedicated recent command integration/review in the13-command candidate set; original B058-B060 remain independently unclosed."
+    },
+    "command": "uidesign_load_design",
+    "current_static": {
+      "handler": "apps/sgenaxis-desktop/src-tauri/src/commands.rs:2085",
+      "signature": "State<HostState>, Option<UiDesignDocArgs> -> Result<UiDesignLoadDto,String>",
+      "helper": "load_design_file",
+      "dispatch": "Direct command -> sgenaxis_host helper -> FileSystemPort; no DispatchHost call in these handlers",
+      "caller": "No WebviewWindow argument; authorize(name) is IPC-name allowlist, not caller/writer ownership check",
+      "acl": "dispatch-default includes allow-uidesign-*; uidesign-window currently permits ui-editor and ui-viewer; actual ACL denial is framework boundary, not executed here",
+      "side_effects": "read_to_string"
+    },
+    "planned_boundary": {
+      "status": "PROPOSED_PENDING_OWNER",
+      "accepted_legacy_invocation": "Return Err(String) carrying DESIGN_OWNER_REQUIRED before host lock/root resolution/default path/codec/FS/native; exact String content and any richer error envelope need Owner confirmation",
+      "pre_handler_denial": "ACL denied/malformed required args may fail before handler; no promise of DESIGN_OWNER_REQUIRED for calls Tauri never admits",
+      "caller": "Even current main/editor writer cannot authorize legacy typed/raw-root ingress; claimed writer/owner token cannot bypass",
+      "state": "Preserve owner document/revision/history/bindings/candidate/viewer registry/ephemeral selection and filesystem; no fallback/no OS open",
+      "future_route": "design_binding_open -> M04_OWNER_INTEGRATION validated owner snapshot; no legacy load fallback",
+      "future_owner": "M04 document owner; M03 detached UI projections, no new command or port approved"
+    },
+    "after": "DEDICATED_DOCUMENT_MODEL_ONLY; original PLANNED_NOT_RUN unchanged"
+  },
+  {
+    "original": {
+      "original": {
+        "requirement": "M03 lossless owner/Editor-Viewer authority",
+        "bdd": "M03-H2-B060",
+        "test": "M03-H2-T060",
+        "contract": "legacy",
+        "result": "PLANNED_NOT_RUN"
+      },
+      "original_behavior": "M03-H2-B060 uidesign_build_preview\n    Scenario: M03-H2-T060\n      Given legacy typed doc/raw-root args\n      When old command invoked\n      Then DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "original_pointer": "h2-exact-design/module.feature Rule M03-H2-B060",
+      "explicit_mentions": [],
+      "candidate_behavior_links": [],
+      "verdict": "SINGLE_COMMAND_MIGRATION_GAP",
+      "gap": "Legacy typed ingress fail-closed commands have no dedicated recent command integration/review in the13-command candidate set; original B058-B060 remain independently unclosed."
+    },
+    "command": "uidesign_build_preview",
+    "current_static": {
+      "handler": "apps/sgenaxis-desktop/src-tauri/src/commands.rs:2108",
+      "signature": "State<HostState>, UiDesignBuildArgs -> Result<UiDesignBuildDto,String>",
+      "helper": "build_preview_file",
+      "dispatch": "Direct command -> sgenaxis_host helper -> FileSystemPort; no DispatchHost call in these handlers",
+      "caller": "No WebviewWindow argument; authorize(name) is IPC-name allowlist, not caller/writer ownership check",
+      "acl": "dispatch-default includes allow-uidesign-*; uidesign-window currently permits ui-editor and ui-viewer; actual ACL denial is framework boundary, not executed here",
+      "side_effects": "mkdir/write_atomic and optional OS opener"
+    },
+    "planned_boundary": {
+      "status": "PROPOSED_PENDING_OWNER",
+      "accepted_legacy_invocation": "Return Err(String) carrying DESIGN_OWNER_REQUIRED before host lock/root resolution/default path/codec/FS/native; exact String content and any richer error envelope need Owner confirmation",
+      "pre_handler_denial": "ACL denied/malformed required args may fail before handler; no promise of DESIGN_OWNER_REQUIRED for calls Tauri never admits",
+      "caller": "Even current main/editor writer cannot authorize legacy typed/raw-root ingress; claimed writer/owner token cannot bypass",
+      "state": "Preserve owner document/revision/history/bindings/candidate/viewer registry/ephemeral selection and filesystem; no fallback/no OS open",
+      "future_route": "design_viewer_begin -> approved H2 snapshot/runtime ports; exported communication HTML is deferred separate compatibility behavior",
+      "future_owner": "M04 document owner; M03 detached UI projections, no new command or port approved"
+    },
+    "after": "DEDICATED_DOCUMENT_MODEL_ONLY; original PLANNED_NOT_RUN unchanged"
+  }
+]

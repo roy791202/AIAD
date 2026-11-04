@@ -1,0 +1,18 @@
+--- original/document_model.py
++++ candidate/document_model.py
+@@ -33,7 +33,14 @@
+     if change=='consumer_instance':return fail('UnauthorizedCaller')
+     if change=='document_identity':return fail('MissingBinding')
+     if change=='generation':return fail('StaleOwner')
+-    if change=='revision':return fail('StaleRevision',{'expected':state['revision'],'observed':str(int(state['revision'])+1)})
++    if change=='revision':
++        # Trusted native delivery observation: never infer it by arithmetic.
++        observed=p.get('delivery_observed_revision')
++        if (type(observed)is not str or re.fullmatch(r'0|[1-9][0-9]*',observed)is None
++                or len(observed)>20 or int(observed)>18446744073709551615
++                or observed==state['revision']):
++            return fail('DependencyNotReady',{'dependency':'M01_NATIVE_IDENTITY'})
++        return fail('StaleRevision',{'expected':state['revision'],'observed':observed})
+     if change=='closed':return fail('PreviewClosed')
+     calls.append('preview.publish');state['preview_count']+=1
+     return ({'ok':True,'value':value,'replayed':False},state,calls)

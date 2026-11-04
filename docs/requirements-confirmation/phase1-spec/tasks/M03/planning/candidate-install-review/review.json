@@ -1,0 +1,67 @@
+{
+  "status": "CHANGES_REQUIRED_STRICT_U64_DOCUMENT_CHECK_ONLY",
+  "reviewer": "/root/m03_candidate_install_review",
+  "author": "/root/m03_candidate_install_packet",
+  "independent": true,
+  "scope": "Only design_candidate_install candidate document model; no Owner adoption or product acceptance; PD-P1-M03-PREP-01 remains yellow and untouched",
+  "findings": [
+    {
+      "id": "CI-IR-F1",
+      "priority": "P2",
+      "title": "Python checker accepts terminal LF in claimed strict U64 roots",
+      "source": [
+        "candidate-install-integration/request.schema.json:$defs/U64Decimal/pattern and properties.expected_generation/expected_revision/pattern",
+        "candidate-install-integration/response.schema.json:$defs/U64Decimal/pattern",
+        "candidate-install-integration/schema_subset.py:21 re.search",
+        "candidate-install-integration/check_documents.py:validate"
+      ],
+      "reproduce": "python docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-install-review/check_review.py; inspect new-probes.json FAIL rows. Actual scalar has codepoints [55,10], not backslash plus n.",
+      "expected": "All 13 reachable U64 root occurrences reject string 7 followed by LF.",
+      "observed": "13/13 root occurrences accept LF in Python subset; CR/CRLF/U2028/U2029 reject. Node ECMAScript parsed same pattern rejects all five line endings. This is a document checker/schema portability defect, not evidence of product runtime admission.",
+      "root_cause": "New bounded regex uses dollar end anchor with Python re.search, despite save-proof correction having explicitly strict end assertion. Numeric grammar is not portable to the document checker.",
+      "correction_direction": "Reuse or reference already independently reviewed strict-end U64 grammar in save-proof-correction; keep max bound and canonical decimal rules. Do not add field-name runtime exceptions. Run root mutation matrix across every reachable numeric occurrence and preserve Python/ECMAScript distinction. No change to reviewed candidate in this review."
+    }
+  ],
+  "verification": {
+    "status": "CHANGES_REQUIRED_DOCUMENT_ONLY",
+    "reviewer": "/root/m03_candidate_install_review",
+    "author": "/root/m03_candidate_install_packet",
+    "method": "AST extract only selected functions; candidate main and author verification untouched",
+    "new_independent_probes": 367,
+    "passed": 354,
+    "failed": 13,
+    "head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "historical_authority_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "authority_entries": 796,
+    "authority_drift": [],
+    "source_input_drift": [],
+    "candidate_files": 16,
+    "not_run": [
+      "full Draft validator (dependency absent)",
+      "author 104 cases not rerun as progress",
+      "product tests",
+      "native/UI/IPC",
+      "valid RED/GREEN",
+      "build/package/install",
+      "Owner adoption"
+    ]
+  },
+  "passed_properties": [
+    "Seven closed DomainRejected fields objects tested across both replay flags; reject strings, nulls, numbers and extra keys.",
+    "Candidate unused/generation/revision and C1 readiness preconditions reject as declared. Immutable candidate raw/semantic capture and context tampering rejected against fixed issuer record.",
+    "Verified NoChange explicitly new CI-P6 Owner policy; consumes candidate, keeps revision/history/Redo and commits zero. Not adopted by this review.",
+    "Confirmed committed retention failures stay AppliedRetentionDeferred/consumed, commit once and retain pin. Unknown owner/proof/pin outcomes keep consume Unknown, no commit/delivery/release.",
+    "Retained replay at live revision 9/max cannot render original revision 8; caller/writer/close/generation revocation prevents disclosure. No re-commit.",
+    "Five material root kinds are checked against immutable issuer fixture; outgoing=before live, installed=after live, after Undo=before Undo union outgoing, after Redo empty; fenced recovery/inflight records unchanged.",
+    "No FileCommit/formal save ACK/formal root transfer admitted."
+  ],
+  "limits": [
+    "Native authentication, issuer lookup authenticity/completeness/current fencing are explicit trusted fixture premises; synchronously changing authority is not an attack and was not used for findings.",
+    "Reducer assumes trusted admission and immutable capture association. Unknown retry prohibition is specified in policies/effective source, but no runtime scheduler or retry API exists in this document model.",
+    "Root semantic relations derive concrete fixture equality and version/set relations; no runtime provider or generic concurrent unchanged-producer guarantee.",
+    "Historical save/undo scoped PASS remains historical, not candidate/product acceptance. CI-P4 and CI-P6 remain NEW_POLICY_REQUIRES_OWNER.",
+    "full Draft validation dependency absent; subset/Node regex probes are not full Draft conformance. Product tests/native/RED/GREEN/build/package/install NOT RUN."
+  ],
+  "authority": "796 source files checked byte-for-byte against M01/planning/s2-green/source-current.json; zero drift. Current HEAD 5b709343a890503ebbe24a802e43cda5647df124 distinct from historical 31babe87a7ef1e40a0d4bedc523077e7a45d63ab. No board/current-state changes."
+}

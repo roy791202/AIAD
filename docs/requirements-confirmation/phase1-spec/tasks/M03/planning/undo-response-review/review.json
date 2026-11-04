@@ -1,0 +1,52 @@
+{
+  "status": "CHANGES_REQUIRED_UNDO_DOCUMENT_CHECKER_ONLY",
+  "reviewer": "/root/m03_undo_independent_review",
+  "author": "/root/m03_next_command_packet",
+  "independent": true,
+  "scope": "readonly candidate/spec/source comparison; writes only undo-response-review",
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "historical_authority_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "authority_entries": 796,
+  "authority_drift": [],
+  "findings": [
+    {
+      "id": "UNDO-IR-F1",
+      "priority": "P2",
+      "classification": "DOCUMENT_CHECKER_DEFECT",
+      "source": "check_documents.py:43-44 (validate DomainRejected full-wire equality)",
+      "problem": "All seven mappings include replayed=false. Matching retained terminal rejection replayed=true is schema-valid and required by generic retained-result replay policy, but semantic validation rejects it.",
+      "fix": "Compare exact error diagnostic shape independently of replay flag; add authorized error replay and revoked replay vectors. If error results are intentionally not retained, specify that lifecycle exception and obtain Owner review."
+    },
+    {
+      "id": "UNDO-IR-F2",
+      "priority": "P2",
+      "classification": "DOCUMENT_CHECKER_DEFECT",
+      "source": "check_documents.py:47-50 (validate NoChange branch exemption)",
+      "problem": "Undo-specific checker accepts successful NoChange with empty history despite UNDO-D5 and WORK::undo requiring NoUndo. Keeping shared v3 wire vocabulary does not establish command-specific validity.",
+      "fix": "Keep shared schema if required, but reject NoChange for this Undo semantic validator and add explicit negative fixture."
+    }
+  ],
+  "preserved": [
+    "M04/WORK owns document/history; M03 facade projection only",
+    "No formal save FileCommit/ACK/IO on Undo",
+    "Confirmed commit remains actual revision with AppliedRetentionDeferred; uncertain M04 => Indeterminate",
+    "Complete root version-set narrative includes five providers; Live/Undo/Redo stage order and conservative unresolved pin retention",
+    "NoUndo/overflow/Closed/Busy plus seven exact DomainRejected variants",
+    "Replay R7→R8 must not overwrite live R11; close/revoke suppress delivery",
+    "U64 strictly bounded canonical decimal schemas"
+  ],
+  "evidence_gaps": [
+    "Synthetic proof model does not verify issuer authenticity/context/operation binding/root membership",
+    "Lifecycle vectors are narrative presence-only, not executable state transition evidence"
+  ],
+  "owner_adoption": "NOT ADOPTED",
+  "fullDraft": "MISSING",
+  "product_tests": "NOT RUN",
+  "native_runtime": "NOT RUN",
+  "RED": "NOT RUN",
+  "GREEN": "NOT RUN",
+  "BUILD": "NOT RUN",
+  "module_complete": false,
+  "board": "UNCHANGED; no green/Done"
+}

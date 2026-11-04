@@ -1,0 +1,1366 @@
+<!doctype html><meta charset="utf-8"><title>M03 close binding candidate</title><style>body{font:16px system-ui;max-width:1200px;margin:40px auto;color:#223;background:#f7f8fa}section{background:white;padding:22px;margin:20px 0;border:1px solid #ddd}pre{white-space:pre-wrap;overflow-wrap:anywhere}h1{color:#875600}nav a{margin-right:18px}</style><h1>M03 design_binding_close — planning candidate</h1><p>PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER · Author checks only · Transfer DEFERRED · FullDraft NOT COMPLETE · Product/native RED, build and Owner NOT RUN.</p><nav><a href="#s0">Executive summary</a><a href="#s1">Architecture and dependency diagrams</a><a href="#s2">Contracts and invariants</a><a href="#s3">Owner choices; all proposed</a><a href="#s4">BDD coverage and tasks</a><a href="#s5">BDD to TDD traceability</a><a href="#s6">Verification; author check only</a><a href="#s7">Lifecycle fixture results</a><a href="#s8">Physical lexical pattern inventory</a><a href="#s9">Before and after</a><a href="#s10">Known risks and deferred automation</a><a href="#s11">Lessons</a><a href="#s12">Source current versus historical</a></nav><section><h2>Approved-shaped architecture proposal</h2><pre>Native UI → Trusted Tauri adapter → M03 close port → derived facade → M04 detach_view port → sole M04 S1 owner
+M03 candidates / previews / replay disclosure ← exact attachment revocation
+M04 content / history / formal baseline / material roots remain untouched
+Transaction: authenticate → validate → preflight → trusted M04 detached observation → revoke derived authority
+Failure before confirmation: no partial facade effect. Actual native atomicity still pending.</pre></section><section id="s0"><h2>Executive summary</h2><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;task&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+  &quot;slice&quot;: &quot;design_binding_close ONLY; transfer DEFERRED&quot;,
+  &quot;author&quot;: &quot;/root/m03_binding_close_packet&quot;,
+  &quot;status&quot;: &quot;PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER&quot;,
+  &quot;implementation_gate&quot;: &quot;NOT_READY_FOR_IMPLEMENTATION&quot;,
+  &quot;independent_acceptance&quot;: &quot;NOT RUN&quot;,
+  &quot;owner_adoption&quot;: &quot;NOT RUN&quot;,
+  &quot;full_draft&quot;: &quot;NOT COMPLETE&quot;,
+  &quot;product_native_RED&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;architecture&quot;: {
+    &quot;context&quot;: &quot;Native design view consumes one M04-owned document; closing attachment leaves document live.&quot;,
+    &quot;hexagonal&quot;: &quot;Trusted native caller adapter → M03 close input port → derived attachment facade → M04 detach_view(handle) → sole M04 owner&quot;,
+    &quot;dependency&quot;: &quot;UI → Tauri native guard → M03 → M04 input contract; no direct S1/IO access&quot;,
+    &quot;input_ports&quot;: [
+      &quot;design_binding_close exact closed request&quot;
+    ],
+    &quot;output_ports&quot;: [
+      &quot;Existing proposed M04.detach_view(handle); exact observation contract still proposed&quot;,
+      &quot;Restricted trusted current attachment observation at delivery; fixture-only seam&quot;
+    ],
+    &quot;driving_adapters&quot;: [
+      &quot;Native main/editor guard&quot;,
+      &quot;Document model test driver&quot;
+    ],
+    &quot;driven_adapters&quot;: [
+      &quot;M04 sole owner double; native implementation NOT RUN&quot;
+    ],
+    &quot;state_ownership&quot;: &quot;M04 owns S1 content/history/revision/baselines/writer generation. M03 owns derived binding/candidate/preview/replay-disclosure caches only.&quot;,
+    &quot;mutation&quot;: &quot;Only exact attached-view derived authority revoked after M04 confirmation; no content mutation.&quot;,
+    &quot;transaction&quot;: &quot;Native auth → root validation → trusted binding/owner observation → preflight capacity and fences → M04 detach confirmation → revoke derived attachment/candidate/preview/disclosure. Failure precommit unchanged. Native atomicity and postcommit loss unresolved Owner seam.&quot;,
+    &quot;external_boundary&quot;: &quot;Native identity and M04 remain external dependencies; missing integration fails closed.&quot;,
+    &quot;forbidden&quot;: [
+      &quot;new owner registry&quot;,
+      &quot;S1 constructor&quot;,
+      &quot;document close&quot;,
+      &quot;history/content mutation&quot;,
+      &quot;formal IO/ACK&quot;,
+      &quot;material pin/root release&quot;,
+      &quot;writer transfer&quot;,
+      &quot;cross-window arbitrary dispatch&quot;
+    ]
+  },
+  &quot;contracts&quot;: {
+    &quot;C1&quot;: &quot;Native main/editor identity and origin and live instance checked before dependency/cache lookup; viewer/remote/replaced native denied.&quot;,
+    &quot;C2&quot;: &quot;M04 sole S1 owner; close detaches derived binding only, never closes document or mutates content/history/revision/baselines/formal IO ACK/material roots.&quot;,
+    &quot;C3&quot;: &quot;Validate complete closed request and expected generation/revision before new detach; M04 observed tuple must match bound document/session/project/root/runtime/native instance.&quot;,
+    &quot;C4&quot;: &quot;On confirmed detach revoke binding candidates/previews and replay disclosure authority; in-flight late completion cannot reactivate attachment or install a UI projection.&quot;,
+    &quot;C5&quot;: &quot;No request_id accepted. Other operation replay records cannot be read/resubmitted through close; no automatic retry or TTL.&quot;,
+    &quot;C6&quot;: &quot;Trusted delivery observation must be current, typed and minted by fixture authority, with active attachment/native liveness and full tuple equality.&quot;,
+    &quot;C7&quot;: &quot;Capacity failure is pre-detach and preserves attachment; tombstones are fixture-derived state, not a second document owner.&quot;,
+    &quot;C8&quot;: &quot;Missing dependency, stale generation/revision, dirty unconfirmed writer or malformed observation leaves all model state unchanged.&quot;
+  },
+  &quot;owner_choices&quot;: &quot;owner-choices.json; all new exact policy choices PROPOSED_PENDING_OWNER&quot;,
+  &quot;permissions&quot;: {
+    &quot;commands&quot;: [
+      &quot;design_binding_open&quot;,
+      &quot;design_binding_get&quot;,
+      &quot;design_binding_transfer&quot;,
+      &quot;design_candidate_prepare&quot;,
+      &quot;design_candidate_install&quot;,
+      &quot;design_document_undo&quot;,
+      &quot;design_document_save&quot;,
+      &quot;design_editor_select&quot;,
+      &quot;design_viewer_begin&quot;,
+      &quot;design_viewer_intent&quot;,
+      &quot;design_viewer_refresh&quot;,
+      &quot;design_viewer_close&quot;,
+      &quot;design_binding_close&quot;
+    ],
+    &quot;new_groups&quot;: {
+      &quot;design-owner-read&quot;: [
+        &quot;design_binding_get&quot;,
+        &quot;design_editor_select&quot;
+      ],
+      &quot;design-owner-write&quot;: [
+        &quot;design_binding_open&quot;,
+        &quot;design_binding_transfer&quot;,
+        &quot;design_candidate_prepare&quot;,
+        &quot;design_candidate_install&quot;,
+        &quot;design_document_undo&quot;,
+        &quot;design_document_save&quot;,
+        &quot;design_binding_close&quot;
+      ],
+      &quot;design-viewer-mock&quot;: [
+        &quot;design_binding_get&quot;,
+        &quot;design_viewer_begin&quot;,
+        &quot;design_viewer_intent&quot;,
+        &quot;design_viewer_refresh&quot;,
+        &quot;design_viewer_close&quot;
+      ]
+    },
+    &quot;main&quot;: &quot;default capability adds design owner read/write and viewer group; actual handler still checks caller/binding/role. Existing main generic privileges unchanged outside this task.&quot;,
+    &quot;editor&quot;: &quot;uidesign-window.json windows becomes [ui-editor]; retain old unrelated privilege sets only as historical editor capability, add design groups; every old design mutation entry now DESIGN_OWNER_REQUIRED. No generic action dispatch from runtime.&quot;,
+    &quot;viewer&quot;: &quot;New capabilities/design-viewer.json windows=[ui-viewer], only core window chrome + design-viewer-mock. Remove ui-viewer from prior broad uidesign-window group; no host-default/dispatch-default/core webview-create. app bootstrap for viewer must use binding projection only, not privileged main initialization.&quot;,
+    &quot;native_guard&quot;: &quot;Injected WebviewWindow with trusted instance nonce; allow local tauri://localhost or http(s)://tauri.localhost without explicit port, role-specific labels main/ui-editor/ui-viewer. Remote/dev origins reject. Do not reuse main-only guard by silently weakening its existing policy for other commands; add a dedicated design caller policy.&quot;,
+    &quot;legacy&quot;: &quot;uidesign_save_design/load_design/build_preview kept registered for source/ACL compatibility but return DESIGN_OWNER_REQUIRED for old authoritative args; no typed doc path reaches filesystem. Exported communication preview generation is deferred compatibility artifact path, not a backdoor to Viewer privileges. uidesign_ask_agent does not become a Viewer action.&quot;,
+    &quot;host_allowlist&quot;: &quot;Add exactly listed13 commands to AllowedIpcCommand parse/enum; no wildcard. Main/editor role authority is native application gate beyond allowlist.&quot;,
+    &quot;test_migration&quot;: &quot;commands.rs existing guard_owner_caller_tests assertion windows=[ui-editor,ui-viewer] changes explicitly to editor-only plus separate viewer capability assertions; preserve all original main-only guard denial tests. Archive old test snippet/hash in implementation-stage evidence before changing assertion.&quot;
+  },
+  &quot;UI_schema&quot;: {
+    &quot;component&quot;: &quot;Existing design binding view&quot;,
+    &quot;roles&quot;: &quot;main/editor only by closed ACL; viewer denied&quot;,
+    &quot;controls&quot;: &quot;Existing close action only; no new UI controls&quot;,
+    &quot;constraints&quot;: &quot;No caller identity/observation flags in request&quot;,
+    &quot;confirmation&quot;: &quot;Dirty writer explicit confirmation observed by M04; exact detach decision pending Owner&quot;,
+    &quot;loading&quot;: &quot;Disable duplicate close while pending; do not clear active document speculatively&quot;,
+    &quot;success&quot;: &quot;Clear only detached view projection and revoke its previews/candidates&quot;,
+    &quot;error&quot;: &quot;Preserve prior view, plain-text diagnostic, no automatic retry&quot;,
+    &quot;empty&quot;: &quot;Unknown binding MissingBinding under proposed policy&quot;,
+    &quot;accessibility&quot;: &quot;Announce status without focus steal&quot;
+  },
+  &quot;BDD_categories&quot;: {
+    &quot;B1&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B2&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B3&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B4&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B5&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B6&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B7&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B8&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B9&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B10&quot;: &quot;Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model&quot;,
+    &quot;B11&quot;: &quot;Deferred: production compatibility/regression NOT RUN&quot;,
+    &quot;B12&quot;: &quot;Deferred: production compatibility/regression NOT RUN&quot;
+  },
+  &quot;tasks&quot;: [
+    {
+      &quot;id&quot;: &quot;CL-CLOSE-PLAN&quot;,
+      &quot;primary_module&quot;: &quot;M03&quot;,
+      &quot;layer&quot;: &quot;Planning document&quot;,
+      &quot;allowed_scope&quot;: &quot;binding-close-integration/** only&quot;,
+      &quot;protected&quot;: &quot;All old packets/product/board/current-state&quot;,
+      &quot;BDD&quot;: [
+        &quot;CL-01&quot;,
+        &quot;CL-02&quot;,
+        &quot;CL-03&quot;,
+        &quot;CL-04&quot;,
+        &quot;CL-05&quot;,
+        &quot;CL-06&quot;,
+        &quot;CL-07&quot;,
+        &quot;CL-08&quot;,
+        &quot;CL-09&quot;,
+        &quot;CL-10&quot;,
+        &quot;CL-11&quot;,
+        &quot;CL-12&quot;,
+        &quot;CL-13&quot;,
+        &quot;CL-14&quot;,
+        &quot;CL-15&quot;,
+        &quot;CL-16&quot;,
+        &quot;CL-17&quot;,
+        &quot;CL-18&quot;,
+        &quot;CL-19&quot;,
+        &quot;CL-20&quot;,
+        &quot;CL-21&quot;,
+        &quot;CL-22&quot;,
+        &quot;CL-23&quot;,
+        &quot;CL-24&quot;,
+        &quot;CL-25&quot;,
+        &quot;CL-26&quot;
+      ],
+      &quot;TDD&quot;: &quot;checker.py document model; product RED NOT RUN&quot;,
+      &quot;acceptance&quot;: [
+        &quot;Complete self-contained root schemas&quot;,
+        &quot;All physical lexical patterns actual parsed/audited&quot;,
+        &quot;Typed seven DomainRejected maintained&quot;,
+        &quot;Document lifecycle invariants checked&quot;,
+        &quot;Owner choices and native evidence limits explicit&quot;
+      ],
+      &quot;status&quot;: &quot;AUTHOR_CANDIDATE_ONLY&quot;
+    }
+  ]
+}</pre></section><section id="s1"><h2>Architecture and dependency diagrams</h2><pre>{
+  &quot;context&quot;: &quot;Native design view consumes one M04-owned document; closing attachment leaves document live.&quot;,
+  &quot;hexagonal&quot;: &quot;Trusted native caller adapter → M03 close input port → derived attachment facade → M04 detach_view(handle) → sole M04 owner&quot;,
+  &quot;dependency&quot;: &quot;UI → Tauri native guard → M03 → M04 input contract; no direct S1/IO access&quot;,
+  &quot;input_ports&quot;: [
+    &quot;design_binding_close exact closed request&quot;
+  ],
+  &quot;output_ports&quot;: [
+    &quot;Existing proposed M04.detach_view(handle); exact observation contract still proposed&quot;,
+    &quot;Restricted trusted current attachment observation at delivery; fixture-only seam&quot;
+  ],
+  &quot;driving_adapters&quot;: [
+    &quot;Native main/editor guard&quot;,
+    &quot;Document model test driver&quot;
+  ],
+  &quot;driven_adapters&quot;: [
+    &quot;M04 sole owner double; native implementation NOT RUN&quot;
+  ],
+  &quot;state_ownership&quot;: &quot;M04 owns S1 content/history/revision/baselines/writer generation. M03 owns derived binding/candidate/preview/replay-disclosure caches only.&quot;,
+  &quot;mutation&quot;: &quot;Only exact attached-view derived authority revoked after M04 confirmation; no content mutation.&quot;,
+  &quot;transaction&quot;: &quot;Native auth → root validation → trusted binding/owner observation → preflight capacity and fences → M04 detach confirmation → revoke derived attachment/candidate/preview/disclosure. Failure precommit unchanged. Native atomicity and postcommit loss unresolved Owner seam.&quot;,
+  &quot;external_boundary&quot;: &quot;Native identity and M04 remain external dependencies; missing integration fails closed.&quot;,
+  &quot;forbidden&quot;: [
+    &quot;new owner registry&quot;,
+    &quot;S1 constructor&quot;,
+    &quot;document close&quot;,
+    &quot;history/content mutation&quot;,
+    &quot;formal IO/ACK&quot;,
+    &quot;material pin/root release&quot;,
+    &quot;writer transfer&quot;,
+    &quot;cross-window arbitrary dispatch&quot;
+  ]
+}</pre></section><section id="s2"><h2>Contracts and invariants</h2><pre>{
+  &quot;C1&quot;: &quot;Native main/editor identity and origin and live instance checked before dependency/cache lookup; viewer/remote/replaced native denied.&quot;,
+  &quot;C2&quot;: &quot;M04 sole S1 owner; close detaches derived binding only, never closes document or mutates content/history/revision/baselines/formal IO ACK/material roots.&quot;,
+  &quot;C3&quot;: &quot;Validate complete closed request and expected generation/revision before new detach; M04 observed tuple must match bound document/session/project/root/runtime/native instance.&quot;,
+  &quot;C4&quot;: &quot;On confirmed detach revoke binding candidates/previews and replay disclosure authority; in-flight late completion cannot reactivate attachment or install a UI projection.&quot;,
+  &quot;C5&quot;: &quot;No request_id accepted. Other operation replay records cannot be read/resubmitted through close; no automatic retry or TTL.&quot;,
+  &quot;C6&quot;: &quot;Trusted delivery observation must be current, typed and minted by fixture authority, with active attachment/native liveness and full tuple equality.&quot;,
+  &quot;C7&quot;: &quot;Capacity failure is pre-detach and preserves attachment; tombstones are fixture-derived state, not a second document owner.&quot;,
+  &quot;C8&quot;: &quot;Missing dependency, stale generation/revision, dirty unconfirmed writer or malformed observation leaves all model state unchanged.&quot;
+}</pre></section><section id="s3"><h2>Owner choices; all proposed</h2><pre>[
+  {
+    &quot;id&quot;: &quot;CL-P1&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Close command main/editor own native attachment only; viewer denied by original ACL. Main writer cannot name another consumer binding through arbitrary cross-window dispatch. Whether nonwriter editor may detach its own attachment requires Owner decision.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P2&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Retained same-instance same-epoch tombstone returns closed true/content_changed false/replayed false for identical generation/revision/discard capture. No request_id: this is idempotent detach, not mutation replay or durable exactly-once. Different capture fails MissingBinding. Missing unknown binding fails MissingBinding.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P3&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;M04 exact detach_view observation must certify attachment_active=false for the exact trusted tuple. Writer detachment authority, dirty discard confirmation and generation retirement stay M04. No last-view document destruction or transfer is inferred.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P4&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Local document model tombstone capacity parameter=2 only for boundary fixture. Production capacity unresolved. Refuse before detach when full; no eviction/TTL/silent retry. Owner must decide capacity and retention. New runtime epoch loses cache, old binding MissingBinding; revoke delivery authority regardless cache retention.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P5&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Trusted typed current attachment observation is the restricted open/get correction document-model seam. Runtime API/Skeleton not approved. Missing, malformed or foreign observation blocks delivery; caller JSON cannot assert attachment_active or native_live.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P6&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Non-object InvalidRequest rootType branch copied from prepare correction remains a proposed DTO choice, not adopted. Seven typed DomainRejected variants remain exact objects.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-P7&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;choice&quot;: &quot;Detach commit linearizes only upon M04 revoked-attachment observation. Started save/install effects are not cancelled or rolled back by close; late results cannot deliver to revoked view. Original issuer/M04 owns formal ACK and completion evidence; close neither acknowledges nor resubmits.&quot;
+  }
+]</pre></section><section id="s4"><h2>BDD coverage and tasks</h2><pre>[
+  {
+    &quot;id&quot;: &quot;CL-CLOSE-PLAN&quot;,
+    &quot;primary_module&quot;: &quot;M03&quot;,
+    &quot;layer&quot;: &quot;Planning document&quot;,
+    &quot;allowed_scope&quot;: &quot;binding-close-integration/** only&quot;,
+    &quot;protected&quot;: &quot;All old packets/product/board/current-state&quot;,
+    &quot;BDD&quot;: [
+      &quot;CL-01&quot;,
+      &quot;CL-02&quot;,
+      &quot;CL-03&quot;,
+      &quot;CL-04&quot;,
+      &quot;CL-05&quot;,
+      &quot;CL-06&quot;,
+      &quot;CL-07&quot;,
+      &quot;CL-08&quot;,
+      &quot;CL-09&quot;,
+      &quot;CL-10&quot;,
+      &quot;CL-11&quot;,
+      &quot;CL-12&quot;,
+      &quot;CL-13&quot;,
+      &quot;CL-14&quot;,
+      &quot;CL-15&quot;,
+      &quot;CL-16&quot;,
+      &quot;CL-17&quot;,
+      &quot;CL-18&quot;,
+      &quot;CL-19&quot;,
+      &quot;CL-20&quot;,
+      &quot;CL-21&quot;,
+      &quot;CL-22&quot;,
+      &quot;CL-23&quot;,
+      &quot;CL-24&quot;,
+      &quot;CL-25&quot;,
+      &quot;CL-26&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py document model; product RED NOT RUN&quot;,
+    &quot;acceptance&quot;: [
+      &quot;Complete self-contained root schemas&quot;,
+      &quot;All physical lexical patterns actual parsed/audited&quot;,
+      &quot;Typed seven DomainRejected maintained&quot;,
+      &quot;Document lifecycle invariants checked&quot;,
+      &quot;Owner choices and native evidence limits explicit&quot;
+    ],
+    &quot;status&quot;: &quot;AUTHOR_CANDIDATE_ONLY&quot;
+  }
+]</pre></section><section id="s5"><h2>BDD to TDD traceability</h2><pre>[
+  {
+    &quot;BDD&quot;: &quot;CL-01&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case valid&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-01&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-02&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case viewer&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-02&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-03&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case remote&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-03&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-04&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case replacement&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-04&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-05&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case foreign&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-05&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-06&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case missing&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-06&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-07&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case dependency&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-07&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-08&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case generation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-08&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-09&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case revision&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-09&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-10&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case dirty&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-10&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-11&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case m04-refusal&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-11&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-12&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case writer&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-12&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-13&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case repeat&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-13&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-14&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case changed&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-14&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-15&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case capacity&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-15&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-16&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case epoch&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-16&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-17&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case late-get&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-17&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-18&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case late-install&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-18&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-19&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case late-ack&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-19&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-20&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case missing-observation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-20&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-21&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case forged-observation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-21&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-22&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case delivery-generation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-22&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-23&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case typed-observation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-23&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-24&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case revocation&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-24&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-25&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case bad-detach&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-25&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;CL-26&quot;,
+    &quot;contract&quot;: [
+      &quot;C1&quot;,
+      &quot;C2&quot;,
+      &quot;C3&quot;,
+      &quot;C4&quot;,
+      &quot;C5&quot;,
+      &quot;C6&quot;,
+      &quot;C7&quot;,
+      &quot;C8&quot;
+    ],
+    &quot;TDD&quot;: &quot;checker.py model case discard-without-owner&quot;,
+    &quot;fixture&quot;: &quot;fixtures.json#CL-26&quot;,
+    &quot;result_layer&quot;: &quot;DOCUMENT_MODEL_ONLY&quot;,
+    &quot;production&quot;: &quot;NOT RUN&quot;
+  }
+]</pre></section><section id="s6"><h2>Verification; author check only</h2><pre>{
+  &quot;status&quot;: &quot;PASS_AUTHOR_DOCUMENT_CHECK_ONLY&quot;,
+  &quot;model_cases&quot;: 26,
+  &quot;trusted_delivery_cases&quot;: 69,
+  &quot;root_cases&quot;: 119,
+  &quot;physical_pattern_occurrences&quot;: 7,
+  &quot;node&quot;: &quot;PASS&quot;,
+  &quot;source_inputs_unchanged&quot;: true,
+  &quot;independent_acceptance&quot;: &quot;NOT RUN&quot;,
+  &quot;Owner&quot;: &quot;NOT RUN&quot;,
+  &quot;fullDraft&quot;: &quot;NOT COMPLETE&quot;,
+  &quot;product_native_RED&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;product_tests&quot;: &quot;NOT RUN&quot;
+}</pre></section><section id="s7"><h2>Lifecycle fixture results</h2><pre>[
+  {
+    &quot;id&quot;: &quot;CL-01&quot;,
+    &quot;mode&quot;: &quot;valid&quot;,
+    &quot;result&quot;: &quot;Closed&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-02&quot;,
+    &quot;mode&quot;: &quot;viewer&quot;,
+    &quot;result&quot;: &quot;UnauthorizedCaller&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-03&quot;,
+    &quot;mode&quot;: &quot;remote&quot;,
+    &quot;result&quot;: &quot;UnauthorizedCaller&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-04&quot;,
+    &quot;mode&quot;: &quot;replacement&quot;,
+    &quot;result&quot;: &quot;UnauthorizedCaller&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-05&quot;,
+    &quot;mode&quot;: &quot;foreign&quot;,
+    &quot;result&quot;: &quot;MissingBinding&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-06&quot;,
+    &quot;mode&quot;: &quot;missing&quot;,
+    &quot;result&quot;: &quot;MissingBinding&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-07&quot;,
+    &quot;mode&quot;: &quot;dependency&quot;,
+    &quot;result&quot;: &quot;DependencyNotReady&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-08&quot;,
+    &quot;mode&quot;: &quot;generation&quot;,
+    &quot;result&quot;: &quot;StaleOwner&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-09&quot;,
+    &quot;mode&quot;: &quot;revision&quot;,
+    &quot;result&quot;: &quot;StaleRevision&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-10&quot;,
+    &quot;mode&quot;: &quot;dirty&quot;,
+    &quot;result&quot;: &quot;Busy&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-11&quot;,
+    &quot;mode&quot;: &quot;m04-refusal&quot;,
+    &quot;result&quot;: &quot;DependencyNotReady&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-12&quot;,
+    &quot;mode&quot;: &quot;writer&quot;,
+    &quot;result&quot;: &quot;Closed&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-13&quot;,
+    &quot;mode&quot;: &quot;repeat&quot;,
+    &quot;result&quot;: &quot;Closed&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-14&quot;,
+    &quot;mode&quot;: &quot;changed&quot;,
+    &quot;result&quot;: &quot;MissingBinding&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-15&quot;,
+    &quot;mode&quot;: &quot;capacity&quot;,
+    &quot;result&quot;: &quot;CapacityExceeded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-16&quot;,
+    &quot;mode&quot;: &quot;epoch&quot;,
+    &quot;result&quot;: &quot;MissingBinding&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-17&quot;,
+    &quot;mode&quot;: &quot;late-get&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-18&quot;,
+    &quot;mode&quot;: &quot;late-install&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-19&quot;,
+    &quot;mode&quot;: &quot;late-ack&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-20&quot;,
+    &quot;mode&quot;: &quot;missing-observation&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-21&quot;,
+    &quot;mode&quot;: &quot;forged-observation&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-22&quot;,
+    &quot;mode&quot;: &quot;delivery-generation&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-23&quot;,
+    &quot;mode&quot;: &quot;typed-observation&quot;,
+    &quot;result&quot;: &quot;Discarded&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-24&quot;,
+    &quot;mode&quot;: &quot;revocation&quot;,
+    &quot;result&quot;: &quot;Closed&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 1,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-25&quot;,
+    &quot;mode&quot;: &quot;bad-detach&quot;,
+    &quot;result&quot;: &quot;ProofMismatch&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CL-26&quot;,
+    &quot;mode&quot;: &quot;discard-without-owner&quot;,
+    &quot;result&quot;: &quot;DependencyNotReady&quot;,
+    &quot;document_unchanged&quot;: true,
+    &quot;formal_IO_ACK_material_S1_calls&quot;: 0,
+    &quot;detach_calls&quot;: 0,
+    &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL_ONLY&quot;
+  }
+]</pre></section><section id="s8"><h2>Physical lexical pattern inventory</h2><pre>[
+  {
+    &quot;root&quot;: &quot;request.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/$defs/U64Decimal/pattern&quot;,
+    &quot;kind&quot;: &quot;u64&quot;,
+    &quot;pattern&quot;: &quot;^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;18446744073709551615&quot;,
+    &quot;negative&quot;: [
+      &quot;18446744073709551615\n&quot;,
+      &quot;18446744073709551615\r&quot;,
+      &quot;18446744073709551615\r\n&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615\u0000&quot;,
+      &quot;&quot;,
+      &quot; 18446744073709551615&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551616&quot;,
+      &quot;01&quot;,
+      &quot;-1&quot;,
+      &quot;1.0&quot;,
+      &quot;１&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;request.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/$defs/Digest/pattern&quot;,
+    &quot;kind&quot;: &quot;digest&quot;,
+    &quot;pattern&quot;: &quot;^[0-9a-f]{64}(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+    &quot;negative&quot;: [
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\n&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u0000&quot;,
+      &quot;&quot;,
+      &quot; aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;request.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/properties/binding_ref/pattern&quot;,
+    &quot;kind&quot;: &quot;uuid&quot;,
+    &quot;pattern&quot;: &quot;^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;abcdef01-abcd-4abc-8abc-abcdef012345&quot;,
+    &quot;negative&quot;: [
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345\n&quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345\r&quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345\r\n&quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345 &quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345 &quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345\u0000&quot;,
+      &quot;&quot;,
+      &quot; abcdef01-abcd-4abc-8abc-abcdef012345&quot;,
+      &quot;abcdef01-abcd-4abc-8abc-abcdef012345 &quot;,
+      &quot;ABCDEF01-ABCD-4ABC-8ABC-ABCDEF012345&quot;,
+      &quot;abcdef01-abcd-5abc-8abc-abcdef012345&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;request.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/properties/expected_generation/pattern&quot;,
+    &quot;kind&quot;: &quot;u64&quot;,
+    &quot;pattern&quot;: &quot;^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;18446744073709551615&quot;,
+    &quot;negative&quot;: [
+      &quot;18446744073709551615\n&quot;,
+      &quot;18446744073709551615\r&quot;,
+      &quot;18446744073709551615\r\n&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615\u0000&quot;,
+      &quot;&quot;,
+      &quot; 18446744073709551615&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551616&quot;,
+      &quot;01&quot;,
+      &quot;-1&quot;,
+      &quot;1.0&quot;,
+      &quot;１&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;request.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/properties/expected_revision/pattern&quot;,
+    &quot;kind&quot;: &quot;u64&quot;,
+    &quot;pattern&quot;: &quot;^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;18446744073709551615&quot;,
+    &quot;negative&quot;: [
+      &quot;18446744073709551615\n&quot;,
+      &quot;18446744073709551615\r&quot;,
+      &quot;18446744073709551615\r\n&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615\u0000&quot;,
+      &quot;&quot;,
+      &quot; 18446744073709551615&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551616&quot;,
+      &quot;01&quot;,
+      &quot;-1&quot;,
+      &quot;1.0&quot;,
+      &quot;１&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;response.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/$defs/U64Decimal/pattern&quot;,
+    &quot;kind&quot;: &quot;u64&quot;,
+    &quot;pattern&quot;: &quot;^(?:0|[1-9][0-9]{0,18}|1[0-7][0-9]{18}|18[0-3][0-9]{17}|184[0-3][0-9]{16}|1844[0-5][0-9]{15}|18446[0-6][0-9]{14}|184467[0-3][0-9]{13}|1844674[0-3][0-9]{12}|184467440[0-6][0-9]{10}|1844674407[0-2][0-9]{9}|18446744073[0-6][0-9]{8}|1844674407370[0-8][0-9]{6}|18446744073709[0-4][0-9]{5}|184467440737095[0-4][0-9]{4}|18446744073709550[0-9]{3}|18446744073709551[0-5][0-9]{2}|1844674407370955160[0-9]{1}|1844674407370955161[0-4]|18446744073709551615)(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;18446744073709551615&quot;,
+    &quot;negative&quot;: [
+      &quot;18446744073709551615\n&quot;,
+      &quot;18446744073709551615\r&quot;,
+      &quot;18446744073709551615\r\n&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551615\u0000&quot;,
+      &quot;&quot;,
+      &quot; 18446744073709551615&quot;,
+      &quot;18446744073709551615 &quot;,
+      &quot;18446744073709551616&quot;,
+      &quot;01&quot;,
+      &quot;-1&quot;,
+      &quot;1.0&quot;,
+      &quot;１&quot;
+    ]
+  },
+  {
+    &quot;root&quot;: &quot;response.schema.json&quot;,
+    &quot;pointer&quot;: &quot;/$defs/Digest/pattern&quot;,
+    &quot;kind&quot;: &quot;digest&quot;,
+    &quot;pattern&quot;: &quot;^[0-9a-f]{64}(?![\\s\\S])&quot;,
+    &quot;positive&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+    &quot;negative&quot;: [
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\r\n&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u0000&quot;,
+      &quot;&quot;,
+      &quot; aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &quot;,
+      &quot;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+      &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;
+    ]
+  }
+]</pre></section><section id="s9"><h2>Before and after</h2><pre>{
+  &quot;before&quot;: &quot;Open/get correction external revocation observation only; close command deferred. Existing review PASS not rerun.&quot;,
+  &quot;after&quot;: &quot;Separate close-only exact request/response candidate with trusted detach and delivery model; no product authorization.&quot;,
+  &quot;unchanged&quot;: &quot;Transfer remains DEFERRED. Old packages/product/board/current-state protected.&quot;
+}</pre></section><section id="s10"><h2>Known risks and deferred automation</h2><pre>[
+  &quot;Owner adopt exact close consumer/writer/discard semantics and capacity/retention/missing policy&quot;,
+  &quot;Native command origin/instance/ACL tests after approved Skeleton and valid production RED&quot;,
+  &quot;M04 detach linearization and dirty confirmation integration&quot;,
+  &quot;Real inflight save/install ACK authority reconciliation and revoked UI delivery&quot;,
+  &quot;Cross-module regressions, build, package, platform compatibility&quot;
+]</pre></section><section id="s11"><h2>Lessons</h2><pre>[
+  {
+    &quot;cause&quot;: &quot;A local close can be confused with document teardown or global writer transfer&quot;,
+    &quot;rule&quot;: &quot;M04 owns document/discard; facade only revokes exact derived attachment. Cross-window authority not inferred.&quot;
+  },
+  {
+    &quot;cause&quot;: &quot;An ACK may complete after a UI view closes&quot;,
+    &quot;rule&quot;: &quot;Do not roll back committed effects or call formal ACK from close. Separate issuer evidence from delivery.&quot;
+  },
+  {
+    &quot;cause&quot;: &quot;Fixture tombstones can silently invent production retry guarantees&quot;,
+    &quot;rule&quot;: &quot;No request_id, no TTL, capacity and missing/alreadyclosed decisions explicit pending Owner.&quot;
+  }
+]</pre></section><section id="s12"><h2>Source current versus historical</h2><pre>{
+  &quot;branch&quot;: &quot;cursor/ui-bhv-arch-layer-editor&quot;,
+  &quot;HEAD&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;captured_at&quot;: &quot;2026-11-02T20:41:12.241044+00:00&quot;,
+  &quot;authority_count&quot;: 796,
+  &quot;authority&quot;: &quot;M01/planning/s2-green/source-current.json&quot;,
+  &quot;drift_vs_M01_s2_green_authority&quot;: [],
+  &quot;historical_open_get_HEAD&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;historical_branch_HEAD_5b70934&quot;: &quot;Historical evidence only; not current verification&quot;
+}</pre></section><section><h2>Gherkin specification</h2><pre>Feature: Detach a derived design binding safely
+  Background:
+    Given a live document with one authoritative owner and a trusted attached native view
+  Rule: Closing a view preserves the document and revokes that view authority
+
+    @CL-01
+    Scenario: CL-01 Authorized editor detaches its own derived binding
+      Given the valid attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Closed
+      And the document content and history remain unchanged
+
+    @CL-02
+    Scenario: CL-02 Viewer cannot close a binding
+      Given the viewer attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is UnauthorizedCaller
+      And the document content and history remain unchanged
+
+    @CL-03
+    Scenario: CL-03 Remote origin cannot close a binding
+      Given the remote attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is UnauthorizedCaller
+      And the document content and history remain unchanged
+
+    @CL-04
+    Scenario: CL-04 Replacement native instance cannot reuse a binding
+      Given the replacement attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is UnauthorizedCaller
+      And the document content and history remain unchanged
+
+    @CL-05
+    Scenario: CL-05 Main cannot arbitrarily detach another editor attachment
+      Given the foreign attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is MissingBinding
+      And the document content and history remain unchanged
+
+    @CL-06
+    Scenario: CL-06 Unknown binding fails closed
+      Given the missing attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is MissingBinding
+      And the document content and history remain unchanged
+
+    @CL-07
+    Scenario: CL-07 Absent M04 integration cannot detach
+      Given the dependency attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is DependencyNotReady
+      And the document content and history remain unchanged
+
+    @CL-08
+    Scenario: CL-08 Stale owner generation preserves attachment
+      Given the generation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is StaleOwner
+      And the document content and history remain unchanged
+
+    @CL-09
+    Scenario: CL-09 Stale revision preserves attachment
+      Given the revision attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is StaleRevision
+      And the document content and history remain unchanged
+
+    @CL-10
+    Scenario: CL-10 Unconfirmed dirty writer cannot detach
+      Given the dirty attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Busy
+      And the document content and history remain unchanged
+
+    @CL-11
+    Scenario: CL-11 M04 refusal cannot be interpreted as detach
+      Given the m04-refusal attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is DependencyNotReady
+      And the document content and history remain unchanged
+
+    @CL-12
+    Scenario: CL-12 Confirmed writer detach leaves document live and history intact
+      Given the writer attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Closed
+      And the document content and history remain unchanged
+
+    @CL-13
+    Scenario: CL-13 Repeated identical close is idempotent within fixture retention
+      Given the repeat attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Closed
+      And the document content and history remain unchanged
+
+    @CL-14
+    Scenario: CL-14 Changed close capture is not a replay
+      Given the changed attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is MissingBinding
+      And the document content and history remain unchanged
+
+    @CL-15
+    Scenario: CL-15 Full tombstone cache refuses before M04 detach
+      Given the capacity attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is CapacityExceeded
+      And the document content and history remain unchanged
+
+    @CL-16
+    Scenario: CL-16 New runtime epoch cannot disclose old close state
+      Given the epoch attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is MissingBinding
+      And the document content and history remain unchanged
+
+    @CL-17
+    Scenario: CL-17 Closed attachment blocks late get delivery while window lives
+      Given the late-get attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-18
+    Scenario: CL-18 Closed attachment blocks late mutation result delivery
+      Given the late-install attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-19
+    Scenario: CL-19 Close does not apply a late formal ACK
+      Given the late-ack attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-20
+    Scenario: CL-20 Missing current observation blocks delivery
+      Given the missing-observation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-21
+    Scenario: CL-21 Caller-forged observation cannot authorize delivery
+      Given the forged-observation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-22
+    Scenario: CL-22 Wrong current owner generation blocks delivery
+      Given the delivery-generation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-23
+    Scenario: CL-23 Wrong attachment flag type blocks delivery
+      Given the typed-observation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Discarded
+      And the document content and history remain unchanged
+
+    @CL-24
+    Scenario: CL-24 Close revokes candidates previews and replay disclosure
+      Given the revocation attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is Closed
+      And the document content and history remain unchanged
+
+    @CL-25
+    Scenario: CL-25 Malformed M04 detach observation has no partial effect
+      Given the bad-detach attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is ProofMismatch
+      And the document content and history remain unchanged
+
+    @CL-26
+    Scenario: CL-26 Caller discard flag cannot replace missing M04 dirty decision
+      Given the discard-without-owner attachment condition
+      When the attachment lifecycle action is requested
+      Then the observable outcome is DependencyNotReady
+      And the document content and history remain unchanged
+</pre></section><script type="application/json" id="module-spec">{"module": "M03", "task": "PD-P1-M03-PREP-01", "slice": "design_binding_close ONLY; transfer DEFERRED", "author": "/root/m03_binding_close_packet", "status": "PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER", "implementation_gate": "NOT_READY_FOR_IMPLEMENTATION", "independent_acceptance": "NOT RUN", "owner_adoption": "NOT RUN", "full_draft": "NOT COMPLETE", "product_native_RED": "NOT RUN", "build": "NOT RUN", "architecture": {"context": "Native design view consumes one M04-owned document; closing attachment leaves document live.", "hexagonal": "Trusted native caller adapter → M03 close input port → derived attachment facade → M04 detach_view(handle) → sole M04 owner", "dependency": "UI → Tauri native guard → M03 → M04 input contract; no direct S1/IO access", "input_ports": ["design_binding_close exact closed request"], "output_ports": ["Existing proposed M04.detach_view(handle); exact observation contract still proposed", "Restricted trusted current attachment observation at delivery; fixture-only seam"], "driving_adapters": ["Native main/editor guard", "Document model test driver"], "driven_adapters": ["M04 sole owner double; native implementation NOT RUN"], "state_ownership": "M04 owns S1 content/history/revision/baselines/writer generation. M03 owns derived binding/candidate/preview/replay-disclosure caches only.", "mutation": "Only exact attached-view derived authority revoked after M04 confirmation; no content mutation.", "transaction": "Native auth → root validation → trusted binding/owner observation → preflight capacity and fences → M04 detach confirmation → revoke derived attachment/candidate/preview/disclosure. Failure precommit unchanged. Native atomicity and postcommit loss unresolved Owner seam.", "external_boundary": "Native identity and M04 remain external dependencies; missing integration fails closed.", "forbidden": ["new owner registry", "S1 constructor", "document close", "history/content mutation", "formal IO/ACK", "material pin/root release", "writer transfer", "cross-window arbitrary dispatch"]}, "contracts": {"C1": "Native main/editor identity and origin and live instance checked before dependency/cache lookup; viewer/remote/replaced native denied.", "C2": "M04 sole S1 owner; close detaches derived binding only, never closes document or mutates content/history/revision/baselines/formal IO ACK/material roots.", "C3": "Validate complete closed request and expected generation/revision before new detach; M04 observed tuple must match bound document/session/project/root/runtime/native instance.", "C4": "On confirmed detach revoke binding candidates/previews and replay disclosure authority; in-flight late completion cannot reactivate attachment or install a UI projection.", "C5": "No request_id accepted. Other operation replay records cannot be read/resubmitted through close; no automatic retry or TTL.", "C6": "Trusted delivery observation must be current, typed and minted by fixture authority, with active attachment/native liveness and full tuple equality.", "C7": "Capacity failure is pre-detach and preserves attachment; tombstones are fixture-derived state, not a second document owner.", "C8": "Missing dependency, stale generation/revision, dirty unconfirmed writer or malformed observation leaves all model state unchanged."}, "owner_choices": "owner-choices.json; all new exact policy choices PROPOSED_PENDING_OWNER", "permissions": {"commands": ["design_binding_open", "design_binding_get", "design_binding_transfer", "design_candidate_prepare", "design_candidate_install", "design_document_undo", "design_document_save", "design_editor_select", "design_viewer_begin", "design_viewer_intent", "design_viewer_refresh", "design_viewer_close", "design_binding_close"], "new_groups": {"design-owner-read": ["design_binding_get", "design_editor_select"], "design-owner-write": ["design_binding_open", "design_binding_transfer", "design_candidate_prepare", "design_candidate_install", "design_document_undo", "design_document_save", "design_binding_close"], "design-viewer-mock": ["design_binding_get", "design_viewer_begin", "design_viewer_intent", "design_viewer_refresh", "design_viewer_close"]}, "main": "default capability adds design owner read/write and viewer group; actual handler still checks caller/binding/role. Existing main generic privileges unchanged outside this task.", "editor": "uidesign-window.json windows becomes [ui-editor]; retain old unrelated privilege sets only as historical editor capability, add design groups; every old design mutation entry now DESIGN_OWNER_REQUIRED. No generic action dispatch from runtime.", "viewer": "New capabilities/design-viewer.json windows=[ui-viewer], only core window chrome + design-viewer-mock. Remove ui-viewer from prior broad uidesign-window group; no host-default/dispatch-default/core webview-create. app bootstrap for viewer must use binding projection only, not privileged main initialization.", "native_guard": "Injected WebviewWindow with trusted instance nonce; allow local tauri://localhost or http(s)://tauri.localhost without explicit port, role-specific labels main/ui-editor/ui-viewer. Remote/dev origins reject. Do not reuse main-only guard by silently weakening its existing policy for other commands; add a dedicated design caller policy.", "legacy": "uidesign_save_design/load_design/build_preview kept registered for source/ACL compatibility but return DESIGN_OWNER_REQUIRED for old authoritative args; no typed doc path reaches filesystem. Exported communication preview generation is deferred compatibility artifact path, not a backdoor to Viewer privileges. uidesign_ask_agent does not become a Viewer action.", "host_allowlist": "Add exactly listed13 commands to AllowedIpcCommand parse/enum; no wildcard. Main/editor role authority is native application gate beyond allowlist.", "test_migration": "commands.rs existing guard_owner_caller_tests assertion windows=[ui-editor,ui-viewer] changes explicitly to editor-only plus separate viewer capability assertions; preserve all original main-only guard denial tests. Archive old test snippet/hash in implementation-stage evidence before changing assertion."}, "UI_schema": {"component": "Existing design binding view", "roles": "main/editor only by closed ACL; viewer denied", "controls": "Existing close action only; no new UI controls", "constraints": "No caller identity/observation flags in request", "confirmation": "Dirty writer explicit confirmation observed by M04; exact detach decision pending Owner", "loading": "Disable duplicate close while pending; do not clear active document speculatively", "success": "Clear only detached view projection and revoke its previews/candidates", "error": "Preserve prior view, plain-text diagnostic, no automatic retry", "empty": "Unknown binding MissingBinding under proposed policy", "accessibility": "Announce status without focus steal"}, "BDD_categories": {"B1": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B2": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B3": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B4": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B5": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B6": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B7": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B8": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B9": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B10": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model", "B11": "Deferred: production compatibility/regression NOT RUN", "B12": "Deferred: production compatibility/regression NOT RUN"}, "tasks": [{"id": "CL-CLOSE-PLAN", "primary_module": "M03", "layer": "Planning document", "allowed_scope": "binding-close-integration/** only", "protected": "All old packets/product/board/current-state", "BDD": ["CL-01", "CL-02", "CL-03", "CL-04", "CL-05", "CL-06", "CL-07", "CL-08", "CL-09", "CL-10", "CL-11", "CL-12", "CL-13", "CL-14", "CL-15", "CL-16", "CL-17", "CL-18", "CL-19", "CL-20", "CL-21", "CL-22", "CL-23", "CL-24", "CL-25", "CL-26"], "TDD": "checker.py document model; product RED NOT RUN", "acceptance": ["Complete self-contained root schemas", "All physical lexical patterns actual parsed/audited", "Typed seven DomainRejected maintained", "Document lifecycle invariants checked", "Owner choices and native evidence limits explicit"], "status": "AUTHOR_CANDIDATE_ONLY"}]}</script>

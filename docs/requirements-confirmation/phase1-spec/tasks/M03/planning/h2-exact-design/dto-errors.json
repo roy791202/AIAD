@@ -1,0 +1,524 @@
+{
+  "requests": {
+    "design_binding_open": {
+      "type": "object",
+      "properties": {
+        "document_reference": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_reference"
+      ],
+      "additionalProperties": false
+    },
+    "design_binding_get": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "binding_ref"
+      ],
+      "additionalProperties": false
+    },
+    "design_binding_transfer": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "target_window": {
+          "enum": [
+            "main",
+            "ui-editor"
+          ]
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "target_window"
+      ],
+      "additionalProperties": false
+    },
+    "design_candidate_prepare": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "design_json": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "request_id",
+        "design_json"
+      ],
+      "additionalProperties": false
+    },
+    "design_candidate_install": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "candidate_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "request_id",
+        "candidate_ref"
+      ],
+      "additionalProperties": false
+    },
+    "design_document_undo": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "design_document_save": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "design_editor_select": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "node_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "node_id"
+      ],
+      "additionalProperties": false
+    },
+    "design_viewer_begin": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "design_viewer_intent": {
+      "type": "object",
+      "properties": {
+        "preview_session": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "sequence": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "node_id": {
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "Activate",
+            "SetToggle",
+            "SetText",
+            "SetNumber",
+            "SelectItem"
+          ]
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "checked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "checked"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "number_text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "number_text"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "item_id"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "preview_session",
+        "expected_revision",
+        "sequence",
+        "node_id",
+        "action",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "design_viewer_refresh": {
+      "type": "object",
+      "properties": {
+        "preview_session": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        }
+      },
+      "required": [
+        "preview_session",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "design_viewer_close": {
+      "type": "object",
+      "properties": {
+        "preview_session": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "preview_session"
+      ],
+      "additionalProperties": false
+    },
+    "design_binding_close": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "checked u64; no JS Number"
+        },
+        "discard_unsaved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "expected_generation",
+        "expected_revision",
+        "discard_unsaved"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "responses": {
+    "common": "{ok:true,value:<result>,replayed:bool} | {ok:false,error:{code:<listed>,details:<exact closed fields>},replayed:bool}; no simultaneous value/error. Only identical retained authorized request_id replay sets replayed=true; UI never replaces newer revision/generation from a replayed old result.",
+    "BindingProjection": {
+      "binding_ref": "UUID",
+      "document_uuid": "existing trusted manifest UUID",
+      "session_uuid": "server UUID",
+      "owner_generation": "u64 string",
+      "revision": "u64 string",
+      "design_json": "C1 validated canonical JSON string",
+      "dirty": "bool from S1",
+      "can_edit": "bool from actual caller+writer+supported status",
+      "unsupported": "[{node_id,type,reason}]",
+      "selection": "nullable node ID ephemeral for this view",
+      "persistence_ready": false
+    },
+    "Candidate": "{candidate_ref UUID, request_id UUID, captured_revision u64 string, unsupported:[...], installable bool}; no auto install",
+    "InstallUndoTransfer": "BindingProjection; changed bool and history_depth u64 string on actual content mutation only",
+    "Select": "{node_id nullable string,content_changed:false,revision u64 string}",
+    "Preview": "{preview_session UUID,source_revision u64 string,expected_sequence u64 string,stale bool,mock_state:{node_id:typed value},capabilities:[node_id,allowed_action list]}; no native root or writer token",
+    "Intent": "{consumed_sequence u64 string,next_sequence u64 string,mock_delta typed value,content_changed:false}; all error cases preserve sequence/state except explicit close/refresh lifecycle",
+    "Close": "{closed:true,content_changed:false}"
+  },
+  "errors": {
+    "UnauthorizedCaller": {},
+    "MissingBinding": {},
+    "IdentityConflict": {
+      "reference": "string"
+    },
+    "UnsupportedDocument": {
+      "nodes": "[{node_id,type,reason}]"
+    },
+    "StaleOwner": {},
+    "StaleRevision": {
+      "expected": "u64 string",
+      "observed": "u64 string"
+    },
+    "WriterRequired": {},
+    "MissingWindow": {},
+    "CandidateMissing": {},
+    "CandidateUsed": {},
+    "RequestConflict": {},
+    "Busy": {},
+    "ResourceLimit": {
+      "field": "JSON pointer",
+      "limit": "named token"
+    },
+    "CodecRejected": {
+      "message": "exact C1 HostError::Settings string; inert plain text"
+    },
+    "InvalidRequest": {
+      "field": "JSON pointer",
+      "reason": "UnknownField|MissingField|Type|Range|InvalidUuid|InvalidNumber|InvalidActionPayload"
+    },
+    "AmbiguousStableId": {
+      "node_id": "string"
+    },
+    "NodeMissing": {
+      "node_id": "string"
+    },
+    "ParentMissing": {
+      "node_id": "string",
+      "parent_id": "string"
+    },
+    "ParentCycle": {
+      "node_id": "string"
+    },
+    "UnsupportedAction": {
+      "node_id": "string",
+      "action": "closed enum"
+    },
+    "MissingMaterial": {
+      "node_id": "string",
+      "asset_id": "string"
+    },
+    "MissingBindingTarget": {
+      "node_id": "string",
+      "target_id": "string"
+    },
+    "PreviewClosed": {},
+    "SequenceConflict": {
+      "expected": "u64 string",
+      "received": "u64 string"
+    },
+    "SequenceOverflow": {},
+    "DependencyNotReady": {
+      "dependency": "M04_S2|C1_CODEC|M04_OWNER_INTEGRATION"
+    },
+    "DomainRejected": {
+      "code": "exact existing EditError variant",
+      "fields": "exact existing named fields, no Debug parsing"
+    }
+  },
+  "validation_order": [
+    "actual trusted sender/local origin",
+    "outer decoded DTO strict shape/UUID/u64/admitted-size",
+    "binding/window instance/generation",
+    "retained request lookup: identical authorized replay returns, changed capture conflicts",
+    "expected revision for NEW request",
+    "candidate ownership/unused for NEW request",
+    "C1 raw design guards and graph/type checks",
+    "action/payload and sequence",
+    "reserve request then authoritative commit or detached mock update"
+  ],
+  "limits": {
+    "raw_design_utf8": 16777216,
+    "outer_request_utf8": 33554432,
+    "max_outer_depth": 16,
+    "runtime_bindings": 32,
+    "candidate_per_binding": 1,
+    "preview_sessions_per_binding": 4,
+    "text_payload_utf8": 4096,
+    "number_text_bytes": 128,
+    "node_id_utf8": 256,
+    "document_reference_utf8": 1024,
+    "request_keys_per_binding": 128,
+    "request_keys_per_runtime": 1024
+  },
+  "raw_ingress": "design_json must be an inner JSON string parsed only by C1 before any Value/DesignDoc conversion. At command admission cap32MiB on the serialized decoded outer envelope, plus16MiB inner text. This does not prevent allocation in Tauri transport before command admission; no raw outer duplicate-key guarantee is claimed. Inner design_json duplicate guard remains exact. Do not count nested text as outer JSON depth. No arbitrary root/digest/approval fields."
+}

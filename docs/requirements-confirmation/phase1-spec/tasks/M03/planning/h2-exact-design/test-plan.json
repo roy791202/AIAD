@@ -1,0 +1,653 @@
+{
+  "cases": [
+    {
+      "id": "M03-H2-T001",
+      "bdd": "M03-H2-B001",
+      "group": "owner",
+      "name": "unbound",
+      "given": "manifest binding absent",
+      "when": "binding/edit requested",
+      "then": "MissingBinding no session/new UUID/IO",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T002",
+      "bdd": "M03-H2-B002",
+      "group": "owner",
+      "name": "duplicate view",
+      "given": "same existing trusted document opened twice",
+      "when": "binding/edit requested",
+      "then": "same owner/session, no second DocumentSession",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T003",
+      "bdd": "M03-H2-B003",
+      "group": "owner",
+      "name": "forged root",
+      "given": "request contains project_root/digest/owner authority",
+      "when": "binding/edit requested",
+      "then": "InvalidRequest, no lookup/mutation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T004",
+      "bdd": "M03-H2-B004",
+      "group": "owner",
+      "name": "identity",
+      "given": "document UUID maps another reference",
+      "when": "binding/edit requested",
+      "then": "IdentityConflict no remap",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T005",
+      "bdd": "M03-H2-B005",
+      "group": "owner",
+      "name": "writer",
+      "given": "viewer requests edit",
+      "when": "binding/edit requested",
+      "then": "WriterRequired or UnauthorizedCaller before candidate/commit",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T006",
+      "bdd": "M03-H2-B006",
+      "group": "dto",
+      "name": "unknown",
+      "given": "inner raw text unknown schema field",
+      "when": "candidate prepare",
+      "then": "CodecRejected exact C1 pointer",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T007",
+      "bdd": "M03-H2-B007",
+      "group": "dto",
+      "name": "duplicate",
+      "given": "duplicate raw key",
+      "when": "candidate prepare",
+      "then": "CodecRejected duplicate pointer before typed loss",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T008",
+      "bdd": "M03-H2-B008",
+      "group": "dto",
+      "name": "number",
+      "given": "raw precise decimal cannot roundtrip",
+      "when": "candidate prepare",
+      "then": "CodecRejected number error before JS decode",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T009",
+      "bdd": "M03-H2-B009",
+      "group": "dto",
+      "name": "outer",
+      "given": "unknown outer field",
+      "when": "candidate prepare",
+      "then": "InvalidRequest no effects",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T010",
+      "bdd": "M03-H2-B010",
+      "group": "dto",
+      "name": "oversize",
+      "given": "outer>32MiB or inner>16MiB",
+      "when": "candidate prepare",
+      "then": "ResourceLimit exact outer/inner field before parse",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T011",
+      "bdd": "M03-H2-B011",
+      "group": "dto",
+      "name": "numeric revision",
+      "given": "revision supplied JS Number",
+      "when": "candidate prepare",
+      "then": "InvalidRequest Type",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T012",
+      "bdd": "M03-H2-B012",
+      "group": "dto",
+      "name": "u64 overflow",
+      "given": "revision18446744073709551616",
+      "when": "candidate prepare",
+      "then": "InvalidRequest Range",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T013",
+      "bdd": "M03-H2-B013",
+      "group": "candidate",
+      "name": "valid",
+      "given": "valid changed candidate current owner",
+      "when": "prepare/install/render",
+      "then": "exactly one S1 Edit revision+1/history+1",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T014",
+      "bdd": "M03-H2-B014",
+      "group": "candidate",
+      "name": "same",
+      "given": "semantic identical candidate",
+      "when": "prepare/install/render",
+      "then": "changed=false,no S1 commit/revision",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T015",
+      "bdd": "M03-H2-B015",
+      "group": "candidate",
+      "name": "stale",
+      "given": "owner advanced after prepare",
+      "when": "prepare/install/render",
+      "then": "StaleRevision; old content/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T016",
+      "bdd": "M03-H2-B016",
+      "group": "candidate",
+      "name": "generation",
+      "given": "writer transferred after prepare",
+      "when": "prepare/install/render",
+      "then": "StaleOwner; no install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T017",
+      "bdd": "M03-H2-B017",
+      "group": "candidate",
+      "name": "reuse",
+      "given": "new request ID targets candidate installed once",
+      "when": "prepare/install/render",
+      "then": "CandidateUsed,no second mutation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T018",
+      "bdd": "M03-H2-B018",
+      "group": "candidate",
+      "name": "request collision",
+      "given": "same request ID changed raw capture",
+      "when": "prepare/install/render",
+      "then": "RequestConflict",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T019",
+      "bdd": "M03-H2-B019",
+      "group": "candidate",
+      "name": "duplicate ID",
+      "given": "two nodes share stable ID",
+      "when": "prepare/install/render",
+      "then": "AmbiguousStableId, no install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T020",
+      "bdd": "M03-H2-B020",
+      "group": "candidate",
+      "name": "parent missing",
+      "given": "node parent absent",
+      "when": "prepare/install/render",
+      "then": "ParentMissing,no install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T021",
+      "bdd": "M03-H2-B021",
+      "group": "candidate",
+      "name": "cycle",
+      "given": "parent graph cycle",
+      "when": "prepare/install/render",
+      "then": "ParentCycle,no install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T022",
+      "bdd": "M03-H2-B022",
+      "group": "candidate",
+      "name": "unsupported",
+      "given": "unknown node type",
+      "when": "prepare/install/render",
+      "then": "read-only intact node list; edit/mocks/save disabled",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T023",
+      "bdd": "M03-H2-B023",
+      "group": "candidate",
+      "name": "form absent",
+      "given": "no root Form",
+      "when": "prepare/install/render",
+      "then": "read-only no inserted Form",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T024",
+      "bdd": "M03-H2-B024",
+      "group": "candidate",
+      "name": "grid",
+      "given": "fraction/outside display range",
+      "when": "prepare/install/render",
+      "then": "content exact, view fallback only",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T025",
+      "bdd": "M03-H2-B025",
+      "group": "request",
+      "name": "install replay",
+      "given": "same request/capture already installed",
+      "when": "install replayed",
+      "then": "original result replayed=true, no second commit, no stale UI projection overwrite",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T026",
+      "bdd": "M03-H2-B026",
+      "group": "request",
+      "name": "undo replay",
+      "given": "same undo request/capture already completed",
+      "when": "undo replayed",
+      "then": "original result only, no second Undo",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T027",
+      "bdd": "M03-H2-B027",
+      "group": "request",
+      "name": "capacity",
+      "given": "128 keys binding or1024 runtime full",
+      "when": "new mutation request",
+      "then": "ResourceLimit request_keys before reservation/commit",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T028",
+      "bdd": "M03-H2-B028",
+      "group": "viewer",
+      "name": "Button Activate",
+      "given": "supported immutable node and seq1",
+      "when": "matching mock payload",
+      "then": "only detached value changes; seq2; S1 revision/dirty/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T029",
+      "bdd": "M03-H2-B029",
+      "group": "viewer",
+      "name": "CheckBox SetToggle",
+      "given": "supported immutable node and seq1",
+      "when": "matching mock payload",
+      "then": "only detached value changes; seq2; S1 revision/dirty/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T030",
+      "bdd": "M03-H2-B030",
+      "group": "viewer",
+      "name": "TextBox SetText",
+      "given": "supported immutable node and seq1",
+      "when": "matching mock payload",
+      "then": "only detached value changes; seq2; S1 revision/dirty/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T031",
+      "bdd": "M03-H2-B031",
+      "group": "viewer",
+      "name": "NumberInput SetNumber",
+      "given": "supported immutable node and seq1",
+      "when": "matching mock payload",
+      "then": "only detached value changes; seq2; S1 revision/dirty/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T032",
+      "bdd": "M03-H2-B032",
+      "group": "viewer",
+      "name": "ComboBox SelectItem",
+      "given": "supported immutable node and seq1",
+      "when": "matching mock payload",
+      "then": "only detached value changes; seq2; S1 revision/dirty/history/baselines unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T033",
+      "bdd": "M03-H2-B033",
+      "group": "viewer",
+      "name": "payload mismatch",
+      "given": "action Activate with checked payload",
+      "when": "intent submitted",
+      "then": "InvalidRequest InvalidActionPayload; seq unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T034",
+      "bdd": "M03-H2-B034",
+      "group": "viewer",
+      "name": "unsupported action",
+      "given": "button SetText",
+      "when": "intent submitted",
+      "then": "UnsupportedAction; seq unchanged",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T035",
+      "bdd": "M03-H2-B035",
+      "group": "viewer",
+      "name": "stale sequence",
+      "given": "received seq0 expected1",
+      "when": "intent submitted",
+      "then": "SequenceConflict",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T036",
+      "bdd": "M03-H2-B036",
+      "group": "viewer",
+      "name": "duplicate replay",
+      "given": "same accepted seq1 sent twice",
+      "when": "intent submitted",
+      "then": "one effect then SequenceConflict",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T037",
+      "bdd": "M03-H2-B037",
+      "group": "viewer",
+      "name": "overflow",
+      "given": "expected seq u64max",
+      "when": "intent submitted",
+      "then": "SequenceOverflow close; no partial mock effect",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T038",
+      "bdd": "M03-H2-B038",
+      "group": "viewer",
+      "name": "text",
+      "given": "text<script> executable-looking",
+      "when": "intent submitted",
+      "then": "literal textContent only, no evaluation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T039",
+      "bdd": "M03-H2-B039",
+      "group": "viewer",
+      "name": "item",
+      "given": "ComboBox item label matches but ID absent",
+      "when": "intent submitted",
+      "then": "UnsupportedAction, no label lookup",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T040",
+      "bdd": "M03-H2-B040",
+      "group": "viewer",
+      "name": "scope",
+      "given": "unknown scope or uiExclusive true",
+      "when": "intent submitted",
+      "then": "no capability elevation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T041",
+      "bdd": "M03-H2-B041",
+      "group": "viewer",
+      "name": "material",
+      "given": "required asset absent",
+      "when": "intent submitted",
+      "then": "MissingMaterial placeholder/no IO",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T042",
+      "bdd": "M03-H2-B042",
+      "group": "viewer",
+      "name": "target",
+      "given": "declared target binding missing",
+      "when": "intent submitted",
+      "then": "MissingBindingTarget/no guessed binding",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T043",
+      "bdd": "M03-H2-B043",
+      "group": "viewer",
+      "name": "revision",
+      "given": "source edited since preview began",
+      "when": "intent submitted",
+      "then": "StaleRevision no mock update; stale projection badge",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T044",
+      "bdd": "M03-H2-B044",
+      "group": "permission",
+      "name": "main",
+      "given": "actual main window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T045",
+      "bdd": "M03-H2-B045",
+      "group": "permission",
+      "name": "ui-editor",
+      "given": "actual ui-editor window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T046",
+      "bdd": "M03-H2-B046",
+      "group": "permission",
+      "name": "ui-viewer",
+      "given": "actual ui-viewer window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T047",
+      "bdd": "M03-H2-B047",
+      "group": "permission",
+      "name": "settings",
+      "given": "actual settings window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T048",
+      "bdd": "M03-H2-B048",
+      "group": "permission",
+      "name": "remote",
+      "given": "actual remote window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T049",
+      "bdd": "M03-H2-B049",
+      "group": "permission",
+      "name": "dev-localhost:1420",
+      "given": "actual dev-localhost:1420 window instance",
+      "when": "candidate/save invoked",
+      "then": "only current main/editor writer allowed; viewer/settings/remote/dev rejected; no fallback typed legacy save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T050",
+      "bdd": "M03-H2-B050",
+      "group": "lifecycle",
+      "name": "close",
+      "given": "dirty owner discard=false",
+      "when": "operation completes",
+      "then": "owner retained,no autosave",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T051",
+      "bdd": "M03-H2-B051",
+      "group": "lifecycle",
+      "name": "destroy",
+      "given": "writer instance destroyed",
+      "when": "operation completes",
+      "then": "nonce retired, candidate/previews revoked",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T052",
+      "bdd": "M03-H2-B052",
+      "group": "lifecycle",
+      "name": "refresh late",
+      "given": "owner changes during refresh",
+      "when": "operation completes",
+      "then": "old projection retained stale,no new owner install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T053",
+      "bdd": "M03-H2-B053",
+      "group": "lifecycle",
+      "name": "transfer",
+      "given": "writer grants to trustededitor",
+      "when": "operation completes",
+      "then": "generation+1,no content/history/revision mutation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T054",
+      "bdd": "M03-H2-B054",
+      "group": "lifecycle",
+      "name": "transfer viewer",
+      "given": "target ui-viewer",
+      "when": "operation completes",
+      "then": "UnauthorizedCaller/no grant",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T055",
+      "bdd": "M03-H2-B055",
+      "group": "lifecycle",
+      "name": "root change",
+      "given": "settings root successfully changes",
+      "when": "operation completes",
+      "then": "binding revoked; failed settings save leaves original",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T056",
+      "bdd": "M03-H2-B056",
+      "group": "lifecycle",
+      "name": "persistence",
+      "given": "M04-S2 unavailable",
+      "when": "operation completes",
+      "then": "DependencyNotReady M04_S2 no FS",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T057",
+      "bdd": "M03-H2-B057",
+      "group": "lifecycle",
+      "name": "C1",
+      "given": "C1 unavailable",
+      "when": "operation completes",
+      "then": "DependencyNotReady C1_CODEC no lossy fallback",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T058",
+      "bdd": "M03-H2-B058",
+      "group": "legacy",
+      "name": "uidesign_save_design",
+      "given": "legacy typed doc/raw-root args",
+      "when": "old command invoked",
+      "then": "DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T059",
+      "bdd": "M03-H2-B059",
+      "group": "legacy",
+      "name": "uidesign_load_design",
+      "given": "legacy typed doc/raw-root args",
+      "when": "old command invoked",
+      "then": "DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T060",
+      "bdd": "M03-H2-B060",
+      "group": "legacy",
+      "name": "uidesign_build_preview",
+      "given": "legacy typed doc/raw-root args",
+      "when": "old command invoked",
+      "then": "DESIGN_OWNER_REQUIRED; no save/load/build filesystem call",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T061",
+      "bdd": "M03-H2-B061",
+      "group": "regression",
+      "name": "selection",
+      "given": "current document",
+      "when": "Editor selects node",
+      "then": "ephemeral only; no S1 Edit/Undo/M07 event",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-H2-T062",
+      "bdd": "M03-H2-B062",
+      "group": "regression",
+      "name": "undo",
+      "given": "one prior accepted edit",
+      "when": "authorized undo",
+      "then": "existing S1 revision/history semantics retained; preview revoked once",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "fixtures": {
+    "owner": "fixed trusted project/document UUIDs, fake window instance A/B nonces, generation7, S1 revision10/content semantic A; record before full content/history/baselines",
+    "codec": "approved C1 interface fake validates raw text failure points; real C1 integration gated separately, original baseline/ui-owned fixtures remain frozen",
+    "preview": "Form/Button/CheckBox/TextBox/NumberInput/ComboBox immutable snapshot; node IDs stable, ComboBox items=[{id:item-A,label:Same},{id:item-B,label:Same}] proving labels not identity",
+    "transport": "inner design_json text preserves duplicate/precision lexemes; outer Tauri JSON decoding is an explicit transport limitation, not a preservation oracle",
+    "async": "barriers for prepare/refresh/install plus revocation; release locks before codec/render/native waits, explicit response ordering",
+    "UI": "mock invoke records exact command+args, deferred promises, DOM role/focus state, source JSON snapshot; no fake browser native claim"
+  },
+  "commands": [
+    {
+      "cwd": "apps/sgenaxis-desktop/src-tauri",
+      "command": "cargo test --test phase1_design_owner --test phase1_viewer_capability --locked"
+    },
+    {
+      "cwd": "apps/sgenaxis-desktop",
+      "command": "node --test ui/design-preview-runtime.test.cjs"
+    },
+    {
+      "cwd": "apps/sgenaxis-desktop/src-tauri",
+      "command": "cargo test --lib --locked"
+    },
+    {
+      "cwd": "apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host -p sgenaxis-work --locked"
+    }
+  ],
+  "RED": "After approved Skeleton all suites compile; exact missing behavior assertions fail. No compile/C1 dependency/native privilege/fixture errors counted as RED. Persistence DependencyNotReady is an intended closed behavior, not stubbed product success.",
+  "regression": "Preserve C1 and S1 tests; command ACL assertion migration explicit. Native ui-editor/ui-viewer role isolation and real UI install/mocks later require native evidence; no iframe/source snapshot masquerades as it.",
+  "result": "NOT RUN"
+}

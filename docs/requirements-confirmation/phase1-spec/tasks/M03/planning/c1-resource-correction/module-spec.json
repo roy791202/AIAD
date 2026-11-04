@@ -1,0 +1,268 @@
+{
+  "module": "M03",
+  "status": "C1_RESOURCE_CORRECTION_PROPOSED_PENDING_REACCEPTANCE",
+  "at": "2026-11-01T07:27:12.188260+00:00",
+  "addresses": [
+    "C1-F1",
+    "C1-F2"
+  ],
+  "preserve": "Original 24 scenarios and original CP1-CP3 proposal untouched; original two-file candidate envelope unchanged",
+  "new_planned_cases": 12,
+  "architecture": "Pure HOST codec input/output validation only; no new IO/Port/runtime owner or persistence transaction",
+  "resource_contract": {
+    "status": "PROPOSED_PENDING_OWNER",
+    "tokens": {
+      "input_bytes": 16777216,
+      "output_bytes": 16777216,
+      "depth": 64,
+      "value_nodes": 100000,
+      "string_bytes": 1048576,
+      "number_token_bytes": 4096
+    },
+    "error": "HostError::Settings(\"DESIGN_CODEC_RESOURCE_LIMIT:<RFC6901 pointer>:<token>\"); input_bytes/output_bytes use empty root pointer, so exact string has :: before token",
+    "counting": [
+      "Input/output byte count is UTF-8 encoded complete JSON text, including whitespace/escapes; no terminal newline added by serialize_design. max inclusive; >max rejects.",
+      "Root JSON value depth=0. Every object member VALUE or array element increments depth by one from container; object keys are strings checked for decoded string_bytes but do not count as JSON value nodes and have no separate depth.",
+      "value_nodes counts every JSON value, including root, object/array containers, scalar values and null. Object member names excluded. Count on entering value, increment before testing >100000; report that value pointer.",
+      "string_bytes counts decoded UTF-8 bytes for each string value and member name separately, not raw token bytes or Unicode scalar count. Escaped key and literal equivalent key have identical decoded counting and duplicate identity. Key error pointer is the decoded escaped RFC6901 member pointer, same as its value pointer.",
+      "number_token_bytes counts raw ASCII JSON number lexeme before normalization. A syntactically valid 0.5 followed by trailing zeroes remains numeric 0.5. Grammar errors are not number-resource RED.",
+      "Streaming parse scans source order. input_bytes is checked first. At each value: grammar/valid escape -> depth -> value_nodes -> decoded key/string or raw number size -> duplicate key. Any first encountered lexical/resource failure stops; later unknown/schema/numeric errors cannot override it. Duplicate detected when second decoded key is complete, before its value.",
+      "After guarded parse completes: format/version -> unknown/type validation -> exact decimal representation -> existing validate. Unknown/type checks traverse source member order retained by guarded parser, array index order. No partial typed DesignDoc returned.",
+      "Serialize-only: validate existing format/version/product_pass first; traverse typed document in emitted struct field order, props keys byte-lexical order, array order, applying depth/value_nodes/string limits; number-token limit applies to emitted lexeme. Then emit pretty JSON with two spaces and LF/no terminal newline; enforce output_bytes on final emitted bytes. No input_bytes check for serialize-only.",
+      "A document with another resource violation is unsuitable as output-only oracle. Output overflow error is root pointer regardless of which field crosses byte cap; no partial String returned."
+    ],
+    "scope": "Clarifies C1 CP1-CP3 proposed behavior only. No approval inferred from existing S2 numbers or existing serializer; original two-file candidate scope unchanged."
+  },
+  "outputs": [
+    {
+      "id": "M03-C1-R01",
+      "target_bytes": 16777215,
+      "call": "serialize_design(&typed_doc) directly; do not parse padded JSON first",
+      "fixture": "typed-output-base.json",
+      "recipe": {
+        "props_order": [
+          "p00",
+          "p01",
+          "p02",
+          "p03",
+          "p04",
+          "p05",
+          "p06",
+          "p07",
+          "p08",
+          "p09",
+          "p10",
+          "p11",
+          "p12",
+          "p13",
+          "p14",
+          "p15",
+          "p16"
+        ],
+        "padding_character": "ASCII x",
+        "decoded_lengths": [
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1047871,
+          0
+        ],
+        "empty_fixture_pretty_bytes": 704,
+        "formula": "overhead + sum(decoded_lengths); ASCII x needs no escaping"
+      },
+      "expected": {
+        "kind": "Ok",
+        "UTF8_bytes": 16777215
+      },
+      "fixture_precheck": "Assert exact expected serialization size with existing serde_json::to_string_pretty on a shadow serializable fixture before calling product guard. Different whitespace/field-default result is fixture failure, never valid RED. This planning Python arithmetic is not a Rust serializer test.",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-R02",
+      "target_bytes": 16777216,
+      "call": "serialize_design(&typed_doc) directly; do not parse padded JSON first",
+      "fixture": "typed-output-base.json",
+      "recipe": {
+        "props_order": [
+          "p00",
+          "p01",
+          "p02",
+          "p03",
+          "p04",
+          "p05",
+          "p06",
+          "p07",
+          "p08",
+          "p09",
+          "p10",
+          "p11",
+          "p12",
+          "p13",
+          "p14",
+          "p15",
+          "p16"
+        ],
+        "padding_character": "ASCII x",
+        "decoded_lengths": [
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1047872,
+          0
+        ],
+        "empty_fixture_pretty_bytes": 704,
+        "formula": "overhead + sum(decoded_lengths); ASCII x needs no escaping"
+      },
+      "expected": {
+        "kind": "Ok",
+        "UTF8_bytes": 16777216
+      },
+      "fixture_precheck": "Assert exact expected serialization size with existing serde_json::to_string_pretty on a shadow serializable fixture before calling product guard. Different whitespace/field-default result is fixture failure, never valid RED. This planning Python arithmetic is not a Rust serializer test.",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M03-C1-R03",
+      "target_bytes": 16777217,
+      "call": "serialize_design(&typed_doc) directly; do not parse padded JSON first",
+      "fixture": "typed-output-base.json",
+      "recipe": {
+        "props_order": [
+          "p00",
+          "p01",
+          "p02",
+          "p03",
+          "p04",
+          "p05",
+          "p06",
+          "p07",
+          "p08",
+          "p09",
+          "p10",
+          "p11",
+          "p12",
+          "p13",
+          "p14",
+          "p15",
+          "p16"
+        ],
+        "padding_character": "ASCII x",
+        "decoded_lengths": [
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1048576,
+          1047873,
+          0
+        ],
+        "empty_fixture_pretty_bytes": 704,
+        "formula": "overhead + sum(decoded_lengths); ASCII x needs no escaping"
+      },
+      "expected": {
+        "kind": "HostError::Settings",
+        "text": "DESIGN_CODEC_RESOURCE_LIMIT::output_bytes"
+      },
+      "fixture_precheck": "Assert exact expected serialization size with existing serde_json::to_string_pretty on a shadow serializable fixture before calling product guard. Different whitespace/field-default result is fixture failure, never valid RED. This planning Python arithmetic is not a Rust serializer test.",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "additional": [
+    {
+      "id": "M03-C1-R04",
+      "input_recipe": "props key a/b~c with decoded 1048577 ASCII bytes as string value",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/a~1b~0c:string_bytes"
+    },
+    {
+      "id": "M03-C1-R05",
+      "input_recipe": "props string is é repeated 524288 times (1048576 decoded UTF8 bytes), all other guards healthy",
+      "expected": "Ok, exact decoded text preserved"
+    },
+    {
+      "id": "M03-C1-R06",
+      "input_recipe": "same as R05 plus ASCII x (1048577 bytes)",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/k:string_bytes",
+      "pointer_binding": "place string at /nodes/0/props/k"
+    },
+    {
+      "id": "M03-C1-R07",
+      "input_recipe": "same decoded short props key serialized first as literal a, second as escaped \\u0061",
+      "expected": "DESIGN_CODEC_DUPLICATE_KEY:/nodes/0/props/a"
+    },
+    {
+      "id": "M03-C1-R08",
+      "input_recipe": "JSON root object /nodes array /0 object /props object /deep nested array: deep value depth4; add 61 single-element nested arrays so innermost scalar global depth65. Add enough earlier valid values that this scalar is also value100001. Other guards healthy.",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/deep/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0:depth",
+      "required_checks": "Count actual fully generated tree, assert leaf depth65 and value index100001 before product call; otherwise fixture failure, not RED."
+    },
+    {
+      "id": "M03-C1-R09",
+      "input_recipe": "raw input 16777217 UTF8 bytes and unknown root field",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT::input_bytes"
+    },
+    {
+      "id": "M03-C1-R10",
+      "input_recipe": "unknown root field encountered early, later props string exceeds limit; guarded parse otherwise valid",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/k:string_bytes"
+    },
+    {
+      "id": "M03-C1-R11",
+      "input_recipe": "valid number token 0.5 + 4094 zeroes, length4097 at /nodes/0/props/n",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/n:number_token_bytes"
+    },
+    {
+      "id": "M03-C1-R12",
+      "input_recipe": "props object has key k with 1048577 decoded UTF8 bytes; value null; other guards healthy",
+      "expected": "DESIGN_CODEC_RESOURCE_LIMIT:<escaped complete key member pointer>:string_bytes",
+      "pointer_recipe": "/nodes/0/props/ + RFC6901(key); store exact generated pointer in future fixture, never truncate error assertion"
+    }
+  ],
+  "limitations": [
+    "Full native/UI/owner/H2 behavior not implied",
+    "All fixture recipes are plans, not executable tests or new Skeleton",
+    "Original CP1-CP3 plus new counting/output details remain pending Owner adoption"
+  ],
+  "verification": {
+    "document_arithmetic": "17 ASCII padding strings keep each <=1MiB; predicted output M-1/M/M+1",
+    "source_unchanged": 796,
+    "product_tests": "NOT RUN",
+    "build": "NOT RUN",
+    "RED": "NOT RUN",
+    "native": "NOT RUN",
+    "document_reacceptance": "PENDING"
+  },
+  "next": "Separate read-only reacceptance of C1-F1/F2 counting and output fixture recipes; consolidate CP1-CP3 exact proposal before Skeleton."
+}

@@ -1,0 +1,38 @@
+{
+  "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER",
+  "command": "design_document_undo",
+  "M04_command": "document_undo",
+  "request_mapping": {
+    "session_uuid": "authorized server binding session_uuid",
+    "expected_revision": "request.expected_revision",
+    "request_id": "request.request_id"
+  },
+  "precedence": [
+    "Trusted caller/window origin admission",
+    "Outer bytes/depth then closed request and strict U64 validation",
+    "Binding/generation/writer authority",
+    "Authorized replay record match before new revision check; mismatched immutable capture ReplayConflict; in-flight InProgress",
+    "For new request check expected revision, dependency readiness and capacity before reservation/Undo",
+    "M04 checks editable/revision/history continuity/revision overflow; pin outgoing retention before commit through declared seam",
+    "Exactly one M04 Undo; immutable issuer mutation receipt",
+    "M05 complete old/new root set transition; report actual failed stage in order LiveRoots,UndoRoots,RedoRoots",
+    "Return retained original result only to matching still-authorized caller; suppress revoked owner delivery"
+  ],
+  "limits": {
+    "outer_utf8_bytes": 33554432,
+    "outer_depth": 16,
+    "keys_per_binding": 128,
+    "keys_per_runtime": 1024,
+    "eviction": false
+  },
+  "transaction": "Precommit failures preserve content/history; confirmed commit advances revision and moves one undo entry to redo; retention failure cannot undo that fact. No persistence or baseline ACK.",
+  "replay": "Key(binding_ref,session_uuid,operation,request_id), immutable typed capture including generation/revision. Original retained result replayed=true; no second Undo, no projection overwrite of newer state. Close/revoke ends authority. Runtime-only, no restart exactly-once.",
+  "failure_mapping": {
+    "precommit_known_rejection": "closed v3 Error after exact mapping confirmation; zero mutation",
+    "postcommit_roots_failure": "AppliedRetentionDeferred at actual revision, actual pin and mutation proof",
+    "uncertain_M04": "Indeterminate, no false unchanged claim",
+    "owner_loss_after_commit": "retain evidence; no delivery to replacement window"
+  },
+  "new_port_policy": "Any missing mutation receipt issuance, precommit retention seam, root-set verification or replay authority is PROPOSED_PENDING_REACCEPTANCE_AND_OWNER. No skeleton or product changes authorized.",
+  "fullDraft": "M03 complete FullDraft root integration remains MISSING; this one-command root does not close module."
+}

@@ -1,0 +1,72 @@
+{
+  "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER",
+  "issuer": "M04 document owner; opaque records held server-side",
+  "capture": {
+    "binding_ref": "11111111-1111-4111-8111-111111111111",
+    "document_uuid": "doc-undo-a",
+    "session_uuid": "session-undo-a",
+    "owner_generation": "3",
+    "operation": "design_document_undo",
+    "request_id": "22222222-2222-4222-8222-222222222222",
+    "expected_revision": "7",
+    "workflow_id": "33333333-3333-4333-8333-333333333333",
+    "transition_ordinal": "0"
+  },
+  "mutation_receipt": {
+    "proof_ref": "mutation-undo-7-8",
+    "before_revision": "7",
+    "after_revision": "8",
+    "before_semantic_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "after_semantic_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "history_before": "2",
+    "history_after": "1",
+    "redo_before": "0",
+    "redo_after": "1",
+    "pin_id": "pin-undo-7"
+  },
+  "pin_evidence": {
+    "issuer": "M05",
+    "pin_id": "pin-undo-7",
+    "actual_state": "Held",
+    "evidence_receipt_id": "pin-evidence-7",
+    "operation_role": "undo",
+    "operation_ordinal": "0"
+  },
+  "root_version_set": {
+    "before": {
+      "LiveDocuments": "40",
+      "UndoHistory": "18",
+      "RedoHistory": "4",
+      "RecoverySnapshots": "9",
+      "InFlightTransactions": "11"
+    },
+    "after": {
+      "LiveDocuments": "41",
+      "UndoHistory": "19",
+      "RedoHistory": "5",
+      "RecoverySnapshots": "9",
+      "InFlightTransactions": "11"
+    },
+    "scope": "doc-undo-a/session-undo-a",
+    "provider_id": "provider-a",
+    "epoch": "6",
+    "completeness": "Complete"
+  },
+  "rules": [
+    "Capture immutable at authorization; sender/window origin established out-of-band, never trust request binding alone.",
+    "M04 proof binds context, revision pair, semantic identity and history transition; M03 cannot mint success from an M05 receipt.",
+    "M05 issuer proof binds actual pin, workflow operation, scope/provider/epoch and complete root version set; no selected per-kind latest version mixing.",
+    "Verify stage-specific membership: restored content LiveDocuments, surviving history UndoHistory, outgoing content RedoHistory; retain union of old/new roots and all unresolved pins on uncertainty.",
+    "Receipt mismatch after confirmed M04 commit means AppliedRetentionDeferred, not unchanged error. No artificial rollback or automatic release.",
+    "If M04 commit cannot be established, return Indeterminate; preserve evidence and block automatic retry.",
+    "Held is valid only with actual issuer attestation; unknown pin state stays unknown in server evidence. Never synthesize Held from transfer failure.",
+    "Reject response with revision mismatching original issuer proof, even if wire schema accepts it.",
+    "Operation ID uses existing UUIDv5 workflow namespace and role undo/ordinal; no retry ordinal invention."
+  ],
+  "io": {
+    "FileCommit": "NOT CALLED",
+    "formal_save_ack": "NOT CALLED",
+    "formal_root_transfer": "NOT CALLED",
+    "reason": "Undo mutates in-memory document/history and retains material roots; it does not persist formal file bytes."
+  }
+}

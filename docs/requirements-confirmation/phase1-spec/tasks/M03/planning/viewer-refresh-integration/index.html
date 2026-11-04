@@ -1,0 +1,1749 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M03 Viewer Refresh</title><style>body{font:16px system-ui;background:#f4f6fa;color:#14233b;max-width:1100px;margin:40px auto;padding:24px}section{background:white;padding:24px;margin:20px 0;border-radius:12px}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{padding:9px;border:1px solid #ccd}</style><h1>M03 · Explicit Viewer Refresh</h1><p>PROPOSED_PENDING_OWNER · author document checks only · parent Yellow preserved</p><section><h2>Executive meaning</h2><pre>&quot;Explicit bounded refresh replaces one detached preview after current immutable projection validation. Failure retains visibly stale inert old projection.&quot;</pre></section><section><h2>Architecture / Hexagonal system view</h2><pre>{
+  &quot;hexagonal&quot;: &quot;Viewer UI -&gt; exact Tauri command/input port -&gt; design facade -&gt; M04 owner snapshot output port; C1 validated projection provider; trusted M01 identity adapter. No second owner.&quot;,
+  &quot;dependency&quot;: &quot;UI -&gt; Command -&gt; application facade -&gt; ports &lt;- M04/C1/M01 adapters&quot;,
+  &quot;state_owner&quot;: &quot;M04 owns authoritative document; application owns ephemeral per-consumer preview slot only. UI is projection.&quot;,
+  &quot;mutation&quot;: &quot;Only successful atomic preview slot exchange; failure stale/action-disabled UI status only.&quot;,
+  &quot;transaction&quot;: &quot;resolve -&gt; capture immutable current owner snapshot -&gt; validate temporary supported projection -&gt; exact delivery identity recheck -&gt; atomic slot replace&quot;,
+  &quot;forbidden&quot;: [
+    &quot;FileCommit&quot;,
+    &quot;ACK&quot;,
+    &quot;content mutation&quot;,
+    &quot;history mutation&quot;,
+    &quot;persistence&quot;,
+    &quot;automatic retry&quot;,
+    &quot;automatic expiry&quot;,
+    &quot;second owner&quot;
+  ]
+}</pre></section><section><h2>Module dependency view</h2><pre>&quot;Viewer \u2192 command/input port \u2192 design facade \u2192 output ports \u2190 M04 owner / C1 / M01 adapters&quot;</pre></section><section><h2>Contracts / Ownership / Transaction</h2><pre>[
+  &quot;Request expected_revision means current owner revision, not old preview source revision; stale preview is a refresh handle while its identity remains resolvable. PROPOSED_PENDING_OWNER.&quot;,
+  &quot;New UUID must differ from current old UUID; native UUID allocator guarantees globally fresh/non-reused UUID, authenticity NOT PROVEN by fixtures.&quot;,
+  &quot;Success starts sequence1, unchanged preview count even at four-slot capacity; failure does not retire old UUID.&quot;,
+  &quot;Typed observations eagerly reject malformed records; error precedence is proposal. Capture/delivery compare consumer, actual window instance, document, owner session, generation, closed, actual bounded revision.&quot;,
+  &quot;Immutable projection nodes/mocks/capabilities closed by accepted begin response schema; unsupported arbitrary action strings rejected; provider authenticity and C1 snapshot generation not proven.&quot;
+]</pre></section><section><h2>BDD / TDD / Traceability</h2><pre>[
+  {
+    &quot;id&quot;: &quot;VR-001&quot;,
+    &quot;behavior&quot;: &quot;replace stale slot at full capacity; real revision above JS safe integer&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;9007199254740993&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-002&quot;,
+    &quot;behavior&quot;: &quot;bounded current revision 0&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;0&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-003&quot;,
+    &quot;behavior&quot;: &quot;bounded current revision 18446744073709551615&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;18446744073709551615&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-004&quot;,
+    &quot;behavior&quot;: &quot;bounded current revision 7&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;7&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-005&quot;,
+    &quot;behavior&quot;: &quot;capture consumer changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-006&quot;,
+    &quot;behavior&quot;: &quot;delivery consumer changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-007&quot;,
+    &quot;behavior&quot;: &quot;capture window changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-008&quot;,
+    &quot;behavior&quot;: &quot;delivery window changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-009&quot;,
+    &quot;behavior&quot;: &quot;capture document changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;MissingBinding&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-010&quot;,
+    &quot;behavior&quot;: &quot;delivery document changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;MissingBinding&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-011&quot;,
+    &quot;behavior&quot;: &quot;capture session changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;MissingBinding&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-012&quot;,
+    &quot;behavior&quot;: &quot;delivery session changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;MissingBinding&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-013&quot;,
+    &quot;behavior&quot;: &quot;capture generation changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;StaleOwner&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-014&quot;,
+    &quot;behavior&quot;: &quot;delivery generation changed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;StaleOwner&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-015&quot;,
+    &quot;behavior&quot;: &quot;capture closed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;PreviewClosed&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-016&quot;,
+    &quot;behavior&quot;: &quot;delivery closed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;PreviewClosed&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-017&quot;,
+    &quot;behavior&quot;: &quot;actual late observed revision 0&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;StaleRevision&quot;,
+        &quot;details&quot;: {
+          &quot;expected&quot;: &quot;9007199254740993&quot;,
+          &quot;observed&quot;: &quot;0&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-018&quot;,
+    &quot;behavior&quot;: &quot;actual late observed revision 18446744073709551615&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;StaleRevision&quot;,
+        &quot;details&quot;: {
+          &quot;expected&quot;: &quot;9007199254740993&quot;,
+          &quot;observed&quot;: &quot;18446744073709551615&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-019&quot;,
+    &quot;behavior&quot;: &quot;request conflicts current revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;StaleRevision&quot;,
+        &quot;details&quot;: {
+          &quot;expected&quot;: &quot;7&quot;,
+          &quot;observed&quot;: &quot;9007199254740993&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-020&quot;,
+    &quot;behavior&quot;: &quot;old retired UUID&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;PreviewClosed&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-021&quot;,
+    &quot;behavior&quot;: &quot;closed old session&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;PreviewClosed&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-022&quot;,
+    &quot;behavior&quot;: &quot;caller denied&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+        &quot;details&quot;: {}
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-023&quot;,
+    &quot;behavior&quot;: &quot;owner provider not ready&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M04_OWNER_INTEGRATION&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-024&quot;,
+    &quot;behavior&quot;: &quot;actual provider CodecRejected&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;CodecRejected&quot;,
+        &quot;details&quot;: {
+          &quot;message&quot;: &quot;actual bounded C1 rejection&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-025&quot;,
+    &quot;behavior&quot;: &quot;actual provider ResourceLimit&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;ResourceLimit&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/projection&quot;,
+          &quot;limit&quot;: &quot;raw_design_utf8&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-026&quot;,
+    &quot;behavior&quot;: &quot;actual provider DependencyNotReady&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-027&quot;,
+    &quot;behavior&quot;: &quot;actual provider UnsupportedDocument&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;UnsupportedDocument&quot;,
+        &quot;details&quot;: {
+          &quot;nodes&quot;: [
+            {
+              &quot;node_id&quot;: &quot;legacy&quot;,
+              &quot;type&quot;: &quot;LegacyWidget&quot;,
+              &quot;reason&quot;: &quot;unsupported&quot;
+            }
+          ]
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-028&quot;,
+    &quot;behavior&quot;: &quot;actual provider AmbiguousStableId&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;AmbiguousStableId&quot;,
+        &quot;details&quot;: {
+          &quot;node_id&quot;: &quot;duplicate&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-029&quot;,
+    &quot;behavior&quot;: &quot;actual provider ParentMissing&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;ParentMissing&quot;,
+        &quot;details&quot;: {
+          &quot;node_id&quot;: &quot;child&quot;,
+          &quot;parent_id&quot;: &quot;absent&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-030&quot;,
+    &quot;behavior&quot;: &quot;actual provider ParentCycle&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;ParentCycle&quot;,
+        &quot;details&quot;: {
+          &quot;node_id&quot;: &quot;cycle&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-031&quot;,
+    &quot;behavior&quot;: &quot;malformed provider outcome &#x27;bogus&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-032&quot;,
+    &quot;behavior&quot;: &quot;malformed provider outcome True&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-033&quot;,
+    &quot;behavior&quot;: &quot;malformed provider outcome {&#x27;code&#x27;: &#x27;CodecRejected&#x27;, &#x27;details&#x27;: {&#x27;message&#x27;: 1}}&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-034&quot;,
+    &quot;behavior&quot;: &quot;malformed provider outcome {&#x27;code&#x27;: &#x27;CodecRejected&#x27;, &#x27;details&#x27;: {}, &#x27;extra&#x27;: True}&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-035&quot;,
+    &quot;behavior&quot;: &quot;reject provider trusted_local &#x27;false&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-036&quot;,
+    &quot;behavior&quot;: &quot;reject provider trusted_local 0&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-037&quot;,
+    &quot;behavior&quot;: &quot;reject provider trusted_local None&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-038&quot;,
+    &quot;behavior&quot;: &quot;reject provider trusted_local []&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-039&quot;,
+    &quot;behavior&quot;: &quot;reject provider ready &#x27;false&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-040&quot;,
+    &quot;behavior&quot;: &quot;reject provider ready 0&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-041&quot;,
+    &quot;behavior&quot;: &quot;reject provider ready None&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-042&quot;,
+    &quot;behavior&quot;: &quot;reject provider ready []&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-043&quot;,
+    &quot;behavior&quot;: &quot;typed capture revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-044&quot;,
+    &quot;behavior&quot;: &quot;typed capture revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-045&quot;,
+    &quot;behavior&quot;: &quot;typed capture generation&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-046&quot;,
+    &quot;behavior&quot;: &quot;typed capture closed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-047&quot;,
+    &quot;behavior&quot;: &quot;typed capture session&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-048&quot;,
+    &quot;behavior&quot;: &quot;typed capture extra&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-049&quot;,
+    &quot;behavior&quot;: &quot;typed delivery revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-050&quot;,
+    &quot;behavior&quot;: &quot;typed delivery revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-051&quot;,
+    &quot;behavior&quot;: &quot;typed delivery generation&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-052&quot;,
+    &quot;behavior&quot;: &quot;typed delivery closed&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-053&quot;,
+    &quot;behavior&quot;: &quot;typed delivery session&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-054&quot;,
+    &quot;behavior&quot;: &quot;typed delivery extra&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-055&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-056&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;01&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-057&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;-1&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-058&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;1.0&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-059&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;1e1&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-060&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;18446744073709551616&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;Range&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-061&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision &#x27;7\\n&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;InvalidNumber&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-062&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision True&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-063&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision 7&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-064&quot;,
+    &quot;behavior&quot;: &quot;request expected_revision None&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-065&quot;,
+    &quot;behavior&quot;: &quot;request preview_session &#x27;&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/preview_session&quot;,
+          &quot;reason&quot;: &quot;InvalidUuid&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-066&quot;,
+    &quot;behavior&quot;: &quot;request preview_session &#x27;22222222-2222-4222-8222-222222222222\\n&#x27;&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/preview_session&quot;,
+          &quot;reason&quot;: &quot;InvalidUuid&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-067&quot;,
+    &quot;behavior&quot;: &quot;request preview_session True&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/preview_session&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-068&quot;,
+    &quot;behavior&quot;: &quot;request preview_session None&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/preview_session&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-069&quot;,
+    &quot;behavior&quot;: &quot;unknown request field&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/request_id&quot;,
+          &quot;reason&quot;: &quot;UnknownField&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-070&quot;,
+    &quot;behavior&quot;: &quot;invalid projection preview_session&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-071&quot;,
+    &quot;behavior&quot;: &quot;invalid projection source_revision&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-072&quot;,
+    &quot;behavior&quot;: &quot;invalid projection expected_sequence&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-073&quot;,
+    &quot;behavior&quot;: &quot;invalid projection stale&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-074&quot;,
+    &quot;behavior&quot;: &quot;invalid projection extra&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-075&quot;,
+    &quot;behavior&quot;: &quot;invalid projection mock_state&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-076&quot;,
+    &quot;behavior&quot;: &quot;invalid projection capabilities&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-077&quot;,
+    &quot;behavior&quot;: &quot;duplicate node observation&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-078&quot;,
+    &quot;behavior&quot;: &quot;one slot exchange at count 1&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;9007199254740993&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-079&quot;,
+    &quot;behavior&quot;: &quot;one slot exchange at count 3&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;9007199254740993&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-080&quot;,
+    &quot;behavior&quot;: &quot;old sequence at maximum requires no increment&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: true,
+      &quot;value&quot;: {
+        &quot;preview_session&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;source_revision&quot;: &quot;9007199254740993&quot;,
+        &quot;expected_sequence&quot;: &quot;1&quot;,
+        &quot;stale&quot;: false,
+        &quot;mock_state&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Action&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Toggle&quot;,
+              &quot;checked&quot;: false
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Text&quot;,
+              &quot;text&quot;: &quot;&lt;script&gt;inert&lt;/script&gt;&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Number&quot;,
+              &quot;number_text&quot;: &quot;9007199254740993&quot;
+            }
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;value&quot;: {
+              &quot;kind&quot;: &quot;Selection&quot;,
+              &quot;item_id&quot;: &quot;item-A&quot;
+            }
+          }
+        ],
+        &quot;capabilities&quot;: [
+          {
+            &quot;node_id&quot;: &quot;button&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;Activate&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;toggle&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetToggle&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;text&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetText&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;number&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SetNumber&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;combo&quot;,
+            &quot;allowed_actions&quot;: [
+              &quot;SelectItem&quot;
+            ]
+          },
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;allowed_actions&quot;: []
+          }
+        ]
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-081&quot;,
+    &quot;behavior&quot;: &quot;missing request None&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/&quot;,
+          &quot;reason&quot;: &quot;Type&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-082&quot;,
+    &quot;behavior&quot;: &quot;missing request {}&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/preview_session&quot;,
+          &quot;reason&quot;: &quot;MissingField&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-083&quot;,
+    &quot;behavior&quot;: &quot;missing request {&#x27;preview_session&#x27;: &#x27;11111111-1111-4111-8111-111111111111&#x27;}&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;InvalidRequest&quot;,
+        &quot;details&quot;: {
+          &quot;field&quot;: &quot;/expected_revision&quot;,
+          &quot;reason&quot;: &quot;MissingField&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-084&quot;,
+    &quot;behavior&quot;: &quot;unknown provider record field&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;M01_NATIVE_IDENTITY&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-085&quot;,
+    &quot;behavior&quot;: &quot;node capability kind mismatch&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  },
+  {
+    &quot;id&quot;: &quot;VR-086&quot;,
+    &quot;behavior&quot;: &quot;invalid typed number observation&quot;,
+    &quot;expected&quot;: {
+      &quot;ok&quot;: false,
+      &quot;error&quot;: {
+        &quot;code&quot;: &quot;DependencyNotReady&quot;,
+        &quot;details&quot;: {
+          &quot;dependency&quot;: &quot;C1_CODEC&quot;
+        }
+      },
+      &quot;replayed&quot;: false
+    }
+  }
+]</pre></section><section><h2>Tasks / Acceptance / Allowed scope</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M03-VR-DOC&quot;,
+    &quot;primary_module&quot;: &quot;M03&quot;,
+    &quot;scope&quot;: &quot;new viewer-refresh-integration only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_DOCUMENT_CHECK_ONLY&quot;,
+    &quot;acceptance&quot;: &quot;all fixtures exact roots/state/calls;796 preserved; no adoption&quot;
+  }
+]</pre></section><section><h2>Verification / Regression</h2><pre>{
+  &quot;native&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;product_tests&quot;: &quot;NOT RUN&quot;,
+  &quot;valid_RED&quot;: &quot;NOT RUN&quot;,
+  &quot;independent_review&quot;: &quot;NOT RUN&quot;,
+  &quot;module_acceptance&quot;: &quot;NOT RUN&quot;
+}</pre></section><section><h2>Risks / Deferred work / Decisions</h2><pre>[
+  &quot;Native authenticity, reachability, concurrency atomicity and actual C1 support projection are trusted premises, unproven.&quot;,
+  &quot;Root DTO/error/precedence/refresh-current revision policy additions await Owner; no Skeleton/implementation authorization.&quot;
+]</pre></section><script type="application/json" id="module-spec">{"identity": {"module": "M03", "task": "PD-P1-M03-PREP-01", "command": "design_viewer_refresh", "status": "PROPOSED_PENDING_OWNER", "author": "/root/m03_viewer_refresh_packet"}, "intent": "Explicit bounded refresh replaces one detached preview after current immutable projection validation. Failure retains visibly stale inert old projection.", "architecture": {"hexagonal": "Viewer UI -> exact Tauri command/input port -> design facade -> M04 owner snapshot output port; C1 validated projection provider; trusted M01 identity adapter. No second owner.", "dependency": "UI -> Command -> application facade -> ports \u003c- M04/C1/M01 adapters", "state_owner": "M04 owns authoritative document; application owns ephemeral per-consumer preview slot only. UI is projection.", "mutation": "Only successful atomic preview slot exchange; failure stale/action-disabled UI status only.", "transaction": "resolve -> capture immutable current owner snapshot -> validate temporary supported projection -> exact delivery identity recheck -> atomic slot replace", "forbidden": ["FileCommit", "ACK", "content mutation", "history mutation", "persistence", "automatic retry", "automatic expiry", "second owner"]}, "contracts": ["Request expected_revision means current owner revision, not old preview source revision; stale preview is a refresh handle while its identity remains resolvable. PROPOSED_PENDING_OWNER.", "New UUID must differ from current old UUID; native UUID allocator guarantees globally fresh/non-reused UUID, authenticity NOT PROVEN by fixtures.", "Success starts sequence1, unchanged preview count even at four-slot capacity; failure does not retire old UUID.", "Typed observations eagerly reject malformed records; error precedence is proposal. Capture/delivery compare consumer, actual window instance, document, owner session, generation, closed, actual bounded revision.", "Immutable projection nodes/mocks/capabilities closed by accepted begin response schema; unsupported arbitrary action strings rejected; provider authenticity and C1 snapshot generation not proven."], "bdd_categories": {"success": "Applicable: document fixtures only", "boundary": "Applicable: document fixtures only", "invalid": "Applicable: document fixtures only", "dependency": "Applicable: document fixtures only", "partial": "Applicable: document fixtures only", "state": "Applicable: document fixtures only", "transaction": "Applicable: document fixtures only", "lifecycle": "Applicable: document fixtures only", "recovery": "Deferred: native proof NOT RUN", "cross-module": "Applicable: document fixtures only", "compatibility": "Deferred: native proof NOT RUN", "regression": "Applicable: document fixtures only"}, "tasks": [{"id": "M03-VR-DOC", "primary_module": "M03", "scope": "new viewer-refresh-integration only", "status": "AUTHOR_DOCUMENT_CHECK_ONLY", "acceptance": "all fixtures exact roots/state/calls;796 preserved; no adoption"}], "verification": {"native": "NOT RUN", "build": "NOT RUN", "product_tests": "NOT RUN", "valid_RED": "NOT RUN", "independent_review": "NOT RUN", "module_acceptance": "NOT RUN"}, "risks": ["Native authenticity, reachability, concurrency atomicity and actual C1 support projection are trusted premises, unproven.", "Root DTO/error/precedence/refresh-current revision policy additions await Owner; no Skeleton/implementation authorization."]}</script><section id="author-results"><h2>Author document checks</h2><p>86 new fixtures · 2974 checks PASS · 796 authority hashes preserved · 91 source inputs preserved. Native/build/product tests/valid RED/independent review NOT RUN.</p></section></html>

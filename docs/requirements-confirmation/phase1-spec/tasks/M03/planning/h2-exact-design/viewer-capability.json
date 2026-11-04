@@ -1,0 +1,58 @@
+{
+  "mode_entry": "Explicit begin from current immutable owner revision; read-only supported design only. Detached mock map seeded from declared safe props or neutral values; no content write. Consumer is bound to actual window instance/preview UUID.",
+  "supported_schema": "H2 supports Form/Button/CheckBox/TextBox/NumberInput/ComboBox only for mock capability. Button props permitted activation only. ComboBox items must be array of closed {id:string,label:string}, unique nonempty IDs; absent/unsupported items -> UnsupportedAction, not labels-as-identity. Scope must be absent or ui; unknown/non-ui scope disables mock capabilities without changing source. uiExclusive is data, never grants authority.",
+  "matrix": [
+    {
+      "node_type": "Button",
+      "actions": [
+        "Activate"
+      ],
+      "payload": "{}",
+      "effect": "increment detached activation_count only"
+    },
+    {
+      "node_type": "CheckBox",
+      "actions": [
+        "SetToggle"
+      ],
+      "payload": "{checked:bool}",
+      "effect": "set detached checked"
+    },
+    {
+      "node_type": "TextBox",
+      "actions": [
+        "SetText"
+      ],
+      "payload": "{text:string UTF8<=4096}",
+      "effect": "set detached text, render via textContent"
+    },
+    {
+      "node_type": "NumberInput",
+      "actions": [
+        "SetNumber"
+      ],
+      "payload": "{number_text:JSON number token <=128 bytes}",
+      "effect": "C1 exact numeric guard, set detached canonical numeric value; never JS float proof"
+    },
+    {
+      "node_type": "ComboBox",
+      "actions": [
+        "SelectItem"
+      ],
+      "payload": "{item_id:string}",
+      "effect": "only declared stable item ID from immutable supported items schema"
+    },
+    {
+      "node_type": "Form",
+      "actions": [],
+      "payload": "none",
+      "effect": "container only"
+    }
+  ],
+  "sequence": "Start expected_seq=1, increment checked once only on accepted mock action. Reject wrong/stale/invalid payload without consuming sequence. u64 max cannot be incremented -> SequenceOverflow and close preview, no partial update. Accepted action replay with old seq -> SequenceConflict; no second effect.",
+  "payload_rules": "Action determines exact oneOf payload variant: Activate {},SetToggle checked,SetText text,SetNumber number_text,SelectItem item_id. Reject extra fields, mismatch, arbitrary command/eval/url/file/target paths.",
+  "permissions": "Viewer capability allows only binding_get, viewer_begin/intent/refresh/close; never candidate/edit/undo/save/transfer or general dispatch/host-default. Viewer mock actions cannot call Tauri invoke by action string.",
+  "refresh": "Build temporary supported projection from current owner snapshot after explicit refresh request. Revalidate generation/revision/consumer, replace only on success, new preview UUID and sequence1; retire old preview. Failure leaves previous mock projection visibly stale, cannot act until valid refresh.",
+  "revocation": "Content revision, writer generation, project/document close, navigation/reload/destroy revokes affected preview; mock values discarded. No late response installs against different owner.",
+  "materials": "No file/network/image loading as mock effect. If immutable content references unresolved material/binding, show inert placeholder and disable dependent action with MissingMaterial/MissingBindingTarget. No fake media substitute or execution."
+}

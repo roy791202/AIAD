@@ -1,0 +1,3485 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M03 candidate prepare integration — proposed</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;background:#101620;color:#dce7f5;padding:20px}h1{color:#ffd479}section,details{padding:18px;margin:12px 0;background:#1b2635;border-radius:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}summary{cursor:pointer}</style><h1>M03 · design_candidate_prepare</h1><p>PLANNING · PENDING INDEPENDENT REVIEW · OWNER NOT ADOPTED · NO SKELETON</p><section><h2>Executive meaning</h2><p>This is a proposed prepare-command integration document. 96 author document checks passed; independent review and Owner adoption are pending. Product, full Draft, native IPC/UI, RED/GREEN, build/package/install: NOT RUN.</p></section><section><h2>Hexagonal system boundary</h2><p>UI / trusted Tauri driving adapter → prepare input port → H2 application coordinator → C1 semantic document. H2 → output ports (C1, ESS, M04 owner read, M05 read/resolve) ← provider adapters. M04 owns content/revision/history; H2 owns only ephemeral candidate handle.</p></section><section><h2>Module dependency view</h2><p>UI → Tauri admission → H2 facade → C1 codec / ESS projection / M04 owner-read / M05 material-read. No UI filesystem, second owner, prepare mutation, durable pin, root transfer or formal ACK.</p></section><section><h2>Transaction and ownership</h2><p>Read and validate temporary candidate → capture owner/material read evidence → recheck generation → proposed slot publication. All failures retain authoritative revision/history. Durable install pin and document commit remain install concerns. No expiry/TTL invented.</p></section><section><h2>Evidence boundary</h2><p>Source 796-file snapshot, M01-S2 green authority and historical SHA are historical references, distinct from source-current checkout. This author checks source-hashes.json, not a new 796-file inventory. C1 24+12 historical probes are traced and NOT rerun. Full C1 resource traversal, exact HOST representability, semantic projector and native provider security are not demonstrated by this subset fixture model.</p></section><details><summary>module-spec.json</summary><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;task&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+  &quot;command&quot;: &quot;design_candidate_prepare&quot;,
+  &quot;state&quot;: &quot;PLANNING_PENDING_INDEPENDENT_REVIEW_AND_OWNER&quot;,
+  &quot;architecture&quot;: {
+    &quot;driving&quot;: &quot;UI -&gt; trusted Tauri admission&quot;,
+    &quot;input&quot;: &quot;design_candidate_prepare request&quot;,
+    &quot;application&quot;: &quot;H2 facade coordinates guarded parse/project/owner read/material prepare&quot;,
+    &quot;domain&quot;: &quot;C1 DesignDoc semantics; M04 unique authoritative content/history owner&quot;,
+    &quot;output_ports&quot;: [
+      &quot;C1 codec&quot;,
+      &quot;ESS projector&quot;,
+      &quot;M04 owner read&quot;,
+      &quot;M05 prepare material&quot;
+    ],
+    &quot;driven&quot;: &quot;providers not implemented by this document&quot;,
+    &quot;ownership&quot;: &quot;M04 content/revision/history; H2 ephemeral candidate handle only; M05 material issuer&quot;,
+    &quot;mutation&quot;: &quot;No M04 mutation allowed&quot;,
+    &quot;transaction&quot;: &quot;Temporary parse/project, M04 owner read, M05 material read/resolve, verify captured read evidence and recheck authority, then proposed slot publication; no durable pin, content commit, root transfer, formal IO or ACK&quot;,
+    &quot;forbidden&quot;: [
+      &quot;UI direct filesystem&quot;,
+      &quot;facade second owner&quot;,
+      &quot;prepare install/consume&quot;,
+      &quot;formal file write/root ACK&quot;
+    ]
+  },
+  &quot;contracts&quot;: [
+    &quot;Prepare never increments revision/history, marks dirty, emits edit event, or consumes candidate&quot;,
+    &quot;Dependency missing returns typed DependencyNotReady, no fallback runtime&quot;,
+    &quot;Late owner change rejects publication; no success disclosure&quot;,
+    &quot;Raw inner source preserved independently of outer JSON fixture decoding&quot;
+  ],
+  &quot;BDD_categories&quot;: {
+    &quot;B1&quot;: &quot;Applicable&quot;,
+    &quot;B2&quot;: &quot;Applicable&quot;,
+    &quot;B3&quot;: &quot;Applicable&quot;,
+    &quot;B4&quot;: &quot;Applicable&quot;,
+    &quot;B5&quot;: &quot;Applicable&quot;,
+    &quot;B6&quot;: &quot;Applicable&quot;,
+    &quot;B7&quot;: &quot;Applicable&quot;,
+    &quot;B8&quot;: &quot;Applicable&quot;,
+    &quot;B9&quot;: &quot;Applicable&quot;,
+    &quot;B10&quot;: &quot;Applicable&quot;,
+    &quot;B11&quot;: &quot;Deferred: compatibility needs adopted C1 and target versions&quot;,
+    &quot;B12&quot;: &quot;Applicable&quot;
+  },
+  &quot;TDD&quot;: {
+    &quot;level&quot;: &quot;document model only, future L2 module contract/L3 native/L4 adjacent&quot;,
+    &quot;command&quot;: &quot;python docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-prepare-integration/check_documents.py&quot;,
+    &quot;valid_RED&quot;: &quot;Future product test compiles and fails on missing approved behavior; document checks/dependency absence are not RED&quot;
+  },
+  &quot;acceptance&quot;: [
+    &quot;Full roots validate under explicitly limited subset&quot;,
+    &quot;Each new fixture compares complete response, state and call log&quot;,
+    &quot;Seven typed domain diagnostics reject string fields&quot;,
+    &quot;Proof substitutions reject against immutable capture&quot;,
+    &quot;No product or old package changes&quot;,
+    &quot;Independent reviewer remains distinct from author&quot;
+  ],
+  &quot;choices&quot;: [
+    {
+      &quot;id&quot;: &quot;CP-P1&quot;,
+      &quot;decision&quot;: &quot;Successful prepare replaces previous candidate slot only after all guards pass; failure retains old slot.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-P2&quot;,
+      &quot;decision&quot;: &quot;Retained exact request includes raw inner text, scoped to admitted owner generation. Same request with altered number lexeme is a conflict.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-P3&quot;,
+      &quot;decision&quot;: &quot;ReadResolved material evidence is an internal proposed fixture projection only, not an adopted M05 DTO, durable pin or root transfer. Missing provider returns DependencyNotReady. Install owns any later pin seam.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-P4&quot;,
+      &quot;decision&quot;: &quot;No TTL invented. Historical owner-binding.json /request_records retains until owner closed, 128 keys/binding and 1024 runtime; no eviction/time retry. Slot replacement and old candidate replay authority effects remain Owner decisions.&quot;,
+      &quot;status&quot;: &quot;OPEN_OWNER&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-P5&quot;,
+      &quot;decision&quot;: &quot;Inner checker covers only syntax, decoded duplicate, top-level shape, exact decimal and raw numeric token size for new fixtures. Existing C1 24+12 traced, not rerun. Full C1 resource/type/numeric representability and ESS projection remain dependencies.&quot;,
+      &quot;status&quot;: &quot;LIMIT&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-P6&quot;,
+      &quot;decision&quot;: &quot;Model trusts issuer lookup authenticity, dependency outcome and unsupported list; native pin issuance, provider registry and real owner proof remain unproved.&quot;,
+      &quot;status&quot;: &quot;LIMIT&quot;
+    }
+  ],
+  &quot;C1_trace&quot;: {
+    &quot;original&quot;: &quot;../cx-c1-revision-v3/module-spec.json&quot;,
+    &quot;original_cases&quot;: 24,
+    &quot;resource_cases&quot;: 12,
+    &quot;rerun&quot;: &quot;NOT RUN; not counted as progress&quot;
+  },
+  &quot;lifecycle&quot;: [
+    {
+      &quot;event&quot;: &quot;open&quot;,
+      &quot;authority&quot;: &quot;main or ui-editor trusted local + existing project/document binding&quot;,
+      &quot;result&quot;: &quot;one shared S1 owner, default writer caller; existing owner only grants read view until transfer&quot;
+    },
+    {
+      &quot;event&quot;: &quot;prepare&quot;,
+      &quot;authority&quot;: &quot;current writer revision/generation&quot;,
+      &quot;result&quot;: &quot;candidate only, no dirty/history change&quot;
+    },
+    {
+      &quot;event&quot;: &quot;install&quot;,
+      &quot;authority&quot;: &quot;current writer + owned unused candidate + same captured revision&quot;,
+      &quot;result&quot;: &quot;S1 Edit commit once, revoke previews; failure no state change&quot;
+    },
+    {
+      &quot;event&quot;: &quot;select&quot;,
+      &quot;authority&quot;: &quot;authorized view + current revision&quot;,
+      &quot;result&quot;: &quot;ephemeral per-window selection only&quot;
+    },
+    {
+      &quot;event&quot;: &quot;transfer&quot;,
+      &quot;authority&quot;: &quot;current writer + actual target window exists&quot;,
+      &quot;result&quot;: &quot;generation+1, preserve content/history, retire candidates/previews&quot;
+    },
+    {
+      &quot;event&quot;: &quot;close dirty&quot;,
+      &quot;authority&quot;: &quot;writer confirms discard_unsaved true&quot;,
+      &quot;result&quot;: &quot;close/drop owner; no autosave, no clear journal&quot;
+    },
+    {
+      &quot;event&quot;: &quot;close without confirmation&quot;,
+      &quot;authority&quot;: &quot;dirty owner&quot;,
+      &quot;result&quot;: &quot;Busy/confirmation-required UI, owner retained&quot;
+    },
+    {
+      &quot;event&quot;: &quot;destroy/reload&quot;,
+      &quot;authority&quot;: &quot;trusted Tauri instance event&quot;,
+      &quot;result&quot;: &quot;revoke nonce and writer; prevent silent unsaved discard via CloseRequested confirmation; crash loss is not recovery proof&quot;
+    },
+    {
+      &quot;event&quot;: &quot;project switch&quot;,
+      &quot;authority&quot;: &quot;successful existing settings root change&quot;,
+      &quot;result&quot;: &quot;retire affected owner/candidate/preview; failed settings change leaves owner intact&quot;
+    },
+    {
+      &quot;event&quot;: &quot;M04 not ready&quot;,
+      &quot;authority&quot;: &quot;save or integrated formal load requested&quot;,
+      &quot;result&quot;: &quot;DependencyNotReady, no legacy fallback write&quot;
+    }
+  ],
+  &quot;not_run&quot;: [
+    &quot;fullDraft&quot;,
+    &quot;product&quot;,
+    &quot;native&quot;,
+    &quot;RED&quot;,
+    &quot;GREEN&quot;,
+    &quot;build&quot;,
+    &quot;package&quot;,
+    &quot;install&quot;
+  ],
+  &quot;Skeleton&quot;: &quot;NOT CREATED&quot;,
+  &quot;Owner&quot;: &quot;NOT ADOPTED&quot;,
+  &quot;module_complete&quot;: false,
+  &quot;limits&quot;: [
+    &quot;ESS projector and full C1 are fixture outcomes, not production implementations&quot;,
+    &quot;Proof fixture authentic issuer lookup is a premise; no native security proof&quot;,
+    &quot;No durable material pin is issued or verified by prepare model&quot;
+  ],
+  &quot;source_pointers&quot;: {
+    &quot;duplicate&quot;: &quot;../c1-resource-correction/resource-contract.json#/counting/5&quot;,
+    &quot;invalid_size&quot;: &quot;../c1-resource-correction/resource-contract.json#/tokens/number_token_bytes&quot;,
+    &quot;request_records&quot;: &quot;../h2-exact-design/owner-binding.json#/request_records&quot;,
+    &quot;lifecycle&quot;: &quot;../h2-exact-design/lifecycle.json&quot;
+  },
+  &quot;tasks&quot;: [
+    {
+      &quot;id&quot;: &quot;CP-DOC&quot;,
+      &quot;scope&quot;: &quot;Only this additive planning directory&quot;,
+      &quot;state&quot;: &quot;AUTHOR_DOCUMENT_MODEL_CHECKED_PENDING_INDEPENDENT_REVIEW&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-OWNER&quot;,
+      &quot;scope&quot;: &quot;Owner confirms replacement/replay/provider projection choices&quot;,
+      &quot;state&quot;: &quot;NOT ADOPTED&quot;
+    },
+    {
+      &quot;id&quot;: &quot;CP-NATIVE&quot;,
+      &quot;scope&quot;: &quot;Exact accepted Port/provider envelope -&gt; Skeleton -&gt; compile -&gt; valid RED&quot;,
+      &quot;state&quot;: &quot;BLOCKED_PENDING_OWNER&quot;
+    }
+  ],
+  &quot;UI_schema&quot;: {
+    &quot;component&quot;: &quot;Existing design candidate preparation interaction&quot;,
+    &quot;controls&quot;: &quot;No new product controls proposed by this document&quot;,
+    &quot;success&quot;: &quot;Candidate result only, never mark document saved or edited&quot;,
+    &quot;error&quot;: &quot;Keep active design and old candidate; show typed failure; late owner result suppressed&quot;,
+    &quot;empty&quot;: &quot;Missing/empty design input rejected by guarded parse; no slot mutation&quot;,
+    &quot;BDD_mapping&quot;: &quot;fixtures.json cases reference complete command request/response&quot;
+  },
+  &quot;fixture_count&quot;: 34,
+  &quot;traceability&quot;: [
+    {
+      &quot;BDD&quot;: &quot;prepare-success-replaces-slot&quot;,
+      &quot;TDD&quot;: &quot;document-model:prepare-success-replaces-slot&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/0&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;unknown-control-is-preserved-not-installable&quot;,
+      &quot;TDD&quot;: &quot;document-model:unknown-control-is-preserved-not-installable&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/1&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;number-lexeme-retained&quot;,
+      &quot;TDD&quot;: &quot;document-model:number-lexeme-retained&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/2&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;unauthorized&quot;,
+      &quot;TDD&quot;: &quot;document-model:unauthorized&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/3&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;closed&quot;,
+      &quot;TDD&quot;: &quot;document-model:closed&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/4&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;viewer&quot;,
+      &quot;TDD&quot;: &quot;document-model:viewer&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/5&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;owner-generation&quot;,
+      &quot;TDD&quot;: &quot;document-model:owner-generation&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/6&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;stale-revision&quot;,
+      &quot;TDD&quot;: &quot;document-model:stale-revision&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/7&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;dependency-C1_CODEC&quot;,
+      &quot;TDD&quot;: &quot;document-model:dependency-C1_CODEC&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/8&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;dependency-ESS_PROJECTOR&quot;,
+      &quot;TDD&quot;: &quot;document-model:dependency-ESS_PROJECTOR&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/9&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;dependency-M04_OWNER_INTEGRATION&quot;,
+      &quot;TDD&quot;: &quot;document-model:dependency-M04_OWNER_INTEGRATION&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/10&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;dependency-M05_MATERIAL&quot;,
+      &quot;TDD&quot;: &quot;document-model:dependency-M05_MATERIAL&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/11&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;duplicate-inner-key&quot;,
+      &quot;TDD&quot;: &quot;document-model:duplicate-inner-key&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/12&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;invalid-size-C1&quot;,
+      &quot;TDD&quot;: &quot;document-model:invalid-size-C1&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/13&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;malformed-inner&quot;,
+      &quot;TDD&quot;: &quot;document-model:malformed-inner&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/14&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;unknown-top-level&quot;,
+      &quot;TDD&quot;: &quot;document-model:unknown-top-level&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/15&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-PinNotReadable&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-PinNotReadable&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/16&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-GrantMismatch&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-GrantMismatch&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/17&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-LimitExceeded&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-LimitExceeded&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/18&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-BlobMissing&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-BlobMissing&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/19&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-SizeMismatch&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-SizeMismatch&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/20&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-IntegrityFailure&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-IntegrityFailure&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/21&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-IdentityChanged&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-IdentityChanged&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/22&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-AliasRejected&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-AliasRejected&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/23&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;material-UnsupportedPlatform&quot;,
+      &quot;TDD&quot;: &quot;document-model:material-UnsupportedPlatform&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/24&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;pin-proof-mismatch&quot;,
+      &quot;TDD&quot;: &quot;document-model:pin-proof-mismatch&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/25&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;late-owner-completion-dropped&quot;,
+      &quot;TDD&quot;: &quot;document-model:late-owner-completion-dropped&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/26&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;exact-replay&quot;,
+      &quot;TDD&quot;: &quot;document-model:exact-replay&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/27&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;conflicting-replay&quot;,
+      &quot;TDD&quot;: &quot;document-model:conflicting-replay&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/28&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;empty-inner&quot;,
+      &quot;TDD&quot;: &quot;document-model:empty-inner&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/29&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;null-inner&quot;,
+      &quot;TDD&quot;: &quot;document-model:null-inner&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/30&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;replay-after-close&quot;,
+      &quot;TDD&quot;: &quot;document-model:replay-after-close&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/31&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;replay-after-transfer&quot;,
+      &quot;TDD&quot;: &quot;document-model:replay-after-transfer&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/32&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;BDD&quot;: &quot;replay-unauthorized&quot;,
+      &quot;TDD&quot;: &quot;document-model:replay-unauthorized&quot;,
+      &quot;contract&quot;: &quot;No prepare content mutation or formal IO/ACK&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#/cases/33&quot;,
+      &quot;product_result&quot;: &quot;NOT RUN&quot;
+    }
+  ]
+}
+</pre></details><details><summary>new-policy-choices.json</summary><pre>[
+  {
+    &quot;id&quot;: &quot;CP-P1&quot;,
+    &quot;decision&quot;: &quot;Successful prepare replaces previous candidate slot only after all guards pass; failure retains old slot.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CP-P2&quot;,
+    &quot;decision&quot;: &quot;Retained exact request includes raw inner text, scoped to admitted owner generation. Same request with altered number lexeme is a conflict.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CP-P3&quot;,
+    &quot;decision&quot;: &quot;ReadResolved material evidence is an internal proposed fixture projection only, not an adopted M05 DTO, durable pin or root transfer. Missing provider returns DependencyNotReady. Install owns any later pin seam.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CP-P4&quot;,
+    &quot;decision&quot;: &quot;No TTL invented. Historical owner-binding.json /request_records retains until owner closed, 128 keys/binding and 1024 runtime; no eviction/time retry. Slot replacement and old candidate replay authority effects remain Owner decisions.&quot;,
+    &quot;status&quot;: &quot;OPEN_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CP-P5&quot;,
+    &quot;decision&quot;: &quot;Inner checker covers only syntax, decoded duplicate, top-level shape, exact decimal and raw numeric token size for new fixtures. Existing C1 24+12 traced, not rerun. Full C1 resource/type/numeric representability and ESS projection remain dependencies.&quot;,
+    &quot;status&quot;: &quot;LIMIT&quot;
+  },
+  {
+    &quot;id&quot;: &quot;CP-P6&quot;,
+    &quot;decision&quot;: &quot;Model trusts issuer lookup authenticity, dependency outcome and unsupported list; native pin issuance, provider registry and real owner proof remain unproved.&quot;,
+    &quot;status&quot;: &quot;LIMIT&quot;
+  }
+]
+</pre></details><details><summary>before-after.json</summary><pre>{
+  &quot;before&quot;: &quot;Prepare request/response roots existed separately; DomainRejected fields was string; U64 syntax not bounded.&quot;,
+  &quot;after&quot;: &quot;Proposed joined command model and new vectors, corrected strict U64 + typed domain errors; no existing artifact or public contract adopted/changed.&quot;
+}
+</pre></details><details><summary>fixtures.json</summary><pre>{
+  &quot;request&quot;: {
+    &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+    &quot;expected_generation&quot;: &quot;3&quot;,
+    &quot;expected_revision&quot;: &quot;7&quot;,
+    &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+    &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+  },
+  &quot;response&quot;: {
+    &quot;ok&quot;: true,
+    &quot;value&quot;: {
+      &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+      &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+      &quot;captured_revision&quot;: &quot;7&quot;,
+      &quot;unsupported&quot;: [],
+      &quot;installable&quot;: true
+    },
+    &quot;replayed&quot;: false
+  },
+  &quot;cases&quot;: [
+    {
+      &quot;id&quot;: &quot;prepare-success-replaces-slot&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: true,
+        &quot;slot&quot;: &quot;candidate-new&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: true,
+          &quot;value&quot;: {
+            &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;captured_revision&quot;: &quot;7&quot;,
+            &quot;unsupported&quot;: [],
+            &quot;installable&quot;: true
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;unknown-control-is-preserved-not-installable&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;FutureControl\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: [
+          {
+            &quot;node_id&quot;: &quot;form&quot;,
+            &quot;type&quot;: &quot;FutureControl&quot;,
+            &quot;reason&quot;: &quot;Unsupported type&quot;
+          }
+        ]
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: true,
+        &quot;slot&quot;: &quot;candidate-new&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: true,
+          &quot;value&quot;: {
+            &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;captured_revision&quot;: &quot;7&quot;,
+            &quot;unsupported&quot;: [
+              {
+                &quot;node_id&quot;: &quot;form&quot;,
+                &quot;type&quot;: &quot;FutureControl&quot;,
+                &quot;reason&quot;: &quot;Unsupported type&quot;
+              }
+            ],
+            &quot;installable&quot;: false
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;number-lexeme-retained&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.500000000000000000000}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: true,
+        &quot;slot&quot;: &quot;candidate-new&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: true,
+          &quot;value&quot;: {
+            &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;captured_revision&quot;: &quot;7&quot;,
+            &quot;unsupported&quot;: [],
+            &quot;installable&quot;: true
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;unauthorized&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: false,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;closed&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: true,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MissingBinding&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;viewer&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: false,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;WriterRequired&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;owner-generation&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;4&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;StaleOwner&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;stale-revision&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;6&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;StaleRevision&quot;,
+            &quot;details&quot;: {
+              &quot;expected&quot;: &quot;6&quot;,
+              &quot;observed&quot;: &quot;7&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;dependency-C1_CODEC&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: &quot;C1_CODEC&quot;,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;DependencyNotReady&quot;,
+            &quot;details&quot;: {
+              &quot;dependency&quot;: &quot;C1_CODEC&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;dependency-ESS_PROJECTOR&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: &quot;ESS_PROJECTOR&quot;,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;DependencyNotReady&quot;,
+            &quot;details&quot;: {
+              &quot;dependency&quot;: &quot;ESS_PROJECTOR&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;dependency-M04_OWNER_INTEGRATION&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: &quot;M04_OWNER_INTEGRATION&quot;,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;DependencyNotReady&quot;,
+            &quot;details&quot;: {
+              &quot;dependency&quot;: &quot;M04_OWNER_INTEGRATION&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;dependency-M05_MATERIAL&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: &quot;M05_MATERIAL&quot;,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;DependencyNotReady&quot;,
+            &quot;details&quot;: {
+              &quot;dependency&quot;: &quot;M05_MATERIAL&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;duplicate-inner-key&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;w\&quot;:801,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;invalid-size-C1&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      },
+      &quot;guard_source&quot;: &quot;../c1-resource-correction/resource-contract.json#/tokens/number_token_bytes (4096 inclusive); 4097-byte valid numeric token rejects before typed output&quot;
+    },
+    {
+      &quot;id&quot;: &quot;malformed-inner&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;unknown-top-level&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false,\&quot;other\&quot;:1}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-PinNotReadable&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;PinNotReadable&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;PinNotReadable&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-GrantMismatch&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;GrantMismatch&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;GrantMismatch&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-LimitExceeded&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;LimitExceeded&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;LimitExceeded&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-BlobMissing&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;BlobMissing&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;BlobMissing&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-SizeMismatch&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;SizeMismatch&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;SizeMismatch&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-IntegrityFailure&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;IntegrityFailure&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;IntegrityFailure&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-IdentityChanged&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;IdentityChanged&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;IdentityChanged&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-AliasRejected&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;AliasRejected&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;AliasRejected&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;material-UnsupportedPlatform&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;UnsupportedPlatform&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MaterialReadRejected&quot;,
+            &quot;details&quot;: {
+              &quot;reason&quot;: &quot;UnsupportedPlatform&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;pin-proof-mismatch&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: false,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;ProofMismatch&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;late-owner-completion-dropped&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: true,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;,
+          &quot;ESS semantic projection&quot;,
+          &quot;M04 owner read&quot;,
+          &quot;M05 prepare material&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;StaleOwner&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;exact-replay&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: {
+          &quot;request&quot;: {
+            &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+            &quot;expected_generation&quot;: &quot;3&quot;,
+            &quot;expected_revision&quot;: &quot;7&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+          },
+          &quot;response&quot;: {
+            &quot;ok&quot;: true,
+            &quot;value&quot;: {
+              &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+              &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+              &quot;captured_revision&quot;: &quot;7&quot;,
+              &quot;unsupported&quot;: [],
+              &quot;installable&quot;: true
+            },
+            &quot;replayed&quot;: false
+          }
+        },
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: true,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: true,
+          &quot;value&quot;: {
+            &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;captured_revision&quot;: &quot;7&quot;,
+            &quot;unsupported&quot;: [],
+            &quot;installable&quot;: true
+          },
+          &quot;replayed&quot;: true
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;conflicting-replay&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: {
+          &quot;request&quot;: {
+            &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+            &quot;expected_generation&quot;: &quot;3&quot;,
+            &quot;expected_revision&quot;: &quot;7&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;design_json&quot;: &quot;{}&quot;
+          },
+          &quot;response&quot;: {
+            &quot;ok&quot;: true,
+            &quot;value&quot;: {
+              &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+              &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+              &quot;captured_revision&quot;: &quot;7&quot;,
+              &quot;unsupported&quot;: [],
+              &quot;installable&quot;: true
+            },
+            &quot;replayed&quot;: false
+          }
+        },
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;RequestConflict&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;empty-inner&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;null-inner&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;null&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: null,
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [
+          &quot;C1 guarded inner text&quot;
+        ],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;CodecRejected&quot;,
+            &quot;details&quot;: {
+              &quot;message&quot;: &quot;C1 rejected; no typed document returned&quot;
+            }
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;replay-after-close&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: true,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: {
+          &quot;request&quot;: {
+            &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+            &quot;expected_generation&quot;: &quot;3&quot;,
+            &quot;expected_revision&quot;: &quot;7&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+          },
+          &quot;response&quot;: {
+            &quot;ok&quot;: true,
+            &quot;value&quot;: {
+              &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+              &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+              &quot;captured_revision&quot;: &quot;7&quot;,
+              &quot;unsupported&quot;: [],
+              &quot;installable&quot;: true
+            },
+            &quot;replayed&quot;: false
+          }
+        },
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;MissingBinding&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;replay-after-transfer&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: true,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;4&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: {
+          &quot;request&quot;: {
+            &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+            &quot;expected_generation&quot;: &quot;3&quot;,
+            &quot;expected_revision&quot;: &quot;7&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+          },
+          &quot;response&quot;: {
+            &quot;ok&quot;: true,
+            &quot;value&quot;: {
+              &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+              &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+              &quot;captured_revision&quot;: &quot;7&quot;,
+              &quot;unsupported&quot;: [],
+              &quot;installable&quot;: true
+            },
+            &quot;replayed&quot;: false
+          }
+        },
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;StaleOwner&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;replay-unauthorized&quot;,
+      &quot;request&quot;: {
+        &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;expected_generation&quot;: &quot;3&quot;,
+        &quot;expected_revision&quot;: &quot;7&quot;,
+        &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+      },
+      &quot;state&quot;: {
+        &quot;authorized&quot;: false,
+        &quot;closed&quot;: false,
+        &quot;writer&quot;: true,
+        &quot;generation&quot;: &quot;3&quot;,
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;retained&quot;: {
+          &quot;request&quot;: {
+            &quot;binding_ref&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+            &quot;expected_generation&quot;: &quot;3&quot;,
+            &quot;expected_revision&quot;: &quot;7&quot;,
+            &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+            &quot;design_json&quot;: &quot;{\&quot;format\&quot;:\&quot;sgenaxis.design\&quot;,\&quot;formatVersion\&quot;:1,\&quot;meta\&quot;:{},\&quot;nodes\&quot;:[{\&quot;id\&quot;:\&quot;form\&quot;,\&quot;type\&quot;:\&quot;Form\&quot;,\&quot;parentId\&quot;:null,\&quot;props\&quot;:{\&quot;w\&quot;:800,\&quot;h\&quot;:600,\&quot;future\&quot;:0.5}}],\&quot;selection\&quot;:null,\&quot;product_pass\&quot;:false}&quot;
+          },
+          &quot;response&quot;: {
+            &quot;ok&quot;: true,
+            &quot;value&quot;: {
+              &quot;candidate_ref&quot;: &quot;candidate-new&quot;,
+              &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+              &quot;captured_revision&quot;: &quot;7&quot;,
+              &quot;unsupported&quot;: [],
+              &quot;installable&quot;: true
+            },
+            &quot;replayed&quot;: false
+          }
+        },
+        &quot;dependency&quot;: null,
+        &quot;material&quot;: &quot;Ready&quot;,
+        &quot;proof&quot;: true,
+        &quot;late_owner&quot;: false,
+        &quot;unsupported&quot;: []
+      },
+      &quot;expected&quot;: {
+        &quot;revision&quot;: &quot;7&quot;,
+        &quot;history&quot;: &quot;2&quot;,
+        &quot;commits&quot;: 0,
+        &quot;FileCommit&quot;: 0,
+        &quot;ACK&quot;: 0,
+        &quot;consume&quot;: false,
+        &quot;deliver&quot;: false,
+        &quot;slot&quot;: &quot;candidate-old&quot;,
+        &quot;calls&quot;: [],
+        &quot;response&quot;: {
+          &quot;ok&quot;: false,
+          &quot;error&quot;: {
+            &quot;code&quot;: &quot;UnauthorizedCaller&quot;,
+            &quot;details&quot;: {}
+          },
+          &quot;replayed&quot;: false
+        }
+      }
+    }
+  ],
+  &quot;inner_text_policy&quot;: &quot;All command fixtures retain raw design_json strings. Never reconstruct inner duplicate fixture from outerValue.&quot;
+}
+</pre></details><details><summary>trusted-fixture-authority.json</summary><pre>{
+  &quot;issuer&quot;: &quot;M05&quot;,
+  &quot;purpose&quot;: &quot;Candidate&quot;,
+  &quot;state&quot;: &quot;ReadResolved&quot;,
+  &quot;owner&quot;: &quot;owner-fixture&quot;,
+  &quot;generation&quot;: &quot;3&quot;,
+  &quot;revision&quot;: &quot;7&quot;,
+  &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+  &quot;versions&quot;: [
+    [
+      &quot;asset&quot;,
+      &quot;v1&quot;
+    ],
+    [
+      &quot;asset&quot;,
+      &quot;v2&quot;
+    ]
+  ],
+  &quot;capture&quot;: {
+    &quot;owner&quot;: &quot;owner-fixture&quot;,
+    &quot;generation&quot;: &quot;3&quot;,
+    &quot;revision&quot;: &quot;7&quot;,
+    &quot;request_id&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+    &quot;versions&quot;: [
+      [
+        &quot;asset&quot;,
+        &quot;v1&quot;
+      ],
+      [
+        &quot;asset&quot;,
+        &quot;v2&quot;
+      ]
+    ]
+  },
+  &quot;formal_IO&quot;: false,
+  &quot;ACK&quot;: false,
+  &quot;model_only&quot;: &quot;Read/resolve material evidence, no durable pin issued by prepare; install pin seam remains separate&quot;
+}
+</pre></details><details><summary>schema-pointer-diff.json</summary><pre>{
+  &quot;strict_U64_source&quot;: &quot;../candidate-install-correction/request.schema.json#/$defs/U64Decimal&quot;,
+  &quot;occurrences&quot;: [
+    &quot;/$defs/U64Decimal&quot;,
+    &quot;/properties/expected_generation&quot;,
+    &quot;/properties/expected_revision&quot;,
+    &quot;/$defs/U64Decimal&quot;
+  ],
+  &quot;DomainRejected&quot;: &quot;exact seven typed objects copied from correction response&quot;
+}
+</pre></details><details><summary>verification.json</summary><pre>{
+  &quot;status&quot;: &quot;AUTHOR_DOCUMENT_MODEL_ONLY&quot;,
+  &quot;author&quot;: &quot;/root/m03_candidate_prepare_packet&quot;,
+  &quot;independent_acceptance&quot;: &quot;PENDING&quot;,
+  &quot;cases&quot;: 96,
+  &quot;results&quot;: [
+    {
+      &quot;id&quot;: &quot;request-root&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;response-root&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-missing-binding_ref&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-missing-expected_generation&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-missing-expected_revision&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-missing-request_id&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-missing-design_json&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;request-unexpected-ACK&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;response-missing-ok&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;response-missing-value&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;response-missing-replayed&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;response-unexpected-ACK&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;candidate-request_id&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;candidate-captured_revision&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;candidate-installable&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;prepare-success-replaces-slot&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;unknown-control-is-preserved-not-installable&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;number-lexeme-retained&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;unauthorized&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;closed&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;viewer&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;owner-generation&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;stale-revision&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;dependency-C1_CODEC&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;dependency-ESS_PROJECTOR&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;dependency-M04_OWNER_INTEGRATION&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;dependency-M05_MATERIAL&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;duplicate-inner-key&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;invalid-size-C1&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;malformed-inner&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;unknown-top-level&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-PinNotReadable&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-GrantMismatch&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-LimitExceeded&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-BlobMissing&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-SizeMismatch&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-IntegrityFailure&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-IdentityChanged&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-AliasRejected&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;material-UnsupportedPlatform&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;pin-proof-mismatch&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;late-owner-completion-dropped&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;exact-replay&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;conflicting-replay&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;empty-inner&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;null-inner&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;replay-after-close&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;replay-after-transfer&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;replay-unauthorized&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-NoUndoFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-NoUndoFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-NoUndoTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-NoUndoTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-RevisionOverflowFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-RevisionOverflowFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-RevisionOverflowTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-RevisionOverflowTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-ClosedFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-ClosedFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-ClosedTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-ClosedTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-RevisionConflictFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-RevisionConflictFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-RevisionConflictTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-RevisionConflictTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-NotReadyFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-NotReadyFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-NotReadyTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-NotReadyTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-BusyFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-BusyFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-BusyTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-BusyTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-InvalidInputFalse&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-InvalidInputFalse&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;typed-InvalidInputTrue&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;reject-untyped-InvalidInputTrue&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;0&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;9007199254740993&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;18446744073709551615&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;7\\n&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;18446744073709551616&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation&#x27;01&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_generation7&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;0&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;9007199254740993&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;18446744073709551615&#x27;&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;7\\n&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;18446744073709551616&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision&#x27;01&#x27;&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;expected_revision7&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;proof-complete&quot;,
+      &quot;expected_accept&quot;: true,
+      &quot;observed_accept&quot;: true,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;proof-issuer&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;proof-state&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;proof-generation&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;proof-versions&quot;,
+      &quot;expected_accept&quot;: false,
+      &quot;observed_accept&quot;: false,
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    }
+  ],
+  &quot;fullDraft&quot;: &quot;NOT RUN&quot;,
+  &quot;product&quot;: &quot;NOT RUN&quot;,
+  &quot;native&quot;: &quot;NOT RUN&quot;,
+  &quot;RED&quot;: &quot;NOT RUN&quot;,
+  &quot;GREEN&quot;: &quot;NOT RUN&quot;,
+  &quot;build_package_install&quot;: &quot;NOT RUN&quot;,
+  &quot;Owner_adoption&quot;: &quot;NOT ADOPTED&quot;,
+  &quot;Skeleton&quot;: &quot;NOT CREATED&quot;,
+  &quot;module_complete&quot;: false
+}
+</pre></details><details><summary>acceptance.json</summary><pre>{
+  &quot;author_checks&quot;: &quot;96 PASS_DOCUMENT_MODEL only&quot;,
+  &quot;independent_acceptance&quot;: &quot;PENDING; author cannot accept own work&quot;,
+  &quot;architecture&quot;: &quot;NOT ADOPTED&quot;,
+  &quot;Skeleton&quot;: &quot;NOT CREATED&quot;,
+  &quot;scope&quot;: &quot;New directory only; no old package, product, board or current-state mutation&quot;,
+  &quot;criteria&quot;: [
+    &quot;Full roots validate under explicitly limited subset&quot;,
+    &quot;Each new fixture compares complete response, state and call log&quot;,
+    &quot;Seven typed domain diagnostics reject string fields&quot;,
+    &quot;Proof substitutions reject against immutable capture&quot;,
+    &quot;No product or old package changes&quot;,
+    &quot;Independent reviewer remains distinct from author&quot;
+  ],
+  &quot;product_completion&quot;: false
+}
+</pre></details><details><summary>pending-automation.json</summary><pre>[
+  &quot;Owner adopts exact policies and Port/provider DTOs&quot;,
+  &quot;Complete C1 guarded parser resource/unknown/type policy and semantic projector&quot;,
+  &quot;M04 single owner read proof and M05 prepare pin provider&quot;,
+  &quot;Native caller fencing, late result suppression and replacement cleanup&quot;,
+  &quot;Full Draft validator&quot;,
+  &quot;Independent verification&quot;,
+  &quot;Accepted Skeleton and compiling valid product RED&quot;,
+  &quot;Build/package/install/native UI regression&quot;
+]
+</pre></details><details><summary>source-current.json</summary><pre>{
+  &quot;branch&quot;: &quot;cursor/ui-bhv-arch-layer-editor&quot;,
+  &quot;HEAD&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;historical_authority&quot;: {
+    &quot;current_HEAD&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+    &quot;historical_authority_HEAD&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+    &quot;authority_count&quot;: 796,
+    &quot;authority_drift&quot;: []
+  },
+  &quot;source_796&quot;: &quot;Historical 796-file authority snapshot; this author checks listed source hashes only, not a fresh complete product authority inventory.&quot;,
+  &quot;M01_S2&quot;: &quot;Existing green authority preserved; does not authorize M03 implementation.&quot;
+}
+</pre></details><details><summary>source-hashes.json</summary><pre>{
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/current-state.json&quot;: &quot;470c64beadd0794fede061b82bf17a8109dec15676dd5c1d306e77f58827efe9&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/PD-P1-M03-PREP-01.json&quot;: &quot;9dd03264f385a0be5cd95997c9f71bf88f114a78c6c4a798fb06cbc2c90d8390&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/cx-h2-revision-v3/module-spec.json&quot;: &quot;cb1732e2adafd5e420b55294e2cebe80f4833284190ff25778a679a65b9c8d74&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/cx-c1-revision-v3/module-spec.json&quot;: &quot;06c089529c24c39aa5dea694e7ba2169b1ff6be319f454d92458b160ed4619e2&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/lifecycle.json&quot;: &quot;ab3d5b9011d22ee4ec0d25d27e3a429a37f2970d6e821dfedc3189f4f1efe438&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-install-correction-review/review.json&quot;: &quot;e648e80903f2fb4ec9c1bba31322dbc74a63d46f5267e6a4e38cafcf53ad88d1&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/undo-correction-review/review.json&quot;: &quot;d177e9b8a5bc44cb4917e8acf5457e21040217be05dfae67c7dcc3dd2240c6d4&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-review/review.json&quot;: &quot;d87b58b52053582f0cd35641a2d82f15dc899fbc3294d033e05e0005d1f1e530&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-install-correction/source-current.json&quot;: &quot;f0c9b7a352b30f321310b2efadff09ac1a872377f239c302ea39356513650488&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-resource-correction/resource-contract.json&quot;: &quot;1f5535fb5e3e20c15be44972bb7cb3b6d267f1837c7852cc00481996035e3605&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/integration-contract-revision-v3/h2-design_candidate_prepare-request.schema.json&quot;: &quot;01bcb41d263021cc1b986a56c40fa39d559c0f3c4983583f4a311464984e5306&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/integration-contract-revision-v3/h2-design_candidate_prepare-response.schema.json&quot;: &quot;30b2f05233c8015e2474387f1e7d1a9be1d474c6a783292362653b29aa2ec7cf&quot;,
+  &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/owner-binding.json&quot;: &quot;83a980f034c044421c506d28a5bc7e94f6708e5807c670bb68223bac232944d7&quot;
+}
+</pre></details><details><summary>step-definition-stubs.json</summary><pre>[
+  {
+    &quot;scenario&quot;: &quot;prepare-success-replaces-slot&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;unknown-control-is-preserved-not-installable&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;number-lexeme-retained&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;unauthorized&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;closed&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;viewer&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;owner-generation&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;stale-revision&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;dependency-C1_CODEC&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;dependency-ESS_PROJECTOR&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;dependency-M04_OWNER_INTEGRATION&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;dependency-M05_MATERIAL&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;duplicate-inner-key&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;invalid-size-C1&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;malformed-inner&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;unknown-top-level&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-PinNotReadable&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-GrantMismatch&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-LimitExceeded&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-BlobMissing&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-SizeMismatch&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-IntegrityFailure&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-IdentityChanged&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-AliasRejected&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;material-UnsupportedPlatform&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;pin-proof-mismatch&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;late-owner-completion-dropped&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;exact-replay&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;conflicting-replay&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;empty-inner&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;null-inner&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;replay-after-close&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;replay-after-transfer&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  },
+  {
+    &quot;scenario&quot;: &quot;replay-unauthorized&quot;,
+    &quot;given&quot;: &quot;load exact request/state fixture&quot;,
+    &quot;when&quot;: &quot;future approved prepare Port; currently document model only&quot;,
+    &quot;then&quot;: &quot;compare complete response/state/call log&quot;,
+    &quot;automation&quot;: &quot;PENDING_NATIVE_PORT&quot;
+  }
+]
+</pre></details><details><summary>BDD specification</summary><pre>Feature: Prepare a design candidate without committing content
+  Background:
+    Given an authorized writer with a current document binding
+  Rule: Preparation preserves document revision and history
+
+  Scenario: prepare-success-replaces-slot
+    Given the documented prepare-success-replaces-slot preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: unknown-control-is-preserved-not-installable
+    Given the documented unknown-control-is-preserved-not-installable preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: number-lexeme-retained
+    Given the documented number-lexeme-retained preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: unauthorized
+    Given the documented unauthorized preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: closed
+    Given the documented closed preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: viewer
+    Given the documented viewer preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: owner-generation
+    Given the documented owner-generation preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: stale-revision
+    Given the documented stale-revision preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: dependency-C1_CODEC
+    Given the documented dependency-C1_CODEC preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: dependency-ESS_PROJECTOR
+    Given the documented dependency-ESS_PROJECTOR preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: dependency-M04_OWNER_INTEGRATION
+    Given the documented dependency-M04_OWNER_INTEGRATION preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: dependency-M05_MATERIAL
+    Given the documented dependency-M05_MATERIAL preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: duplicate-inner-key
+    Given the documented duplicate-inner-key preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: invalid-size-C1
+    Given the documented invalid-size-C1 preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: malformed-inner
+    Given the documented malformed-inner preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: unknown-top-level
+    Given the documented unknown-top-level preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-PinNotReadable
+    Given the documented material-PinNotReadable preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-GrantMismatch
+    Given the documented material-GrantMismatch preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-LimitExceeded
+    Given the documented material-LimitExceeded preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-BlobMissing
+    Given the documented material-BlobMissing preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-SizeMismatch
+    Given the documented material-SizeMismatch preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-IntegrityFailure
+    Given the documented material-IntegrityFailure preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-IdentityChanged
+    Given the documented material-IdentityChanged preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-AliasRejected
+    Given the documented material-AliasRejected preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: material-UnsupportedPlatform
+    Given the documented material-UnsupportedPlatform preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: pin-proof-mismatch
+    Given the documented pin-proof-mismatch preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: late-owner-completion-dropped
+    Given the documented late-owner-completion-dropped preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: exact-replay
+    Given the documented exact-replay preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: conflicting-replay
+    Given the documented conflicting-replay preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: empty-inner
+    Given the documented empty-inner preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: null-inner
+    Given the documented null-inner preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: replay-after-close
+    Given the documented replay-after-close preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: replay-after-transfer
+    Given the documented replay-after-transfer preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+
+  Scenario: replay-unauthorized
+    Given the documented replay-unauthorized preconditions
+    When the writer prepares the supplied design
+    Then the documented response is observed
+    And content revision and history remain unchanged
+</pre></details><details><summary>Executable document checker</summary><pre>&quot;&quot;&quot;Proposed command document model; never imports or exercises product code.&quot;&quot;&quot;
+import copy, json, pathlib, decimal, hashlib
+from schema_subset import Draft202012Validator
+P=pathlib.Path(__file__).parent
+def read(n): return json.loads((P/n).read_text(encoding=&#x27;utf8&#x27;))
+def error(code, details=None): return {&#x27;ok&#x27;:False,&#x27;error&#x27;:{&#x27;code&#x27;:code,&#x27;details&#x27;:details or {}},&#x27;replayed&#x27;:False}
+def validate(req,res):
+ Draft202012Validator(read(&#x27;request.schema.json&#x27;)).validate(req)
+ Draft202012Validator(read(&#x27;response.schema.json&#x27;)).validate(res)
+ if res[&#x27;ok&#x27;]:
+  assert res[&#x27;value&#x27;][&#x27;request_id&#x27;]==req[&#x27;request_id&#x27;]
+  assert res[&#x27;value&#x27;][&#x27;captured_revision&#x27;]==req[&#x27;expected_revision&#x27;]
+  assert res[&#x27;value&#x27;][&#x27;installable&#x27;]==(not bool(res[&#x27;value&#x27;][&#x27;unsupported&#x27;]))
+def inner(text):
+ def pairs(items):
+  d={}
+  for k,v in items:
+   if k in d: raise ValueError(&#x27;duplicate:&#x27;+k)
+   d[k]=v
+  return d
+ def number(token):
+  if len(token)&gt;4096:raise ValueError(&#x27;C1 number_token_bytes&#x27;)
+  return decimal.Decimal(token)
+ d=json.loads(text,object_pairs_hook=pairs,parse_float=number,parse_int=number)
+ assert d[&#x27;format&#x27;]==&#x27;sgenaxis.design&#x27; and d[&#x27;formatVersion&#x27;]==1
+ assert d[&#x27;product_pass&#x27;] is False
+ assert not set(d)-{&#x27;format&#x27;,&#x27;formatVersion&#x27;,&#x27;meta&#x27;,&#x27;nodes&#x27;,&#x27;selection&#x27;,&#x27;product_pass&#x27;}
+ return d
+def model(c):
+ r=c[&#x27;request&#x27;]; s=c[&#x27;state&#x27;]; calls=[]
+ out={&#x27;revision&#x27;:s[&#x27;revision&#x27;],&#x27;history&#x27;:s[&#x27;history&#x27;],&#x27;commits&#x27;:0,&#x27;FileCommit&#x27;:0,&#x27;ACK&#x27;:0,&#x27;consume&#x27;:False,&#x27;deliver&#x27;:False,&#x27;slot&#x27;:s[&#x27;slot&#x27;],&#x27;calls&#x27;:calls}
+ def done(response): return dict(out,response=response)
+ if not s[&#x27;authorized&#x27;]: return done(error(&#x27;UnauthorizedCaller&#x27;))
+ if s[&#x27;closed&#x27;]: return done(error(&#x27;MissingBinding&#x27;))
+ if not s[&#x27;writer&#x27;]: return done(error(&#x27;WriterRequired&#x27;))
+ if s[&#x27;generation&#x27;]!=r[&#x27;expected_generation&#x27;]: return done(error(&#x27;StaleOwner&#x27;))
+ if s[&#x27;retained&#x27;]:
+  if s[&#x27;retained&#x27;][&#x27;request&#x27;]!=r:return done(error(&#x27;RequestConflict&#x27;))
+  out[&#x27;deliver&#x27;]=True
+  return done(dict(s[&#x27;retained&#x27;][&#x27;response&#x27;],replayed=True))
+ if s[&#x27;revision&#x27;]!=r[&#x27;expected_revision&#x27;]:return done(error(&#x27;StaleRevision&#x27;,{&#x27;expected&#x27;:r[&#x27;expected_revision&#x27;],&#x27;observed&#x27;:s[&#x27;revision&#x27;]}))
+ for dep in [&#x27;C1_CODEC&#x27;,&#x27;ESS_PROJECTOR&#x27;,&#x27;M04_OWNER_INTEGRATION&#x27;,&#x27;M05_MATERIAL&#x27;]:
+  if s[&#x27;dependency&#x27;]==dep:return done(error(&#x27;DependencyNotReady&#x27;,{&#x27;dependency&#x27;:dep}))
+ calls.append(&#x27;C1 guarded inner text&#x27;)
+ try:d=inner(r[&#x27;design_json&#x27;])
+ except (ValueError,AssertionError,KeyError,TypeError):return done(error(&#x27;CodecRejected&#x27;,{&#x27;message&#x27;:&#x27;C1 rejected; no typed document returned&#x27;}))
+ calls.extend([&#x27;ESS semantic projection&#x27;,&#x27;M04 owner read&#x27;,&#x27;M05 prepare material&#x27;])
+ if s[&#x27;material&#x27;]!=&#x27;Ready&#x27;:return done(error(&#x27;MaterialReadRejected&#x27;,{&#x27;reason&#x27;:s[&#x27;material&#x27;]}))
+ if not s[&#x27;proof&#x27;]:return done(error(&#x27;ProofMismatch&#x27;))
+ if s[&#x27;late_owner&#x27;]:return done(error(&#x27;StaleOwner&#x27;))
+ out.update(slot=&#x27;candidate-new&#x27;,deliver=True)
+ return done({&#x27;ok&#x27;:True,&#x27;value&#x27;:{&#x27;candidate_ref&#x27;:&#x27;candidate-new&#x27;,&#x27;request_id&#x27;:r[&#x27;request_id&#x27;],&#x27;captured_revision&#x27;:s[&#x27;revision&#x27;],&#x27;unsupported&#x27;:s[&#x27;unsupported&#x27;],&#x27;installable&#x27;:not bool(s[&#x27;unsupported&#x27;])},&#x27;replayed&#x27;:False})
+def proofcheck(p,t):
+ assert p==t,&#x27;immutable issuer lookup mismatch&#x27;
+ assert p[&#x27;issuer&#x27;]==&#x27;M05&#x27; and p[&#x27;purpose&#x27;]==&#x27;Candidate&#x27; and p[&#x27;state&#x27;]==&#x27;ReadResolved&#x27;
+ assert p[&#x27;owner&#x27;]==p[&#x27;capture&#x27;][&#x27;owner&#x27;] and p[&#x27;generation&#x27;]==p[&#x27;capture&#x27;][&#x27;generation&#x27;]
+ assert p[&#x27;revision&#x27;]==p[&#x27;capture&#x27;][&#x27;revision&#x27;] and p[&#x27;request_id&#x27;]==p[&#x27;capture&#x27;][&#x27;request_id&#x27;]
+ assert set(map(tuple,p[&#x27;versions&#x27;]))==set(map(tuple,p[&#x27;capture&#x27;][&#x27;versions&#x27;]))
+ assert p[&#x27;formal_IO&#x27;]==p[&#x27;ACK&#x27;]==False
+def main():
+ results=[]
+ def record(id,fn,accept=True):
+  try:fn(); actual=True
+  except (AssertionError,ValueError,KeyError,TypeError):actual=False
+  assert actual==accept,id
+  results.append({&#x27;id&#x27;:id,&#x27;expected_accept&#x27;:accept,&#x27;observed_accept&#x27;:actual,&#x27;status&#x27;:&#x27;PASS_DOCUMENT_MODEL&#x27;})
+ f=read(&#x27;fixtures.json&#x27;); req=f[&#x27;request&#x27;]; response=f[&#x27;response&#x27;]
+ for name,value in [(&#x27;request&#x27;,req),(&#x27;response&#x27;,response)]:record(name+&#x27;-root&#x27;,lambda name=name,value=value:Draft202012Validator(read(name+&#x27;.schema.json&#x27;)).validate(value))
+ for name,value in [(&#x27;request&#x27;,req),(&#x27;response&#x27;,response)]:
+  for key in value:
+   b=copy.deepcopy(value);del b[key]
+   record(name+&#x27;-missing-&#x27;+key,lambda name=name,b=b:Draft202012Validator(read(name+&#x27;.schema.json&#x27;)).validate(b),False)
+  b=copy.deepcopy(value);b[&#x27;formal_ACK&#x27;]=True
+  record(name+&#x27;-unexpected-ACK&#x27;,lambda name=name,b=b:Draft202012Validator(read(name+&#x27;.schema.json&#x27;)).validate(b),False)
+ for key,value in [(&#x27;request_id&#x27;,&#x27;other&#x27;),(&#x27;captured_revision&#x27;,&#x27;8&#x27;),(&#x27;installable&#x27;,&#x27;true&#x27;)]:
+  b=copy.deepcopy(response);b[&#x27;value&#x27;][key]=value
+  record(&#x27;candidate-&#x27;+key,lambda b=b:validate(req,b),False)
+ for c in f[&#x27;cases&#x27;]:
+  def run(c=c):
+   got=model(c)
+   Draft202012Validator(read(&#x27;request.schema.json&#x27;)).validate(c[&#x27;request&#x27;])
+   Draft202012Validator(read(&#x27;response.schema.json&#x27;)).validate(got[&#x27;response&#x27;])
+   validate(c[&#x27;request&#x27;],got[&#x27;response&#x27;])
+   assert got==c[&#x27;expected&#x27;],(c[&#x27;id&#x27;],got,c[&#x27;expected&#x27;])
+  record(c[&#x27;id&#x27;],run)
+ for code,fields in [(&#x27;NoUndo&#x27;,{}),(&#x27;RevisionOverflow&#x27;,{}),(&#x27;Closed&#x27;,{}),(&#x27;RevisionConflict&#x27;,{}),(&#x27;NotReady&#x27;,{}),(&#x27;Busy&#x27;,{}),(&#x27;InvalidInput&#x27;,{&#x27;field&#x27;:&#x27;expected_revision&#x27;})]:
+  for replay in [False,True]:
+   r={&#x27;ok&#x27;:False,&#x27;error&#x27;:{&#x27;code&#x27;:&#x27;DomainRejected&#x27;,&#x27;details&#x27;:{&#x27;code&#x27;:code,&#x27;fields&#x27;:fields}},&#x27;replayed&#x27;:replay}
+   record(&#x27;typed-&#x27;+code+str(replay),lambda r=r:Draft202012Validator(read(&#x27;response.schema.json&#x27;)).validate(r))
+   b=copy.deepcopy(r); b[&#x27;error&#x27;][&#x27;details&#x27;][&#x27;fields&#x27;]=&#x27;{}&#x27;
+   record(&#x27;reject-untyped-&#x27;+code+str(replay),lambda b=b:Draft202012Validator(read(&#x27;response.schema.json&#x27;)).validate(b),False)
+ for field in [&#x27;expected_generation&#x27;,&#x27;expected_revision&#x27;]:
+  for v in [&#x27;0&#x27;,&#x27;9007199254740993&#x27;,&#x27;18446744073709551615&#x27;,&#x27;7\n&#x27;,&#x27;18446744073709551616&#x27;,&#x27;01&#x27;,7]:
+   r=dict(req);r[field]=v
+   record(field+repr(v),lambda r=r:Draft202012Validator(read(&#x27;request.schema.json&#x27;)).validate(r),v in [&#x27;0&#x27;,&#x27;9007199254740993&#x27;,&#x27;18446744073709551615&#x27;])
+ t=read(&#x27;trusted-fixture-authority.json&#x27;);record(&#x27;proof-complete&#x27;,lambda:proofcheck(t,t))
+ for key,v in [(&#x27;issuer&#x27;,&#x27;M04&#x27;),(&#x27;state&#x27;,&#x27;Unknown&#x27;),(&#x27;generation&#x27;,&#x27;4&#x27;),(&#x27;versions&#x27;,[])]:
+  p=copy.deepcopy(t);p[key]=v;record(&#x27;proof-&#x27;+key,lambda p=p:proofcheck(p,t),False)
+ for path,h in read(&#x27;source-hashes.json&#x27;).items():assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()==h,path
+ verification={&#x27;status&#x27;:&#x27;AUTHOR_DOCUMENT_MODEL_ONLY&#x27;,&#x27;author&#x27;:&#x27;/root/m03_candidate_prepare_packet&#x27;,&#x27;independent_acceptance&#x27;:&#x27;PENDING&#x27;,&#x27;cases&#x27;:len(results),&#x27;results&#x27;:results,&#x27;fullDraft&#x27;:&#x27;NOT RUN&#x27;,&#x27;product&#x27;:&#x27;NOT RUN&#x27;,&#x27;native&#x27;:&#x27;NOT RUN&#x27;,&#x27;RED&#x27;:&#x27;NOT RUN&#x27;,&#x27;GREEN&#x27;:&#x27;NOT RUN&#x27;,&#x27;build_package_install&#x27;:&#x27;NOT RUN&#x27;,&#x27;Owner_adoption&#x27;:&#x27;NOT ADOPTED&#x27;,&#x27;Skeleton&#x27;:&#x27;NOT CREATED&#x27;,&#x27;module_complete&#x27;:False}
+ (P/&#x27;verification.json&#x27;).write_text(json.dumps(verification,indent=2)+&#x27;\n&#x27;,encoding=&#x27;utf8&#x27;)
+ print(json.dumps({&#x27;document_cases&#x27;:len(results),&#x27;status&#x27;:verification[&#x27;status&#x27;]}))
+if __name__==&#x27;__main__&#x27;:main()
+</pre></details><script type="application/json" id="module-spec">{"module": "M03", "task": "PD-P1-M03-PREP-01", "command": "design_candidate_prepare", "state": "PLANNING_PENDING_INDEPENDENT_REVIEW_AND_OWNER", "architecture": {"driving": "UI -> trusted Tauri admission", "input": "design_candidate_prepare request", "application": "H2 facade coordinates guarded parse/project/owner read/material prepare", "domain": "C1 DesignDoc semantics; M04 unique authoritative content/history owner", "output_ports": ["C1 codec", "ESS projector", "M04 owner read", "M05 prepare material"], "driven": "providers not implemented by this document", "ownership": "M04 content/revision/history; H2 ephemeral candidate handle only; M05 material issuer", "mutation": "No M04 mutation allowed", "transaction": "Temporary parse/project, M04 owner read, M05 material read/resolve, verify captured read evidence and recheck authority, then proposed slot publication; no durable pin, content commit, root transfer, formal IO or ACK", "forbidden": ["UI direct filesystem", "facade second owner", "prepare install/consume", "formal file write/root ACK"]}, "contracts": ["Prepare never increments revision/history, marks dirty, emits edit event, or consumes candidate", "Dependency missing returns typed DependencyNotReady, no fallback runtime", "Late owner change rejects publication; no success disclosure", "Raw inner source preserved independently of outer JSON fixture decoding"], "BDD_categories": {"B1": "Applicable", "B2": "Applicable", "B3": "Applicable", "B4": "Applicable", "B5": "Applicable", "B6": "Applicable", "B7": "Applicable", "B8": "Applicable", "B9": "Applicable", "B10": "Applicable", "B11": "Deferred: compatibility needs adopted C1 and target versions", "B12": "Applicable"}, "TDD": {"level": "document model only, future L2 module contract/L3 native/L4 adjacent", "command": "python docs/requirements-confirmation/phase1-spec/tasks/M03/planning/candidate-prepare-integration/check_documents.py", "valid_RED": "Future product test compiles and fails on missing approved behavior; document checks/dependency absence are not RED"}, "acceptance": ["Full roots validate under explicitly limited subset", "Each new fixture compares complete response, state and call log", "Seven typed domain diagnostics reject string fields", "Proof substitutions reject against immutable capture", "No product or old package changes", "Independent reviewer remains distinct from author"], "choices": [{"id": "CP-P1", "decision": "Successful prepare replaces previous candidate slot only after all guards pass; failure retains old slot.", "status": "PROPOSED_NOT_ADOPTED"}, {"id": "CP-P2", "decision": "Retained exact request includes raw inner text, scoped to admitted owner generation. Same request with altered number lexeme is a conflict.", "status": "PROPOSED_NOT_ADOPTED"}, {"id": "CP-P3", "decision": "ReadResolved material evidence is an internal proposed fixture projection only, not an adopted M05 DTO, durable pin or root transfer. Missing provider returns DependencyNotReady. Install owns any later pin seam.", "status": "PROPOSED_NOT_ADOPTED"}, {"id": "CP-P4", "decision": "No TTL invented. Historical owner-binding.json /request_records retains until owner closed, 128 keys/binding and 1024 runtime; no eviction/time retry. Slot replacement and old candidate replay authority effects remain Owner decisions.", "status": "OPEN_OWNER"}, {"id": "CP-P5", "decision": "Inner checker covers only syntax, decoded duplicate, top-level shape, exact decimal and raw numeric token size for new fixtures. Existing C1 24+12 traced, not rerun. Full C1 resource/type/numeric representability and ESS projection remain dependencies.", "status": "LIMIT"}, {"id": "CP-P6", "decision": "Model trusts issuer lookup authenticity, dependency outcome and unsupported list; native pin issuance, provider registry and real owner proof remain unproved.", "status": "LIMIT"}], "C1_trace": {"original": "../cx-c1-revision-v3/module-spec.json", "original_cases": 24, "resource_cases": 12, "rerun": "NOT RUN; not counted as progress"}, "lifecycle": [{"event": "open", "authority": "main or ui-editor trusted local + existing project/document binding", "result": "one shared S1 owner, default writer caller; existing owner only grants read view until transfer"}, {"event": "prepare", "authority": "current writer revision/generation", "result": "candidate only, no dirty/history change"}, {"event": "install", "authority": "current writer + owned unused candidate + same captured revision", "result": "S1 Edit commit once, revoke previews; failure no state change"}, {"event": "select", "authority": "authorized view + current revision", "result": "ephemeral per-window selection only"}, {"event": "transfer", "authority": "current writer + actual target window exists", "result": "generation+1, preserve content/history, retire candidates/previews"}, {"event": "close dirty", "authority": "writer confirms discard_unsaved true", "result": "close/drop owner; no autosave, no clear journal"}, {"event": "close without confirmation", "authority": "dirty owner", "result": "Busy/confirmation-required UI, owner retained"}, {"event": "destroy/reload", "authority": "trusted Tauri instance event", "result": "revoke nonce and writer; prevent silent unsaved discard via CloseRequested confirmation; crash loss is not recovery proof"}, {"event": "project switch", "authority": "successful existing settings root change", "result": "retire affected owner/candidate/preview; failed settings change leaves owner intact"}, {"event": "M04 not ready", "authority": "save or integrated formal load requested", "result": "DependencyNotReady, no legacy fallback write"}], "not_run": ["fullDraft", "product", "native", "RED", "GREEN", "build", "package", "install"], "Skeleton": "NOT CREATED", "Owner": "NOT ADOPTED", "module_complete": false, "limits": ["ESS projector and full C1 are fixture outcomes, not production implementations", "Proof fixture authentic issuer lookup is a premise; no native security proof", "No durable material pin is issued or verified by prepare model"], "source_pointers": {"duplicate": "../c1-resource-correction/resource-contract.json#/counting/5", "invalid_size": "../c1-resource-correction/resource-contract.json#/tokens/number_token_bytes", "request_records": "../h2-exact-design/owner-binding.json#/request_records", "lifecycle": "../h2-exact-design/lifecycle.json"}, "tasks": [{"id": "CP-DOC", "scope": "Only this additive planning directory", "state": "AUTHOR_DOCUMENT_MODEL_CHECKED_PENDING_INDEPENDENT_REVIEW"}, {"id": "CP-OWNER", "scope": "Owner confirms replacement/replay/provider projection choices", "state": "NOT ADOPTED"}, {"id": "CP-NATIVE", "scope": "Exact accepted Port/provider envelope -> Skeleton -> compile -> valid RED", "state": "BLOCKED_PENDING_OWNER"}], "UI_schema": {"component": "Existing design candidate preparation interaction", "controls": "No new product controls proposed by this document", "success": "Candidate result only, never mark document saved or edited", "error": "Keep active design and old candidate; show typed failure; late owner result suppressed", "empty": "Missing/empty design input rejected by guarded parse; no slot mutation", "BDD_mapping": "fixtures.json cases reference complete command request/response"}, "fixture_count": 34, "traceability": [{"BDD": "prepare-success-replaces-slot", "TDD": "document-model:prepare-success-replaces-slot", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/0", "product_result": "NOT RUN"}, {"BDD": "unknown-control-is-preserved-not-installable", "TDD": "document-model:unknown-control-is-preserved-not-installable", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/1", "product_result": "NOT RUN"}, {"BDD": "number-lexeme-retained", "TDD": "document-model:number-lexeme-retained", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/2", "product_result": "NOT RUN"}, {"BDD": "unauthorized", "TDD": "document-model:unauthorized", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/3", "product_result": "NOT RUN"}, {"BDD": "closed", "TDD": "document-model:closed", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/4", "product_result": "NOT RUN"}, {"BDD": "viewer", "TDD": "document-model:viewer", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/5", "product_result": "NOT RUN"}, {"BDD": "owner-generation", "TDD": "document-model:owner-generation", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/6", "product_result": "NOT RUN"}, {"BDD": "stale-revision", "TDD": "document-model:stale-revision", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/7", "product_result": "NOT RUN"}, {"BDD": "dependency-C1_CODEC", "TDD": "document-model:dependency-C1_CODEC", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/8", "product_result": "NOT RUN"}, {"BDD": "dependency-ESS_PROJECTOR", "TDD": "document-model:dependency-ESS_PROJECTOR", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/9", "product_result": "NOT RUN"}, {"BDD": "dependency-M04_OWNER_INTEGRATION", "TDD": "document-model:dependency-M04_OWNER_INTEGRATION", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/10", "product_result": "NOT RUN"}, {"BDD": "dependency-M05_MATERIAL", "TDD": "document-model:dependency-M05_MATERIAL", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/11", "product_result": "NOT RUN"}, {"BDD": "duplicate-inner-key", "TDD": "document-model:duplicate-inner-key", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/12", "product_result": "NOT RUN"}, {"BDD": "invalid-size-C1", "TDD": "document-model:invalid-size-C1", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/13", "product_result": "NOT RUN"}, {"BDD": "malformed-inner", "TDD": "document-model:malformed-inner", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/14", "product_result": "NOT RUN"}, {"BDD": "unknown-top-level", "TDD": "document-model:unknown-top-level", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/15", "product_result": "NOT RUN"}, {"BDD": "material-PinNotReadable", "TDD": "document-model:material-PinNotReadable", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/16", "product_result": "NOT RUN"}, {"BDD": "material-GrantMismatch", "TDD": "document-model:material-GrantMismatch", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/17", "product_result": "NOT RUN"}, {"BDD": "material-LimitExceeded", "TDD": "document-model:material-LimitExceeded", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/18", "product_result": "NOT RUN"}, {"BDD": "material-BlobMissing", "TDD": "document-model:material-BlobMissing", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/19", "product_result": "NOT RUN"}, {"BDD": "material-SizeMismatch", "TDD": "document-model:material-SizeMismatch", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/20", "product_result": "NOT RUN"}, {"BDD": "material-IntegrityFailure", "TDD": "document-model:material-IntegrityFailure", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/21", "product_result": "NOT RUN"}, {"BDD": "material-IdentityChanged", "TDD": "document-model:material-IdentityChanged", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/22", "product_result": "NOT RUN"}, {"BDD": "material-AliasRejected", "TDD": "document-model:material-AliasRejected", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/23", "product_result": "NOT RUN"}, {"BDD": "material-UnsupportedPlatform", "TDD": "document-model:material-UnsupportedPlatform", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/24", "product_result": "NOT RUN"}, {"BDD": "pin-proof-mismatch", "TDD": "document-model:pin-proof-mismatch", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/25", "product_result": "NOT RUN"}, {"BDD": "late-owner-completion-dropped", "TDD": "document-model:late-owner-completion-dropped", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/26", "product_result": "NOT RUN"}, {"BDD": "exact-replay", "TDD": "document-model:exact-replay", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/27", "product_result": "NOT RUN"}, {"BDD": "conflicting-replay", "TDD": "document-model:conflicting-replay", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/28", "product_result": "NOT RUN"}, {"BDD": "empty-inner", "TDD": "document-model:empty-inner", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/29", "product_result": "NOT RUN"}, {"BDD": "null-inner", "TDD": "document-model:null-inner", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/30", "product_result": "NOT RUN"}, {"BDD": "replay-after-close", "TDD": "document-model:replay-after-close", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/31", "product_result": "NOT RUN"}, {"BDD": "replay-after-transfer", "TDD": "document-model:replay-after-transfer", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/32", "product_result": "NOT RUN"}, {"BDD": "replay-unauthorized", "TDD": "document-model:replay-unauthorized", "contract": "No prepare content mutation or formal IO/ACK", "fixture": "fixtures.json#/cases/33", "product_result": "NOT RUN"}]}</script></html>

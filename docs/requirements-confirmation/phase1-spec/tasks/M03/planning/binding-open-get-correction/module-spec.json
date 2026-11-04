@@ -1,0 +1,282 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "slice": "Binding open + get only",
+  "status": "PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER",
+  "scope": "Only this new planning folder; no product, Skeleton, board, current-state or old packet writes",
+  "author": "/root/m03_open_get_correction",
+  "independent_acceptance": "NOT RUN",
+  "full_lifecycle": "NOT COMPLETE; close and transfer are deferred separately",
+  "intent": "Attach an authorized native view to an identity-bound M04 owner and read current immutable projection without creating another owner or mutating document state",
+  "architecture": {
+    "hexagonal": "Native UI → design caller adapter → M03 open/get facade → existing M04 attach/get input dependency → M04 sole owner → existing S1",
+    "dependency": "M03 facade depends on opaque M04 handle contract only. Native sender identity enters through trusted adapter. No UI filesystem or S1 access.",
+    "modules": {
+      "M03": "Derived binding and projection delivery",
+      "M04": "Authoritative document identity/session/content/history/baselines/writer generation",
+      "M01": "Trusted native project/document binding evidence; no identity minted from document_reference"
+    },
+    "state_ownership": "M04 alone owns exactly one S1 session per trusted document. Fixture observation store is a test double, not a proposed runtime registry. M03 stores only derived attachment handle/instance/generation.",
+    "mutation": "Open creates derived view attachment only; get reads. Content, history, revision and dirty baselines unchanged. No S1 construction or direct ownership adoption.",
+    "transaction": "Authenticate native caller → validate closed request → resolve trusted reference and identity → M04 attach/get observation → verify observation context → deliver current projection only. No partial facade attachment on failure. No formal IO/ACK/material pin or root transfer.",
+    "forbidden": [
+      "new owner registry",
+      "direct S1 constructor",
+      "filesystem load fallback",
+      "UI supplied native capability",
+      "new manifest/adoption API",
+      "implicit writer claim",
+      "save proof reused for attach"
+    ],
+    "system_context": "Local main/editor/viewer windows consume an existing M04 design document; external native identity provider remains outside the M03 boundary",
+    "input_ports": [
+      "design_binding_open(document_reference)",
+      "design_binding_get(binding_ref)"
+    ],
+    "output_ports": [
+      "Existing proposed M04 attach_document(trusted_binding) → opaque DocumentOwnerHandle",
+      "Existing proposed M04 get_projection(handle) → immutable projection; exact integration not yet accepted"
+    ],
+    "driving_adapters": [
+      "Native role/origin/instance checked Tauri design command adapter",
+      "Document test adapter only"
+    ],
+    "driven_adapters": [
+      "M04 owner integration as existing dependency; absent integration fails closed"
+    ],
+    "diagrams": {
+      "hexagonal": "Native windows → design caller adapter → M03 input commands → derived facade → M04 input port → sole M04 S1 owner",
+      "module_dependency": "UI rendering → Tauri caller guard → M03 facade → M04 attach/get contract; M01 trusted identity supplied through owner integration. No backward M04→UI or domain→native dependency."
+    }
+  },
+  "commands": [
+    "design_binding_open",
+    "design_binding_get"
+  ],
+  "roots": [
+    "h2-design_binding_open-request.schema.json",
+    "h2-design_binding_open-response.schema.json",
+    "h2-design_binding_get-request.schema.json",
+    "h2-design_binding_get-response.schema.json"
+  ],
+  "contract": {
+    "C1": "Unauthorized native sender produces zero dependency calls and no state change",
+    "C2": "Missing M04 owner-open integration returns DependencyNotReady(M04_OWNER_INTEGRATION); never invent document content",
+    "C3": "document_reference is a lookup hint against trusted binding only; cannot adopt identity, path or writer rights",
+    "C4": "Every returned binding/session/document/generation derives from authenticated M04 observation and trusted native instance",
+    "C5": "Get never returns another native instance binding; viewer can read only explicitly attached projection",
+    "C6": "Repeated open/get are reads/attachments, carry no request_id and promise no mutation replay/exactly-once",
+    "C7": "Retired instance, close, transfer, root switch or restart observations fence old bindings; pending old replies cannot install newer UI state Current trusted attachment_active=false independently revokes delivery even while native window remains live; missing typed current observation discards. Current trusted attachment_active=false independently revokes delivery even while native window remains live; missing typed current observation discards. Current trusted attachment_active=false independently revokes delivery even while native window remains live; missing typed current observation discards. Current trusted attachment_active=false independently revokes delivery even while native window remains live; missing typed current observation discards.",
+    "C8": "Unsupported/missing Form projection stays raw and inert with can_edit=false; no C1 filtering/stamping",
+    "C9": "No content/history/baseline/revision mutation, no candidate creation or preview grant in open/get"
+  },
+  "permissions": {
+    "open": [
+      "main",
+      "ui-editor"
+    ],
+    "get": [
+      "main",
+      "ui-editor",
+      "ui-viewer"
+    ],
+    "origin": "Only native tauri://localhost or http(s)://tauri.localhost without port; remote/dev origins rejected",
+    "instance": "Injected trusted live native window nonce, never labels alone. Viewer get requires preexisting explicit attachment; viewer open denied.",
+    "adopt": "M04 integration must supply already approved identity binding; no new adoption behavior authorized"
+  },
+  "lifecycle": {
+    "close": "DEFERRED command; fixture external observation may revoke derived binding, does not implement close",
+    "transfer": "DEFERRED command; external M04 generation change invalidates candidates/previews and old bindings by common contract, not a facade ownership mutation",
+    "late_ACK": "No ACK called. Late save/install results belong to their original issuer workflow; open/get cannot apply ACK, claim replay or downgrade newer UI projection.",
+    "replay": "No request_id in either root. Unknown request_id is rejected. No durable lookup/new H2 reconciliation command added.",
+    "restart": "Old binding MissingBinding; new open requires trusted native/current owner observations, cannot claim old mutation result"
+  },
+  "calls": {
+    "M04_attach_or_get": "Document-model fixture only; native integration NOT RUN",
+    "S1": "NOT CALLED",
+    "formal_IO": "NOT CALLED",
+    "formal_ACK": "NOT CALLED",
+    "material_pin": "NOT CALLED",
+    "save_proof": "NOT APPLICABLE"
+  },
+  "UI_schema": {
+    "component": "Design binding projection",
+    "role": "main/editor attach; viewer existing attachment read",
+    "controls": "Existing document selection invokes open; refresh invokes get. No new controls proposed",
+    "validation": "Closed request schema then trusted identity binding",
+    "loading": "Preserve current display with loading marker",
+    "error": "Preserve previous display, show safe plain text diagnostic, no blind mutation retry",
+    "empty": "MissingBinding diagnostic; never synthesize Form",
+    "disabled": "can_edit=false for nonwriter/unsupported/missing Form/dependency unavailable",
+    "success": "Install only after trusted current attachment authority and complete tuple comparison, then nondecreasing revision.",
+    "accessibility": "Announce diagnostic and loading state; no focus steal"
+  },
+  "acceptance": [
+    "All four complete root schemas self-contained with closed objects and local refs",
+    "Every physical UUID/u64/digest pattern audited; reachable root positive/negative probes run in Python and Node",
+    "Seven exact DomainRejected objects preserved, never string fields/Debug parsing",
+    "Document reducer cases verify zero content mutation and missing dependency/cross-instance fences",
+    "796 authority source hashes compared and drift reported",
+    "Independent reviewer and Owner adoption pending; no readiness or module-complete claim"
+  ],
+  "pending_automation": [
+    "M04 attach/get integration contract owner review",
+    "Native sender/origin/window replacement tests after approved Skeleton and valid RED",
+    "Real UI projection delivery ordering test",
+    "Separate close/transfer exact command packets and revocation integration tests",
+    "Cross-module regression after implementation"
+  ],
+  "risks": [
+    "M04 owner-open integration is not established by these fixture observations",
+    "Open deduplication/resource limits are proposed, not an approved runtime capability",
+    "No runtime/native/product proof or acceptance performed"
+  ],
+  "BDD_coverage": [
+    {
+      "category": "B1 Primary success",
+      "status": "Applicable",
+      "evidence_or_reason": "BG-01/open and BG-02/get"
+    },
+    {
+      "category": "B2 Input boundaries",
+      "status": "Applicable",
+      "evidence_or_reason": "empty reference, UUID controls, u64 maximum and overflow"
+    },
+    {
+      "category": "B3 Invalid input",
+      "status": "Applicable",
+      "evidence_or_reason": "closed roots, missing/unknown fields"
+    },
+    {
+      "category": "B4 Dependency failure",
+      "status": "Applicable",
+      "evidence_or_reason": "BG-05 missing integration; proof mismatch"
+    },
+    {
+      "category": "B5 Partial failure",
+      "status": "Applicable",
+      "evidence_or_reason": "Invalid observation leaves no partial facade attachment"
+    },
+    {
+      "category": "B6 State consistency",
+      "status": "Applicable",
+      "evidence_or_reason": "All document model cases preserve content/history/baselines/revision"
+    },
+    {
+      "category": "B7 Transaction",
+      "status": "Applicable",
+      "evidence_or_reason": "Attach only after full trusted context verification"
+    },
+    {
+      "category": "B8 Lifecycle",
+      "status": "Applicable",
+      "evidence_or_reason": "Old generation/session/native instance rejected; delivery fenced"
+    },
+    {
+      "category": "B9 Recovery/rollback",
+      "status": "Not Applicable",
+      "evidence_or_reason": "No content mutation or rollback. Restart binding invalidation covered without reconciliation implementation"
+    },
+    {
+      "category": "B10 Cross-module",
+      "status": "Applicable",
+      "evidence_or_reason": "M04/M01 fixture-shaped observations only; real integration pending"
+    },
+    {
+      "category": "B11 Compatibility",
+      "status": "Deferred",
+      "evidence_or_reason": "Real native OS/platform and existing UI integration require separately approved Skeleton/RED"
+    },
+    {
+      "category": "B12 Regression critical",
+      "status": "Deferred",
+      "evidence_or_reason": "Old accepted document suites not rerun; product regression NOT RUN"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "BG-OPEN-GET-CORRECTION",
+      "primary_module": "M03",
+      "layer": "Planning document boundary",
+      "intent": "Attach an authorized native view to an identity-bound M04 owner and read current immutable projection without creating another owner or mutating document state",
+      "allowed_files": [
+        "M03/planning/binding-open-get-correction/**"
+      ],
+      "protected_files": [
+        "All product/tests",
+        "All old planning packages",
+        "board",
+        "current-state"
+      ],
+      "contracts": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+        "C9"
+      ],
+      "BDD": "correction.feature + schema.feature + inherited module.feature/case-scenarios.feature",
+      "TDD": "check_correction.py; document model only, product valid RED NOT RUN",
+      "fixture": "fixtures.json and trusted-fixture-authority.json",
+      "acceptance": [
+        "All four complete root schemas self-contained with closed objects and local refs",
+        "Every physical UUID/u64/digest pattern audited; reachable root positive/negative probes run in Python and Node",
+        "Seven exact DomainRejected objects preserved, never string fields/Debug parsing",
+        "Document reducer cases verify zero content mutation and missing dependency/cross-instance fences",
+        "796 authority source hashes compared and drift reported",
+        "Independent reviewer and Owner adoption pending; no readiness or module-complete claim"
+      ],
+      "status": "AUTHOR_DOCUMENT_CHECKED_PENDING_INDEPENDENT_REVIEW",
+      "implementation_gate": "NOT_READY_FOR_IMPLEMENTATION",
+      "regression": "Separate product integration and regression after Owner adoption/Skeleton/valid RED"
+    }
+  ],
+  "revision": "binding-open-get-correction-v1",
+  "diagnostic_policy": {
+    "status": "PROPOSED_PENDING_OWNER",
+    "precedence": [
+      "native caller authorization",
+      "request root type",
+      "lexicographically sorted unknown fields",
+      "schema required order missing fields",
+      "property types",
+      "lexical UUID",
+      "binding lookup",
+      "dependency availability",
+      "trusted observation identity"
+    ],
+    "non_object": {
+      "field": "",
+      "reason": "Type",
+      "rootType": "null|boolean|number|string|array"
+    },
+    "DTO_change": "Add rootType only for non-object requests. Existing object InvalidRequest field/reason shape unchanged. rootType is JSON root type; no Python exception text or authority metadata."
+  },
+  "trusted_delivery_seam": {
+    "status": "PROPOSED_PENDING_OWNER_NOT_PRODUCT_SKELETON",
+    "fields": [
+      "instance",
+      "binding_ref",
+      "document_uuid",
+      "session_uuid",
+      "owner_generation",
+      "project_uuid",
+      "root_instance",
+      "runtime_epoch",
+      "attachment_active:boolean",
+      "native_live:boolean"
+    ],
+    "provider": "Current authenticated internal attachment/M04/native observation at delivery; not pending snapshot, UI flag or label. Missing or malformed observation fails closed. No liveness-as-authority inference.",
+    "invalidation": "External attachment revocation discards even when native_live=true. runtime epoch, project, root instance, native instance, binding, document, session, generation compared independently.",
+    "commands": "close and transfer definitions remain deferred; no new lifecycle implementation authorized."
+  },
+  "primary_new_evidence": {
+    "BG-R1": "54 new reducer/precedence + 48 complete-root type cases",
+    "BG-R2": "81 new trusted delivery cases",
+    "regression_only": "408 complete roots + 335 physical pattern definitions + 35 reducer cases"
+  }
+}

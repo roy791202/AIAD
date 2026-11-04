@@ -1,0 +1,52 @@
+{
+  "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+  "new_known_fields": [
+    {
+      "wire": "/meta/gridSize",
+      "type": "Option<serde_json::Number>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain0 (grid off), integer/fraction numeric value under numeric representability guard; no clamp/round/default in codec",
+      "rust": "DesignMeta.grid_size, rename gridSize, default None, omit on serialize when None",
+      "owner": "M03 design metadata; Editor displays/project defaults without creating a content edit",
+      "evidence": "app.js:setDesignGridPx currently rounds/clamps UI input; this is observed behavior, not authorization to rewrite imported document"
+    },
+    {
+      "wire": "/meta/formSize",
+      "type": "Option<String>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain string spelling, no parse/rewrite/rounding in codec; geometry interpretation remains separate",
+      "rust": "DesignMeta.form_size, rename formSize, default None, omit None",
+      "owner": "stored design metadata; runtime must not silently reconcile it with root geometry",
+      "evidence": "app.js:setDesignFormSize/designFormSizeToken writes width x height metadata"
+    },
+    {
+      "wire": "/meta/guides",
+      "type": "Option<DesignGuides>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "present object requires v and h; numeric vectors preserve order and duplicate values; empty arrays valid",
+      "rust": "new HOST DesignGuides {pub v:Vec<serde_json::Number>,pub h:Vec<serde_json::Number>}; DesignMeta.guides optional",
+      "owner": "persistent design guides; no UI/global preference store authority",
+      "evidence": "app.js:ensureDesignGuidesMeta initializes v/h arrays"
+    },
+    {
+      "wire": "/nodes/*/scope",
+      "type": "Option<String>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "retain string, including unknown scope labels as data; unknown scope cannot grant Viewer action authority",
+      "rust": "DesignNode.scope default None, omit None",
+      "owner": "design node identity/ownership declaration, not caller authorization",
+      "evidence": "app.js imports/new nodes assign scope=ui"
+    },
+    {
+      "wire": "/nodes/*/uiExclusive",
+      "type": "Option<bool>",
+      "presence": "missing stays missing; explicit null invalid",
+      "value": "false remains false, true remains true; no default true in codec",
+      "rust": "DesignNode.ui_exclusive, rename uiExclusive, default None, omit None",
+      "owner": "node metadata; cannot override architecture/document owner",
+      "evidence": "app.js imports/new nodes assign uiExclusive=true"
+    }
+  ],
+  "existing_known_fields": "Preserve existing format/version/meta.title/updatedAt/targetStack/nodes/selection/product_pass and all node id/type/parentId/props/bddHint/tddHint/behaviorHints. Existing documented default behavior of old fields retained; new optional fields never synthesized.",
+  "identity": "Keep existing non-UUID node IDs verbatim; never map names to IDs, regenerate IDs, or infer cross-location by labels. Graph/ownership policies beyond representation remain H2."
+}

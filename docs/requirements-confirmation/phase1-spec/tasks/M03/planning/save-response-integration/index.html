@@ -1,0 +1,53 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M03 save 命令整合候選</title><h1>M03 design_document_save：命令到 IO outcome 整合候選</h1><p>PROPOSED_PENDING_REACCEPTANCE_AND_OWNER；不是產品實作或完整 M03 驗收。</p><p>原 v3 response 只有失敗分支。本候選補上完整 Saved／CommittedAckDeferred 分支、修正共用錯誤片段並串接既有 IO 六種錯誤／13 stages。UI 只收 opaque proof 與封閉原因；私有路徑與原始錯誤留在 server evidence。</p><p>Storage 的 stage 不是 rollback 證明；不確定回 UnverifiedOutcome。已驗證檔案提交後 roots／ACK 失敗保留證據與 pin，不假稱未寫入。</p><p>本輪新增36個完整response案例、8個生命週期文件oracle、22條IO映射；33個local refs resolve。作者日期：2026-11-03 Asia/Taipei。新增分支與欄位逐項對照見 decisions-before-after.json。</p><p>文件 schema 與生命週期 oracle 是計畫證據，不是 native／產品測試。見 verification.json；完整 validator 未執行。</p><pre>{
+  &quot;id&quot;: &quot;M03-SAVE-RESPONSE-INTEGRATION&quot;,
+  &quot;parent_task&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+  &quot;module&quot;: &quot;M03 H2 facade, dependency M04 owner and M05 retention; IO remains driven Port&quot;,
+  &quot;status&quot;: &quot;PROPOSED_PENDING_REACCEPTANCE_AND_OWNER&quot;,
+  &quot;created_at&quot;: &quot;2026-11-02T17:00:39.723493+00:00&quot;,
+  &quot;head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+  &quot;branch&quot;: &quot;cursor/ui-bhv-arch-layer-editor&quot;,
+  &quot;scope&quot;: &quot;One command document integration only. No product implementation/Skeleton, no original packet rewrite, no union envelope authorization.&quot;,
+  &quot;architecture&quot;: {
+    &quot;hexagonal&quot;: &quot;UI -&gt; closed H2 save input -&gt; M03 facade -&gt; unique M04 DocumentOwner -&gt; FileCommitPort / M05 retention ports &lt;- adapters&quot;,
+    &quot;dependency&quot;: &quot;M03 delegates save; no direct adapter/FS calls, no second document owner&quot;,
+    &quot;ownership&quot;: &quot;S1 owns content and semantic baselines; HOST owns derived capture/proof/reservation; IO owns private journal; M05 owns pin/root receipts&quot;,
+    &quot;transaction&quot;: &quot;capture -&gt; file receipt verification -&gt; M05 root transfer -&gt; captured semantic ACK; post-file failure cannot rollback file&quot;,
+    &quot;forbidden&quot;: &quot;UI raw filesystem/receipt input; facade own S1; private IO journal mutation; retry/release on uncertain outcome&quot;
+  },
+  &quot;new_choices&quot;: [
+    &quot;Explicit Saved/CommittedAckDeferred success wire encoding absent in original H2 v3 root&quot;,
+    &quot;Closed SaveRejected redacted UI projection of four non-Storage IO error variants&quot;,
+    &quot;Conservative Storage all-stage UnverifiedOutcome until positive no-write evidence&quot;,
+    &quot;Save resource-token placement/precedence&quot;
+  ],
+  &quot;traceability&quot;: {
+    &quot;command&quot;: &quot;request.schema.json&quot;,
+    &quot;complete_response_root&quot;: &quot;response.schema.json&quot;,
+    &quot;IO_outcomes&quot;: &quot;io-outcome-map.json&quot;,
+    &quot;document_schema_cases&quot;: &quot;response-vectors.json&quot;,
+    &quot;semantic_proof_cases&quot;: &quot;lifecycle-vectors.json&quot;,
+    &quot;BDD&quot;: &quot;module.feature&quot;,
+    &quot;steps&quot;: &quot;step-definition-stubs.json&quot;
+  },
+  &quot;frozen_inputs&quot;: {
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\M03\\planning\\current-state.json&quot;: &quot;470c64beadd0794fede061b82bf17a8109dec15676dd5c1d306e77f58827efe9&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-design_document_save-request.schema.json&quot;: &quot;b5183d1285177b92827e48e4bb1353832f5ff6a858d9f6ec5aaf1c696fffef3b&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-design_document_save-response.schema.json&quot;: &quot;ae69345790434b167550a95cb613d34950405e318d7d120aabae6220298df0f1&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-error-lifecycle.json&quot;: &quot;61bd3669d249e21ed5d960155983a3f4389b9cea39602797c3a80f0760945993&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\s2-save-proof-contract\\module-spec.json&quot;: &quot;a71774000501c716a0524866daa27e8a6ff6c0751e05d5d01ef8b37cf8b625f2&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\s2-exact-design\\module-spec.json&quot;: &quot;18e2225595f83bc09a897fc35a622adb6c69e4348a7dcec6588e8e02178780f8&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-error-correction-v4\\module-spec.json&quot;: &quot;56d1529e02a0ce2cae2b53d8a283823a1c1447610a34486a313bf653a9b2aa69&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-domain-error-supplement\\domain-error.schema.json&quot;: &quot;69fb8580e03d3d687afb7f808427fa53777dfef079cbedfb744e0fbe16d3c624&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-resource-action-supplement\\error-details.schema.json&quot;: &quot;70e9c04af4c53d057c3b19090d293073b4c74755f716abab5adc97c755ce52ad&quot;,
+    &quot;docs\\requirements-confirmation\\phase1-spec\\tasks\\M03\\planning\\error-fragment-review\\review.json&quot;: &quot;9dc4b1030c38fbcbda6c1bcc096320c996b7d9ba8969ead240b07058f9d1e42c&quot;,
+    &quot;apps\\sgenaxis-desktop\\crates\\sgenaxis-ports\\src\\file_commit.rs&quot;: &quot;22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c&quot;
+  },
+  &quot;product_source_count&quot;: 796,
+  &quot;remaining&quot;: [
+    &quot;Separate full candidate review and Owner adoption&quot;,
+    &quot;Coordinate this save wire result with M04/M05 effective specs, not merely copy into 38 roots&quot;,
+    &quot;Other 12 H2 commands and native/provider/codec gates remain separate&quot;,
+    &quot;Full Draft validator and all product tests/build/native/RED/GREEN NOT RUN&quot;
+  ],
+  &quot;module_complete&quot;: false
+}</pre><script type="application/json" id="module-spec">{"id": "M03-SAVE-RESPONSE-INTEGRATION", "parent_task": "PD-P1-M03-PREP-01", "module": "M03 H2 facade, dependency M04 owner and M05 retention; IO remains driven Port", "status": "PROPOSED_PENDING_REACCEPTANCE_AND_OWNER", "created_at": "2026-11-02T17:00:39.723493+00:00", "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "branch": "cursor/ui-bhv-arch-layer-editor", "scope": "One command document integration only. No product implementation/Skeleton, no original packet rewrite, no union envelope authorization.", "architecture": {"hexagonal": "UI -> closed H2 save input -> M03 facade -> unique M04 DocumentOwner -> FileCommitPort / M05 retention ports <- adapters", "dependency": "M03 delegates save; no direct adapter/FS calls, no second document owner", "ownership": "S1 owns content and semantic baselines; HOST owns derived capture/proof/reservation; IO owns private journal; M05 owns pin/root receipts", "transaction": "capture -> file receipt verification -> M05 root transfer -> captured semantic ACK; post-file failure cannot rollback file", "forbidden": "UI raw filesystem/receipt input; facade own S1; private IO journal mutation; retry/release on uncertain outcome"}, "new_choices": ["Explicit Saved/CommittedAckDeferred success wire encoding absent in original H2 v3 root", "Closed SaveRejected redacted UI projection of four non-Storage IO error variants", "Conservative Storage all-stage UnverifiedOutcome until positive no-write evidence", "Save resource-token placement/precedence"], "traceability": {"command": "request.schema.json", "complete_response_root": "response.schema.json", "IO_outcomes": "io-outcome-map.json", "document_schema_cases": "response-vectors.json", "semantic_proof_cases": "lifecycle-vectors.json", "BDD": "module.feature", "steps": "step-definition-stubs.json"}, "frozen_inputs": {"docs\\requirements-confirmation\\phase1-spec\\tasks\\M03\\planning\\current-state.json": "470c64beadd0794fede061b82bf17a8109dec15676dd5c1d306e77f58827efe9", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-design_document_save-request.schema.json": "b5183d1285177b92827e48e4bb1353832f5ff6a858d9f6ec5aaf1c696fffef3b", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-design_document_save-response.schema.json": "ae69345790434b167550a95cb613d34950405e318d7d120aabae6220298df0f1", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-revision-v3\\h2-error-lifecycle.json": "61bd3669d249e21ed5d960155983a3f4389b9cea39602797c3a80f0760945993", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\s2-save-proof-contract\\module-spec.json": "a71774000501c716a0524866daa27e8a6ff6c0751e05d5d01ef8b37cf8b625f2", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\s2-exact-design\\module-spec.json": "18e2225595f83bc09a897fc35a622adb6c69e4348a7dcec6588e8e02178780f8", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-error-correction-v4\\module-spec.json": "56d1529e02a0ce2cae2b53d8a283823a1c1447610a34486a313bf653a9b2aa69", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-domain-error-supplement\\domain-error.schema.json": "69fb8580e03d3d687afb7f808427fa53777dfef079cbedfb744e0fbe16d3c624", "docs\\requirements-confirmation\\phase1-spec\\tasks\\integration-contract-resource-action-supplement\\error-details.schema.json": "70e9c04af4c53d057c3b19090d293073b4c74755f716abab5adc97c755ce52ad", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M03\\planning\\error-fragment-review\\review.json": "9dc4b1030c38fbcbda6c1bcc096320c996b7d9ba8969ead240b07058f9d1e42c", "apps\\sgenaxis-desktop\\crates\\sgenaxis-ports\\src\\file_commit.rs": "22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c"}, "product_source_count": 796, "remaining": ["Separate full candidate review and Owner adoption", "Coordinate this save wire result with M04/M05 effective specs, not merely copy into 38 roots", "Other 12 H2 commands and native/provider/codec gates remain separate", "Full Draft validator and all product tests/build/native/RED/GREEN NOT RUN"], "module_complete": false}</script></html>

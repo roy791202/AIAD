@@ -1,0 +1,486 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M03 Editor selection</title><style>body{max-width:1100px;margin:3rem auto;font:16px system-ui;background:#101827;color:#eee}pre{white-space:pre-wrap;padding:1rem;background:#1e293b}h2{color:#7dd3fc}</style><h1>M03 Editor selection planning</h1><p>PROPOSED_PENDING_OWNER · Yellow parent unchanged · no product acceptance</p><h2>Purpose and boundary</h2><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;task&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+  &quot;command&quot;: &quot;design_editor_select&quot;,
+  &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+  &quot;scope&quot;: &quot;One bounded command, document-only planning. No product implementation.&quot;,
+  &quot;authority&quot;: &quot;M01/planning/s2-green/source-current.json; current HEAD 5b709343a890503ebbe24a802e43cda5647df124; 31babe historical&quot;,
+  &quot;architecture&quot;: {
+    &quot;hexagonal&quot;: &quot;Native UI -&gt; Tauri command/input port -&gt; selection use case -&gt; domain projection; application -&gt; owner observation/select output port &lt;- M04 adapter&quot;,
+    &quot;dependency&quot;: &quot;UI -&gt; command -&gt; application -&gt; domain; owner adapter implements port; no domain infrastructure&quot;,
+    &quot;ownership&quot;: &quot;M04 owns document/revision/history. M03 owns ephemeral selection projection.&quot;,
+    &quot;mutation&quot;: &quot;Only owner.select_ephemeral; no content mutation&quot;,
+    &quot;transaction&quot;: &quot;Atomic native identity/current revision check plus ephemeral select is trusted provider premise&quot;,
+    &quot;forbidden&quot;: [
+      &quot;formal save&quot;,
+      &quot;ACK&quot;,
+      &quot;pin&quot;,
+      &quot;history mutation&quot;,
+      &quot;label lookup&quot;,
+      &quot;arbitrary dispatch&quot;
+    ]
+  },
+  &quot;contracts&quot;: [
+    &quot;content/history/revision/dirty/baseline/pins/ACK unchanged&quot;,
+    &quot;exact native binding/document/session/project/root/epoch/window/generation and current projection identity&quot;,
+    &quot;failure preserves selection&quot;
+  ],
+  &quot;bdd_categories&quot;: {
+    &quot;B1&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B2&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B3&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B4&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B5&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B6&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B7&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B8&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B9&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B10&quot;: &quot;Applicable: fixtures&quot;,
+    &quot;B11&quot;: &quot;Deferred: native platform compatibility NOT RUN&quot;,
+    &quot;B12&quot;: &quot;Applicable: fixtures&quot;
+  },
+  &quot;cases&quot;: 51,
+  &quot;acceptance&quot;: [
+    &quot;All document fixture state/call/response expectations pass&quot;,
+    &quot;Original/product hashes preserved&quot;,
+    &quot;Independent native and Owner adoption remain pending&quot;
+  ],
+  &quot;risks&quot;: [
+    &quot;Trusted fixture provider is not authenticity proof&quot;,
+    &quot;Atomic observation/select not demonstrated&quot;,
+    &quot;Delivery loss after select is uncertain; do not retry automatically&quot;
+  ]
+}</pre><h2>Hexagonal view</h2><pre>&quot;Native Editor \u2192 command \u2192 selection application \u2192 domain\nOwner adapter \u2192 implements observation/select port \u2190 application&quot;</pre><h2>Dependency view</h2><pre>&quot;UI \u2192 Tauri \u2192 application \u2192 domain; M04 owns content, M03 ephemeral selection&quot;</pre><h2>Before / after Owner decisions</h2><pre>[
+  {
+    &quot;id&quot;: &quot;ES-P1&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;error mapping&quot;,
+    &quot;before&quot;: &quot;Original broad Error union, no select-specific ordering&quot;,
+    &quot;after&quot;: &quot;Validate request; exact native identity; generation; revision; typed node identity; owner outcome. Missing/foreign/duplicate node -&gt; IdentityConflict.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;ES-P2&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;selection lifecycle&quot;,
+    &quot;before&quot;: &quot;Selection ephemeral; content unchanged&quot;,
+    &quot;after&quot;: &quot;Select and clear and repeated selection retain revision/history/dirty/baseline/pins/ACK; replayed false, no replay cache.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;ES-P3&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;delivery&quot;,
+    &quot;before&quot;: &quot;No exact select response delivery fence&quot;,
+    &quot;after&quot;: &quot;Only exact current native tuple may render; replacement or closed window discards, no automatic retry; selection may already have changed.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;ES-P4&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;atomicity&quot;,
+    &quot;before&quot;: &quot;No new provider implementation authorized&quot;,
+    &quot;after&quot;: &quot;Trusted M04 observation and select performed atomically against captured revision are premises, not established by this reducer.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;ES-P5&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;lexical bounds&quot;,
+    &quot;before&quot;: &quot;Original regex anchors permit host-specific end semantics; runtime checked u64&quot;,
+    &quot;after&quot;: &quot;Physical roots preserved; explicit semantic u64 check rejects overflow and noncanonical input. No full Draft certification.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;ES-P6&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;aspect&quot;: &quot;invalid envelope&quot;,
+    &quot;before&quot;: &quot;Original no explicit InvalidRequest alternatives&quot;,
+    &quot;after&quot;: &quot;Original InvalidRequest field/reason branch retained; per-command reason values Type or OutOfRange proposed.&quot;
+  }
+]</pre><h2>UI schema</h2><pre>{
+  &quot;component&quot;: &quot;Editor selection&quot;,
+  &quot;role&quot;: &quot;native owning Editor&quot;,
+  &quot;controls&quot;: [
+    {
+      &quot;name&quot;: &quot;node selection&quot;,
+      &quot;value&quot;: &quot;stable node_id or null&quot;,
+      &quot;action&quot;: &quot;design_editor_select&quot;,
+      &quot;default&quot;: null,
+      &quot;disabled&quot;: &quot;missing/stale binding&quot;
+    }
+  ],
+  &quot;validation&quot;: &quot;No labels; exact current projection membership&quot;,
+  &quot;success&quot;: &quot;Highlight selection; no dirty/history/revision change&quot;,
+  &quot;errors&quot;: &quot;Keep existing highlight on rejection; discard stale delivery&quot;,
+  &quot;empty&quot;: &quot;Clear with null&quot;,
+  &quot;accessibility&quot;: &quot;Keyboard focus and announced selection&quot;,
+  &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+}</pre><h2>BDD / TDD traceability</h2><pre>[
+  {
+    &quot;bdd&quot;: &quot;ES-1&quot;,
+    &quot;fixture&quot;: &quot;select&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-2&quot;,
+    &quot;fixture&quot;: &quot;clear&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-3&quot;,
+    &quot;fixture&quot;: &quot;repeat&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-4&quot;,
+    &quot;fixture&quot;: &quot;request-expected_revision-8&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-5&quot;,
+    &quot;fixture&quot;: &quot;request-expected_generation-6&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-6&quot;,
+    &quot;fixture&quot;: &quot;request-binding_ref-00000000-0000-4000-8000-000000000000&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-7&quot;,
+    &quot;fixture&quot;: &quot;request-node_id-missing&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-8&quot;,
+    &quot;fixture&quot;: &quot;request-node_id-&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-9&quot;,
+    &quot;fixture&quot;: &quot;request-expected_revision-18446744073709551616&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-10&quot;,
+    &quot;fixture&quot;: &quot;request-expected_revision-True&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-11&quot;,
+    &quot;fixture&quot;: &quot;request-expected_generation-09&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-12&quot;,
+    &quot;fixture&quot;: &quot;missing-binding_ref&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-13&quot;,
+    &quot;fixture&quot;: &quot;missing-expected_generation&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-14&quot;,
+    &quot;fixture&quot;: &quot;missing-expected_revision&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-15&quot;,
+    &quot;fixture&quot;: &quot;missing-node_id&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-16&quot;,
+    &quot;fixture&quot;: &quot;provider-role-ui-viewer&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-17&quot;,
+    &quot;fixture&quot;: &quot;provider-origin-https://evil.invalid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-18&quot;,
+    &quot;fixture&quot;: &quot;provider-native_live-False&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-19&quot;,
+    &quot;fixture&quot;: &quot;provider-native_live-true&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-20&quot;,
+    &quot;fixture&quot;: &quot;provider-ready-False&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-21&quot;,
+    &quot;fixture&quot;: &quot;provider-ready-false&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-22&quot;,
+    &quot;fixture&quot;: &quot;provider-outcome-Rejected&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-23&quot;,
+    &quot;fixture&quot;: &quot;provider-outcome-{}&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-24&quot;,
+    &quot;fixture&quot;: &quot;provider-capture-{}&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-25&quot;,
+    &quot;fixture&quot;: &quot;provider-delivery-{}&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-26&quot;,
+    &quot;fixture&quot;: &quot;foreign-binding_ref&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-27&quot;,
+    &quot;fixture&quot;: &quot;foreign-document_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-28&quot;,
+    &quot;fixture&quot;: &quot;foreign-session_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-29&quot;,
+    &quot;fixture&quot;: &quot;foreign-project_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-30&quot;,
+    &quot;fixture&quot;: &quot;foreign-root_instance&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-31&quot;,
+    &quot;fixture&quot;: &quot;foreign-runtime_epoch&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-32&quot;,
+    &quot;fixture&quot;: &quot;foreign-window_instance&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-33&quot;,
+    &quot;fixture&quot;: &quot;foreign-generation&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-34&quot;,
+    &quot;fixture&quot;: &quot;late-binding_ref&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-35&quot;,
+    &quot;fixture&quot;: &quot;late-document_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-36&quot;,
+    &quot;fixture&quot;: &quot;late-session_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-37&quot;,
+    &quot;fixture&quot;: &quot;late-project_uuid&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-38&quot;,
+    &quot;fixture&quot;: &quot;late-root_instance&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-39&quot;,
+    &quot;fixture&quot;: &quot;late-runtime_epoch&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-40&quot;,
+    &quot;fixture&quot;: &quot;late-window_instance&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-41&quot;,
+    &quot;fixture&quot;: &quot;late-generation&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-42&quot;,
+    &quot;fixture&quot;: &quot;duplicate-node&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-43&quot;,
+    &quot;fixture&quot;: &quot;foreign-node&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-44&quot;,
+    &quot;fixture&quot;: &quot;bad-node-bool&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-45&quot;,
+    &quot;fixture&quot;: &quot;unknown-request&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-46&quot;,
+    &quot;fixture&quot;: &quot;root-None&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-47&quot;,
+    &quot;fixture&quot;: &quot;root-False&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-48&quot;,
+    &quot;fixture&quot;: &quot;root-[]&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-49&quot;,
+    &quot;fixture&quot;: &quot;root-{}&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-50&quot;,
+    &quot;fixture&quot;: &quot;root-&#x27;&#x27;&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  },
+  {
+    &quot;bdd&quot;: &quot;ES-51&quot;,
+    &quot;fixture&quot;: &quot;root-0&quot;,
+    &quot;contract&quot;: &quot;Ephemeral selection and exact identity&quot;,
+    &quot;level&quot;: &quot;L2 document model only&quot;,
+    &quot;status&quot;: &quot;AUTHOR_CHECK_ONLY&quot;
+  }
+]</pre><h2>Results and deferred work</h2><pre>{
+  &quot;native&quot;: &quot;NOT RUN&quot;,
+  &quot;independent&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;product_tests&quot;: &quot;NOT RUN&quot;,
+  &quot;valid_RED&quot;: &quot;NOT RUN&quot;,
+  &quot;full_Draft2020&quot;: &quot;NOT RUN&quot;,
+  &quot;owner_adoption&quot;: &quot;PENDING&quot;,
+  &quot;required&quot;: [
+    &quot;native authenticity&quot;,
+    &quot;atomic observation/select transaction&quot;,
+    &quot;independent behavior execution&quot;,
+    &quot;response delivery race proof&quot;
+  ]
+}</pre><script type="application/json" id="module-spec">{"module": "M03", "task": "PD-P1-M03-PREP-01", "command": "design_editor_select", "status": "PROPOSED_PENDING_OWNER", "scope": "One bounded command, document-only planning. No product implementation.", "authority": "M01/planning/s2-green/source-current.json; current HEAD 5b709343a890503ebbe24a802e43cda5647df124; 31babe historical", "architecture": {"hexagonal": "Native UI -> Tauri command/input port -> selection use case -> domain projection; application -> owner observation/select output port \u003c- M04 adapter", "dependency": "UI -> command -> application -> domain; owner adapter implements port; no domain infrastructure", "ownership": "M04 owns document/revision/history. M03 owns ephemeral selection projection.", "mutation": "Only owner.select_ephemeral; no content mutation", "transaction": "Atomic native identity/current revision check plus ephemeral select is trusted provider premise", "forbidden": ["formal save", "ACK", "pin", "history mutation", "label lookup", "arbitrary dispatch"]}, "contracts": ["content/history/revision/dirty/baseline/pins/ACK unchanged", "exact native binding/document/session/project/root/epoch/window/generation and current projection identity", "failure preserves selection"], "bdd_categories": {"B1": "Applicable: fixtures", "B2": "Applicable: fixtures", "B3": "Applicable: fixtures", "B4": "Applicable: fixtures", "B5": "Applicable: fixtures", "B6": "Applicable: fixtures", "B7": "Applicable: fixtures", "B8": "Applicable: fixtures", "B9": "Applicable: fixtures", "B10": "Applicable: fixtures", "B11": "Deferred: native platform compatibility NOT RUN", "B12": "Applicable: fixtures"}, "cases": 51, "acceptance": ["All document fixture state/call/response expectations pass", "Original/product hashes preserved", "Independent native and Owner adoption remain pending"], "risks": ["Trusted fixture provider is not authenticity proof", "Atomic observation/select not demonstrated", "Delivery loss after select is uncertain; do not retry automatically"]}</script></html>

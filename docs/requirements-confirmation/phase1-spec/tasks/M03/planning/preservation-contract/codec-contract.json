@@ -1,0 +1,56 @@
+{
+  "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+  "slice": "M03-C1-CODEC-PRESERVATION",
+  "format": "sgenaxis.design version1 retained; recognized current-UI fields become explicitly represented after Owner approval; no version auto-upgrade",
+  "public_functions": "parse_design_json(&str)->Result<DesignDoc,HostError>; serialize_design(&DesignDoc)->Result<String,HostError> unchanged. build_preview_html/save/load APIs unchanged and not upgraded to new persistence semantics.",
+  "unknown_policy": "Reject unknown members at root/meta/node/guides before a partial typed result. Existing props remains an intentionally open nested JSON data bag; preserve supported values, do not execute strings/keys. No new root extensions bag or plugin runtime.",
+  "duplicate_policy": "Reject duplicate keys at all levels, including props, with exact RFC6901 pointer. Do not accept duplicate-last-wins parsing as preservation.",
+  "optional_policy": "For five new fields: absence means None and omitted on serialize; explicit null invalid, including false/0/empty arrays preserved distinctly. Old pre-existing optional/default contracts remain unchanged and explicitly normalized in comparison.",
+  "numeric_policy": "H1 preserves numeric semantic value, not token formatting. Allow value only when the current HOST JSON representation can serialize/reparse it without decimal-value loss AND any mathematically integral value lies within[-9007199254740991,9007199254740991] for the JS consumer. Accept1.00/1E+03 if canonical decimal value is unchanged; reject9007199254740993, overflow, underflow or precision-losing decimal instead of silently rounding. No floating-point intermediate may be used as proof of decimal equality. Helpers remain private in the single HOST file.",
+  "number_examples": {
+    "accept": [
+      "0",
+      "-0",
+      "1.00",
+      "1E+03",
+      "0.5",
+      "0.1",
+      "9007199254740991"
+    ],
+    "reject": [
+      "9007199254740993",
+      "18446744073709551616",
+      "1e400",
+      "1e-400",
+      "0.100000000000000000000000000001"
+    ]
+  },
+  "proposed_limits": {
+    "input_UTF8_bytes": 16777216,
+    "output_UTF8_bytes": 16777216,
+    "depth_root0": 64,
+    "JSON_value_nodes_root1": 100000,
+    "single_decoded_string_UTF8_bytes": 1048576,
+    "single_number_token_bytes": 4096,
+    "authority": "new M03 recommendations, NOT inherited approval merely because another module uses these values"
+  },
+  "priority": "input size/UTF8/BOM -> grammar/duplicate/resource guards -> format/version -> known/unknown/type checks -> numeric representation -> typed document validate; no current-state mutation or file write before success",
+  "new_error_prefixes": {
+    "unknown": "DESIGN_CODEC_UNKNOWN_FIELD:<RFC6901>",
+    "duplicate": "DESIGN_CODEC_DUPLICATE_KEY:<RFC6901>",
+    "new_field_type": "DESIGN_CODEC_INVALID_FIELD:<RFC6901>",
+    "number": "DESIGN_NUMBER_UNREPRESENTABLE:<RFC6901>",
+    "resource": "DESIGN_CODEC_RESOURCE_LIMIT:<RFC6901>:<resource>"
+  },
+  "existing_errors": "Existing malformed JSON/format/version/product_pass=true refusal semantics and readable HostError::Settings remain; no new public HostError variant, no relaxed product_pass guard. New prefixes for newly rejected cases need Owner adoption.",
+  "success": "Decode fully representable input and serialize/reparse all business fields equal under explicit existing-default + canonical numeric semantics; preserve the five lost field paths and original node IDs/relationships/hints/props. Never silently delete unrepresented data.",
+  "failure": "Return HostError::Settings and no partial DesignDoc; caller remains responsible for installing a candidate only on full success. Source bytes untouched. This pure codec slice does not claim active-state, atomic file-save, UI, or formal snapshot acceptance.",
+  "codec_does_not_decide": [
+    "root form geometry versus disagreeing formSize UI preference",
+    "authority from scope/uiExclusive",
+    "binding/revision lifecycle",
+    "Viewer mock interaction schema",
+    "cross-file graph repairs or identity remaps",
+    "moving WORK/DispatchHost SSOT"
+  ]
+}

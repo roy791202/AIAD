@@ -1,0 +1,91 @@
+[
+  {
+    "id": "AUTHOR-FIXTURES",
+    "cases": 35,
+    "result": "PASS",
+    "layer": "document fixtures only; no top-level author script rerun"
+  },
+  {
+    "id": "IR-CX1",
+    "input": {
+      "ok": false,
+      "error": {
+        "code": "DomainRejected",
+        "details": {
+          "code": "NoUndo",
+          "fields": {}
+        }
+      },
+      "replayed": true
+    },
+    "expected": "Accept retained authorized terminal error replay with unchanged typed diagnostic",
+    "observed": "Wire schema accepts; candidate semantic checker rejects exact whole-response equality",
+    "classification": "DOCUMENT_CHECKER_DEFECT",
+    "finding": "UNDO-IR-F1"
+  },
+  {
+    "id": "IR-CX2",
+    "input": {
+      "ok": true,
+      "value": {
+        "outcome": "NoChange",
+        "projection": {
+          "binding_ref": "11111111-1111-4111-8111-111111111111",
+          "document_uuid": "doc-undo-a",
+          "session_uuid": "session-undo-a",
+          "owner_generation": "3",
+          "revision": "7",
+          "design_json": "{\"nodes\":[],\"version\":1}",
+          "dirty": true,
+          "can_edit": true,
+          "unsupported": [],
+          "selection": null,
+          "persistence_ready": true
+        },
+        "replayed": false,
+        "revision": "7",
+        "history_depth": "0"
+      },
+      "replayed": false
+    },
+    "expected": "Reject NoChange for Undo: no no-op behavior exists in WORK and decision UNDO-D5 explicitly preserves NoUndo error",
+    "observed": "Candidate command semantic checker accepts",
+    "classification": "DOCUMENT_CHECKER_DEFECT",
+    "finding": "UNDO-IR-F2"
+  },
+  {
+    "id": "IR-GAP-capture.request_id",
+    "mutation": {
+      "capture.request_id": "different-request"
+    },
+    "observed": "Synthetic proofcheck accepts; narrative policy forbids this",
+    "classification": "EVIDENCE_GAP_ONLY_NOT_PRODUCT_DEFECT"
+  },
+  {
+    "id": "IR-GAP-pin_evidence.operation_role",
+    "mutation": {
+      "pin_evidence.operation_role": "save"
+    },
+    "observed": "Synthetic proofcheck accepts; narrative policy forbids this",
+    "classification": "EVIDENCE_GAP_ONLY_NOT_PRODUCT_DEFECT"
+  },
+  {
+    "id": "IR-GAP-io.formal_save_ack",
+    "mutation": {
+      "io.formal_save_ack": "CALLED"
+    },
+    "observed": "Synthetic proofcheck accepts; narrative policy forbids this",
+    "classification": "EVIDENCE_GAP_ONLY_NOT_PRODUCT_DEFECT"
+  },
+  {
+    "id": "IR-U64",
+    "result": "PASS",
+    "comparisons": 10416,
+    "oracle": "canonical decimal regex plus Python exact integer bound; independent of author strict()"
+  },
+  {
+    "id": "IR-LIFECYCLE",
+    "classification": "EVIDENCE_GAP_ONLY_NOT_PRODUCT_DEFECT",
+    "result": "Five narrative lifecycle oracles present; candidate checker only checks expected text presence/capture=7; no replay execution or UI race proof"
+  }
+]

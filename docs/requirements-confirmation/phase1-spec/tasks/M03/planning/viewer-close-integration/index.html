@@ -1,0 +1,134 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>M03 Viewer Close planning</title><style>body{max-width:1050px;margin:2rem auto;font:16px system-ui;background:#101723;color:#e6edf6}pre{white-space:pre-wrap;background:#1c2738;padding:1rem}h1,h2{color:#8ac4ff}a{color:#8ac4ff}</style><h1>M03 · Close detached Viewer preview</h1><p>Yellow · PROPOSED_PENDING_OWNER · Author document checks only. No product/native/RED acceptance.</p><h2>Hexagonal system view</h2><pre>Viewer UI → Tauri close input → DispatchHost preview owner → detached mock
+                              ↑ native identity / close observation seams
+DocumentSession SSOT (content/history/baselines): unchanged</pre><h2>Module dependency view</h2><pre>Viewer mirror → command → application PreviewSession
+Native lifecycle → identity observation → application
+Provider close → typed proof → delivery gate → Viewer Closed
+No edge to binding detach / document close / storage / ACK / pin</pre><h2>module</h2><pre>&quot;M03&quot;</pre><h2>task</h2><pre>&quot;PD-P1-M03-PREP-01&quot;</pre><h2>command</h2><pre>&quot;design_viewer_close&quot;</pre><h2>status</h2><pre>&quot;PROPOSED_PENDING_OWNER&quot;</pre><h2>scope</h2><pre>&quot;Only this new viewer-close-integration folder; author document checks only&quot;</pre><h2>architecture</h2><pre>{
+  &quot;hexagonal&quot;: &quot;Viewer driving adapter → design_viewer_close Tauri input → DispatchHost application preview owner → detached mock record; native identity and provider close observations enter through declared test seams&quot;,
+  &quot;dependencies&quot;: &quot;UI → command → DispatchHost → preview record. DocumentSession remains sole content/history/baseline SSOT; no new product port approved. Native/provider seams here are proposed document contracts.&quot;,
+  &quot;ownership&quot;: &quot;Application owns preview records; native lifecycle owns actual consumer/window/session/epoch. UI owns only mirror.&quot;,
+  &quot;mutation&quot;: &quot;Only preview active/mock/capabilities slot may retire; document remains live and bound.&quot;,
+  &quot;transaction&quot;: &quot;resolve same native tuple → provider atomic retire one preview → typed closed proof → recheck current delivery tuple → UI Closed. Late/missing response never reopens or retries. Provider commit atomicity is a premise.&quot;,
+  &quot;forbidden&quot;: [
+    &quot;binding.detach&quot;,
+    &quot;document.close&quot;,
+    &quot;S1.commit&quot;,
+    &quot;formalSave&quot;,
+    &quot;FileCommit&quot;,
+    &quot;ACK&quot;,
+    &quot;pin&quot;,
+    &quot;material roots&quot;,
+    &quot;filesystem&quot;,
+    &quot;automatic retry&quot;
+  ]
+}</pre><h2>contracts</h2><pre>[
+  &quot;CLOSE-1 exact original wire root and typed booleans&quot;,
+  &quot;CLOSE-2 matching native consumer/window/project/root/epoch/document/owner session/generation/preview only&quot;,
+  &quot;CLOSE-3 close retires detached mock only&quot;,
+  &quot;CLOSE-4 no stale/revoked/late response installation&quot;,
+  &quot;CLOSE-5 no automatic retry or fabricated success&quot;
+]</pre><h2>policy_rows</h2><pre>[
+  {
+    &quot;area&quot;: &quot;wire&quot;,
+    &quot;before&quot;: &quot;Original preview_session-only request; complete success/error roots; no request_id.&quot;,
+    &quot;after&quot;: &quot;Original Close value retained; strict-end lexical proposal recorded separately.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;identity&quot;,
+    &quot;before&quot;: &quot;PreviewSession binds consumer nonce, binding/session/generation/revision.&quot;,
+    &quot;after&quot;: &quot;Closed native capture and delivery tuple adds explicit project/root/runtime epoch; local origins and labels derived from H2 caller policy. All precision PROPOSED_PENDING_OWNER.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;observation&quot;,
+    &quot;before&quot;: &quot;Original close result {closed:true,content_changed:false}.&quot;,
+    &quot;after&quot;: &quot;Require authenticated provider closed observation tied to captured preview and owner; exact bool closed/mock_discarded; no truthiness.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;repeat&quot;,
+    &quot;before&quot;: &quot;Only commands carrying request_id have replay records; close has no request_id.&quot;,
+    &quot;after&quot;: &quot;PROPOSED_PENDING_OWNER: removed handle returns PreviewClosed, replayed=false. No retained-success tombstone or capacity allocation; reject this option if Owner requires idempotent close.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;capacity&quot;,
+    &quot;before&quot;: &quot;Original four previews per binding.&quot;,
+    &quot;after&quot;: &quot;PROPOSED_PENDING_OWNER: close removes exactly one existing slot, including at capacity; no new slot, request record or tombstone. Runtime atomic accounting remains unproved.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;failure&quot;,
+    &quot;before&quot;: &quot;Revocation and no late response install required.&quot;,
+    &quot;after&quot;: &quot;PROPOSED_PENDING_OWNER: no retry on missing/malformed/postcommit lost observation; mark UI close uncertain and disable mock actions. A lost reply cannot undo provider close.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;preservation&quot;,
+    &quot;before&quot;: &quot;Detached mock only; no content edits.&quot;,
+    &quot;after&quot;: &quot;No binding detach/document close, content/history/formalSave/baselines/ACK/pin/material-root calls or changes.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;area&quot;: &quot;precedence&quot;,
+    &quot;before&quot;: &quot;Native caller then strict DTO then binding/window/generation.&quot;,
+    &quot;after&quot;: &quot;PROPOSED_PENDING_OWNER exact model trace and errors: native/capture admission, request, preview resolution, provider close, closed proof, delivery admission. Eager type admission may change earlier call traces.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  }
+]</pre><h2>acceptance</h2><pre>[
+  &quot;All new fixture expected response/state/calls independently enumerated in fixtures.json and checked&quot;,
+  &quot;Every original root branch exercised plus missing/extra/type negatives&quot;,
+  &quot;All 796 authority hashes match; preserved inputs unchanged&quot;,
+  &quot;Human HTML embeds same ModuleSpec; independent acceptance NOT RUN&quot;
+]</pre><h2>decisions</h2><pre>[
+  &quot;Owner must adopt exact identity tuple, error precedence, observation seam, repeat/replay policy, no tombstone policy, capacity accounting and response-loss behavior before product Skeleton/RED.&quot;,
+  &quot;Existing dirty document close confirmation is irrelevant to preview-only close; never infer discard_unsaved from preview close.&quot;
+]</pre><h2>limits</h2><pre>[
+  &quot;Bounded schema keyword evaluator only; not full Draft2020 validation.&quot;,
+  &quot;Trusted native/provider authenticity and atomic retirement/slot accounting unproved.&quot;,
+  &quot;Model cannot prove real command registration, Tauri ACL, OS lifecycle, races or provider failure atomicity.&quot;
+]</pre><h2>verification</h2><pre>{
+  &quot;independent_review&quot;: &quot;NOT RUN&quot;,
+  &quot;native&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;product_tests&quot;: &quot;NOT RUN&quot;,
+  &quot;valid_RED&quot;: &quot;NOT RUN&quot;,
+  &quot;GREEN&quot;: &quot;NOT RUN&quot;,
+  &quot;module_acceptance&quot;: &quot;NOT RUN&quot;,
+  &quot;release&quot;: &quot;NOT RUN&quot;
+}</pre><h2>module_complete</h2><pre>false</pre><h2>parent_light</h2><pre>&quot;Yellow&quot;</pre><h2>bdd_categories</h2><pre>{
+  &quot;B1&quot;: &quot;Applicable: close current preview&quot;,
+  &quot;B2&quot;: &quot;Applicable: one/four-slot state, strict UUID/U64&quot;,
+  &quot;B3&quot;: &quot;Applicable: missing/empty/extra/malformed input&quot;,
+  &quot;B4&quot;: &quot;Applicable: missing provider/native observation&quot;,
+  &quot;B5&quot;: &quot;Applicable: provider commit then lost reply&quot;,
+  &quot;B6&quot;: &quot;Applicable: document/content/history preservation&quot;,
+  &quot;B7&quot;: &quot;Applicable: provider atomic retire premise, no rollback claim&quot;,
+  &quot;B8&quot;: &quot;Applicable: revoked/destroyed/replaced/epoch/generation&quot;,
+  &quot;B9&quot;: &quot;Applicable: no automatic retry; uncertain UI, no fabricated reopen&quot;,
+  &quot;B10&quot;: &quot;Applicable: native provider/delivery boundary, no binding detach/document close&quot;,
+  &quot;B11&quot;: &quot;Deferred: cross-platform native behavior requires approved implementation and native harness; wire schemas preserved except explicit lexical proposals&quot;,
+  &quot;B12&quot;: &quot;Applicable: no formalSave/ACK/pin/history mutations&quot;
+}</pre><h2>tasks</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M03-PLAN-VIEWER-CLOSE&quot;,
+    &quot;primary_module&quot;: &quot;M03&quot;,
+    &quot;layer&quot;: &quot;Application/Driving Adapter document proposal&quot;,
+    &quot;status&quot;: &quot;PLANNING_DELIVERED_PENDING_REVIEW_OWNER&quot;,
+    &quot;allowed&quot;: &quot;this new viewer-close-integration folder only&quot;,
+    &quot;protected&quot;: &quot;all original documents, product/tests, board/current-state/hooks/roles&quot;,
+    &quot;skeleton&quot;: &quot;NOT_STARTED&quot;,
+    &quot;tests&quot;: &quot;python -B checker.py; document model only&quot;,
+    &quot;regression&quot;: &quot;original preserved inputs + 796 authority hashes; product adjacent regression NOT RUN&quot;,
+    &quot;estimate&quot;: &quot;bounded author planning slice; no product estimate or implementation authorization&quot;,
+    &quot;next&quot;: &quot;independent document review, Owner decisions, approved Skeleton and valid RED before any production work&quot;
+  }
+]</pre><h2>test_levels</h2><pre>{
+  &quot;L0&quot;: &quot;bounded lexical/type evaluator author checks&quot;,
+  &quot;L1&quot;: &quot;document model close cases only&quot;,
+  &quot;L2&quot;: &quot;complete wire root/schema probes only; real module contract NOT RUN&quot;,
+  &quot;L3&quot;: &quot;native/provider integration NOT RUN&quot;,
+  &quot;L4&quot;: &quot;cross-module product regression NOT RUN&quot;,
+  &quot;L5&quot;: &quot;system acceptance NOT RUN&quot;
+}</pre><h2>Executable evidence</h2><p><a href="fixtures.json">Fixtures with complete expected response/state/calls</a> · <a href="results.json">author results</a> · <a href="traceability.json">traceability</a></p><script type="application/json" id="module-spec">{"module": "M03", "task": "PD-P1-M03-PREP-01", "command": "design_viewer_close", "status": "PROPOSED_PENDING_OWNER", "scope": "Only this new viewer-close-integration folder; author document checks only", "architecture": {"hexagonal": "Viewer driving adapter → design_viewer_close Tauri input → DispatchHost application preview owner → detached mock record; native identity and provider close observations enter through declared test seams", "dependencies": "UI → command → DispatchHost → preview record. DocumentSession remains sole content/history/baseline SSOT; no new product port approved. Native/provider seams here are proposed document contracts.", "ownership": "Application owns preview records; native lifecycle owns actual consumer/window/session/epoch. UI owns only mirror.", "mutation": "Only preview active/mock/capabilities slot may retire; document remains live and bound.", "transaction": "resolve same native tuple → provider atomic retire one preview → typed closed proof → recheck current delivery tuple → UI Closed. Late/missing response never reopens or retries. Provider commit atomicity is a premise.", "forbidden": ["binding.detach", "document.close", "S1.commit", "formalSave", "FileCommit", "ACK", "pin", "material roots", "filesystem", "automatic retry"]}, "contracts": ["CLOSE-1 exact original wire root and typed booleans", "CLOSE-2 matching native consumer/window/project/root/epoch/document/owner session/generation/preview only", "CLOSE-3 close retires detached mock only", "CLOSE-4 no stale/revoked/late response installation", "CLOSE-5 no automatic retry or fabricated success"], "policy_rows": [{"area": "wire", "before": "Original preview_session-only request; complete success/error roots; no request_id.", "after": "Original Close value retained; strict-end lexical proposal recorded separately.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "identity", "before": "PreviewSession binds consumer nonce, binding/session/generation/revision.", "after": "Closed native capture and delivery tuple adds explicit project/root/runtime epoch; local origins and labels derived from H2 caller policy. All precision PROPOSED_PENDING_OWNER.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "observation", "before": "Original close result {closed:true,content_changed:false}.", "after": "Require authenticated provider closed observation tied to captured preview and owner; exact bool closed/mock_discarded; no truthiness.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "repeat", "before": "Only commands carrying request_id have replay records; close has no request_id.", "after": "PROPOSED_PENDING_OWNER: removed handle returns PreviewClosed, replayed=false. No retained-success tombstone or capacity allocation; reject this option if Owner requires idempotent close.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "capacity", "before": "Original four previews per binding.", "after": "PROPOSED_PENDING_OWNER: close removes exactly one existing slot, including at capacity; no new slot, request record or tombstone. Runtime atomic accounting remains unproved.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "failure", "before": "Revocation and no late response install required.", "after": "PROPOSED_PENDING_OWNER: no retry on missing/malformed/postcommit lost observation; mark UI close uncertain and disable mock actions. A lost reply cannot undo provider close.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "preservation", "before": "Detached mock only; no content edits.", "after": "No binding detach/document close, content/history/formalSave/baselines/ACK/pin/material-root calls or changes.", "status": "PROPOSED_PENDING_OWNER"}, {"area": "precedence", "before": "Native caller then strict DTO then binding/window/generation.", "after": "PROPOSED_PENDING_OWNER exact model trace and errors: native/capture admission, request, preview resolution, provider close, closed proof, delivery admission. Eager type admission may change earlier call traces.", "status": "PROPOSED_PENDING_OWNER"}], "acceptance": ["All new fixture expected response/state/calls independently enumerated in fixtures.json and checked", "Every original root branch exercised plus missing/extra/type negatives", "All 796 authority hashes match; preserved inputs unchanged", "Human HTML embeds same ModuleSpec; independent acceptance NOT RUN"], "decisions": ["Owner must adopt exact identity tuple, error precedence, observation seam, repeat/replay policy, no tombstone policy, capacity accounting and response-loss behavior before product Skeleton/RED.", "Existing dirty document close confirmation is irrelevant to preview-only close; never infer discard_unsaved from preview close."], "limits": ["Bounded schema keyword evaluator only; not full Draft2020 validation.", "Trusted native/provider authenticity and atomic retirement/slot accounting unproved.", "Model cannot prove real command registration, Tauri ACL, OS lifecycle, races or provider failure atomicity."], "verification": {"independent_review": "NOT RUN", "native": "NOT RUN", "build": "NOT RUN", "product_tests": "NOT RUN", "valid_RED": "NOT RUN", "GREEN": "NOT RUN", "module_acceptance": "NOT RUN", "release": "NOT RUN"}, "module_complete": false, "parent_light": "Yellow", "bdd_categories": {"B1": "Applicable: close current preview", "B2": "Applicable: one/four-slot state, strict UUID/U64", "B3": "Applicable: missing/empty/extra/malformed input", "B4": "Applicable: missing provider/native observation", "B5": "Applicable: provider commit then lost reply", "B6": "Applicable: document/content/history preservation", "B7": "Applicable: provider atomic retire premise, no rollback claim", "B8": "Applicable: revoked/destroyed/replaced/epoch/generation", "B9": "Applicable: no automatic retry; uncertain UI, no fabricated reopen", "B10": "Applicable: native provider/delivery boundary, no binding detach/document close", "B11": "Deferred: cross-platform native behavior requires approved implementation and native harness; wire schemas preserved except explicit lexical proposals", "B12": "Applicable: no formalSave/ACK/pin/history mutations"}, "tasks": [{"id": "M03-PLAN-VIEWER-CLOSE", "primary_module": "M03", "layer": "Application/Driving Adapter document proposal", "status": "PLANNING_DELIVERED_PENDING_REVIEW_OWNER", "allowed": "this new viewer-close-integration folder only", "protected": "all original documents, product/tests, board/current-state/hooks/roles", "skeleton": "NOT_STARTED", "tests": "python -B checker.py; document model only", "regression": "original preserved inputs + 796 authority hashes; product adjacent regression NOT RUN", "estimate": "bounded author planning slice; no product estimate or implementation authorization", "next": "independent document review, Owner decisions, approved Skeleton and valid RED before any production work"}], "test_levels": {"L0": "bounded lexical/type evaluator author checks", "L1": "document model close cases only", "L2": "complete wire root/schema probes only; real module contract NOT RUN", "L3": "native/provider integration NOT RUN", "L4": "cross-module product regression NOT RUN", "L5": "system acceptance NOT RUN"}}</script></html>
