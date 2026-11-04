@@ -1,0 +1,372 @@
+{
+  "status": "PROPOSED_WHOLE_PACKET_REVIEW_REQUIRED",
+  "types": {
+    "RawDefinitionDigest": {
+      "kind": "validated string",
+      "fields_or_variants": {
+        "text": "sha256: +64 lowercase hex"
+      },
+      "rule": "Exact disk bytes, not reserialized content; separate from logical revision."
+    },
+    "DefinitionAuthorityContext": {
+      "kind": "trusted HOST record; no Deserialize",
+      "fields_or_variants": {
+        "selection_id": "nonempty String native selection reference",
+        "session_id": "nonempty String current owner session",
+        "owner_window": "nonempty String trusted window label"
+      },
+      "rule": "S3 authenticates against its own live owner. Nonempty strings/UI checkbox are NOT authorization. S2 has no window permission service."
+    },
+    "OpenDefinitionClaim": {
+      "kind": "immutable trusted peer projection",
+      "fields_or_variants": {
+        "project_uuid": "PersistentProjectId",
+        "canonical_root": "String absolute local root"
+      },
+      "rule": "Supplied from serialized DispatchHost owner snapshot, not a new S2 registry. S3 revalidates before installing returned binding."
+    },
+    "DefinitionLocation": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "NewProject": {
+          "canonical_parent": "trusted native String",
+          "single_name": "legal single-component String"
+        },
+        "ExistingProject": {
+          "canonical_root": "trusted native String"
+        },
+        "LegacyAdoption": {
+          "canonical_root": "trusted native String",
+          "candidate_uuid": "trusted-boundary PersistentProjectId",
+          "portable_legacy_keys": "Vec<String> opaque non-path IDs"
+        }
+      },
+      "rule": "Canonicalization/authorization is outer-native responsibility; IO still validates target. UI-provided root is not authority."
+    },
+    "DefinitionBaseline": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "Absent": {},
+        "Present": {
+          "raw_digest": "RawDefinitionDigest",
+          "revision": "DefinitionRevision",
+          "project_uuid": "PersistentProjectId"
+        }
+      },
+      "rule": "Absent requires missing target; never means overwrite approval."
+    },
+    "PreparedPreferencePlan": {
+      "kind": "immutable enum",
+      "fields_or_variants": {
+        "Skip": {},
+        "Preset": {
+          "preset_id": "validated String",
+          "encoded_bytes": "Vec<u8> valid preference document",
+          "digest": "RawDefinitionDigest"
+        },
+        "ImportedCopy": {
+          "captured_source_digest": "RawDefinitionDigest",
+          "encoded_bytes": "Vec<u8> validated independent document",
+          "digest": "RawDefinitionDigest"
+        }
+      },
+      "rule": "Prepare/validate before any directory creation. Only NewProject may write selected preferences. Captured import source is never a write target; no source path in portable definition."
+    },
+    "DefinitionBinding": {
+      "kind": "public type, private fields; no Serialize/Deserialize",
+      "fields_or_variants": {
+        "context": "DefinitionAuthorityContext",
+        "location": "DefinitionLocation",
+        "project_uuid": "PersistentProjectId",
+        "baseline": "DefinitionBaseline",
+        "preferences": "PreparedPreferencePlan"
+      },
+      "rule": "Only normal constructor bind_definition. Existing/adopt require Skip. Immutable caller-owned value; S2 returns next binding proposal, never installs it."
+    },
+    "DefinitionOpenView": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "Saved": {
+          "definition": "ProjectDefinition",
+          "raw_digest": "RawDefinitionDigest",
+          "canonical_root": "String",
+          "relative_path": ".sgenaxis/project-definition.json"
+        },
+        "Legacy": {
+          "canonical_root": "String",
+          "portable_legacy_keys": "Vec<String>",
+          "migration_required": "true"
+        }
+      },
+      "rule": "Legacy iff definition truly NotFound, no auto ID/write. Saved data does not authorize generation."
+    },
+    "DefinitionCommitProof": {
+      "kind": "record",
+      "fields_or_variants": {
+        "project_uuid": "PersistentProjectId",
+        "persisted_revision": "DefinitionRevision",
+        "relative_path": "fixed .sgenaxis/project-definition.json",
+        "raw_digest": "RawDefinitionDigest from CommitReceipt",
+        "transaction_id": "32 lowercase hex String from CommitReceipt"
+      },
+      "rule": "Only after verified IO receipt; captured revision, not a later edited snapshot."
+    },
+    "OwnedCreationArtifact": {
+      "kind": "record",
+      "fields_or_variants": {
+        "relative_path": "within root, . for root itself",
+        "kind": "CreationArtifactKind",
+        "state": "CreationArtifactState",
+        "raw_digest": "Option<RawDefinitionDigest>, Some iff committed file",
+        "transaction_id": "Option<String>, Some iff committed file"
+      },
+      "rule": "Only successful exclusive create/receipt. IO scratch/recovery paths are not HOST cleanup ownership."
+    },
+    "CreationProgress": {
+      "kind": "record",
+      "fields_or_variants": {
+        "canonical_root": "String local-only",
+        "root_created": "bool",
+        "phase": "CreationPhase",
+        "owned_artifacts": "Vec<OwnedCreationArtifact> acquisition order",
+        "definition_commit": "Option<DefinitionCommitProof>"
+      },
+      "rule": "No recursive rollback/cleanup. Created metadata in old root is NOT a newly created project root."
+    },
+    "PreferenceCommitStatus": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "Skipped": {},
+        "Committed": {
+          "relative_path": ".sgenaxis/preferences.json",
+          "raw_digest": "RawDefinitionDigest",
+          "transaction_id": "String"
+        }
+      },
+      "rule": "Successful receipt has no Failed state. Selected preference failure uses PartialProjectCreated, retaining definition proof."
+    },
+    "DefinitionSaveReceipt": {
+      "kind": "record",
+      "fields_or_variants": {
+        "definition": "DefinitionCommitProof",
+        "canonical_root": "String local-only",
+        "creation": "CreationProgress",
+        "preferences": "PreferenceCommitStatus",
+        "next_binding": "DefinitionBinding, Present baseline/ExistingProject location/Skip preferences"
+      },
+      "rule": "Ok iff all requested S2 steps succeed. No settings/registry/generation mutation. Postcommit projection cannot revoke persistence proof."
+    },
+    "StoreFault": {
+      "kind": "record",
+      "fields_or_variants": {
+        "stage": "existing CommitStage; Read for FileSystemPort read/exists/is_file errors",
+        "path": "String local-only",
+        "reason": "String, no credentials"
+      },
+      "rule": "Keep original stage/reason. Read error never implies a verified rollback."
+    },
+    "RecoveryInfo": {
+      "kind": "record",
+      "fields_or_variants": {
+        "target_path": "String",
+        "journal_path": "String",
+        "old_version_path": "Option<String>",
+        "new_version_path": "Option<String>",
+        "reason": "String"
+      },
+      "rule": "Copy exactly from CommitError::RecoveryRequired; no invented diagnostic paths or version-presence claims."
+    },
+    "CodecIssue": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "InputTooLarge": {
+          "actual_bytes": "usize",
+          "limit_bytes": "usize"
+        },
+        "InvalidUtf8": {},
+        "BomNotAllowed": {},
+        "InvalidJson": {
+          "byte_offset": "Option<usize>"
+        },
+        "DuplicateKey": {
+          "pointer": "RFC6901 String"
+        },
+        "UnknownField": {
+          "pointer": "RFC6901 String"
+        },
+        "MissingField": {
+          "pointer": "RFC6901 String"
+        },
+        "InvalidField": {
+          "pointer": "String",
+          "code": "CodecFieldCode"
+        },
+        "ResourceLimit": {
+          "pointer": "String",
+          "resource": "CodecResource"
+        },
+        "OutputTooLarge": {
+          "actual_bytes": "usize",
+          "limit_bytes": "usize"
+        }
+      },
+      "rule": "No IO; syntax/duplicate/resource checks precede schema dispatch."
+    },
+    "CreationFailureCause": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "ExistingTarget": {
+          "path": "String"
+        },
+        "Conflict": {
+          "expected": "Option<RawDefinitionDigest>",
+          "observed": "Option<RawDefinitionDigest>"
+        },
+        "Busy": {
+          "path": "String"
+        },
+        "Storage": {
+          "fault": "StoreFault"
+        },
+        "InvalidLocation": {
+          "path": "String",
+          "reason": "String"
+        }
+      },
+      "rule": "RecoveryRequired is deliberately not nested; it has higher-priority top-level classification."
+    },
+    "DefinitionStoreError": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "NotBound": {},
+        "InvalidInput": {
+          "field": "String",
+          "code": "DefinitionInputCode"
+        },
+        "Codec": {
+          "issue": "CodecIssue"
+        },
+        "UnsupportedSchema": {
+          "schema": "String",
+          "version": "String received scalar spelling"
+        },
+        "ExistingTarget": {
+          "path": "String"
+        },
+        "IdentityConflict": {
+          "expected_uuid": "Option<PersistentProjectId>",
+          "observed_uuid": "PersistentProjectId",
+          "requested_root": "String",
+          "other_root": "Option<String>",
+          "reason": "IdentityConflictReason"
+        },
+        "RevisionConflict": {
+          "expected_digest": "Option<RawDefinitionDigest>",
+          "observed_digest": "Option<RawDefinitionDigest>",
+          "expected_revision": "Option<DefinitionRevision>",
+          "observed_revision": "Option<DefinitionRevision>"
+        },
+        "Busy": {
+          "path": "String"
+        },
+        "StorageFailure": {
+          "fault": "StoreFault",
+          "retained_artifacts": "Vec<OwnedCreationArtifact>"
+        },
+        "PartialProjectCreated": {
+          "progress": "CreationProgress",
+          "cause": "CreationFailureCause"
+        },
+        "RecoveryRequired": {
+          "diagnostics": "RecoveryInfo",
+          "progress": "Option<CreationProgress>"
+        },
+        "InvalidLocation": {
+          "path": "String",
+          "reason": "String native InvalidPath detail",
+          "retained_artifacts": "Vec<OwnedCreationArtifact>"
+        },
+        "CommitEvidenceMismatch": {
+          "requested_target": "String",
+          "reported_receipt": "existing Ports CommitReceipt",
+          "progress": "CreationProgress"
+        }
+      },
+      "rule": "Local typed HOST data, not new IPC schema. S3 rejects UnauthorizedCaller before S2. No implicit retry/remap/cleanup."
+    },
+    "CreationArtifactKind": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "RootDirectory": {},
+        "MetadataDirectory": {},
+        "DefinitionFile": {},
+        "PreferencesFile": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "CreationArtifactState": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "CreatedDirectory": {},
+        "CommittedFile": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "CreationPhase": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "CreateRoot": {},
+        "CreateMetadata": {},
+        "CommitDefinition": {},
+        "CommitPreferences": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "IdentityConflictReason": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "BoundUuidMismatch": {},
+        "DuplicateOpenRoot": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "DefinitionInputCode": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "BindingMismatch": {},
+        "ExpectedDigestMismatch": {},
+        "PreferenceModeMismatch": {},
+        "DomainInvalid": {},
+        "PreferenceInvalid": {},
+        "InvalidLocation": {},
+        "RevisionNotAdvanced": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "CodecFieldCode": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "WrongType": {},
+        "InvalidEnum": {},
+        "InvalidUuid": {},
+        "InvalidRevision": {},
+        "OutOfRange": {},
+        "InconsistentFieldState": {},
+        "InvalidNumberToken": {},
+        "InvalidPortableAlias": {},
+        "InvalidDigest": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    },
+    "CodecResource": {
+      "kind": "enum",
+      "fields_or_variants": {
+        "Depth": {},
+        "Nodes": {},
+        "StringBytes": {},
+        "NumberBytes": {}
+      },
+      "rule": "Exact discriminants; no serialization/IPC contract is added in S2."
+    }
+  }
+}

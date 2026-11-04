@@ -1,0 +1,31 @@
+{
+  "A1_context": "M01-S2 HOST definition codec/create/save/adopt; existing WORK domain accepted. UI/native/session ownership in S3.",
+  "A2_hexagonal": "UI/native picker → Tauri → DispatchHost → HOST usecases → WORK; HOST → FileSystemPort(read)/FileCommitPort(write) ← Windows adapter.",
+  "A3_module_dependency": "src-tauri → HOST → WORK + PORTS; ADAPTERS → PORTS + existing SPEC hash. No HOST std::fs, WORK serde, or UI adapter call.",
+  "A4_responsibility": "WORK owns typed content rules; HOST owns mapping/orchestration; DispatchHost owns live binding/draft/peer projection; adapter owns OS handles/scratch.",
+  "A5_input_ports": [
+    "encode_definition",
+    "decode_definition",
+    "open_definition",
+    "prepare_definition_preferences",
+    "bind_definition",
+    "save_definition"
+  ],
+  "A6_output_ports": "Existing FileSystemPort read/exists/is_file; FileCommitPort exclusive create/acquire; lease read_current/replace_checked. No new Port.",
+  "A7_driving": "Tests, then authorized S3 caller; no new global service.",
+  "A8_driven": "Existing Windows IO adapter; test-only commit doubles backed by same fixture FS.",
+  "A9_direction": "Adapters implement inward Ports; HOST maps DTO, Domain does not serialize.",
+  "A10_ownership": "S2 returns immutable proof/binding, never registers active project or UUID. Caller must recheck current owner/session before applying returned binding.",
+  "A11_mutation": "Only save requests writes through commit Port. No write_atomic/create_dir_all/remove_file in new store/create path; no source mutation.",
+  "A12_transaction": "Root/metadata/definition/preferences are ordered steps, each formal file its own IO transaction. Definition first, prefs second. Later failure never rolls back a committed definition.",
+  "A13_external": "Current IO local-scope accepted on Windows10; Windows11/reparse/8.3 remain separate. Existing read ports read whole files: codec cap is post-read, not bounded OS allocation. No universal CAS/power-loss promise.",
+  "A14_forbidden": [
+    "new global UUID registry/repository/manager",
+    "WORK/Ports/schema changes beyond this proposal",
+    "UI raw root/digest/approval as authority",
+    "HOST native FS/OS calls",
+    "recursive deletion/stale lock reclamation",
+    "legacy adoption overwriting ESS/manifest/preferences",
+    "generation/AI/Git/BIN/Undo/M07 changes"
+  ]
+}

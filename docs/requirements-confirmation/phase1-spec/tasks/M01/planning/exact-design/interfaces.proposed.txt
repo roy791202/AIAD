@@ -1,0 +1,43 @@
+// PROPOSED signatures only. No product Skeleton created.
+// WORK: pure, no serde/OS/UUID RNG dependencies.
+pub struct PersistentProjectId(String); // validated lowercase UUID v4
+pub struct DefinitionRevision(u64); // checked increment, wire decimal string
+pub enum FieldState<T> { Unresolved, Tentative(T), Confirmed(T) }
+pub struct ProjectDefinition { /* exact fields in schema.json, domain typed */ }
+pub struct DefinitionDraft { /* excludes trusted identity, approvals, revision */ }
+pub fn validate_definition(draft: &DefinitionDraft) -> Result<(), DefinitionError>;
+pub fn apply_definition(current: &ProjectDefinition, expected: DefinitionRevision,
+    draft: DefinitionDraft) -> Result<ProjectDefinition, DefinitionError>;
+pub fn missing_generation_requirements(def: &ProjectDefinition) -> Vec<FieldPath>;
+// HOST: serde DTO/codec maps to pure WORK values, preserving extensions.
+pub fn encode_definition(def: &ProjectDefinition) -> Result<Vec<u8>, DefinitionStoreError>;
+pub fn decode_definition(bytes: &[u8]) -> Result<ProjectDefinition, DefinitionStoreError>;
+// HOST usecase under DispatchHost, no new global service or authority.
+// generated UUID candidate injected from existing trusted Tauri uuid boundary.
+pub fn save_definition(fs: &dyn FileSystemPort, commit: &dyn FileCommitPort,
+    binding: &DefinitionBinding, expected_disk_digest: Option<&str>,
+    def: &ProjectDefinition) -> Result<DefinitionSaveReceipt, DefinitionStoreError>;
+
+// Shared cross-module output capability, proposed in PORTS, not new Repository.
+// May NOT be silently folded into FileSystemPort.write_atomic default behavior.
+pub trait FileCommitPort: Send + Sync {
+    fn create_directory_exclusive(&self, parent: &str, single_name: &str)
+        -> Result<String, CommitError>;
+    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;
+}
+pub trait FileWriteLease {
+    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;
+    fn replace_checked(&mut self, expected_digest: Option<&str>, bytes: &[u8])
+        -> Result<CommitReceipt, CommitError>;
+}
+// OS-backed lock remains live until lease Drop; crash releases OS lock.
+// Do NOT reclaim by a timestamp (board FileLock policy is not product guarantee).
+// expected None = require missing; Some(hash) = require same prior raw bytes.
+// replace_checked: stage/sync, preserve previous version, recheck under lock,
+// replace single formal file; restore previous bytes before returning ordinary Err.
+// If restoration itself fails: RecoveryRequired; retained versions + journal paths,
+// block more destructive operations, never claim unchanged or successful.
+// Post-commit notification/projection is not allowed to turn committed save into
+// a false "failed, unchanged" result. Uncertain state is distinctly classified.
+// Locks protect cooperating product writers; arbitrary external edits still need
+// digest recheck and observed conflict handling, not a universal filesystem CAS.

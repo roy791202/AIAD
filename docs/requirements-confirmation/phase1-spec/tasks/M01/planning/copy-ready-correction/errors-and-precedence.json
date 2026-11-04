@@ -1,0 +1,115 @@
+{
+  "status": "PROPOSED_PENDING_OWNER",
+  "new_diagnostic_names": true,
+  "not_product_error_enum": true,
+  "precedence": [
+    {
+      "error": "CandidateShape",
+      "result": "RejectedBeforeMutation",
+      "rule": "First: every nested missing/unknown/null/wrong type/enum/empty string; before field access/lookup/CAS"
+    },
+    {
+      "error": "RequestDigestMismatch",
+      "result": "ProofMismatch",
+      "rule": "Second: canonical full request digest; hashes provide integrity, not authority"
+    },
+    {
+      "error": "InvalidWorkflowIdentity",
+      "result": "RejectedBeforeMutation",
+      "rule": "Third: malformed workflow UUID"
+    },
+    {
+      "error": "TransitionMismatch",
+      "result": "ProofMismatch",
+      "rule": "Fourth: publish/0 UUIDv5 mismatch"
+    },
+    {
+      "error": "IdentityConflict",
+      "result": "RejectedBeforeMutation",
+      "rule": "Fifth: context/new/source identity relation"
+    },
+    {
+      "error": "TargetOrIdentityRejected",
+      "result": "RejectedBeforeMutation",
+      "rule": "Sixth: pre-existing target or invalid identity"
+    },
+    {
+      "error": "DependencyUnverified",
+      "result": "DependencyNotReady",
+      "rule": "Seventh: declared Unknown provider/catalog state"
+    },
+    {
+      "error": "CopyIncomplete",
+      "result": "RejectedBeforeMutation",
+      "rule": "Eighth: declared Incomplete children"
+    },
+    {
+      "error": "IssuerRecordUnavailable",
+      "result": "ProofMismatch",
+      "rule": "Ninth: frozen document fixture lookup unavailable"
+    },
+    {
+      "error": "IssuerRecordMismatch",
+      "result": "ProofMismatch",
+      "rule": "Tenth: caller record differs from separately frozen issuer fixture; context/binding checked thereafter"
+    },
+    {
+      "error": "IssuerContextMismatch",
+      "result": "ProofMismatch",
+      "rule": "Trusted issuer context vs request context"
+    },
+    {
+      "error": "IssuerBindingMismatch",
+      "result": "ProofMismatch",
+      "rule": "Every body field vs explicit trusted issuer binding"
+    },
+    {
+      "error": "IssuerReferenceMismatch",
+      "result": "ProofMismatch",
+      "rule": "Proof handles must resolve exact records"
+    },
+    {
+      "error": "ReadyRequestMismatch",
+      "result": "ProofMismatch",
+      "rule": "Ready receipt identity and trusted request digest"
+    },
+    {
+      "error": "ReadyRelationMismatch",
+      "result": "ProofMismatch",
+      "rule": "Ready path/prior/new/catalog/blob/root relationships"
+    },
+    {
+      "error": "TargetRelationMismatch",
+      "result": "ProofMismatch",
+      "rule": "Native identity and stable marker location"
+    },
+    {
+      "error": "CASFixtureMismatch",
+      "result": "ProofMismatch",
+      "rule": "Caller CAS outcome differs from frozen domain fixture"
+    },
+    {
+      "error": "ReadyUncertain",
+      "result": "UncertainPublication",
+      "rule": "Unknown coherent CAS precedes delivery checks"
+    },
+    {
+      "error": "OwnerDeliveryDeferred",
+      "result": "DeliveryDeferred",
+      "rule": "Verified Ready + owner absent; precedes source ACK"
+    },
+    {
+      "error": "SourceAckDeferred",
+      "result": "CommittedAckDeferred",
+      "rule": "Verified Ready + ACK absent"
+    },
+    {
+      "error": "None",
+      "result": "VerifiedPublished",
+      "rule": "Only after all checks"
+    }
+  ],
+  "no_native_calls": true,
+  "no_mutation": true,
+  "notes": "Frozen record equality intentionally fences all fields before downstream consistency checks; some detailed diagnostics are defensive and unreachable for internally consistent immutable fixture tables. No broad exception catch or success fallback."
+}

@@ -1,0 +1,222 @@
+<!doctype html><meta charset="utf-8"><title>M01 provider source map</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;line-height:1.6}dt{font-weight:bold}pre{white-space:pre-wrap;background:#eee;padding:15px}section{border-top:1px solid #aaa}</style><h1>M01 真實 provider／receipt 邊界對照</h1><p>新增來源調查；只限文件準備，未採納，產品／native NOT RUN。不是重跑歷史 PASS。</p><p>目前 IO 確實有私有 native handle，但它不是呼叫方可攜回的 Ready issuer 證據。regular_identity 只回傳 unit；四欄 receipt 不含 lease authority。新提案所需的 durable Ready issuer 不可用現有單檔 journal 冒充。</p><p>HEAD 5b709343a890503ebbe24a802e43cda5647df124；authority 796 零漂移；歷史產品 SHA 另列，不能宣稱 same HEAD。</p><section id="P1"><h2>Native held lease authority (CR-D1)</h2><dl><dt>exists</dt><dd>Private StdFileWriteLease owns a sidecar OS handle; acquire uses exclusive sharing.</dd><dt>not_proven</dt><dd>No public native_lease_id, native volume/file identity tuple, issuer record, marker-path binding or continuing lease proof in this Port/receipt.</dd><dt>required_provider</dt><dd>IO/native provider architect + independent Windows 11 verifier</dd><dt>next_original_scope</dt><dd>Prepare proposed native-provider schema/lifecycle options bound to this actual Port gap; do not extend Port until architecture approval.</dd><dt>classification</dt><dd>ARCHITECTURE_GAP_FOR_PROPOSED_COPY_READY</dd></dl></section><section id="P2"><h2>Durable Ready issuance / restart lookup (CR-D2)</h2><dl><dt>exists</dt><dd>Single-file journal and HOST commit-evidence checks exist.</dd><dt>not_proven</dt><dd>Single-file journal is not a durable Ready issuer table: it lacks whole-request/context/provider/copy/catalog proof bindings. No restart Ready issuer lookup was located by the scoped token inventory.</dd><dt>required_provider</dt><dd>M01 Ready authority architect; M05 catalog and M06 copy evidence providers; independent restart verifier</dd><dt>next_original_scope</dt><dd>Design durable record/lookup/retention and crash-window comparison as pending proposals; do not treat fixture dictionary lookup as native restart proof.</dd><dt>classification</dt><dd>MISSING_ADMITTED_PROVIDER_EVIDENCE</dd></dl></section><section id="P3"><h2>Returned receipt authority boundary</h2><dl><dt>exists</dt><dd>HOST validates receipt path/digests/transaction shape against the request.</dd><dt>not_proven</dt><dd>Field equality does not authenticate issuer, grant a lease lifetime, or admit a new publish representation.</dd><dt>required_provider</dt><dd>M01 contract owner with IO evidence provider</dd><dt>next_original_scope</dt><dd>Keep current four-field receipt and proposed copy-Ready shape separately reviewed; exact migration remains CR-D3.</dd><dt>classification</dt><dd>EXISTING_RECEIPT_NOT_COPY_READY_AUTHORITY</dd></dl></section><h2>需要產品決策，未代選</h2><p>CR-D1：provider schema／lease lifecycle／平台驗證。CR-D2：durable issuance／lookup／restart／diagnostics。CR-D3：完整 publish shape／byte representation／migration。建議先補工程方案後逐項確認；本報告不批准新 Port。</p><h2>精確來源片段</h2><details><summary>S1 apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs:22–30</summary><p>CommitReceipt exports only target path, previous digest, committed digest, transaction ID.</p><pre>pub struct CommitReceipt {
+    pub target_path: String,
+    pub previous_digest: Option&lt;String&gt;,
+    pub committed_digest: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommitError {</pre></details><details><summary>S2 apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs:58–74</summary><p>FileCommitPort and FileWriteLease expose acquire/read/replace, no issuer lookup or lease-proof getter.</p><pre>pub trait FileCommitPort: Send + Sync {
+    fn create_directory_exclusive(
+        &amp;self,
+        parent: &amp;str,
+        single_name: &amp;str,
+    ) -&gt; Result&lt;String, CommitError&gt;;
+    fn acquire_write(&amp;self, path: &amp;str) -&gt; Result&lt;Box&lt;dyn FileWriteLease&gt;, CommitError&gt;;
+}
+
+pub trait FileWriteLease {
+    fn read_current(&amp;self) -&gt; Result&lt;Option&lt;Vec&lt;u8&gt;&gt;, CommitError&gt;;
+    fn replace_checked(
+        &amp;mut self,
+        expected_digest: Option&lt;&amp;str&gt;,
+        bytes: &amp;[u8],
+    ) -&gt; Result&lt;CommitReceipt, CommitError&gt;;
+}</pre></details><details><summary>S3 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:18–53</summary><p>StdFileCommit acquires a boxed lease; native sidecar handle is private and owned by lease.</p><pre>impl FileCommitPort for StdFileCommit {
+    fn create_directory_exclusive(
+        &amp;self,
+        parent: &amp;str,
+        single_name: &amp;str,
+    ) -&gt; Result&lt;String, CommitError&gt; {
+        create_directory(parent, single_name)
+    }
+
+    fn acquire_write(&amp;self, path: &amp;str) -&gt; Result&lt;Box&lt;dyn FileWriteLease&gt;, CommitError&gt; {
+        Ok(Box::new(acquire(path)?))
+    }
+}
+
+/// The owned native sidecar handle is held for the entire lease lifetime.
+pub(crate) struct StdFileWriteLease {
+    target_path: String,
+    _lock_handle: std::fs::File,
+    blocked: bool,
+    #[cfg(test)]
+    _checkpoints: TestCheckpoints,
+}
+
+impl FileWriteLease for StdFileWriteLease {
+    fn read_current(&amp;self) -&gt; Result&lt;Option&lt;Vec&lt;u8&gt;&gt;, CommitError&gt; {
+        read_optional(Path::new(&amp;self.target_path))
+    }
+
+    fn replace_checked(
+        &amp;mut self,
+        expected_digest: Option&lt;&amp;str&gt;,
+        bytes: &amp;[u8],
+    ) -&gt; Result&lt;CommitReceipt, CommitError&gt; {
+        self.replace(expected_digest, bytes)
+    }
+}</pre></details><details><summary>S4 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:236–250</summary><p>regular_identity calls GetFileInformationByHandle and checks attributes/link count; returns unit, not volume/file identity evidence.</p><pre>fn regular_identity(file: &amp;File) -&gt; std::io::Result&lt;()&gt; {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION,
+    };
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    if unsafe { GetFileInformationByHandle(file.as_raw_handle(), &amp;mut info) } == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    if info.dwFileAttributes &amp; (0x400 | 0x10) != 0 || info.nNumberOfLinks != 1 {
+        return Err(std::io::Error::other(
+            &quot;file identity is not a single regular non-reparse file&quot;,
+        ));
+    }
+    Ok(())</pre></details><details><summary>S5 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:411–445</summary><p>Acquire uses sidecar share_mode(0), validates sidecar, reads target, inspects journal, retains handle.</p><pre>fn acquire(path: &amp;str) -&gt; Result&lt;StdFileWriteLease, CommitError&gt; {
+    let target = normalize_target(path)?;
+    let side = PathBuf::from(format!(&quot;{target}.eluslot-lock&quot;));
+    if let Ok(m) = fs::symlink_metadata(&amp;side) {
+        if m.file_attributes() &amp; (0x400 | 0x10) != 0 {
+            return Err(invalid(&quot;unsafe lease sidecar&quot;));
+        }
+    }
+    let handle = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .share_mode(0)
+        .custom_flags(0x00200000)
+        .open(&amp;side)
+        .map_err(|e| {
+            if matches!(e.raw_os_error(), Some(32 | 33)) {
+                CommitError::Busy {
+                    path: target.clone(),
+                }
+            } else {
+                storage(CommitStage::Acquire, &amp;side, e)
+            }
+        })?;
+    regular_identity(&amp;handle).map_err(|e| storage(CommitStage::Acquire, &amp;side, e))?;
+    read_optional(Path::new(&amp;target))?;
+    inspect(&amp;target)?;
+    Ok(StdFileWriteLease {
+        target_path: target,
+        _lock_handle: handle,
+        blocked: false,
+        #[cfg(test)]
+        _checkpoints: TestCheckpoints::default(),
+    })</pre></details><details><summary>S6 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:895–925</summary><p>CAS compares previous digest; journal records target/digests/transaction/state, not Ready issuer context.</p><pre>    fn replace(
+        &amp;mut self,
+        expected: Option&lt;&amp;str&gt;,
+        bytes: &amp;[u8],
+    ) -&gt; Result&lt;CommitReceipt, CommitError&gt; {
+        if self.blocked {
+            return Err(recovery(&amp;self.target_path, &quot;lease requires recovery&quot;, None));
+        }
+        if let Some(r) = inspect(&amp;self.target_path)? {
+            self.cleanup_terminal(&amp;r)?;
+        }
+        let old = read_optional(Path::new(&amp;self.target_path))?;
+        let previous = old.as_ref().map(|b| digest(b));
+        if previous.as_deref() != expected {
+            return Err(CommitError::Conflict {
+                expected: expected.map(str::to_owned),
+                observed: previous,
+            });
+        }
+        let a = area(&amp;self.target_path);
+        fs::create_dir(&amp;a).map_err(|e| storage(CommitStage::PrepareOld, &amp;a, e))?;
+        let mut tx = Transaction {
+            record: JournalRecord {
+                version: 1,
+                transaction_id: transaction_id(),
+                target_path: self.target_path.clone(),
+                previous_digest: previous.clone(),
+                new_digest: digest(bytes),
+                old_version_relative: old.as_ref().map(|_| &quot;old.bin&quot;.into()),
+                new_version_relative: &quot;new.bin&quot;.into(),
+                state: JournalState::Prepared,</pre></details><details><summary>S7 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:955–993</summary><p>Publish rechecks prior digest, verifies bytes, commits journal, constructs the four-field receipt.</p><pre>            self.point(&quot;publish.before&quot;, CommitStage::BeforePublish)?;
+            let observed = read_optional(Path::new(&amp;self.target_path))?.map(|b| digest(&amp;b));
+            if observed != previous {
+                return Err(CommitError::Conflict {
+                    expected: previous.clone(),
+                    observed,
+                });
+            }
+            self.stage(CommitStage::Publish)?;
+            self.point(&quot;target.publish&quot;, CommitStage::Publish)?;
+            self.publish_temp(&amp;mut tx, bytes, &quot;target&quot;)?;
+            self.point(&quot;target.published&quot;, CommitStage::Publish)?;
+            self.stage(CommitStage::VerifyPublished)?;
+            self.point(&quot;target.verify&quot;, CommitStage::VerifyPublished)?;
+            if read_optional(Path::new(&amp;self.target_path))?.as_deref() != Some(bytes) {
+                return Err(storage(
+                    CommitStage::VerifyPublished,
+                    Path::new(&amp;self.target_path),
+                    &quot;published bytes mismatch&quot;,
+                ));
+            }
+            self.journal(&amp;mut tx, JournalState::Committed, &quot;committed&quot;)?;
+            if read_optional(Path::new(&amp;self.target_path))?.as_deref() != Some(bytes) {
+                return Err(recovery(
+                    &amp;self.target_path,
+                    &quot;committed target changed&quot;,
+                    Some(&amp;tx.record),
+                ));
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) =&gt; {
+                let receipt = CommitReceipt {
+                    target_path: self.target_path.clone(),
+                    previous_digest: previous,
+                    committed_digest: tx.record.new_digest.clone(),
+                    transaction_id: tx.record.transaction_id.clone(),
+                };</pre></details><details><summary>S8 apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs:1632–1655</summary><p>HOST checks target/prior/new digest and 32 lowercase-hex transaction ID, not native lease provenance.</p><pre>fn checked_receipt(
+    receipt: CommitReceipt,
+    target: &amp;str,
+    expected: Option&lt;&amp;str&gt;,
+    bytes: &amp;[u8],
+    p: &amp;CreationProgress,
+) -&gt; StoreResult&lt;CommitReceipt&gt; {
+    if receipt.target_path != target
+        || receipt.previous_digest.as_deref() != expected
+        || receipt.committed_digest != raw_hash(bytes).as_str()
+        || receipt.transaction_id.len() != 32
+        || !receipt
+            .transaction_id
+            .bytes()
+            .all(|c| c.is_ascii_digit() || (b&#x27;a&#x27;..=b&#x27;f&#x27;).contains(&amp;c))
+    {
+        return Err(DefinitionStoreError::CommitEvidenceMismatch {
+            requested_target: target.into(),
+            reported_receipt: receipt,
+            progress: p.clone(),
+        });
+    }
+    Ok(receipt)
+}</pre></details><details><summary>S9 apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs:1789–1796</summary><p>HOST obtains lease and reads current contents locally.</p><pre>    let receipt = {
+        let mut lease = commit
+            .acquire_write(&amp;path)
+            .map_err(|e| map_commit(e, &amp;p, &amp;path))?;
+        let current = lease.read_current().map_err(|e| map_commit(e, &amp;p, &amp;path))?;
+        let observed = current.as_deref().map(raw_hash);
+        let expected_digest = baseline_digest.and_then(RawDefinitionDigest::try_from_text);
+        if observed != expected_digest {</pre></details><details><summary>S10 apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs:1851–1867</summary><p>Lease scope closes before result proof construction; returned commit receipt is not evidence of a continuing held lease.</p><pre>        let r = lease
+            .replace_checked(baseline_digest, &amp;bytes)
+            .map_err(|e| map_commit(e, &amp;p, &amp;path))?;
+        checked_receipt(r, &amp;path, baseline_digest, &amp;bytes, &amp;p)?
+    };
+    let proof = DefinitionCommitProof {
+        project_uuid: d.project_uuid.clone(),
+        persisted_revision: d.definition_revision,
+        relative_path: &quot;.sgenaxis/project-definition.json&quot;.into(),
+        raw_digest: raw_hash_digest(&amp;receipt.committed_digest),
+        transaction_id: receipt.transaction_id.clone(),
+    };
+    owned_file(
+        &amp;mut p,
+        &quot;.sgenaxis/project-definition.json&quot;,
+        CreationArtifactKind::DefinitionFile,
+        &amp;receipt,</pre></details><h2>欄位與其他黃卡</h2><p>參見 <a href="module-spec.json">module-spec.json</a>：21 個提案欄位逐一標示，7 張其他/本模組黃卡沿用其缺件與責任人；M02 另由 Golden14 作者處理。</p><p><a href="token-inventory.json">限定 Rust token 搜尋</a> 不能證明全系統不存在其他命名 provider。<a href="author-checks.json">5 項新文件自檢</a> 不是獨立驗收。</p>

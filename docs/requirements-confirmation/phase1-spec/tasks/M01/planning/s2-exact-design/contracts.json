@@ -1,0 +1,258 @@
+{
+  "status": "PROPOSED",
+  "operations": [
+    {
+      "name": "encode_definition",
+      "inputs": "borrowed ProjectDefinition",
+      "output": "Result<Vec<u8>, DefinitionStoreError>",
+      "preconditions": "No IO; all values structurally representable",
+      "postconditions": "Deterministic v1 bytes, input unchanged, extension number tokens exact",
+      "failure": "Codec/InvalidInput before any persistence",
+      "parameters": [
+        {
+          "name": "definition",
+          "type": "&ProjectDefinition"
+        }
+      ]
+    },
+    {
+      "name": "decode_definition",
+      "inputs": "borrowed byte slice",
+      "output": "Result<ProjectDefinition, DefinitionStoreError>",
+      "preconditions": "Untrusted input, no IO",
+      "postconditions": "Strict v1 to existing WORK types; no approval authentication",
+      "failure": "No partial value; codec priority as codec-mapping.json",
+      "parameters": [
+        {
+          "name": "bytes",
+          "type": "&[u8]"
+        }
+      ]
+    },
+    {
+      "name": "open_definition",
+      "inputs": "FileSystemPort; trusted ExistingProject location; optional expected UUID; trusted peer claim slice",
+      "output": "Result<DefinitionOpenView, DefinitionStoreError>",
+      "preconditions": "S3 authenticated native location and coherent peer snapshot",
+      "postconditions": "Saved view with raw digest or Legacy only on true NotFound; no UUID generation/registration",
+      "failure": "Read/unsupported/identity conflict is NOT Legacy; source unchanged",
+      "parameters": [
+        {
+          "name": "fs",
+          "type": "&dyn FileSystemPort"
+        },
+        {
+          "name": "context",
+          "type": "&DefinitionAuthorityContext"
+        },
+        {
+          "name": "location",
+          "type": "&DefinitionLocation (ExistingProject only)"
+        },
+        {
+          "name": "expected_uuid",
+          "type": "Option<&PersistentProjectId>"
+        },
+        {
+          "name": "open_claims",
+          "type": "&[OpenDefinitionClaim]"
+        }
+      ]
+    },
+    {
+      "name": "prepare_definition_preferences",
+      "inputs": "existing PreferenceChoice plus captured preset/import data",
+      "output": "Result<PreparedPreferencePlan, DefinitionStoreError>",
+      "preconditions": "Before any create; source not writable",
+      "postconditions": "Validated independent bytes/skip; sha256-prefixed digest",
+      "failure": "Invalid preset/import rejected before mutation",
+      "parameters": [
+        {
+          "name": "choice",
+          "type": "existing project_preferences::PreferenceChoice<'_>"
+        }
+      ]
+    },
+    {
+      "name": "bind_definition",
+      "inputs": "FileSystemPort; trusted authority/location; project UUID; baseline from fresh open; prepared preferences; peer claims",
+      "output": "Result<DefinitionBinding, DefinitionStoreError>",
+      "preconditions": "No Deserialize; caller authorized outside S2",
+      "postconditions": "Immutable private-field consistent binding; zero mutations",
+      "failure": "NotBound/InvalidInput/IdentityConflict/RevisionConflict",
+      "parameters": [
+        {
+          "name": "fs",
+          "type": "&dyn FileSystemPort"
+        },
+        {
+          "name": "context",
+          "type": "DefinitionAuthorityContext"
+        },
+        {
+          "name": "location",
+          "type": "DefinitionLocation"
+        },
+        {
+          "name": "project_uuid",
+          "type": "PersistentProjectId"
+        },
+        {
+          "name": "baseline",
+          "type": "DefinitionBaseline"
+        },
+        {
+          "name": "preferences",
+          "type": "PreparedPreferencePlan"
+        },
+        {
+          "name": "open_claims",
+          "type": "&[OpenDefinitionClaim]"
+        }
+      ]
+    },
+    {
+      "name": "save_definition",
+      "inputs": "FileSystemPort; FileCommitPort; &DefinitionBinding; expected_disk_digest Option<&str>; captured &ProjectDefinition",
+      "output": "Result<DefinitionSaveReceipt, DefinitionStoreError>",
+      "preconditions": "Expected digest equals binding baseline; snapshot UUID matches; New revision0. Existing revision>=opened revision, equal revision requires semantic equality including refs/mode/number tokens",
+      "postconditions": "Receipts for every requested write, next-binding proposal, no revision increment/live state mutation",
+      "failure": "Single-file IO and partial/recovery error table; no retry/remap/cleanup/generation",
+      "parameters": [
+        {
+          "name": "fs",
+          "type": "&dyn FileSystemPort"
+        },
+        {
+          "name": "commit",
+          "type": "&dyn FileCommitPort"
+        },
+        {
+          "name": "binding",
+          "type": "&DefinitionBinding"
+        },
+        {
+          "name": "expected_disk_digest",
+          "type": "Option<&str>"
+        },
+        {
+          "name": "definition",
+          "type": "&ProjectDefinition"
+        }
+      ]
+    }
+  ],
+  "confirmed_baseline": [
+    "six-step wizard with incomplete draft",
+    "no overwrite/delete existing target",
+    "independent import source preservation",
+    "S1 revision/approval invalidation rules",
+    "IO protocol A receipts/failures retained",
+    "same UUID uncertain source conflict; no automatic remap",
+    "Windows11/native alias gate remains independent"
+  ],
+  "invariants": [
+    {
+      "id": "M01-S2-I1",
+      "rule": "No mutation until codec/binding/UUID/revision/preferences validated."
+    },
+    {
+      "id": "M01-S2-I2",
+      "rule": "New root/config creation uses exclusive commit Port; no exists/create_dir_all success fallback."
+    },
+    {
+      "id": "M01-S2-I3",
+      "rule": "S2 never increments revision; proof/ack refers only to captured immutable snapshot."
+    },
+    {
+      "id": "M01-S2-I4",
+      "rule": "Raw digest is exact source bytes; revision is logical. Semantically equal reformat still conflicts against stale raw digest."
+    },
+    {
+      "id": "M01-S2-I5",
+      "rule": "Definition committed before later prefs failure remains committed; return partial with proof, never all-unchanged claim."
+    },
+    {
+      "id": "M01-S2-I6",
+      "rule": "RecoveryRequired is top-level priority with exact IO diagnostic paths, never ordinary Partial/Storage."
+    },
+    {
+      "id": "M01-S2-I7",
+      "rule": "Adoption only adds definition/missing metadata directory; protects ESS/manifest/preferences bytes."
+    },
+    {
+      "id": "M01-S2-I8",
+      "rule": "No settings, active binding, UUID registry, Undo or approval-auth mutation. S3 later owner/session gate."
+    },
+    {
+      "id": "M01-S2-I9",
+      "rule": "Supported extensions preserved; duplicate/unknown known-schema/unrepresentable content rejected, not discarded."
+    },
+    {
+      "id": "M01-S2-I10",
+      "rule": "HOST does not own/delete IO scratch or other files; no recursive cleanup."
+    }
+  ],
+  "save_details": [
+    "expected_disk_digest must exactly equal binding baseline, otherwise InvalidInput ExpectedDigestMismatch before writes",
+    "New root and metadata exclusively created; then definition expectedNone; selected prefs expectedNone; no other file generated",
+    "Existing update acquires definition lease, reads raw under lease, compares raw digest before decoding; changed bytes → RevisionConflict even if malformed or different UUID",
+    "If digest matches, decode and compare UUID/opened logical revision; UUID mismatch → IdentityConflict, revision mismatch → RevisionConflict",
+    "Captured revision may advance by multiple S1 edits; no upper step+1 assumption. Same revision must have identical semantic definition; smaller revision rejected",
+    "NoOp is not a new result variant: explicit save may commit identical bytes at same revision, returning a fresh IO transaction receipt. S2 does not force an extra logical revision",
+    "Legacy adoption requires Absent baseline and explicit authorized adoption location; only root metadata may already exist; no replacing existing definition",
+    "Same-root peer UUID claim allowed; same UUID at another canonical root conflicts before creation/adoption/open install; no move/copy resolution in S2",
+    "A read-only open detects stale source if a second exact raw read differs; return RevisionConflict, never mix version/digest",
+    "New first-save failure leaves owned artifacts/proof and requires explicit user action; retrying New location against existing root is ExistingTarget. S3 request-ID dedupe/repair are not hidden in S2",
+    "open_definition returns Legacy only if definition is NotFound AND trusted existing root still exists and is not a file; disappeared/invalid root → InvalidLocation, not Legacy",
+    "After first successful read, any second-read error/change is RevisionConflict; never return digest/content from different reads",
+    "Empty selection/session/window context → NotBound before read/mutation. S3 is still responsible for authenticity and current owner membership.",
+    "Native CommitError::InvalidPath → InvalidLocation with retained artifacts; if THIS operation already created the root, PartialProjectCreated cause InvalidLocation.",
+    "Before constructing commit proof check receipt target equals trusted canonical requested target, committed_digest equals exact encoded requested bytes, previous_digest equals expected baseline and txid is32 lowercase hex. No extra postcommit FS re-read that could misclassify a later external edit.",
+    "A contradictory/malformed successful receipt → top-level CommitEvidenceMismatch, retain reported receipt/progress and block further write/binding. Never call it ordinary Storage/rollback and never fabricate IO journal diagnostics. Preferences mismatch retains earlier definition proof. This guards a Port contract violation without changing IO Port.",
+    "Preference consistency by location: NewProject requires prepared plan kind exactly matches snapshot preferenceSource; ExistingProject requires Skip write plan but preserves historical snapshot preferenceSource preset/imported-copy; LegacyAdoption requires both Skip plan and snapshot preferenceSource skip.",
+    "These location-specific rules prevent overwriting existing preferences on normal definition updates without incorrectly rejecting a saved project that originally chose a preset."
+  ],
+  "value_accessors": [
+    {
+      "type": "RawDefinitionDigest",
+      "methods": [
+        {
+          "name": "try_from_text",
+          "inputs": "&str",
+          "output": "Option<RawDefinitionDigest>",
+          "rule": "validate sha256: lowercase syntax without normalization"
+        },
+        {
+          "name": "as_str",
+          "inputs": "&self",
+          "output": "&str",
+          "rule": "read-only"
+        }
+      ]
+    },
+    {
+      "type": "DefinitionBinding",
+      "methods": [
+        {
+          "name": "project_uuid",
+          "inputs": "&self",
+          "output": "&PersistentProjectId",
+          "rule": "read-only, no authority grant"
+        },
+        {
+          "name": "baseline",
+          "inputs": "&self",
+          "output": "&DefinitionBaseline",
+          "rule": "read-only; caller can pass derived expected digest, cannot replace private baseline"
+        },
+        {
+          "name": "location",
+          "inputs": "&self",
+          "output": "&DefinitionLocation",
+          "rule": "Rust owner projection only; not automatic IPC serialization"
+        }
+      ]
+    }
+  ]
+}

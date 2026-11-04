@@ -1,0 +1,49 @@
+{
+  "status": "PROPOSED_FOR_REVIEW",
+  "module": "M01",
+  "stages": [
+    {
+      "stage": "decode/validate",
+      "allowed_effects": "唯讀；尚未發出mutation",
+      "on_failure": "InvalidInput/UnsupportedSchema拒絕，current/original/history不變",
+      "evidence_needed": "malformed與未知欄位/版本fixtures"
+    },
+    {
+      "stage": "acquire/create",
+      "allowed_effects": "OS lease或專屬新目錄",
+      "on_failure": "ExistingTarget/Busy拒絕；新建不得刪既有目標",
+      "evidence_needed": "檔案/空目錄/非空目錄、多writer原始bytes"
+    },
+    {
+      "stage": "prepare",
+      "allowed_effects": "本次owned temp/不可變版本/pins",
+      "on_failure": "StorageFailure保留舊檔及session；新專案Partial列殘留",
+      "evidence_needed": "stage/pin/sync每點注入失敗"
+    },
+    {
+      "stage": "publish",
+      "allowed_effects": "單正式檔替換或一次domain swap",
+      "on_failure": "回復before後才回普通failure；undo不入帳",
+      "evidence_needed": "replace前後失敗及canonical/full byte對比"
+    },
+    {
+      "stage": "restore itself",
+      "allowed_effects": "保留原有效版本/transaction紀錄",
+      "on_failure": "RecoveryRequired且封鎖破壞性後續，不能宣稱原狀或成功",
+      "evidence_needed": "restore失敗、不清理唯一preimage"
+    },
+    {
+      "stage": "postcommit projection",
+      "allowed_effects": "提交已成立；畫面/通知是projection",
+      "on_failure": "不把render錯誤轉成「未寫入」；顯示已提交版本/待更新UI",
+      "evidence_needed": "成功commit後render失敗與重讀"
+    },
+    {
+      "stage": "late completion",
+      "allowed_effects": "僅ack捕獲revision/session",
+      "on_failure": "不能清掉R+1或別session的dirty；已關閉session不寫新project",
+      "evidence_needed": "save中編輯、switch、close生命週期"
+    }
+  ],
+  "guarantee_limit": "OS-lock protects cooperating product writers; external noncooperating changes are detected on recheck where observable, no universal atomic CAS claim. Hardware/media destruction outside recovery guarantee. RecoveryRequired is a disclosed incident state, not successful rollback proof."
+}

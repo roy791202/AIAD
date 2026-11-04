@@ -1,0 +1,73 @@
+{
+  "status": "PROPOSED_SCOPE_EXPANSION_REQUIRES_OWNER_ADOPTION",
+  "primary_module": "M01",
+  "integration_scope": "M01 S3 driving adapter/application orchestration plus narrow HOST fixed command allowlist; no second primary module behavior",
+  "allowed_files": [
+    "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+    "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+    "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+    "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+    "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+    "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+    "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+    "apps/sgenaxis-desktop/ui/app.js",
+    "apps/sgenaxis-desktop/ui/index.html",
+    "apps/sgenaxis-desktop/ui/styles.css",
+    "apps/sgenaxis-desktop/ui/project-wizard.js",
+    "apps/sgenaxis-desktop/ui/project-wizard.test.cjs",
+    "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_definition_commands.rs",
+    "apps/sgenaxis-desktop/src-tauri/src/project_wizard_native.rs",
+    "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_wizard_native.rs",
+    "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+    "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+    "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs"
+  ],
+  "scope_delta": [
+    "apps/sgenaxis-desktop/src-tauri/src/project_wizard_native.rs",
+    "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_wizard_native.rs",
+    "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+    "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+    "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs"
+  ],
+  "delta_reasons": [
+    "new native adapter/output-port/test seam needed to express native failures without domain IO",
+    "standalone direct Windows API dependency/lock root edge",
+    "new commands would otherwise fail existing HOST authorize; this file was absent from old candidate envelope"
+  ],
+  "restrictions": {
+    "commands.rs": "wizard handlers, three legacy routing error compatibility, successful-bound-root invalidation only; no unrelated command redesign",
+    "dispatch.rs": "wizard owner/request maps and S1/S2 calls; preserve WORK registry/leases and unrelated dispatch",
+    "lib.rs": "register native module/commands, main lifecycle hooks and boot wiring only",
+    "dto.rs": "closed wizard DTO/error mapping only",
+    "Cargo.lock": "only dependency edge/features for pinned existing windows-sys 0.61.2; any package/version/checksum change REPLAN_REQUIRED",
+    "ipc.rs": "exact wizard variants/parse and matching allowlist tests only",
+    "UI": "wizard controls/style/action hooks, no unrelated editor/layout redesign"
+  },
+  "protected": [
+    "S1 WORK project_definition.rs",
+    "S2 HOST project_definition.rs and all current accepted tests",
+    "all Ports/Adapters/IO private journals",
+    "other lockfiles/manifests",
+    "WORK registry and execution lease semantics",
+    "architecture/schema/business behavior outside this packet"
+  ],
+  "subtasks": [
+    {
+      "id": "M01-S3-N",
+      "scope": "native port/Windows adapter + native tests; compile-valid RED then implementation only after stage acceptance"
+    },
+    {
+      "id": "M01-S3-H",
+      "scope": "DTO/commands/owner/request/S2 mapping, permissions/lifecycle + command contract tests"
+    },
+    {
+      "id": "M01-S3-U",
+      "scope": "six-step UI + 3 entry migration + UI contract tests"
+    },
+    {
+      "id": "M01-S3-I",
+      "scope": "integration acceptance for S3 owned behavior only; native Win11 tracked separately"
+    }
+  ],
+  "after_adoption": "Create architecture/behavior/test Skeleton for all three seams; compile and demonstrate valid behavioral RED; read-only acceptance before standing auto-implementation. No Skeleton/source/test modification authorized by this document delivery."
+}

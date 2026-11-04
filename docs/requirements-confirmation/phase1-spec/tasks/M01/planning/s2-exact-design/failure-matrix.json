@@ -1,0 +1,122 @@
+{
+  "status": "PROPOSED",
+  "columns": [
+    "stage",
+    "trigger",
+    "result",
+    "preservation"
+  ],
+  "rows": [
+    [
+      "preflight",
+      "invalid codec/binding/plan",
+      "typed validation error",
+      "zero mutation"
+    ],
+    [
+      "new root",
+      "existing file/empty/nonempty dir",
+      "ExistingTarget",
+      "preserve all bytes; no precheck/create fallback"
+    ],
+    [
+      "new root",
+      "ordinary storage before root owned",
+      "StorageFailure",
+      "no false PartialProjectCreated"
+    ],
+    [
+      "metadata/definition",
+      "ordinary failure after newly owned root",
+      "PartialProjectCreated(progress,cause)",
+      "keep owned artifacts; no auto recursive rollback"
+    ],
+    [
+      "definition IO",
+      "changed raw digest/presence",
+      "RevisionConflict, or Partial with Conflict if root newly created",
+      "preserve external data"
+    ],
+    [
+      "any IO",
+      "Busy",
+      "Busy or new-root Partial with Busy",
+      "no retry/stale lock removal"
+    ],
+    [
+      "any IO",
+      "RecoveryRequired",
+      "top-level RecoveryRequired(diagnostics,progress)",
+      "outranks Partial; preserve exact diagnostics"
+    ],
+    [
+      "existing update",
+      "ordinary IO Storage after verified restore",
+      "StorageFailure original stage",
+      "do not advance bound baseline/revision"
+    ],
+    [
+      "legacy adoption",
+      "definition appeared unexpectedly",
+      "ExistingTarget/RevisionConflict expectedNone",
+      "explicit reopen required, no overwrite"
+    ],
+    [
+      "legacy adoption",
+      "created metadata then ordinary failure",
+      "StorageFailure with retained metadata artifact",
+      "not newly created project; protected file hashes unchanged"
+    ],
+    [
+      "preferences",
+      "ordinary failure/collision after definition committed",
+      "PartialProjectCreated, Some definition_commit",
+      "no rollback of committed definition; no active binding"
+    ],
+    [
+      "preferences",
+      "RecoveryRequired after definition committed",
+      "top-level RecoveryRequired, progress proof",
+      "retain versions and no success bind"
+    ],
+    [
+      "all writes",
+      "valid receipts for requested steps",
+      "DefinitionSaveReceipt",
+      "only caller can install next binding"
+    ],
+    [
+      "postcommit projection",
+      "render/session changed",
+      "receipt immutable; caller reports projection state",
+      "never false Storage unchanged claim"
+    ],
+    [
+      "duplicate New request",
+      "same root now exists",
+      "ExistingTarget",
+      "S3 request-id cache is separate"
+    ],
+    [
+      "late completion",
+      "caller closed/switched/edited",
+      "captured proof only; S3 prevents stale install",
+      "S2 has no owner mutation"
+    ],
+    [
+      "native validation",
+      "CommitError.InvalidPath",
+      "InvalidLocation with retained artifacts, or PartialProjectCreated cause InvalidLocation if root newly owned",
+      "no fallback through weak FS helpers; preserve owned metadata"
+    ],
+    [
+      "receipt validation",
+      "target/digest/previous digest/txid contradict request",
+      "top-level CommitEvidenceMismatch(reported_receipt,progress)",
+      "uncertain result, no bind/cleanup/followup writes; keep prior proof"
+    ]
+  ],
+  "atomicity": "single-file only; no rollback of committed definition for later preferences/UI failure",
+  "priority": "Preflight first; RecoveryRequired top-level; Partial only if THIS operation exclusively created root; otherwise ordinary errors retain any owned metadata artifacts.; CommitEvidenceMismatch is also top-level uncertainty, not ordinary Partial/Storage.",
+  "metadata_rule": "Existing update never creates metadata. NewProject requires exclusive metadata create and treats AlreadyExists as partial collision. LegacyAdoption may reuse existing regular metadata directory; IO acquire validates reparse/native path before file writes."
+}

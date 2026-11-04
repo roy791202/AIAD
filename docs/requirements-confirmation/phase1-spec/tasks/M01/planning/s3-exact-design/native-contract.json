@@ -1,0 +1,62 @@
+{
+  "port": "WizardNativePort: Send + Sync; application-local output port in src-tauri/src/project_wizard_native.rs; never exposed to domain/HOST/JS",
+  "operations": [
+    "pick_directory(purpose: SelectionPurpose, caller: TrustedCaller) -> Result<Option<NativeSelection>, NativeSelectionError>",
+    "revalidate(selection: &NativeSelection) -> Result<NativeIdentity, NativeSelectionError>",
+    "retire(selection: NativeSelection) -> (); drops owned native handle, never removes files"
+  ],
+  "types": {
+    "SelectionPurpose": [
+      "new_parent",
+      "existing_project",
+      "legacy_project"
+    ],
+    "NativeIdentity": {
+      "volume_serial": "u64 decimal string in diagnostics only",
+      "file_id": "128-bit opaque native bytes; equality only",
+      "canonical_path": "absolute final DOS path, internal only"
+    },
+    "NativeSelection": "private fields: opaque UUIDv4 id, caller instance, owner generation, purpose, identity, non-cloneable retained handle lease"
+  },
+  "windows_adapter": [
+    "Windows local fixed-drive directories only in this S3 slice. Reject UNC, device paths, drive-relative paths, ADS, embedded NUL, dot/dotdot components and non-directory selection. Non-Windows returns UnsupportedPlatform before mutation; no silent lexical fallback.",
+    "At picker return inspect each component from drive root using CreateFileW with FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT and FILE_READ_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE (no FILE_SHARE_DELETE). GetFileInformationByHandleEx FileAttributeTagInfo rejects every reparse component, including junctions/symlinks. Keep component handle chain until selection retired so cooperating rename/delete is blocked; failure to open/hold any component rejects the selection.",
+    "GetFinalPathNameByHandleW with FILE_NAME_NORMALIZED|VOLUME_NAME_DOS supplies final absolute path. GetLongPathNameW supplies expanded long spelling. Compare input absolute component spelling against expanded spelling after removing only extended DOS prefix and case differences using CompareStringOrdinal(ignoreCase=true). Different non-case spelling rejects AliasRejected, including 8.3 alias. Never infer long-name expansion by deleting tilde or lexical casefold.",
+    "GetFileInformationByHandleEx FileIdInfo supplies volume serial/file-id. Reject if queried component identity or directory/reparse attributes change during capture. Record canonical final root and identity privately; JS display path is inert.",
+    "Before reserve and immediately before passing canonical path to S2, revalidate held handle chain and reopen the named path with same flags, compare native identity and final path; reject LocationChanged before invoking S2 if different. Keep held chain through S2 transaction, release on terminal request/cancel once no capture owns it.",
+    "IO remains the authority for exclusive child create, CAS, rollback and target alias checks. This native prevalidation does not claim universal filesystem CAS against arbitrary external writers or completion of outstanding IO Windows11/reparse/8.3 gates.",
+    "RAII closes handles on every error/cancel/shutdown. Capacity rejection never leaks handles. Do not hold HostState/AppState locks across dialog/native inspection/IO; install only after rechecking caller generation."
+  ],
+  "dependency": {
+    "target": "cfg(windows)",
+    "crate": "windows-sys",
+    "=version": "0.61.2",
+    "features": [
+      "Win32_Foundation",
+      "Win32_Storage_FileSystem",
+      "Win32_Globalization"
+    ],
+    "scope": "direct dependency in standalone src-tauri/Cargo.toml; version already in standalone lock, allow only root dependency edge/feature resolution in src-tauri/Cargo.lock; no package version/checksum upgrades"
+  },
+  "test_seam": "Inject WizardNativePort fake observations and barrier-controlled callbacks into DispatchHost owner workflow; Windows adapter tests use owned temp directories and real directory handles. No actual source/test seam created by this proposal.",
+  "exact_api_constraints": {
+    "creation_disposition": "OPEN_EXISTING; never CREATE_ALWAYS/OPEN_ALWAYS; desired access FILE_READ_ATTRIBUTES; bInheritHandle=false",
+    "drive_type": "GetDriveTypeW must return DRIVE_FIXED; all other drive types UnsupportedLocation",
+    "buffers": "UTF-16 only, checked allocation and Win32 required-length retry; max 32767 UTF-16 code units; overflow/zero/truncation -> NativeObservationFailed, no lossy conversion",
+    "scope": "No write/rename/delete native operation; held handles close via RAII. Runtime and native tests must verify API support; no assumed PASS on unsupported file system."
+  },
+  "official_references": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex",
+      "supports": "FileAttributeTagInfo/FileIdInfo query and API-failure classification"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/desktop/api/winbase/ns-winbase-file_id_info",
+      "supports": "volume serial + 128-bit file identifier identity comparison"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew",
+      "supports": "directory handle/reparse flags and sharing restrictions"
+    }
+  ]
+}

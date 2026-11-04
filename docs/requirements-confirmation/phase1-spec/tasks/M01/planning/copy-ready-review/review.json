@@ -1,0 +1,182 @@
+{
+  "reviewer": "/root/m01_copy_ready_review",
+  "author": "/root/m01_copy_ready_handoff",
+  "task": "PD-P1-M01-PREP-01",
+  "verdict": "FINDINGS_DOCUMENT_REVIEW_ONLY",
+  "scope": "One final-path QuarantinedCopy to Ready transition only",
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "historical_inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "checks": {
+    "source_bindings": {
+      "count": 11,
+      "mismatches": [
+        "docs/board.json"
+      ]
+    },
+    "candidate_seal": {
+      "count": 9,
+      "mismatches": []
+    },
+    "protected_inventory": {
+      "count": 796,
+      "mismatches": []
+    }
+  },
+  "probes": 30,
+  "passed": 12,
+  "counterexamples": [
+    {
+      "id": "IR-01",
+      "name": "unbound definition_raw",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-02",
+      "name": "unbound document_raw",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-03",
+      "name": "unbound catalog_generation",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-04",
+      "name": "unbound manifest_raw",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-05",
+      "name": "unbound source_snapshot_digest",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-06",
+      "name": "unbound native_lease_id",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-07",
+      "name": "unknown body field",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-08",
+      "name": "unknown protocol",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-09",
+      "name": "wrong request issuer",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-10",
+      "name": "ordinal does not match operation",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-11",
+      "name": "missing body field",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-12",
+      "name": "wrong boolean type owner",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-13",
+      "name": "wrong boolean type ACK",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-14",
+      "name": "unknown Ready receipt identity",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-27",
+      "name": "unbound final path with matching Ready DTO",
+      "expected": "ProofMismatch",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-28",
+      "name": "empty native identity consistently echoed",
+      "expected": "RejectedBeforeMutation",
+      "actual": "VerifiedPublished"
+    },
+    {
+      "id": "IR-29",
+      "name": "missing required context field",
+      "expected": "RejectedBeforeMutation",
+      "actual": "KeyError: 'workflow_id'"
+    },
+    {
+      "id": "IR-30",
+      "name": "unknown provider status enum",
+      "expected": "RejectedBeforeMutation",
+      "actual": "DependencyNotReady"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "priority": "P2",
+      "issue": "Full request hashing does not establish semantic field consumption. Resealed changes to document/definition/manifest/source snapshot/catalog generation/native lease pass with unchanged issuer evidence. Provider records contain no lease/path or document bytes binding; catalog records contain no generation binding.",
+      "next": "Specify issuer-owned binding fields and compare them; do not treat checksum coverage as semantic verification."
+    },
+    {
+      "id": "F2",
+      "priority": "P2",
+      "issue": "No closed shape/type/enum guard before classifier consumption. Unknown fields/protocol/issuer/ordinal, absent document_raw, string booleans and mismatched Ready receipt identity can still report VerifiedPublished.",
+      "next": "Owner-confirm exact candidate closed types; add independent negative vectors before document mutation. These are document oracle defects, not production corruption evidence."
+    }
+  ],
+  "publish_boundary": {
+    "existing_required": [
+      "registration_id",
+      "provider_capability_id",
+      "expected_epoch",
+      "manifest",
+      "expected_catalog_generation"
+    ],
+    "additionalProperties": false,
+    "candidate_admitted": false,
+    "owner_pending": [
+      "CR-D1",
+      "CR-D2",
+      "CR-D3"
+    ]
+  },
+  "limits": [
+    "Issuer trust, held native lease and native atomicity are fixture premises, not runtime proof.",
+    "FileCommitReceipt has target_path/previous_digest/committed_digest/transaction_id, no native lease or Ready issuer. No staged rename or journal move authority.",
+    "State/deferred probes call pure classifier only: no modeled marker mutation, Ready state, no-replace IO, retry/cleanup or inherited approval is behaviorally proven.",
+    "Board management changes are separate from 796 product inventory; board source binding is checked separately."
+  ],
+  "verification": {
+    "native": "NOT RUN",
+    "build": "NOT RUN",
+    "product": "NOT RUN",
+    "valid_RED": "NOT RUN",
+    "full_Draft": "NOT RUN"
+  },
+  "module_pass": false,
+  "next_action": "Author correct document oracle and issuer binding proposal in a new revision, independently re-review, then Owner decide exact CR-D1..D3; no Skeleton or implementation dispatch."
+}

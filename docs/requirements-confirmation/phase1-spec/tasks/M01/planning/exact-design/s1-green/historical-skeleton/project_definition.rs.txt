@@ -1,0 +1,162 @@
+//! M01-S1 architecture Skeleton, deliberately stopped before domain behavior.
+//!
+//! Data constructors only carry candidate values; they do not validate, approve,
+//! persist, migrate identities, or generate artifacts. Operation boundaries must
+//! validate them in the later authorized implementation. No runtime wiring.
+
+use std::collections::BTreeMap;
+
+pub const PROJECT_DEFINITION_SCHEMA: &str = "eluslot.project-definition";
+pub const PROJECT_DEFINITION_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PersistentProjectId(String);
+
+impl PersistentProjectId {
+    /// Structural input seam for trusted codec mapping and isolated fixtures.
+    /// A candidate is not evidence of a valid identity or mutation permission.
+    pub fn candidate(raw: impl Into<String>) -> Self {
+        Self(raw.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DefinitionRevision(pub u64);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FieldState<T> {
+    Unresolved,
+    Tentative(T),
+    Confirmed(T),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WizardStep {
+    Basics,
+    Delivery,
+    Topology,
+    Requirements,
+    TechnologyUi,
+    Preview,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DefinitionMode {
+    Draft,
+    Defined,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreferenceSource {
+    Skip,
+    Preset,
+    ImportedCopy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeliveryTarget {
+    pub id: String,
+    pub form: FieldState<String>,
+    pub platform: FieldState<String>,
+    pub host: FieldState<String>,
+    pub host_version: FieldState<String>,
+    pub language: FieldState<String>,
+    pub framework: FieldState<String>,
+    pub toolchain: Vec<String>,
+    pub has_ui: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RequirementState {
+    Unresolved,
+    Tentative,
+    Confirmed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefinitionRequirement {
+    pub id: String,
+    pub intent: String,
+    pub acceptance: Vec<String>,
+    pub state: RequirementState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateReference {
+    pub id: String,
+    pub version: String,
+    pub source_digest: String,
+}
+
+/// Framework-neutral extension data. Number text preserves the codec's value
+/// without introducing serde/JSON or floating-point policy into WORK.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExtensionValue {
+    Null,
+    Bool(bool),
+    Number(String),
+    String(String),
+    Array(Vec<ExtensionValue>),
+    Object(BTreeMap<String, ExtensionValue>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefinitionDraft {
+    pub name: String,
+    pub purpose: String,
+    pub last_saved_step: WizardStep,
+    pub delivery_targets: Vec<DeliveryTarget>,
+    pub topology: FieldState<String>,
+    pub requirements: Vec<DefinitionRequirement>,
+    pub preference_source: PreferenceSource,
+    pub template: Option<TemplateReference>,
+    pub open_decisions: Vec<String>,
+    pub extensions: BTreeMap<String, ExtensionValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProjectDefinition {
+    pub project_uuid: PersistentProjectId,
+    pub definition_revision: DefinitionRevision,
+    pub draft: DefinitionDraft,
+    pub mode: DefinitionMode,
+    pub approval_refs: Vec<String>,
+    pub legacy_root_keys: Vec<String>,
+}
+
+pub type FieldPath = String;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DefinitionError {
+    /// Skeleton marker, not a shipping error contract or business outcome.
+    NotReady,
+    InvalidInput {
+        field: FieldPath,
+    },
+    RevisionConflict,
+    RevisionOverflow,
+}
+
+/// Validation seam only. Intentionally performs no domain validation yet.
+pub fn validate_definition(_draft: &DefinitionDraft) -> Result<(), DefinitionError> {
+    Err(DefinitionError::NotReady)
+}
+
+/// Immutable value transformation seam; intentionally no update algorithm.
+pub fn apply_definition(
+    _current: &ProjectDefinition,
+    _expected: DefinitionRevision,
+    _draft: DefinitionDraft,
+) -> Result<ProjectDefinition, DefinitionError> {
+    Err(DefinitionError::NotReady)
+}
+
+/// Neutral placeholder. Does NOT grant generation approval; no product caller
+/// is connected. RED tests require concrete missing fields from this boundary.
+pub fn missing_generation_requirements(_def: &ProjectDefinition) -> Vec<FieldPath> {
+    Vec::new()
+}

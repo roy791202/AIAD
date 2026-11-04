@@ -1,0 +1,835 @@
+{
+  "status": "PROPOSED_PENDING_OWNER",
+  "requests": {
+    "project_wizard_start": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "project_wizard_pick_location": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "purpose": {
+          "enum": [
+            "new_parent",
+            "existing_project",
+            "legacy_project"
+          ]
+        }
+      },
+      "required": [
+        "owner_id",
+        "purpose"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_begin": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "parent_selection_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "owner_id",
+        "parent_selection_id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_update": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "draft_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "u64 range checked, never JS Number"
+        },
+        "last_step": {
+          "enum": [
+            "basics",
+            "delivery",
+            "topology",
+            "requirements",
+            "technology_ui",
+            "preview"
+          ]
+        },
+        "draft": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "purpose": {
+              "type": "string"
+            },
+            "lastSavedStep": {
+              "enum": [
+                "basics",
+                "delivery",
+                "topology",
+                "requirements",
+                "technology_ui",
+                "preview"
+              ]
+            },
+            "deliveryTargets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "form": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "platform": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "host": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "hostVersion": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "language": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "framework": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "enum": [
+                          "unresolved",
+                          "tentative",
+                          "confirmed"
+                        ]
+                      },
+                      "value": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "toolchain": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "hasUi": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "form",
+                  "platform",
+                  "host",
+                  "hostVersion",
+                  "language",
+                  "framework",
+                  "toolchain",
+                  "hasUi"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "topology": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "requirements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "intent": {
+                    "type": "string"
+                  },
+                  "acceptance": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "state": {
+                    "enum": [
+                      "unresolved",
+                      "tentative",
+                      "confirmed"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "intent",
+                  "acceptance",
+                  "state"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "preferenceSource": {
+              "enum": [
+                "skip",
+                "preset",
+                "imported-copy"
+              ]
+            },
+            "template": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sourceDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "sourceDigest"
+              ],
+              "additionalProperties": false
+            },
+            "openDecisions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "extensions": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "name",
+            "purpose",
+            "lastSavedStep",
+            "deliveryTargets",
+            "topology",
+            "requirements",
+            "preferenceSource",
+            "template",
+            "openDecisions",
+            "extensions"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "owner_id",
+        "draft_id",
+        "expected_revision",
+        "last_step",
+        "draft"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_set_preferences": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "draft_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "u64 range checked, never JS Number"
+        },
+        "choice": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "skip"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "preset"
+                  ]
+                },
+                "preset_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "preset_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "imported-copy"
+                  ]
+                },
+                "imported_json": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "kind",
+                "imported_json"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "owner_id",
+        "draft_id",
+        "expected_revision",
+        "choice"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_save": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "draft_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "u64 range checked, never JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id",
+        "draft_id",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_finalize": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "draft_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "u64 range checked, never JS Number"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id",
+        "draft_id",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_get": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "draft_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id",
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "project_wizard_cancel": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id"
+      ],
+      "additionalProperties": false
+    },
+    "project_definition_open": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "project_selection_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id",
+        "project_selection_id"
+      ],
+      "additionalProperties": false
+    },
+    "project_definition_adopt_legacy": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "project_selection_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_legacy_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "owner_id",
+        "project_selection_id",
+        "expected_legacy_key",
+        "request_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "responses": {
+    "Envelope": {
+      "success": "{ok:true,value:<command result>}",
+      "failure": "{ok:false,error:{code:<listed error>,details:<exact fields>}}",
+      "rules": "discriminated union, no simultaneous value/error; serde deny_unknown_fields on all closed DTOs; error precedence caller -> shape -> owner -> selection -> revision -> request reservation -> native revalidate -> S2 outcome -> authorized projection"
+    },
+    "Start": {
+      "type": "object",
+      "properties": {
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "u64 range checked, never JS Number"
+        }
+      },
+      "required": [
+        "owner_id",
+        "generation"
+      ],
+      "additionalProperties": false
+    },
+    "Selection": {
+      "kind": "cancelled | selected",
+      "selected_fields": [
+        "selection_id UUID",
+        "purpose enum",
+        "display_path string"
+      ],
+      "cancelled_fields": []
+    },
+    "Projection": {
+      "fields": [
+        "owner_id UUID",
+        "draft_id UUID",
+        "project_uuid UUID",
+        "revision u64 string",
+        "persisted_revision nullable u64 string",
+        "last_step six-step enum",
+        "draft exact draft schema",
+        "location_preview string",
+        "mode Draft|Defined",
+        "dirty bool",
+        "missing_fields string[]",
+        "generation_allowed false",
+        "state EditingUnsaved|SavedDraft|SavingDraft|PartialProjectCreated|RecoveryRequired",
+        "preference_plan {source:skip|preset|imported-copy,source_digest:nullable string}"
+      ],
+      "rules": "contains no native handles, trusted session key, raw authority context or next_binding; drafts cannot write identity/approvals/mode/baseline"
+    },
+    "Save": {
+      "fields": [
+        "request_id UUID",
+        "operation save|finalize|adopt",
+        "captured_revision u64 string",
+        "replayed bool",
+        "outcome {kind:Saved|DraftSavedMissingDecisions|PartialProjectCreated|RecoveryRequired|StoreError,fields:exact mapped payload}",
+        "binding_status unchanged|bound|detached|committed_unbound",
+        "projection nullable Projection"
+      ],
+      "success_payload": "DefinitionSaveReceipt maps every field except private next_binding; keep next_binding server-side. definition/creation/preferences/canonical_root included. Partial/RecoveryRequired map exact error fields and are never success/bound.",
+      "projection_failure": "S2 committed proof retained, binding_status committed_unbound/detached; do not rewrite commit as failed unchanged"
+    },
+    "Cancel": "{revoked:true,detached_requests:UUID[]} (no FS mutation)",
+    "Open": "{kind:Saved,projection:Projection} | {kind:Legacy,selection_id:UUID,canonical_root:string,portable_legacy_keys:string[],migration_required:true}; Legacy creates no draft/UUID/write until explicit adopt",
+    "Get": "Projection; no mutation or persistence",
+    "SetPreferences": "Projection after existing prepare_definition_preferences succeeds and apply_definition advances revision exactly once. Keep captured prepared plan server-side; imported JSON is data, not a filename. Invalid preset/import leaves prior draft/plan/revision unchanged. PreferenceSource in update must equal prepared plan source or InvalidRequest preference_plan_mismatch; user switches source only through set_preferences."
+  },
+  "errors": {
+    "UnauthorizedCaller": {},
+    "StaleOwner": {},
+    "OwnerBusy": {},
+    "SelectionRequired": {},
+    "SelectionOwnerMismatch": {},
+    "SelectionPurposeMismatch": {},
+    "LocationChanged": {},
+    "UnsupportedPlatform": {},
+    "UnsupportedLocation": {},
+    "ReparseRejected": {},
+    "AliasRejected": {},
+    "NativeAccessDenied": {},
+    "NativeObservationFailed": {
+      "stage": "pick|open_component|attributes|final_path|long_name|identity|revalidate",
+      "os_code": "optional u32"
+    },
+    "InvalidRequest": {
+      "field": "JSON pointer",
+      "reason": "unknown_field|missing_field|type|range|invalid_uuid|invalid_name|resource_limit"
+    },
+    "DraftNotFound": {},
+    "RevisionConflict": {
+      "expected_revision": "u64 string",
+      "observed_revision": "u64 string"
+    },
+    "RevisionOverflow": {},
+    "RequestIdConflict": {},
+    "InFlight": {
+      "request_id": "uuid"
+    },
+    "RequestCapacity": {
+      "limit": "128 owner or 1024 runtime"
+    },
+    "StateUnavailable": {
+      "phase": "capture|install|projection"
+    },
+    "Store": {
+      "error": "S2 tagged value, exhaustive mapping below"
+    }
+  },
+  "s2_mapping": {
+    "NotBound": {
+      "tag": "NotBound",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "InvalidInput": {
+      "tag": "InvalidInput",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "Codec": {
+      "tag": "Codec",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "UnsupportedSchema": {
+      "tag": "UnsupportedSchema",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "ExistingTarget": {
+      "tag": "ExistingTarget",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "IdentityConflict": {
+      "tag": "IdentityConflict",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "RevisionConflict": {
+      "tag": "RevisionConflict",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "Busy": {
+      "tag": "Busy",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "StorageFailure": {
+      "tag": "StorageFailure",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "PartialProjectCreated": {
+      "tag": "PartialProjectCreated",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "RecoveryRequired": {
+      "tag": "RecoveryRequired",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "InvalidLocation": {
+      "tag": "InvalidLocation",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    },
+    "CommitEvidenceMismatch": {
+      "tag": "CommitEvidenceMismatch",
+      "fields": "same named fields and nested enum discriminants as adopted S2 DefinitionStoreError; no fields dropped",
+      "result": "error",
+      "binding": "unchanged",
+      "retry": "explicit owner reconciliation then fresh request id"
+    }
+  },
+  "nested_codec": {
+    "enum": "All nested S2 enums use {kind:<exact Rust variant>,fields:<exact named fields object>}; unit variants fields={}; tuple/newtypes unwrap their value. Struct fields use exact Rust snake_case. UUID/digest newtypes -> string; DefinitionRevision/u64 -> decimal string. Option -> null; Vec -> array. No Debug formatting or free-text parsing. Preserve RecoveryInfo and CreationProgress in full for authorized owner only; never render raw HTML or offer executable diagnostic path actions."
+  },
+  "limits": {
+    "request_bytes": 16777216,
+    "nesting_depth": 64,
+    "owner_requests": 128,
+    "runtime_requests": 1024,
+    "selections_per_owner": 1,
+    "drafts_per_owner": 1,
+    "imported_json_bytes": 16777216
+  },
+  "note": "request limits are proposed S3 transport policy; inherited disk schema and domain contracts stay unchanged. Max revision u64 and DTO encoding must match adopted S2."
+}

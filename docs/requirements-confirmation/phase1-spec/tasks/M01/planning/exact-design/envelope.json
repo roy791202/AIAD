@@ -1,0 +1,187 @@
+{
+  "module": "M01",
+  "status": "EXACT_CANDIDATE_ENVELOPE_FOR_REVIEW",
+  "current_permission": "planning files + own board note only; no production/tests writes",
+  "slices": [
+    {
+      "id": "M01-S1",
+      "title": "純領域定義與持久ID驗證",
+      "existing_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+      ],
+      "new_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs"
+      ],
+      "test_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_definition.rs"
+      ],
+      "dependencies": [],
+      "commands": [
+        {
+          "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+          "command": "cargo test -p sgenaxis-work --test phase1_project_definition",
+          "result": "NOT RUN; TARGET_NOT_CREATED"
+        }
+      ],
+      "notes": "No serde/FS/Tauri dependency; does not touch legacy ProjectId or live registry.",
+      "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+      "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+    },
+    {
+      "id": "M01-S2",
+      "title": "HOST定義codec與新建/遷移儲存",
+      "existing_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs"
+      ],
+      "new_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs"
+      ],
+      "test_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs"
+      ],
+      "dependencies": [
+        "M01-S1",
+        "IO-PREREQ"
+      ],
+      "commands": [
+        {
+          "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+          "command": "cargo test -p sgenaxis-host --test phase1_project_definition",
+          "result": "NOT RUN; TARGET_NOT_CREATED"
+        }
+      ],
+      "notes": "Protect existing manifest/ESS/preferences; old delete-file-residue behavior is explicitly superseded by approved no-overwrite requirement.",
+      "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+      "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+    },
+    {
+      "id": "M01-S3",
+      "title": "六步精靈與Dispatch接線",
+      "existing_files": [
+        "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+        "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+        "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+        "apps/sgenaxis-desktop/ui/app.js",
+        "apps/sgenaxis-desktop/ui/index.html",
+        "apps/sgenaxis-desktop/ui/styles.css"
+      ],
+      "new_files": [
+        "apps/sgenaxis-desktop/ui/project-wizard.js"
+      ],
+      "test_files": [
+        "apps/sgenaxis-desktop/ui/project-wizard.test.cjs",
+        "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_definition_commands.rs"
+      ],
+      "dependencies": [
+        "M01-S1",
+        "M01-S2"
+      ],
+      "commands": [
+        {
+          "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+          "command": "node --test ui/project-wizard.test.cjs",
+          "result": "NOT RUN; TARGET_NOT_CREATED"
+        },
+        {
+          "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+          "command": "cargo test --test phase1_project_definition_commands",
+          "result": "NOT RUN; TARGET_NOT_CREATED"
+        }
+      ],
+      "notes": "Native caller/location binding, request-id idempotency; no generation/AI/Git implementation.",
+      "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+      "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+    }
+  ],
+  "shared_output_prerequisite": {
+    "id": "IO-PREREQ",
+    "status": "PROPOSED_CROSS_MODULE_PREREQUISITE_NOT_AUTHORIZED",
+    "files": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs"
+    ],
+    "port_signatures": "See interfaces.proposed.txt in M01/M04",
+    "dependency_policy": "reuse existing windows-sys pinned dependency; adding features/dependencies requires exact review. No database/framework.",
+    "tests": "cargo test -p sgenaxis-adapters --test phase1_file_commit (TARGET_NOT_CREATED; NOT RUN)",
+    "release_gate": "Exclusive create, cooperating OS lock, old-byte restoration at all injected failure points, lock release on process death, stale raw digest, rollback failure blocks further mutations. Not provided by write_atomic."
+  },
+  "protected": [
+    "all files not enumerated",
+    "core/src/edit.rs selection semantics",
+    "existing tests not explicitly identified for contract migration",
+    "Git/runner/plugin flows",
+    "M05/M06/M07 implementation"
+  ],
+  "existing_source_hashes": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+      "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+      "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+      "sha256": "eb76b016fce8767b67a306238377cf6647e0e23d9c30a1b89bc998a6328d1f5c"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+      "sha256": "6f39bf47aa3862ca14950531abbc760bb1678e0fda877bdfd9132c6b0e1e481d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+      "sha256": "c8324a2e43e3b17d4ff8bae6ab69adaae8a5378b2c1b6014ada3a8955d8ce884"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/index.html",
+      "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/styles.css",
+      "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"
+    }
+  ],
+  "contract_migration": {
+    "file": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+    "test": "create_replaces_existing_file_residue",
+    "rule": "Existing deletion expectation explicitly superseded by confirmed no-overwrite; new rejection test first, preserve old test as historical evidence; approved test-intent revision required, never silently weaken."
+  }
+}

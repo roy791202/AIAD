@@ -1,0 +1,167 @@
+{
+  "module": "M01",
+  "slice": "S3 entry/lifecycle preparation",
+  "status": "READINESS_HANDOFF_DELIVERED_NOT_READY_FOR_IMPLEMENTATION",
+  "at": "2026-11-01T06:18:46.675174+00:00",
+  "authority": "Original M01 planning envelope only; S2 D1-D7 remains adopted and accepted",
+  "routes": [
+    {
+      "command": "host_new_project_directory",
+      "handler_line": 1165,
+      "source": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "current": "native save-file picker then deprecated HOST root creator; cancellation exits; no wizard"
+    },
+    {
+      "command": "host_create_project_directory",
+      "handler_line": 1208,
+      "source": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "current": "UI raw parent/name then deprecated HOST under-parent creator; no selection capability"
+    },
+    {
+      "command": "host_create_project_with_preferences",
+      "handler_line": 1259,
+      "source": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "current": "UI raw parent/name/preferences then DispatchHost project_policy_create; S2 returns WizardRequired"
+    }
+  ],
+  "ui_evidence": {
+    "source": "apps/sgenaxis-desktop/ui/app.js",
+    "lines": [
+      1269,
+      1289,
+      1309,
+      1318
+    ],
+    "behavior": "prompt name, pick parent raw path, choose preferences, deprecated create, bind result"
+  },
+  "gaps": [
+    {
+      "id": "S3-G1",
+      "gap": "Native selection authority is not a UI path string or UUID shape. Existing request schema names selection IDs without defining trusted issuer/storage/revocation.",
+      "next": "Specify actual Tauri sender/window authentication, parent selection creation, session binding and cancellation/revocation lifetime; do not reuse raw path as authority."
+    },
+    {
+      "id": "S3-G2",
+      "gap": "Draft owner lifecycle across close/reopen/window/session changes is not an exact approved runtime contract.",
+      "next": "Define owner key and every transition, stale ownership outcomes, retained draft reopen and project switch guards; no hidden global owner."
+    },
+    {
+      "id": "S3-G3",
+      "gap": "request_id shape alone does not specify idempotency.",
+      "next": "Define request fingerprint, same-ID same/different payload, in-flight replay, terminal retention and restart semantics, bounded lifetime and exact errors."
+    },
+    {
+      "id": "S3-G4",
+      "gap": "Successful persistence does not alone authorize late UI current-project binding. Existing UI calls bindPickedProjectRoot after legacy create.",
+      "next": "Define captured owner/request/revision correlation, committed-but-detached response and no rollback of committed bytes; stale completion must not switch project."
+    },
+    {
+      "id": "S3-G5",
+      "gap": "Six-step schema exists as proposed packet, but no complete S3 response/error/permission/caller migration contract locked.",
+      "next": "Reconcile with adopted S2 typed outcomes including Partial/RecoveryRequired and commit evidence; define command registration/permissions and UI state projection before Skeleton."
+    }
+  ],
+  "planned_tests": [
+    {
+      "id": "S3-ENTRY-01",
+      "fixture": "cancel",
+      "given": "native picker cancelled",
+      "when": "begin requested",
+      "then": "no draft persistence or current-project switch",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-02",
+      "fixture": "forged",
+      "given": "raw path or another window selection",
+      "when": "begin requested",
+      "then": "explicit rejection and zero store calls",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-03",
+      "fixture": "owner",
+      "given": "draft belongs to another session",
+      "when": "update requested",
+      "then": "owner rejection and unchanged revision",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-04",
+      "fixture": "revision",
+      "given": "captured revision is stale",
+      "when": "save requested",
+      "then": "conflict without store call",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-05",
+      "fixture": "replay",
+      "given": "same request ID and identical payload",
+      "when": "save repeated",
+      "then": "one commit and same correlated terminal result",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-06",
+      "fixture": "collision",
+      "given": "same request ID and different payload",
+      "when": "save requested",
+      "then": "explicit request conflict and no second commit",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-07",
+      "fixture": "late",
+      "given": "owner changes while commit is pending",
+      "when": "old completion arrives",
+      "then": "persisted proof retained and current project unchanged",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-08",
+      "fixture": "partial",
+      "given": "store returns Partial or RecoveryRequired",
+      "when": "save completes",
+      "then": "structured non-success result and no current-project switch",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-09",
+      "fixture": "legacy",
+      "given": "each of three old entry routes",
+      "when": "user starts creation",
+      "then": "wizard route only; no deprecated direct-create bypass",
+      "result": "PLANNED / NOT RUN"
+    },
+    {
+      "id": "S3-ENTRY-10",
+      "fixture": "steps",
+      "given": "unfinished decisions exist",
+      "when": "user saves draft at any of six steps",
+      "then": "draft resumable without falsely finalizing or generating",
+      "result": "PLANNED / NOT RUN"
+    }
+  ],
+  "scope": {
+    "allowed": [
+      "M01/planning/s3-entry-review/**",
+      "M01/planning/current-state.json",
+      "own board evidence"
+    ],
+    "protected": "All product/test source; other module artifacts; accepted S1/S2 contracts",
+    "candidate_product_envelope": "../exact-design/envelope.json S3 remains candidate, not newly approved"
+  },
+  "acceptance": "Planning handoff only; full PREP acceptance and S3 architecture approval still pending",
+  "verification": {
+    "source_files_unchanged": 796,
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "product_tests": "NOT RUN",
+    "build": "NOT RUN",
+    "native": "NOT RUN",
+    "RED": "NOT RUN",
+    "review": "Source inspection by same assistant; no independent delegated reviewer"
+  },
+  "next": "Complete one precise S3 owner/selection/idempotency/response/permission/UI packet, fixtures and BDD/TDD before asking Owner once; do not build speculative Skeleton."
+}

@@ -1,0 +1,87 @@
+{
+  "component": "ProjectWizard",
+  "role": "authenticated main owner",
+  "steps": [
+    {
+      "id": "basics",
+      "title": "基本資料",
+      "fields": [
+        "name",
+        "purpose",
+        "preferenceSource",
+        "template"
+      ],
+      "validation": "name required trimmed, existing S1 name validation; purpose may remain blank in Draft. Preference plan uses existing preset/import picker and prepare_definition_preferences; never trust importedJson as a root/approval.",
+      "action": "new_parent capability display; conflict choices rename / another location / cancel; no overwrite"
+    },
+    {
+      "id": "delivery",
+      "title": "交付目標",
+      "fields": [
+        "deliveryTargets[].id",
+        "form",
+        "platform",
+        "host",
+        "hostVersion"
+      ],
+      "validation": "UUIDv4 stable target IDs; state unresolved/tentative/confirmed must be explicit; absent facts remain unresolved, no invented defaults.",
+      "action": "add/remove target changes draft only"
+    },
+    {
+      "id": "topology",
+      "title": "系統拓樸",
+      "fields": [
+        "topology"
+      ],
+      "validation": "same FieldState contract, unresolved allowed for save; user-entered text is data only.",
+      "action": "no new module graph or generator execution"
+    },
+    {
+      "id": "requirements",
+      "title": "需求與驗收",
+      "fields": [
+        "requirements[].id",
+        "intent",
+        "acceptance",
+        "state"
+      ],
+      "validation": "nonempty unique requirement IDs and existing domain validation; Draft may contain unresolved decisions.",
+      "action": "acceptance items editable; no evidence approval checkbox"
+    },
+    {
+      "id": "technology_ui",
+      "title": "技術與 UI",
+      "fields": [
+        "language",
+        "framework",
+        "toolchain",
+        "hasUi"
+      ],
+      "validation": "per-target confirmed/tentative/unresolved; hasUi null until explicit choice, false preserved; toolchain empty allowed in Draft but blocks completeness.",
+      "action": "no dependency installs or UI code generation"
+    },
+    {
+      "id": "preview",
+      "title": "預覽與保存",
+      "fields": [
+        "openDecisions",
+        "missing_fields",
+        "location_preview",
+        "preference_plan"
+      ],
+      "validation": "server-generated summary; show actual first-save paths and incomplete decisions, not UI-generated readiness.",
+      "action": "Save Draft; finish review saves Draft and shows missing decisions; no automatic generation"
+    }
+  ],
+  "shared": {
+    "defaults": "all decisions unresolved; preferenceSource skip; empty lists and purpose; template null; no synthetic approvalRefs; new UUIDs generated only trusted outer boundary",
+    "navigation": "Back/Next changes last_step via explicit update; no IO; retain visible local edits until server update succeeds. Saving disabled until update acknowledged. Draft save available from every step after structural validation.",
+    "busy": "one save per owner at a time; disable save/update/reselect during reserve/commit; cancel may detach and revoke without pretending IO stopped",
+    "errors": "field errors adjacent to controls, alert summary focus, retain input; ExistingTarget offers rename/reselect/cancel only; Partial/RecoveryRequired show evidence and disable destructive retry until reopen/reconcile",
+    "empty": "no targets/requirements shows add action and unresolved explanation; no placeholder target inferred",
+    "accessibility": "dialog role/label, focus trap/restore, keyboard step navigation, aria-live errors, Escape asks discard/detach confirmation when dirty/in-flight",
+    "close": "unsaved dirty prompts discard/cancel; saved dirty says persisted baseline remains. Confirm discard calls cancel; no autosave. Backdrop does not close.",
+    "extensions": "roundtrip loaded extensions unchanged; not editable in this UI, values never executed"
+  },
+  "finalization_policy": "This S3 packet proposes review-finish as draft-only persistence. Do not fabricate approvalRefs or promote to Defined. Recompute missing_generation_requirements on clone with empty trusted approval_refs; show approvalRefs missing and generation_allowed=false. Server evidence approval resolution and Defined transition are explicit deferred feature, requiring its own approved contract. This narrows the old proposed finalize Defined alternative and requires decision D7, not an implementation convenience."
+}

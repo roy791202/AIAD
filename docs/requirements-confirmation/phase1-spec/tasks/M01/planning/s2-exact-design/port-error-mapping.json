@@ -1,0 +1,47 @@
+{
+  "status": "PROPOSED",
+  "columns": [
+    "IO outcome",
+    "no newly owned root",
+    "newly owned root / notes"
+  ],
+  "rows": [
+    [
+      "InvalidPath",
+      "InvalidLocation(path,reason,retained_artifacts)",
+      "PartialProjectCreated cause InvalidLocation if root owned"
+    ],
+    [
+      "AlreadyExists",
+      "ExistingTarget(path)",
+      "PartialProjectCreated cause ExistingTarget if root owned; old metadata dir may be reused only for explicit LegacyAdoption after read-only checks"
+    ],
+    [
+      "Busy",
+      "Busy(path)",
+      "PartialProjectCreated cause Busy if root owned"
+    ],
+    [
+      "Conflict",
+      "RevisionConflict(raw expected/observed,observed_revision=None unless actually decoded)",
+      "PartialProjectCreated cause Conflict if root owned"
+    ],
+    [
+      "Storage",
+      "StorageFailure(original stage,path,reason,retained_artifacts)",
+      "PartialProjectCreated cause Storage if root owned"
+    ],
+    [
+      "RecoveryRequired",
+      "RecoveryRequired(exact RecoveryInfo,progress)",
+      "ALWAYS top-level RecoveryRequired, regardless of root/definition progress"
+    ],
+    [
+      "CommitReceipt",
+      "DefinitionCommitProof or PreferenceCommitStatus.Committed",
+      "Final success only after all requested receipts"
+    ]
+  ],
+  "raw_digest_rule": "expected/observed supplied by IO retain sha256: prefix, None absence, no lossy string flattening",
+  "logical_revision_rule": "S1 increments; S2 checks opened vs captured, returns captured only; no double increment"
+}

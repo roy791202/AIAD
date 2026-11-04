@@ -1,0 +1,79 @@
+{
+  "task_name": "PD-P1-M08-VERIFY-01 / F01-F12 input admission crosswalk",
+  "status": "DISPATCHABLE_STEP1_DOCUMENT_PREPARATION_ONLY",
+  "primary_module": "M08",
+  "original_scope_source": "docs/requirements-confirmation/phase1-spec/tasks/PD-P1-M08-VERIFY-01.json",
+  "allowed_files": [
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/feature-input-matrix.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/native-case-crosswalk.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/missing-inputs.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/index.html",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/source-hashes.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/verification/input-admission-20261103/seal.json"
+  ],
+  "protected": [
+    "M08 PREP and existing accepted documents",
+    "all product/tests/harness",
+    "user projects/artifacts",
+    "board/roles/hooks/spec"
+  ],
+  "dependency_semantics": "F01-F12 product acceptance is required for native execution, not for this read-only step1 inventory. The twelve document trace PASS are eligible inventory inputs, not satisfied native dependencies.",
+  "input_sources": [
+    "docs/requirements-confirmation/phase1-spec/tasks/F01/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F02/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F03/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F04/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F05/feature-trace-correction",
+    "docs/requirements-confirmation/phase1-spec/tasks/F06/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F07/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F08/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F09/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F10/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F11/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/F12/feature-trace-preparation",
+    "docs/requirements-confirmation/phase1-spec/tasks/F01/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F02/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F03/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F04/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F05/feature-trace-correction-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F06/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F07/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F08/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F09/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F10/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/F11/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/F12/feature-trace-review",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/planning/native-evidence-plan/case-matrix.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M08/planning/precision-correction/decisions.json"
+  ],
+  "steps": [
+    "逐F01..F12精確REQ/AC/BDD/recipe列來源pointer及hash，不用同模組全部BDD替代Feature差額。",
+    "對照既有A01..A08/N01..N16；無精確映射留OPEN，不改已批准語意或自創case。",
+    "逐列列product acceptance、artifact SHA/version/build metadata、Win11、provider、observability、M08-PD1..PD3未滿足條件；每項NOT RUN有原因。",
+    "保留prospective recipe與confirmed BDD、historical source test與native result的差別；獨立read-only review。"
+  ],
+  "bdd": {
+    "Given": "F01..F12已審文件trace、既有M08驗收case與未交付產品輸入",
+    "When": "製作VERIFY第一步輸入盤點",
+    "Then": "每個case具有確切來源與缺條件；文件PASS不變成產品/native PASS"
+  },
+  "fixture": "twelve latest accepted trace/recipe JSON + existing case matrix; no native fixture creation",
+  "checks": [
+    "恰12features，每個至少1trace+1review pointer",
+    "每個原N/A case均映射或明示缺口，不縮門檻",
+    "admission結果對缺產品/Win11/artifact者BLOCKED_NOT_RUN",
+    "no new harness/public schema/metrics/approval"
+  ],
+  "acceptance": [
+    "不重開PREP",
+    "case matrix原語意保持",
+    "差額可精確派後續輸入提供者",
+    "新文件檢查與native驗收區分"
+  ],
+  "valid_RED": "NOT APPLICABLE: document inventory only; no aggregate RED invented",
+  "role_separation": {
+    "author": "new M08 document-preparer, not F01-F12 developer",
+    "verifier": "distinct read-only document reviewer",
+    "native_verifier": "future independent eligible verifier after all native gates"
+  }
+}

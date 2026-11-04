@@ -1,0 +1,294 @@
+{
+  "module": "M01",
+  "task": "PD-P1-M01-PREP-01",
+  "slice": "M01-S2",
+  "at": "2026-11-01T12:23:08.523005+08:00",
+  "state": "IO_DEPENDENCY_REFRESHED_S2_PRECISION_PENDING",
+  "intent": "Refresh the existing S2 handoff after IO product acceptance without approving new skeletons or changing any product code.",
+  "authority": "Original M01 planning envelope + scheduler preparation authority; standing implementation authorization applies only after accepted skeleton and valid RED.",
+  "checkout": {
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab"
+  },
+  "dependencies": [
+    {
+      "id": "M01-S1",
+      "state": "ACCEPTED_PURE_DOMAIN",
+      "evidence": "../exact-design/independent-review/primary-adjudication.json",
+      "current_source_hashes_match": true
+    },
+    {
+      "id": "IO-PREREQ",
+      "state": "ACCEPTED_IMPLEMENTED_SCOPE_CURRENT_HOST",
+      "evidence": "../../../IO-PREREQ/implementation/acceptance/verification.json",
+      "product_GREEN": 220,
+      "pending_platform": [
+        "Windows11",
+        "reparse/8.3 native coverage"
+      ],
+      "effect": "The old unimplemented-adapter blocker is superseded. It does not grant whole-project or Windows11 acceptance."
+    }
+  ],
+  "architecture": "UI → Tauri Command → DispatchHost → HOST usecase → WORK(domain) → Output Ports ← Adapters",
+  "ownership": "Existing DispatchHost owns session/binding, WORK owns typed project definition, HOST maps serde and orchestrates through existing FileCommitPort; no new repository or state owner.",
+  "transaction": "Reuse approved single-file commit only. First new-project save may create an owned directory and definition; preferences/other artifacts remain explicit multi-step creation and PartialProjectCreated on partial failure, never cross-file atomicity.",
+  "scope": {
+    "id": "M01-S2",
+    "title": "HOST定義codec與新建/遷移儲存",
+    "existing_files": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs"
+    ],
+    "new_files": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs"
+    ],
+    "test_files": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs"
+    ],
+    "dependencies": [
+      "M01-S1",
+      "IO-PREREQ"
+    ],
+    "commands": [
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+        "command": "cargo test -p sgenaxis-host --test phase1_project_definition",
+        "result": "NOT RUN; TARGET_NOT_CREATED"
+      }
+    ],
+    "notes": "Protect existing manifest/ESS/preferences; old delete-file-residue behavior is explicitly superseded by approved no-overwrite requirement.",
+    "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+    "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+  },
+  "file_facts": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "exists": true,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+      "exists": true,
+      "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+      "exists": true,
+      "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs",
+      "exists": false,
+      "sha256": null
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs",
+      "exists": false,
+      "sha256": null
+    }
+  ],
+  "protected": "All other product/tests, including UI/Tauri/WORK/Ports/IO adapter and dependencies. No production writes this planning delivery.",
+  "blocked_precision": [
+    {
+      "id": "M01-S2-P1",
+      "fact": "interfaces.proposed.txt names DefinitionBinding / DefinitionSaveReceipt / DefinitionStoreError without exact type bodies.",
+      "next": "Complete a single precise type/error/receipt mapping proposal using existing ownership and FileCommitPort. Do not invent these fields during implementation.",
+      "classification": "ARCHITECTURE_INCOMPLETE_FOR_S2_SKELETON"
+    },
+    {
+      "id": "M01-S2-P2",
+      "fact": "Legacy create_new_project_root still removes an existing file residue; two Tauri creation routes call the existing entry.",
+      "next": "Keep the old regression as trace evidence; enumerate no-overwrite migration across both callers without editing Tauri in S2. UI wiring stays S3.",
+      "classification": "KNOWN_LEGACY_CONTRACT_MIGRATION_PACKET_REQUIRED"
+    },
+    {
+      "id": "M01-S2-P3",
+      "fact": "HOST definition codec and phase1_project_definition test target do not exist.",
+      "next": "Prepare field/extension/revision wire mapping and strict schema roundtrip or rejection matrix; only then approved Skeleton and compile-valid RED.",
+      "classification": "SKELETON_AND_RED_NOT_CREATED"
+    }
+  ],
+  "port_error_mapping_review": [
+    {
+      "port": "AlreadyExists",
+      "required_M01_effect": "ExistingTarget; do not remove file/dir; resume is distinct"
+    },
+    {
+      "port": "Conflict",
+      "required_M01_effect": "RevisionConflict; keep external bytes; no automatic retry/remap"
+    },
+    {
+      "port": "Busy",
+      "required_M01_effect": "Busy; do not bind success or recreate path"
+    },
+    {
+      "port": "Storage",
+      "required_M01_effect": "StorageFailure when previous data confirmed; if project partially created, report owned artifacts as PartialProjectCreated"
+    },
+    {
+      "port": "RecoveryRequired",
+      "required_M01_effect": "Preserve recovery diagnostics and versions; do not flatten into generic unchanged failure or PartialProjectCreated-only result"
+    },
+    {
+      "port": "CommitReceipt",
+      "required_M01_effect": "Acknowledge only captured successful definition revision; postcommit UI/projection failure cannot claim write did not occur"
+    }
+  ],
+  "bdd_tdd": [
+    {
+      "id": "TDD-M01-EX-06",
+      "bdd": "BDD-M01-EX-06",
+      "title": "持久ID不依路徑",
+      "given": "同一projectUuid的定義被搬到新root",
+      "when": "開啟已保存definition",
+      "then": "UUID不變；legacy key只作alias",
+      "slice": "M01-S2",
+      "fault": "none",
+      "fixture": "fixtures.json#06",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-07",
+      "bdd": "BDD-M01-EX-07",
+      "title": "拒既有檔案",
+      "given": "目標路徑已有含資料一般檔案",
+      "when": "從所有新建入口建立",
+      "then": "拒絕且原始bytes不變，不remove_file",
+      "slice": "M01-S2",
+      "fault": "ExistingTarget",
+      "fixture": "fixtures.json#07",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-08",
+      "bdd": "BDD-M01-EX-08",
+      "title": "拒既有目錄",
+      "given": "目標已存在空或非空目錄",
+      "when": "建立新專案",
+      "then": "拒絕並保留目錄；resume需獨立流程",
+      "slice": "M01-S2",
+      "fault": "ExistingTarget",
+      "fixture": "fixtures.json#08",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-09",
+      "bdd": "BDD-M01-EX-09",
+      "title": "首次存草稿",
+      "given": "目標不存在且有效draft",
+      "when": "明確保存draft",
+      "then": "exclusive建立並寫definition；UI事前揭露建立位置",
+      "slice": "M01-S2",
+      "fault": "none",
+      "fixture": "fixtures.json#09",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-10",
+      "bdd": "BDD-M01-EX-10",
+      "title": "部分建立失敗",
+      "given": "新目錄已建立但寫definition或選定偏好失敗",
+      "when": "結束本輪保存",
+      "then": "PartialProjectCreated列本次產物且不綁成功、不刪來源",
+      "slice": "M01-S2",
+      "fault": "StorageFailure",
+      "fixture": "fixtures.json#10",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-11",
+      "bdd": "BDD-M01-EX-11",
+      "title": "遷移不碰來源",
+      "given": "legacy專案含ESS與manifest/preferences",
+      "when": "明確採用持久定義",
+      "then": "只新增definition，其他bytes原樣",
+      "slice": "M01-S2",
+      "fault": "none",
+      "fixture": "fixtures.json#11",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-12",
+      "bdd": "BDD-M01-EX-12",
+      "title": "同UUID兩root",
+      "given": "已開專案UUID出現另一root",
+      "when": "要求開啟",
+      "then": "標示move/copy衝突，不自動重映射",
+      "slice": "M01-S2",
+      "fault": "RevisionConflict",
+      "fixture": "fixtures.json#12",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M01-EX-13",
+      "bdd": "BDD-M01-EX-13",
+      "title": "schema往返",
+      "given": "含extensions及六步保存位置",
+      "when": "encode再decode",
+      "then": "定義語義一致且未知schema先拒絕",
+      "slice": "M01-S2",
+      "fault": "UnsupportedSchema",
+      "fixture": "fixtures.json#13",
+      "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+      "result": "NOT RUN"
+    }
+  ],
+  "extra_contract_cases": [
+    {
+      "id": "M01-S2-HANDOFF-01",
+      "given": "commit reports RecoveryRequired after attempted definition save",
+      "when": "map result to HOST outcome",
+      "then": "recovery state and paths remain visible; no successful project binding",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M01-S2-HANDOFF-02",
+      "given": "commit succeeds but later projection or selected preference step fails",
+      "when": "report creation/save result",
+      "then": "distinguish committed definition from partial creation; never claim all files rolled back",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "commands": [
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition --no-run --locked",
+      "status": "NOT RUN; target absent, not valid RED"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition --locked",
+      "status": "NOT RUN; target absent"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --lib --locked",
+      "status": "NOT RUN this planning delivery; previous IO acceptance84 PASS is historical"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-work --locked",
+      "status": "NOT RUN this planning delivery; previous222 PASS historical"
+    }
+  ],
+  "acceptance": [
+    "Dependency evidence/current hashes match; no stale IO implementation blocker",
+    "Eight existing S2 BDD/TDD rows retained and mapped; none called executed",
+    "Precise types/migration still pending, no new design is self-approved",
+    "792 source files unchanged; PREP remains yellow, S1 not reopened, no full module completion"
+  ],
+  "next_delivery": "Complete P1/P2/P3 into one exact S2 contract/envelope review packet; then accepted Skeleton/RED. Do not reopen IO acceptance or wait for Windows11 before codec/planning work.",
+  "product_tests": "NOT RUN",
+  "product_source_changes": 0,
+  "module_complete": false,
+  "requires_owner_decision_now": false,
+  "decision_policy": "No fragmented question this round; any new precise API/binding decisions must be collected in the full S2 proposal before requesting review."
+}
