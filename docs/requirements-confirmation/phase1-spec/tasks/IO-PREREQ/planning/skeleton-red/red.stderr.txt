@@ -1,0 +1,158 @@
+warning: struct `StdFileWriteLease` is never constructed
+  --> crates\sgenaxis-adapters\src\file_commit.rs:40:19
+   |
+40 | pub(crate) struct StdFileWriteLease {
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: enum `PipeApiError` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:273:6
+    |
+273 | enum PipeApiError { Unsupported, Create, Transfer, Close }
+    |      ^^^^^^^^^^^^
+
+warning: trait `PrivatePipeApi` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:274:7
+    |
+274 | trait PrivatePipeApi: Send {
+    |       ^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipeEndpoint` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:281:8
+    |
+281 | struct OwnedPipeEndpoint<H> { handle: H, close_attempted: bool, unresolved: bool }
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipePair` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:282:8
+    |
+282 | struct OwnedPipePair<H> { read: OwnedPipeEndpoint<H>, write: OwnedPipeEndpoint<H> }
+    |        ^^^^^^^^^^^^^
+
+warning: struct `PipeLedger` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:285:8
+    |
+285 | struct PipeLedger<H> { pairs: Vec<OwnedPipePair<H>>, cleanup: Cleanup }
+    |        ^^^^^^^^^^
+
+warning: associated function `new` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:286:28
+    |
+286 | impl<H> PipeLedger<H> { fn new() -> Self { Self { pairs: Vec::new(), cleanup: Cleanup::Pending } } }
+    | ---------------------      ^^^
+    | |
+    | associated function in this implementation
+
+warning: struct `PrivatePipeOwner` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:287:8
+    |
+287 | struct PrivatePipeOwner<'a, A: PrivatePipeApi> { api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle> }
+    |        ^^^^^^^^^^^^^^^^
+
+warning: associated items `new`, `create_two_pairs`, `round_trip`, and `release_all` are never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:289:8
+    |
+288 | impl<'a, A: PrivatePipeApi> PrivatePipeOwner<'a, A> {
+    | --------------------------------------------------- associated items in this implementation
+289 |     fn new(api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle>) -> Self { Self { api, ledger } }
+    |        ^^^
+290 |     fn create_two_pairs(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^^^^^^
+...
+308 |     fn round_trip(&mut self, index: usize, bytes: &[u8]) -> Result<Vec<u8>, PipeApiError> {
+    |        ^^^^^^^^^^
+...
+322 |     fn release_all(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^
+
+warning: struct `NativePipeApi` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:354:23
+    |
+354 |     pub(super) struct NativePipeApi;
+    |                       ^^^^^^^^^^^^^
+
+warning: `sgenaxis-adapters` (lib) generated 10 warnings
+warning: struct `StdFileCommit` is never constructed
+ --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:8:12
+  |
+8 | pub struct StdFileCommit;
+  |            ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `new` is never used
+  --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:11:12
+   |
+10 | impl StdFileCommit {
+   | ------------------ associated function in this implementation
+11 |     pub fn new() -> Self {
+   |            ^^^
+
+warning: `sgenaxis-adapters` (test "phase1_file_commit") generated 2 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running tests\phase1_file_commit.rs (target\debug\deps\phase1_file_commit-5e9d166d419fdc67.exe)
+
+thread 'io_01_creates_exactly_one_new_directory' (31368) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:203:5:
+exclusive creation must succeed: Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106606070700", reason: "SKELETON_NOT_IMPLEMENTED" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'io_03_invalid_names_are_rejected_without_child_creation' (27664) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:230:9:
+must reject "": Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106607803900", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_02_existing_file_or_directory_is_never_replaced' (40888) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:216:9:
+must reject existing target: Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106606059200", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_04_other_adapter_instance_cannot_take_an_owned_lease' (34300) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:242:5:
+first product lease must be obtainable: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106615093600\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_08_existing_file_commit_keeps_complete_new_content' (49736) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:304:5:
+matching digest must permit replace: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106617276600\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_07_new_file_commit_matches_bytes_and_receipt' (33080) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:290:5:
+new target commit must succeed: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618018300\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_09_stale_digest_rejects_without_changing_original' (34960) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:315:5:
+stale digest must conflict: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106617974700\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_12_post_publish_failure_restores_old_before_ordinary_error' (42176) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:372:5:
+must report real injected failure after restoration: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618144700\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_13_failed_restore_retains_versions_and_blocks_followup' (33332) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:396:5:
+failed restore is not a successful rollback: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618172000\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_10_expected_presence_mismatch_never_overwrites' (45628) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:328:5:
+expected absent but present: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618040600\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data' (44260) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:514:5:
+cleanup fault must actually be reached; result=Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618092700\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_17_observed_external_edit_before_publish_is_not_overwritten' (32928) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:471:5:
+must recheck the observed target: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618305000\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_18a_foreign_temp_collision_is_not_deleted' (38304) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:493:5:
+collision must be retried using an owned new temp: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618322900\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics' (49192) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:352:9:
+must reach requested fault, not Skeleton error: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618366500\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_read_current_observes_complete_bytes_under_a_fixture_lease' (45080) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:528:5:
+assertion `left == right` failed: fourth Port method must read exact bytes
+  left: Err(Storage { stage: Read, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618556200\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+ right: Ok(Some([79, 76, 68, 45, 67, 79, 77, 80, 76, 69, 84, 69, 45, 68, 79, 67, 85, 77, 69, 78, 84]))
+
+thread 'io_14_unfinished_prepared_record_rejects_reopen' (39972) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:421:5:
+unfinished journal must fail closed: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618220000\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup' (17424) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:436:5:
+unknown journal cannot be interpreted: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618278100\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_06_process_death_releases_handle_without_stale_file_deletion' (30160) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:278:5:
+dead process no longer owns OS handle: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106617524800\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_05_independent_process_handle_blocks_product_lease' (35484) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:261:5:
+must recognize cooperating OS-held lock: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106617701000\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_16_normal_handle_close_allows_immediate_reacquisition' (49744) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:451:5:
+normal close releases OS ownership immediately: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43348-1793467106618359500\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+error: test failed, to rerun pass `-p sgenaxis-adapters --test phase1_file_commit`

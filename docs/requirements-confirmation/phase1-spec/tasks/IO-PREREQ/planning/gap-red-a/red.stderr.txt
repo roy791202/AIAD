@@ -1,0 +1,772 @@
+warning: struct `StdFileWriteLease` is never constructed
+  --> crates\sgenaxis-adapters\src\file_commit.rs:40:19
+   |
+40 | pub(crate) struct StdFileWriteLease {
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: enum `PipeApiError` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:273:6
+    |
+273 | enum PipeApiError { Unsupported, Create, Transfer, Close }
+    |      ^^^^^^^^^^^^
+
+warning: trait `PrivatePipeApi` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:274:7
+    |
+274 | trait PrivatePipeApi: Send {
+    |       ^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipeEndpoint` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:281:8
+    |
+281 | struct OwnedPipeEndpoint<H> { handle: H, close_attempted: bool, unresolved: bool }
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipePair` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:282:8
+    |
+282 | struct OwnedPipePair<H> { read: OwnedPipeEndpoint<H>, write: OwnedPipeEndpoint<H> }
+    |        ^^^^^^^^^^^^^
+
+warning: struct `PipeLedger` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:285:8
+    |
+285 | struct PipeLedger<H> { pairs: Vec<OwnedPipePair<H>>, cleanup: Cleanup }
+    |        ^^^^^^^^^^
+
+warning: associated function `new` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:286:28
+    |
+286 | impl<H> PipeLedger<H> { fn new() -> Self { Self { pairs: Vec::new(), cleanup: Cleanup::Pending } } }
+    | ---------------------      ^^^
+    | |
+    | associated function in this implementation
+
+warning: struct `PrivatePipeOwner` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:287:8
+    |
+287 | struct PrivatePipeOwner<'a, A: PrivatePipeApi> { api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle> }
+    |        ^^^^^^^^^^^^^^^^
+
+warning: associated items `new`, `create_two_pairs`, `round_trip`, and `release_all` are never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:289:8
+    |
+288 | impl<'a, A: PrivatePipeApi> PrivatePipeOwner<'a, A> {
+    | --------------------------------------------------- associated items in this implementation
+289 |     fn new(api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle>) -> Self { Self { api, ledger } }
+    |        ^^^
+290 |     fn create_two_pairs(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^^^^^^
+...
+308 |     fn round_trip(&mut self, index: usize, bytes: &[u8]) -> Result<Vec<u8>, PipeApiError> {
+    |        ^^^^^^^^^^
+...
+322 |     fn release_all(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^
+
+warning: struct `NativePipeApi` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:354:23
+    |
+354 |     pub(super) struct NativePipeApi;
+    |                       ^^^^^^^^^^^^^
+
+warning: `sgenaxis-adapters` (lib) generated 10 warnings
+warning: struct `StdFileCommit` is never constructed
+ --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:8:12
+  |
+8 | pub struct StdFileCommit;
+  |            ^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `new` is never used
+  --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:11:12
+   |
+10 | impl StdFileCommit {
+   | ------------------ associated function in this implementation
+11 |     pub fn new() -> Self {
+   |            ^^^
+
+warning: method `acquire_with_checkpoints` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:138:19
+    |
+136 | impl StdFileCommit {
+    | ------------------ method in this implementation
+137 |     // Private test-consumer entry; acquisition/transaction algorithms remain absent.
+138 |     pub(crate) fn acquire_with_checkpoints(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `sgenaxis-adapters` (test "phase1_file_commit") generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running tests\phase1_file_commit.rs (target\debug\deps\phase1_file_commit-5e9d166d419fdc67.exe)
+
+thread 'gap_01_empty_file_is_present_not_absent' (48104) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1698:5:
+PRODUCT_RED IO-ADD-01 empty file Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656303317700-0\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'gap_01_expected_absent_actual_present_digests' (35832) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1685:5:
+PRODUCT_RED IO-ADD-01 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656317168300-1\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_01_expected_present_actual_absent' (38144) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:654:5:
+PRODUCT_RED IO-ADD-01 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656331449600-2\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_02_new_empty' (43092) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:681:5:
+PRODUCT_RED IO-ADD-02 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656344447100-3\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_02_new_nonempty' (31172) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:681:5:
+PRODUCT_RED IO-ADD-02 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656357040100-4\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_02_read_absent_exactly_none' (27900) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1709:5:
+assertion `left == right` failed: PRODUCT_RED read absent
+  left: Err(Storage { stage: Read, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656369015200-5\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+ right: Ok(None)
+
+thread 'gap_02_read_empty_exactly_some_empty' (43596) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1716:5:
+assertion `left == right` failed: PRODUCT_RED read empty
+  left: Err(Storage { stage: Read, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656380550700-6\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+ right: Ok(Some([]))
+
+thread 'gap_02_replace_empty' (7704) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:681:5:
+PRODUCT_RED IO-ADD-02 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656393961500-7\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_02_replace_nonempty' (48220) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:681:5:
+PRODUCT_RED IO-ADD-02 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656405139200-8\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_before_publish_absent' (32400) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 publish.before Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656418418300-9\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_before_publish_old' (34128) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 publish.before Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656432370000-10\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_publish_absent' (48628) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656445330000-11\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_publish_old' (8380) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656458445200-12\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_sync_absent' (33820) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656471634000-13\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_sync_old' (49144) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656485505600-14\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_verify_absent' (34236) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656499466000-15\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_verify_old' (39400) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656514142800-16\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_write_absent' (33928) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656527320600-17\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_commit_write_old' (49708) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 committed.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656541101300-18\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_new_sync_absent' (17940) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 new.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656554858900-19\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_new_sync_old' (28764) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 new.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656566730500-20\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_new_write_absent' (36268) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 new.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656580611700-21\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_new_write_old' (43928) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 new.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656593428600-22\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_old_sync' (924) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 old.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656607300800-23\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_old_write' (49168) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 old.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656619808200-24\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_publish_absent' (41220) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656635143000-25\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_publish_old' (24716) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656648846800-26\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_sync_absent' (45416) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656664986400-27\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_sync_old' (34192) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656678309500-28\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_verify_absent' (44932) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656692933400-29\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_verify_old' (3212) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656707116800-30\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_write_absent' (14032) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656719505100-31\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_prepared_write_old' (43252) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 prepared.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656732682600-32\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_publish_absent' (42924) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 target.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656745381100-33\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_publish_old' (48732) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 target.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656759138000-34\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_verify_absent' (952) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 target.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656772306700-35\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_03_verify_old' (3292) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:725:5:
+PRODUCT_RED IO-ADD-03 target.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656786730400-36\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_restore_absent' (12480) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restore.remove Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656800429700-37\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_restore_old' (2224) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restore.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656812629300-38\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_publish_absent' (48948) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656826617900-39\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_publish_old' (46300) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656840830000-40\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_sync_absent' (49900) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656854557000-41\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_sync_old' (9744) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656866906300-42\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_verify_absent' (17804) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656881617100-43\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_verify_old' (24412) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656895471800-44\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_write_absent' (49136) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656908941700-45\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_rollback_record_write_old' (44420) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656925963800-46\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_verify_restored_absent' (5796) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restored.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656939920300-47\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_commit_verify_restored_old' (48520) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restored.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656953350700-48\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_publish_absent' (34452) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656966424700-49\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_publish_old' (29816) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.publish Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656980087300-50\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_sync_absent' (37404) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468656993662300-51\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_sync_old' (35384) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.sync Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657005702100-52\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_verify_absent' (46040) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657018942500-53\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_verify_old' (44148) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657030768700-54\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_write_absent' (38572) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657045853100-55\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_rollback_record_write_old' (40328) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 rolled_back.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657057254700-56\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_verify_restore_absent' (35328) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restore.remove Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657070895900-57\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_verify_restore_old' (31632) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restore.write Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657083489300-58\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_verify_restored_absent' (45176) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restored.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657097076100-59\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_04_verify_restored_old' (44612) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:792:5:
+PRODUCT_RED IO-ADD-04 restored.verify Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657109280500-60\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_05_bom' (48688) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec bom
+  left: Err(SkeletonNotImplemented)
+ right: Err(Text)
+
+thread 'gap_05_checksum' (29592) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec checksum
+  left: Err(SkeletonNotImplemented)
+ right: Err(Checksum)
+
+thread 'gap_05_digest' (36988) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec digest
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_05_extra_field' (23868) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec extra_field
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_field_length' (33676) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec field_length
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_invalid_utf8' (37400) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec utf8
+  left: Err(SkeletonNotImplemented)
+ right: Err(Text)
+
+thread 'gap_05_magic' (32084) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec magic
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_nul' (36544) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec nul
+  left: Err(SkeletonNotImplemented)
+ right: Err(Text)
+
+thread 'gap_05_old_pair' (11116) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec old_pair
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_05_overflow' (3852) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec overflow
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_payload_length' (29096) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec length
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_state' (48744) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec state
+  left: Err(SkeletonNotImplemented)
+ right: Err(State)
+
+thread 'gap_05_trailing' (39088) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec trailing
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_truncated' (46496) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec truncated
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_05_txid' (44364) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec txid
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_05_version_valid_checksum' (39320) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec version
+  left: Err(SkeletonNotImplemented)
+ right: Err(Version)
+
+thread 'gap_06_absolute' (32884) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec absolute
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_acquire_absolute' (49744) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition absolute Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657132597900-61\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_ads' (36440) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition ads Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657156841500-63\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_binding' (46284) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition binding Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657178021500-65\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_bom' (48548) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition bom Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657195979400-67\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_checksum' (31436) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition checksum Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657218008600-69\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_device' (13588) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition device Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657237850400-71\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_digest' (36880) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition digest Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657257211700-73\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_drive' (46684) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition drive Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657277793100-75\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_extra_field' (46948) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition extra_field Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657298515400-77\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_field_length' (42888) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition field_length Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657319672700-79\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_magic' (33692) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition magic Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657340212000-81\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_nul' (44520) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition nul Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657359648200-83\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_old_pair' (9320) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition old_pair Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657379702000-85\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_old_traversal' (43384) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition old_relative Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657399201600-87\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_overflow' (46416) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition overflow Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657420516900-89\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_oversize' (48532) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition oversize Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657439805300-91\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_payload_length' (42928) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition length Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657462462700-93\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_state' (32160) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition state Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657483851600-95\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_trailing' (47232) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition trailing Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657506183100-97\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_traversal' (33968) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition relative Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657528212000-99\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_truncated' (26088) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition truncated Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657550325700-101\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_txid' (8804) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition txid Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657572410500-103\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_unc' (45312) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition unc Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657600089500-105\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_utf8' (24448) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition utf8 Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657622066000-107\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_acquire_version' (49472) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:942:5:
+PRODUCT_RED IO-ADD-06 acquisition version Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657640997500-109\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_06_ads' (26068) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec ads
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_device' (25176) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec device
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_drive' (34044) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec drive
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_old_traversal' (46956) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec old_relative
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_target_binding' (40416) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec binding
+  left: Err(SkeletonNotImplemented)
+ right: Err(Binding)
+
+thread 'gap_06_traversal' (36852) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec relative
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_06_unc' (43772) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec unc
+  left: Err(SkeletonNotImplemented)
+ right: Err(RelativePath)
+
+thread 'gap_07_absent' (45460) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=30 Err(SkeletonNotImplemented)
+
+thread 'gap_07_committed' (37740) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=2 len=30 Err(SkeletonNotImplemented)
+
+thread 'gap_07_multibyte_4096' (34744) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=4096 Err(SkeletonNotImplemented)
+
+thread 'gap_07_multibyte_4097_rejected_by_byte_count' (14076) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1822:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 multibyte byte limit
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_07_path_4095' (23808) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=4095 Err(SkeletonNotImplemented)
+
+thread 'gap_07_path_4096_max_record' (4532) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=4096 Err(SkeletonNotImplemented)
+
+thread 'gap_07_path_4097' (44048) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1028:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 length boundary
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_07_path_empty' (44508) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1028:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 length boundary
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_07_path_minimum_file' (33812) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=4 Err(SkeletonNotImplemented)
+
+thread 'gap_07_path_one_byte_cannot_be_absolute_file' (38064) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1028:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 length boundary
+  left: Err(SkeletonNotImplemented)
+ right: Err(Field)
+
+thread 'gap_07_prepared' (12396) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=1 len=30 Err(SkeletonNotImplemented)
+
+thread 'gap_07_recovery' (49140) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=4 len=30 Err(SkeletonNotImplemented)
+
+thread 'gap_07_rolledback' (39332) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:996:5:
+PRODUCT_RED IO-ADD-07 positive state=3 len=30 Err(SkeletonNotImplemented)
+
+thread 'gap_07_total_65535_not_valid_padding' (40640) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1028:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 length boundary
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_07_total_65536_not_valid_padding' (43924) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1028:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-07 length boundary
+  left: Err(SkeletonNotImplemented)
+ right: Err(Framing)
+
+thread 'gap_07_total_over_limit' (39308) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:919:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-05/06 codec oversize
+  left: Err(SkeletonNotImplemented)
+ right: Err(Size)
+
+thread 'gap_08_bad_artifact' (2680) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 bad_artifact RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657682937700-111\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_committed' (40900) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 committed RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657748792300-112\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_committed_bad_artifact' (47452) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 committed_bad_artifact RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657819746600-113\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_committed_foreign' (39056) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 committed_foreign RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657897650600-114\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_committed_mismatch' (38592) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 committed_mismatch RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468657963770300-115\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_foreign' (12872) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 foreign RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658028062300-116\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_missing_journal' (45564) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 missing RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658113666100-117\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_next_orphan' (44080) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 next RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658209077300-118\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_prepared' (46632) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 prepared RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658282187900-119\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_recovery' (39028) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 recovery RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658350852800-120\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_rolledback' (41180) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 rolledback RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658422043300-121\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_rolledback_absent' (10228) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 rolledback_absent RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658504847400-122\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_rolledback_absent_missing_versions' (42972) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 rolledback_absent_missing_versions RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658579123800-123\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_rolledback_mismatch' (44052) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 rolledback_mismatch RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658657887100-124\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_rolledback_missing_versions' (40588) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 rolledback_missing_versions RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658743703500-125\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_terminal_missing_versions' (46604) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 terminal_missing_versions RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658820875100-126\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_08_unknown' (31296) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1244:5:
+PRODUCT_RED IO-ADD-08 unknown RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658901263200-127\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+
+thread 'gap_09_product_death_allows_child' (2796) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1270:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-09 actual product acquire: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468658975637600-128\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468658975637600-128\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "LEASE_READY"
+
+thread 'gap_09_product_drop_allows_child' (45896) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1270:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-09 actual product acquire: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659026838900-129\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659026838900-129\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "LEASE_READY"
+
+thread 'gap_10_active_journal_next_collision_never_deletes_foreign' (48376) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1646:5:
+PRODUCT_RED IO-ADD-10 journal create checkpoint Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659075241700-130\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_10_committed_cleanup_failure_stays_success' (31000) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1320:5:
+PRODUCT_RED IO-ADD-10 cleanup not consumed Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659089129200-131\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_10_orphan_next_collision_fails_closed' (46100) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1604:9:
+PRODUCT_RED IO-ADD-10 journal collision Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659103368400-132\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_10_prepare_cleanup_fault_preserves_formal_and_foreign' (41264) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1842:5:
+PRODUCT_RED IO-ADD-10 prepublish cleanup not consumed Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659117209500-133\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_10_rollback_cleanup_preserves_preimage' (9248) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1320:5:
+PRODUCT_RED IO-ADD-10 cleanup not consumed Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659130921200-134\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_10_temp_collision_foreign_kept' (42584) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1610:9:
+PRODUCT_RED IO-ADD-10 owned temp retry Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659143105500-135\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_ads' (35488) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "a:b" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659156446500-136", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_backslash' (14460) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "a\\b" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659170711500-137", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_empty' (36752) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659182293100-138", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_existing_empty_dir' (33504) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1392:5:
+PRODUCT_RED IO-ADD-11 empty Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659194383600-139", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_existing_file' (35400) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1392:5:
+PRODUCT_RED IO-ADD-11 file Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659207905100-140", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_existing_nonempty_dir' (37920) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1392:5:
+PRODUCT_RED IO-ADD-11 nonempty Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659220635400-141", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_forward' (26712) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "a/b" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659233980100-142", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_parent' (48088) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 ".." Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659246495500-143", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_parent_missing' (48620) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1373:5:
+PRODUCT_RED IO-ADD-11 Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659262561800-144\\missing", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_reserved' (44288) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "CON" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659273860900-145", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_space' (47556) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 " " Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659287558900-146", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_trailing_dot' (27204) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "name." Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659300551900-147", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_trailing_space' (35072) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "name " Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659314418900-148", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_traversal' (37948) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1356:5:
+PRODUCT_RED IO-ADD-11 "../outside" Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659327209600-149", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_11_traversal_cannot_create_in_another_owned_root' (47676) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1863:5:
+PRODUCT_RED IO-ADD-11 cross-root Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659349659000-150", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_12_absent_rollback_preserves_external_new_file' (45928) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1429:5:
+PRODUCT_RED IO-ADD-12 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659365461500-152\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_12_prepare_external_edit_preserved' (34024) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1672:5:
+PRODUCT_RED IO-ADD-12 recheck Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659379440700-153\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_12_rollback_preserves_external_replacement' (48392) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1429:5:
+PRODUCT_RED IO-ADD-12 Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659392262000-154\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'gap_13_cleanup' (40880) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1449:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-13 checkpoint not reached: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659405528500-155\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659405528500-155\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "CHECKPOINT cleanup.before"
+
+thread 'gap_13_committed' (49612) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1449:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-13 checkpoint not reached: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659549990600-156\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659549990600-156\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "CHECKPOINT committed.verified"
+
+thread 'gap_13_new_synced' (40536) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1449:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-13 checkpoint not reached: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659625498200-157\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659625498200-157\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "CHECKPOINT new.synced"
+
+thread 'gap_13_prepared' (45332) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1449:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-13 checkpoint not reached: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659694450800-158\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659694450800-158\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "CHECKPOINT prepared.verified"
+
+thread 'gap_13_published' (35564) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:1449:5:
+assertion `left == right` failed: PRODUCT_RED IO-ADD-13 checkpoint not reached: RESULT ERROR Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468659758681300-159\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" }
+  left: "RESULT ERROR Storage { stage: Acquire, path: \"\\\\\\\\?\\\\C:\\\\Users\\\\g6812\\\\AppData\\\\Local\\\\Temp\\\\eluslot-io-red-fixtures\\\\io-43196-1793468659758681300-159\\\\document.ess\", reason: \"SKELETON_NOT_IMPLEMENTED\" }"
+ right: "CHECKPOINT target.published"
+
+thread 'gap_14_fixture_retry_exhaustion_support' (34532) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:70:9:
+FIXTURE_SETUP exclusive fixture retry exhausted after 32 attempts
+
+thread 'io_01_creates_exactly_one_new_directory' (35916) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:224:5:
+exclusive creation must succeed: Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660161084000-180", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_02_existing_file_or_directory_is_never_replaced' (40360) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:237:9:
+must reject existing target: Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660179827300-181", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_03_invalid_names_are_rejected_without_child_creation' (24528) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:251:9:
+must reject "": Err(Storage { stage: CreateDirectory, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660199956400-182", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_04_other_adapter_instance_cannot_take_an_owned_lease' (3136) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:263:5:
+first product lease must be obtainable: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660212164400-183\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_05_independent_process_handle_blocks_product_lease' (28232) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:282:5:
+must recognize cooperating OS-held lock: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660232806200-184\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_06_process_death_releases_handle_without_stale_file_deletion' (27692) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:299:5:
+dead process no longer owns OS handle: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660305492900-185\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_07_new_file_commit_matches_bytes_and_receipt' (49776) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:311:5:
+new target commit must succeed: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660384325400-186\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_08_existing_file_commit_keeps_complete_new_content' (41064) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:325:5:
+matching digest must permit replace: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660403942200-187\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_09_stale_digest_rejects_without_changing_original' (47888) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:336:5:
+stale digest must conflict: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660419909400-188\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_10_expected_presence_mismatch_never_overwrites' (33100) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:349:5:
+expected absent but present: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660441465700-189\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics' (11012) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:373:9:
+must reach requested fault, not Skeleton error: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660456974400-190\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_12_post_publish_failure_restores_old_before_ordinary_error' (16756) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:393:5:
+must report real injected failure after restoration: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660473188800-191\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_13_failed_restore_retains_versions_and_blocks_followup' (31796) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:417:5:
+failed restore is not a successful rollback: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660488107900-192\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_14_unfinished_prepared_record_rejects_reopen' (21024) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:442:5:
+unfinished journal must fail closed: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660504944600-193\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup' (44492) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:457:5:
+unknown journal cannot be interpreted: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660522330300-194\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_16_normal_handle_close_allows_immediate_reacquisition' (45408) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:472:5:
+normal close releases OS ownership immediately: Some(Storage { stage: Acquire, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660537811100-195\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_17_observed_external_edit_before_publish_is_not_overwritten' (43376) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:492:5:
+must recheck the observed target: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660609690700-196\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_18a_foreign_temp_collision_is_not_deleted' (35944) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:514:5:
+collision must be retried using an owned new temp: Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660624099100-197\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data' (45740) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:535:5:
+cleanup fault must actually be reached; result=Err(Storage { stage: Publish, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660639686800-198\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+
+thread 'io_read_current_observes_complete_bytes_under_a_fixture_lease' (33084) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:549:5:
+assertion `left == right` failed: fourth Port method must read exact bytes
+  left: Err(Storage { stage: Read, path: "\\\\?\\C:\\Users\\g6812\\AppData\\Local\\Temp\\eluslot-io-red-fixtures\\io-43196-1793468660652744000-199\\document.ess", reason: "SKELETON_NOT_IMPLEMENTED" })
+ right: Ok(Some([79, 76, 68, 45, 67, 79, 77, 80, 76, 69, 84, 69, 45, 68, 79, 67, 85, 77, 69, 78, 84]))
+error: test failed, to rerun pass `-p sgenaxis-adapters --test phase1_file_commit`

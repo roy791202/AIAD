@@ -1,0 +1,37 @@
+{
+  "status": "SPEC_CONFLICT",
+  "id": "IO-GAP-CONFLICT-01",
+  "implementation_status": "BLOCKED_PENDING_REPLAN",
+  "specification_a": {
+    "source": "../gap-resolution/proposal.json journal_v1.envelope[0]",
+    "rule": "magic is ASCII ELUCOMMIT",
+    "actual_ascii_byte_count": 9
+  },
+  "specification_b": {
+    "source": "../gap-resolution/proposal.json journal_v1.envelope and limits.effective_valid_max",
+    "rule": "magic length 8; version at 8; payload length at 12; payload at 16; maximum valid record 4389"
+  },
+  "conflict": "ELUCOMMIT is nine ASCII bytes. Keeping its exact value and the approved eight-byte field/offsets is impossible. The 4389-byte derivation inherits the same off-by-one.",
+  "affected": "binary record framing/checksum domain; encoder/decoder fixtures; boundary sizes; all journal-format dependent test acceptance",
+  "runtime_detection": "gap_14_v1_encoder_support compares first 8 bytes to 9-byte literal and fails; this is not valid RED.",
+  "recommendation": {
+    "option": "A",
+    "magic": "Keep ELUCOMMIT (9 bytes)",
+    "version_offset": 9,
+    "payload_length_offset": 13,
+    "payload_offset": 17,
+    "checksum_offset": "17+payload_length",
+    "total": "17+payload_length+64",
+    "maximum_valid_record": 4390,
+    "checksum_scope": "all 17 header bytes plus payload; same 65536 total input cap",
+    "reason": "Preserves the existing explicit magic used by fixtures; only framing offsets and derived size change. This remains a proposal, not applied to accepted spec."
+  },
+  "alternative": {
+    "option": "B",
+    "magic": "Define a new explicitly approved 8-byte magic, e.g. ELUCMT01",
+    "offsets": "Keep 8/12/16 and 4389 maximum",
+    "tradeoff": "Changes the explicit magic value instead; all fixture bytes must change."
+  },
+  "owner_decision_required": "Choose A (recommended) or B once; do not change production or test expectations to make this contradiction disappear.",
+  "no_spec_weakening": true
+}

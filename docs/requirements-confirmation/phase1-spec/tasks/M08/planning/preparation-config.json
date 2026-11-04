@@ -1,0 +1,607 @@
+{
+  "M01": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        1269,
+        1327,
+        "新建UI走名稱＋父目錄＋偏好，未見六步精靈"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+        40,
+        78,
+        "新建偏好主路徑先validate且拒ExistingTarget；偏好保存失敗列DirectoryCreatedPreferencesFailed"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+        84,
+        115,
+        "舊create_new_project_root會remove_file；create_dir_all可接受existing目錄，與新禁止覆寫要求不一致"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs",
+        1,
+        35,
+        "ProjectId由canonical root雜湊，不能直接宣稱是跨搬移持久ID"
+      ]
+    ],
+    "gap": [
+      "六步定義、各步草稿、重開續填與生成門檻缺整合路徑",
+      "所有對外新建入口必須一致拒既有目標；主路徑安全不代表舊入口安全",
+      "保留偏好已交付能力，不重做schema/presets"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/project_preferences_creation.rs",
+      "apps/sgenaxis-desktop/src-tauri/tests/project_preferences_commands.rs",
+      "apps/sgenaxis-desktop/ui/project-preferences-ui.test.cjs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project.rs"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+      "apps/sgenaxis-desktop/ui/styles.css"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs",
+      "apps/sgenaxis-desktop/ui/project-wizard.js"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_identity.rs",
+      "apps/sgenaxis-desktop/ui/project-wizard.test.cjs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-host --test project_preferences_creation",
+      "node --test ui/project-preferences-ui.test.cjs"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_project_definition",
+      "cargo test -p sgenaxis-work --test phase1_project_identity",
+      "node --test ui/project-wizard.test.cjs"
+    ],
+    "decisions": [
+      "D1",
+      "D2",
+      "D7"
+    ],
+    "owner": "WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。",
+    "input": "Prepare/SaveDraft/Create/BindProject（提案）",
+    "output": "FileSystemPort、既有project preference parser/store；不新建Repository。",
+    "transaction": "validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。",
+    "ui": "六步導覽、名稱/父路徑/完整路徑、目的/偏好/目標/技術待決狀態、草稿/返回/下一步/建立；雙擊防重送。"
+  },
+  "M02": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/project-preferences-ui.js",
+        1,
+        65,
+        "已有偏好presets，不是產品模板或雙骨架生成"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        335,
+        365,
+        "已有預覽HTML file寫出，不是程式模組/介面生成器"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        1,
+        85,
+        "HOST可擴充用例並重用FileSystemPort；沒有理由另加第二authority"
+      ]
+    ],
+    "gap": [
+      "未在所列host/command/依賴搜尋找到版本化template manifest與雙骨架artifact plan",
+      "批准版本來源、必要契約門檻、再生成diff及模板golden待定",
+      "首個生成框架與模板內容未批准"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/Cargo.toml",
+      "apps/sgenaxis-desktop/Cargo.toml"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/template_generation.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/manifest.json"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_template_generation.rs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-host uidesign_doc::tests"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_template_generation"
+    ],
+    "decisions": [
+      "D2",
+      "D3"
+    ],
+    "owner": "WORK持已確認定義/生成plan與版本；HOST寫產物；模板唯讀。",
+    "input": "ListTemplate/PrepareGeneration/ConfirmGeneration（提案）",
+    "output": "FileSystemPort與本機模板；初版不下載/安裝依賴。",
+    "transaction": "lock approved revisions → validate → preview exact tree → confirm → stage → commit owned files；過期/衝突拒絕。",
+    "ui": "模板版本/驗證範圍、雙骨架預設選、缺決策時只保存定義、產物樹、未實作及再生成差異。"
+  },
+  "M03": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        15,
+        130,
+        "DesignDoc格式/版本/節點/props/hints；selection也會serialize；meta僅title/updatedAt/targetStack"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        210,
+        333,
+        "Build preview將node畫成可選卡片及hint；不能等同完整導覽/表單/錯誤狀態"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        5685,
+        5905,
+        "已有embedded/OS Editor與Viewer入口；新建成功自動載主要畫面待接"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        13323,
+        13356,
+        "Build invoke及product_pass=false保護存在；仍需preview revision及過期契約"
+      ]
+    ],
+    "gap": [
+      "JS metadata如guides與HOST型別往返可能丟欄位，須正式roundtrip fixture",
+      "事件/模擬狀態schema、隔離runtime及跨視圖ID綁定未定",
+      "多視窗JS模型需單一提交authority及revision，不能假設視圖同步"
+    ],
+    "read": [
+      "fixtures/sgenaxis-design/sample.sgendesign",
+      "tests/test_pd_uidesigner_edit_p2.py",
+      "tests/test_pd_uidesign_spec_01.py",
+      "apps/sgenaxis-desktop/src-tauri/capabilities/uidesign-window.json"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "apps/sgenaxis-desktop/ui/styles.css",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/ui/design-preview-runtime.js",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/design_binding.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs",
+      "apps/sgenaxis-desktop/ui/design-preview-runtime.test.cjs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-host uidesign_doc::tests",
+      "python -m pytest tests/test_pd_uidesigner_edit_p2.py -q"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_design_roundtrip",
+      "node --test ui/design-preview-runtime.test.cjs"
+    ],
+    "decisions": [
+      "D2",
+      "D3",
+      "D4"
+    ],
+    "owner": "現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。",
+    "input": "Get/CommitDesign/BuildPreview/ResolveArchitectureLink（提案）",
+    "output": "FileSystemPort與既有preview builder；Viewer不得旁路FS。",
+    "transaction": "capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。",
+    "ui": "Editor/Viewer/Build、過期badge、畫面/元件/事件清單、錯誤定位；無UI不開窗。"
+  },
+  "M04": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        790,
+        875,
+        "ESS是eluslot.ess v1複合XML，含work/architecture/design"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+        14,
+        105,
+        "限制scene/與suffix並write_atomic；HOST接受raw text，非完整XML契約驗證"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        509,
+        534,
+        "dirty切換兩輪confirm，保存失敗abort；需關閉/退出一致覆蓋"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-core/src/edit.rs",
+        10,
+        153,
+        "EditCheckpoint只有selection；不是文件內容Undo"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+        1,
+        150,
+        "已有volatile清空prepare/confirm/stale guards與單筆Undo/Redo；不含合併/素材/持久快照"
+      ],
+      [
+        "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        2235,
+        2273,
+        "scene_save/load直接HOST helper，未走DispatchHost；新架構要明列修補點"
+      ]
+    ],
+    "gap": [
+      "文件authority與ESS parser在UI的漸進遷移需批准，不能全面重寫",
+      "單文件before/after、素材pin、複合Undo缺同一交易協定",
+      "不得以selection edit_undo或UI checkpoint冒充全部文件Undo"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-core/src/dirty.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+      "tests/test_pd_scene_sgs_01.py",
+      "tests/test_pd_scene_project_scope_01.py",
+      "tests/test_pd_uidesigner_edit_p2.py"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/uidesign_recovery.js"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/document_edit.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_history.rs",
+      "apps/sgenaxis-desktop/ui/document-lifecycle.test.cjs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-host scene_doc::tests",
+      "cargo test -p sgenaxis-core edit::tests",
+      "python -m pytest tests/test_pd_scene_sgs_01.py tests/test_pd_scene_project_scope_01.py -q"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_document_history",
+      "node --test ui/document-lifecycle.test.cjs"
+    ],
+    "decisions": [
+      "D2",
+      "D4",
+      "D5"
+    ],
+    "owner": "提案WORK持文件revision/compound history，HOST協調；保留selection EditSession原責任。",
+    "input": "SaveDocument/PrepareClear/ConfirmClear/ApplyMerge/UndoDocument（提案）",
+    "output": "FileSystemPort、素材pin/query協定待批准。",
+    "transaction": "prepare before/after+pins → validate revision → apply one document → append exactly one undo；失敗完整回before不入history。",
+    "ui": "dirty、保存/不保存/取消、clear預覽與作用範圍、Undo操作名；native退出需真正攔截而非僅beforeunload。"
+  },
+  "M05": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        4245,
+        4259,
+        "assetRefs只有XML欄位，不是素材版本或打包清單"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        11525,
+        11545,
+        "Icon/Image/Button有asset相關props，不能當解碼/播放/完整性已實作"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+        10,
+        42,
+        "FS能read bytes/write/delete單檔；無asset catalog/pin/GC協定"
+      ]
+    ],
+    "gap": [
+      "缺AssetID→immutable版本、反向引用、素材拷貝與安全GC主流程",
+      "四類媒體的實際支援格式/容量/安全SVG待矩陣批准",
+      "GC roots必須含活文件/Undo/快照/交易；不能只掃目前文件"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/asset_store.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_assets.rs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-host uidesign_doc::tests"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_assets"
+    ],
+    "decisions": [
+      "D2",
+      "D3",
+      "D5",
+      "D6"
+    ],
+    "owner": "素材catalog持不可變內容/版本，文件持引用；pins是引用projection，未知根保守不刪。",
+    "input": "Inspect/ImportAsset/PrepareReplacement/QueryReferences/EvaluateCleanup（提案）",
+    "output": "FileSystemPort；解碼由adapter，domain不依OS/browser codec。",
+    "transaction": "validate → copy immutable bytes → update selected doc refs；GC只回收本次owned orphan且全部root釋放。",
+    "ui": "名稱/類型/縮圖/容量/引用位置/缺失、替換影響、unsupported原因、播放受限入口。"
+  },
+  "M06": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        359,
+        449,
+        "SGB三entry pack/unpack不是新版BIN；未含完整manifest及素材集合"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+        38,
+        78,
+        "adopt登記documentId/kind/reference/revision，不拷貝payload，不是匯入合併"
+      ],
+      [
+        "apps/sgenaxis-desktop/src-tauri/tests/project_document_commands.rs",
+        1,
+        75,
+        "有來源保全/重送/讀回不確定測試；本輪未執行"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+        9,
+        84,
+        "write_atomic owned temp+rename；last-commit-wins且無crash durability，不是CAS/多檔交易"
+      ]
+    ],
+    "gap": [
+      "列出host/ports/commands及Cargo依賴範圍未見完整BIN輸入輸出/合併用例",
+      "缺正式archive schema/選型/limits/安全解析",
+      "ID mapping/plan revision與素材/Undo必須同交易，不可把adoption視為完成匯入"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/document_identity.rs",
+      "apps/sgenaxis-desktop/ui/project-document-ui.test.cjs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "apps/sgenaxis-desktop/src-tauri/Cargo.toml"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/merge_plan.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/bin_exchange.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_exchange.rs",
+      "apps/sgenaxis-desktop/src-tauri/tests/phase1_exchange_commands.rs"
+    ],
+    "regression": [
+      "cargo test --test project_document_commands",
+      "node --test ui/project-document-ui.test.cjs"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_exchange",
+      "cargo test --test phase1_exchange_commands"
+    ],
+    "decisions": [
+      "D1",
+      "D2",
+      "D5",
+      "D6"
+    ],
+    "owner": "WORK決定ID與merge plan；HOST讀寫archive；M04提交內容/history；M06不另持SSOT。",
+    "input": "Inspect/ExportBin/RestoreNewProject/PrepareSingleMerge/ConfirmMerge（提案）",
+    "output": "FileSystemPort＋archive codec外部適配；transaction seam需D5批准。",
+    "transaction": "validate format/limits/paths → freeze single target plan → stage immutable assets → M04 commit → one Undo；失敗全回復；新專案還原另流程。",
+    "ui": "package清單/素材/依賴，副本與合併分開、單文件選擇、增改刪、ID conflict略過/另副本、待綁定確認、stale重看。"
+  },
+  "M07": {
+    "evidence": [
+      [
+        "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+        1,
+        150,
+        "WeakMap是volatile checkpoint，不是LOCALAPPDATA持久快照"
+      ],
+      [
+        "apps/sgenaxis-desktop/ui/app.js",
+        5002,
+        5028,
+        "ARCH_LS_KEY單key localStorage，quota失敗ignore；不等於Project/Session復原索引"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs",
+        1,
+        35,
+        "path-derived ID不等於跨搬移穩定身份"
+      ],
+      [
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+        10,
+        42,
+        "無clock/user path/index transaction介面，不能讓UI自行OS操作"
+      ]
+    ],
+    "gap": [
+      "所列source搜尋未見60秒內容快照基準/持久index/素材pin/最近復原入口",
+      "聚合dirty與savedAt不足判斷語義內容快照差異",
+      "需stable capture、寫入期間修改、切換session與late completion seams"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-core/src/dirty.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs"
+    ],
+    "edit": [
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/recovery_store.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_recovery.rs",
+      "apps/sgenaxis-desktop/ui/recovery-history.test.cjs"
+    ],
+    "regression": [
+      "cargo test -p sgenaxis-core dirty::tests"
+    ],
+    "newcommands": [
+      "cargo test -p sgenaxis-host --test phase1_recovery",
+      "node --test ui/recovery-history.test.cjs"
+    ],
+    "decisions": [
+      "D1",
+      "D2",
+      "D4",
+      "D5",
+      "D6"
+    ],
+    "owner": "WORK持semantic revision與獨立baseline/session；HOST持immutable快照/index；歷史UI僅projection。",
+    "input": "CheckTick/CaptureStableRevision/SaveRecovery/OpenRecovery/ListRecent（提案）",
+    "output": "FS、clock、user paths與鎖定最小seam提案；禁止UI→FS。",
+    "transaction": "60s → stable captureR → compare semantic baseline → write payload+assets → publish index → baselineR；R+1留待下輪；失敗保留舊index。",
+    "ui": "復原badge、名稱/時間/原位置/素材完整性、不可寫持續警告/替代位置、失效路徑定位、移除歷史不刪快照。"
+  },
+  "M08": {
+    "evidence": [
+      [
+        "packaging/windows/portable/README.md",
+        1,
+        18,
+        "僅2026-10-25歷史binary/hash；不是目前工作樹新需求驗收"
+      ],
+      [
+        "apps/sgenaxis-desktop/Cargo.toml",
+        1,
+        38,
+        "workspace與src-tauri獨立，命令cwd不同"
+      ],
+      [
+        "tests/test_pd_scene_sgs_01.py",
+        1,
+        55,
+        "舊UI hook/fixture XML文字檢查不是native behavior證據"
+      ],
+      [
+        "apps/sgenaxis-desktop/package.json",
+        1,
+        22,
+        "npm run build→tauri build可重用，但未確認新artifact/環境"
+      ]
+    ],
+    "gap": [
+      "新需求無本次RED/GREEN/native行為證據；舊綠卡/binary不可冒用",
+      "需Windows11 x64/WebView2實際環境與artifact lock",
+      "本輪不跑build/package/tests，不產新binary"
+    ],
+    "read": [
+      "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+      "apps/sgenaxis-desktop/src-tauri/tauri.conf.json",
+      "packaging/windows/portable/EluSlot.exe.sha256",
+      "packaging/windows/wix/verify-install.ps1",
+      "tests/test_pd_harness_portable_01.py",
+      "tests/test_pd_rel_artifacts_01.py"
+    ],
+    "edit": [],
+    "new": [],
+    "test": [
+      "tests/test_p1_portable_acceptance.py"
+    ],
+    "regression": [
+      "cargo test --workspace",
+      "cargo test --lib",
+      "npm run build"
+    ],
+    "newcommands": [
+      "python -m pytest tests/test_p1_portable_acceptance.py -q"
+    ],
+    "decisions": [
+      "D3",
+      "D7"
+    ],
+    "owner": "只讀版本與驗收證據，不擁有其他模組domain authority。",
+    "input": "隔離test driver/native operator",
+    "output": "隔離FS/程序/artifact讀取；不用自動派工服務。",
+    "transaction": "lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。",
+    "ui": "native按精靈/Editor/Viewer/BIN/Undo/history，記artifact/OS/需求；不能用controlled fixture冒充native。"
+  }
+}

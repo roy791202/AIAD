@@ -1,0 +1,93 @@
+{
+  "status": "PLANNED_NOT_CREATED",
+  "feature": "gap-behavior.feature",
+  "step_definitions": "待確認後在現有Rust整合測試邊界映射，不另加BDD runtime依賴；本輪不建立可執行steps",
+  "fixture_sources": [
+    {
+      "case": "IO-ADD-01",
+      "data": "expected Some(old) 但正式目標不存在；保留原方向",
+      "expected": "Conflict expected/observed 相符、目標仍不存在、無意外提交；分開測空 bytes合法文件"
+    },
+    {
+      "case": "IO-ADD-02",
+      "data": "absent/old × empty/nonempty new",
+      "expected": "assert receipt 四欄、正式 exact bytes、COMMITTED 可獨立解碼且 checksum正確；不可只測 bytes"
+    },
+    {
+      "case": "IO-ADD-03",
+      "data": "原存在/不存在 × PrepareOld(適用時)/PrepareNew/WritePreparedJournal/BeforePublish/Publish/VerifyPublished/WriteCommittedJournal",
+      "expected": "獨立列驗證實際 reached+故障，無 new 正式殘留；postpublish old/absent 恢復且 ROLLED_BACK 可解碼後才普通 Storage"
+    },
+    {
+      "case": "IO-ADD-04",
+      "data": "VerifyPublished/WriteCommittedJournal 先失敗，再 Restore/VerifyRestored/ROLLED_BACK journal write 失敗；old/absent 分列",
+      "expected": "RecoveryRequired，安全診斷、原有版本 hash保存、同 lease 再寫與重新取得皆 fail closed；absent 無 old.bin"
+    },
+    {
+      "case": "IO-ADD-05",
+      "data": "valid framing 分別改 version/state/checksum/length/UTF8/NUL/digest、truncation/overflow/trailing bytes；非checksum測例重算checksum",
+      "expected": "分別驗證對應拒絕原因且所有原 bytes不變；整合對外統一 RecoveryRequired"
+    },
+    {
+      "case": "IO-ADD-06",
+      "data": "valid checksum + ../、absolute/UNC/device path/ADS/drive separator、target mismatch；fixed old/new basename 損壞",
+      "expected": "拒絕且 root外 sentinel、target、area 全量 before/after hash一致，診斷不回傳不可信派生路徑"
+    },
+    {
+      "case": "IO-ADD-07",
+      "data": "path bytes 0/1/4095/4096/4097，含 multibyte；total 65535/65536/65537；payload declares u32MAX",
+      "expected": "4096在純欄位限制合法，4097拒絕；OS路徑不可建立不當parser失敗；65535/65536可因格式拒絕而非 size，65537必 size拒絕；最大合法4389另測；不得padding湊合法65536"
+    },
+    {
+      "case": "IO-ADD-08",
+      "data": "PREPARED/RECOVERY_REQUIRED/unknown/missing journal+scratch/next orphan/COMMITTED match+mismatch/ROLLED_BACK old+absent",
+      "expected": "未完成 fail closed；terminal對應正式檔可讀不清理；所有檔before/after相符；不把父程序重呼當重啟"
+    },
+    {
+      "case": "IO-ADD-09",
+      "data": "child 真正 StdFileCommit acquire；parent與第二child競爭；RELEASE/drop或kill，側檔保留",
+      "expected": "持鎖 Busy；正常Drop與death後另一程序成功，無stale timeout或刪鎖；不涉及中途交易故障"
+    },
+    {
+      "case": "IO-ADD-10",
+      "data": "prepare temp/next 名碰撞、pre/postrollback cleanup失敗、已COMMITTED cleanup失敗、foreign entry及hash不符",
+      "expected": "foreign 保留；成功終態 cleanup失敗仍receipt，恢復後清理失敗不丟唯一preimage；未證明終態不給普通Storage；未知area拒絕"
+    },
+    {
+      "case": "IO-ADD-11",
+      "data": "空/空白/保留名/尾空白或點/斜線與反斜線/ADS/parent缺失/已存在文件與空非空目錄",
+      "expected": "適切 InvalidPath/AlreadyExists/Storage；無跨root變更；返回完整新目錄路徑正確"
+    },
+    {
+      "case": "IO-ADD-12",
+      "data": "publish前外部修改；rollback前外部改成第三版本/目標出現",
+      "expected": "前者Conflict不覆寫；後者RecoveryRequired不刪第三版本；不聲稱全域CAS"
+    },
+    {
+      "case": "IO-ADD-13",
+      "data": "新helper選定stage回CHECKPOINT，由父kill；PrepareNew/PREPARED/Publish/COMMITTED/cleanup逐列",
+      "expected": "符合磁碟實態的終態表，不推斷回復成功；未完成保留全部可用版本；測程式中斷非斷電"
+    },
+    {
+      "case": "IO-ADD-14",
+      "data": "固定時鐘、多thread、預佔名稱、helper缺失/READY逾時/非零結果",
+      "expected": "AtomicU64+exclusive retry上限32；用盡算setup FAIL；canonical/owner先檢查才清理；缺helper不算RED；只kill自有child"
+    }
+  ],
+  "pending": [
+    "建立參數列與穩定case ID，不以單一for-loop首個RED掩蓋其他參數",
+    "獨立fixture encoder依核准protocol更新header+payload checksum",
+    "private codec可編譯骨架與test-only checkpoint事件",
+    "helper RESULT handshake與真正product lease consumer",
+    "health及fixture安全測試須PASS，產品案例才預期RED",
+    "每列輸出contract/BDD/test/log/結果，不混用NOT RUN與RED"
+  ],
+  "assumptions": [
+    "第一階段正式支援目標仍為 Windows 11 x64；現有 Windows 10 build 19045 日誌只作準備層證據。",
+    "輸入為可信 HOST 已授權的絕對本機路徑；本切片不增加 HOST 授權、網路磁碟保證或通用惡意本機程序防護。",
+    "同一目標由合作 writer 使用同一 sidecar 規約；不能宣稱阻止任意外部 writer 的最後瞬間競爭或硬體故障耐久。",
+    "路徑必須有存在的父目錄；目標為普通文件或不存在；遇 reparse point、hard-link 多重身分或無法確定目標綁定則拒絕，不自動解決別名。此保守限制為本次建議，非先前已確認。",
+    "不新增自動 recovery 用例、不更動 Undo、BIN 合併範圍或 M07 快照清理政策。"
+  ],
+  "open_questions": "僅等待G1～G6整體確認；不逐條詢問。"
+}

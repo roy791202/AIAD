@@ -1,0 +1,77 @@
+{
+  "identity": "ProjectUuid UUIDv4 from trusted M01 authority. DocumentUuid denotes physical document owner identity; SessionId/OwnerGeneration/RequestId scoped runtime. AssetId opaque immutable project namespace; version=(AssetId,ContentDigest). SnapshotId/GenerationId never substitute document/session. New-copy and restored unsaved documents receive fresh doc/session identity; content entity IDs only explicit format policy/preview changes. Foreign approvals retained as provenance, not authority.",
+  "digest_domains": {
+    "DefinitionRaw": "sha256:lowerhex64 exact M01 codec bytes",
+    "TemplateRaw": "sha256:lowerhex64 sealed template manifest/source bytes",
+    "GenerationApproval": "sha256:lowerhex64 exact sorted approved refs evidence projection",
+    "DesignSemantic": "{profile:SGA-DESIGN-SEM-v1,digest:lowerhex64}",
+    "EssSemantic": "{profile:M04-EssXmlV1-semantic-v1,digest:lowerhex64}",
+    "RecoveryFingerprint": "{profile:SGA-RECOVERY-FP-v1,digest:lowerhex64}",
+    "FileRaw/CatalogRaw/ArchiveRaw/PayloadRaw": "separate typed lowerhex64; no semantic comparison; wrap prefix only explicit S1 boundary"
+  },
+  "Context": "{project_uuid,document_uuid,session_id,owner_generation:u64,captured_revision:u64,operation_id}; exactly matched by every pin/proof/apply. UI decimal-string transport per CX03; server context authoritative.",
+  "ResolutionSnapshot": "Asset/version binding validation only; NOT root completeness or durable pin. Complete requires every requested version/target answered with exact context; unknown reference-bearing fields reject mutation.",
+  "PinReceipt": "{catalog_generation,catalog_raw_digest,pin_id,Context,purpose,versions_digest,issuer_receipt_id}; only M05 creates after durable catalog proof. Consumer validate_pin verifies current Held or explicitly valid transfer state plus context. No UI mint/TTL.",
+  "RootManifest": "{provider_id,epoch,scope,kind,source_revision,completeness,references,evidence_receipt_id}. Five kinds exactly accepted S1: LiveDocuments(including persisted formal docs),UndoHistory,RedoHistory,RecoverySnapshots,InFlightTransactions. Aggregate any missing component=>Unknown; no release/GC inference from Complete material resolution.",
+  "ExternalCommitProof": "Tagged FormalFile|RecoveryIndex|DocumentMutation|ProjectCopyReady|GenerationActivation|ArchiveExport with issuer-owned proof record, Context and typed byte/projection references. Different tag cannot satisfy another use case. Committed receipt verification checks target identity/path, expected prior Option raw hash,new raw hash,transaction ID; then cross-owner transfer, then corresponding ACK.",
+  "phases": [
+    "RejectedBeforeMutation (content unchanged; safe staged/orphan assets may retained)",
+    "Applied (content committed)",
+    "AppliedRetentionDeferred (content changed; Held retained)",
+    "CommittedAckDeferred (file/index committed; required handoff/ACK missing)",
+    "UncertainPublication (block affected writer/target; preserve evidence)",
+    "VerifiedPublished (all use-case required proofs verified)",
+    "DeliveryDeferred (verified committed result not delivered to old owner)"
+  ],
+  "lock_order": "No owner callback while holding catalog/index/active IO lease. Content capture under owner reservation then release; catalog pin transition under short catalog lease then release; external write then release; root transfer separate; matching ACK last. Generation special held SOURCE read reservations acquired before active writer and released after receipt; producer updates Busy/defer (pending choice). Project copy final-path quarantine avoids moving journals.",
+  "matrix": [
+    {
+      "operation": "edit/clear/merge/undo/restore",
+      "before": "durable Candidate/Import pin",
+      "commit": "single M04 content commit",
+      "after": "live/history root transfer",
+      "late_failure": "AppliedRetentionDeferred",
+      "baseline": "formal/recovery unchanged"
+    },
+    {
+      "operation": "formal save",
+      "before": "capture+Save pin",
+      "commit": "verified FileCommit receipt",
+      "after": "formal-root transfer→captured semantic ACK",
+      "late_failure": "CommittedAckDeferred",
+      "baseline": "formal captured only"
+    },
+    {
+      "operation": "snapshot",
+      "before": "capture+Recovery pin+all material copies",
+      "commit": "payload+index proof",
+      "after": "RecoverySnapshots root transfer→S1 Published+captured recovery ACK",
+      "late_failure": "Publication/ACK deferred",
+      "baseline": "recovery captured only"
+    },
+    {
+      "operation": "generation",
+      "before": "authenticated definition/template/design/approval preview +source reservations",
+      "commit": "seal then active CAS",
+      "after": "verified immutable snapshot delivery",
+      "late_failure": "ActivatedDeliveryDeferred",
+      "baseline": "no definition/design ACK"
+    },
+    {
+      "operation": "export",
+      "before": "capture+Export pin",
+      "commit": "native durable no-replace destination",
+      "after": "safe root-based pin release attempt",
+      "late_failure": "PublishedDeliveryDeferred",
+      "baseline": "no ACK"
+    },
+    {
+      "operation": "new project copy",
+      "before": "new identities+final-path quarantine",
+      "commit": "stable-path children then Ready marker",
+      "after": "trusted M01 bind selection",
+      "late_failure": "ProjectCopyDeferred",
+      "baseline": "no source ACK"
+    }
+  ]
+}

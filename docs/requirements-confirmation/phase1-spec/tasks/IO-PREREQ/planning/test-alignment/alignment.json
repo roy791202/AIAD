@@ -1,0 +1,45 @@
+{
+  "mode": "CONTRACT_PRESERVING_TEST_ALIGNMENT",
+  "architecture_contract_bdd_protocol": "UNCHANGED",
+  "effective_protocol": "../gap-resolution/proposal-v2-a.json",
+  "no_new_protocol_decision": true,
+  "changes": [
+    {
+      "finding": "IO-A-R1",
+      "status": "ADDRESSED_PENDING_INDEPENDENT_REVIEW",
+      "contract": "Verified ROLLED_BACK must exist before cleanup; retention after cleanup is optional.",
+      "change": "ordinary_fault captures full journal at rolled_back.verified, validates target/digests/id/checksum/state, then accepts completed cleanup or retained valid terminal state. Formal OLD/absence and stage/fault consumption assertions retained.",
+      "proof_tests": [
+        "gap_14_complete_rollback_cleanup_old_support",
+        "gap_14_complete_rollback_cleanup_absent_support",
+        "gap_14_premature_journal_deletion_rejected_support"
+      ],
+      "level": "Product tests remain RED; complete-cleanup counterexamples are fixture-level assertion regressions, not product cleanup proof."
+    },
+    {
+      "finding": "IO-A-R2",
+      "status": "ADDRESSED_PENDING_INDEPENDENT_REVIEW",
+      "contract": "Preserve the unique preimage; a redundant old.bin need not survive verified restoration.",
+      "change": "cleanup_case captures terminal evidence and verifies all remaining artifact contents without forcing redundant old.bin; retains formal byte checks, fault-consumption and foreign-data protection. Both old-first and new-first safe cleanup orders are accepted.",
+      "proof_tests": [
+        "gap_14_partial_rollback_old_removed_support",
+        "gap_14_partial_rollback_new_removed_support",
+        "gap_14_corrupt_remaining_version_rejected_support"
+      ],
+      "level": "Restore/verify failure cases still require preserved versions (existing recovery_fault); no unique-preimage assertions weakened."
+    },
+    {
+      "finding": "IO-A-R3",
+      "status": "ADDRESSED_PENDING_INDEPENDENT_REVIEW",
+      "contract": "Bad framing/magic/version/checksum/size cannot claim verified old/new diagnostic paths.",
+      "change": "Nine pre-parse invalid classes require both fields None. Other Some paths retain exact role/path and byte checks. Added separate public-boundary valid PREPARED record cases for present/absent old version and verified diagnostic paths.",
+      "proof_tests": [
+        "gap_14_unparsed_version_diagnostics_rejected_support",
+        "gap_06_verified_prepared_diagnostics_old",
+        "gap_06_verified_prepared_diagnostics_absent"
+      ],
+      "level": "Forged safe-looking paths rejected in support checks; valid-record product acquisition still fails only for missing behavior."
+    }
+  ],
+  "follow_up": "IO-A-F1 native alias/reparse/hard-link coverage remains separately recorded; Windows11 NOT RUN."
+}

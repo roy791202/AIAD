@@ -1,0 +1,533 @@
+#![cfg(all(windows, feature = "std-adapters"))]
+//! IO-PREREQ observable contracts. Setup uses only owned temporary fixtures.
+//! Controlled lease tests supply a real fixture handle via a cfg(test)-only
+//! constructor; they do not count as proof that product acquire_write works.
+
+#[path = "../src/file_commit.rs"]
+mod controlled;
+
+use controlled::{StdFileWriteLease, TestCheckpoints};
+use sgenaxis_adapters::StdFileCommit;
+use sgenaxis_ports::{CommitError, CommitStage, FileCommitPort, FileWriteLease};
+use sgenaxis_spec::packet::source_sha256;
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::os::windows::fs::OpenOptionsExt;
+use std::os::windows::process::CommandExt;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::sync::{mpsc, Arc};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+const OLD: &[u8] = b"OLD-COMPLETE-DOCUMENT";
+const NEW: &[u8] = b"NEW-COMPLETE-DOCUMENT";
+
+fn digest(bytes: &[u8]) -> String {
+    format!("sha256:{}", source_sha256(bytes))
+}
+
+struct Fixture {
+    base: PathBuf,
+    root: PathBuf,
+    owner: String,
+}
+impl Fixture {
+    fn new() -> Self {
+        let base = std::env::temp_dir().join("eluslot-io-red-fixtures");
+        fs::create_dir_all(&base).expect("fixture base must be available");
+        let base = base.canonicalize().unwrap();
+        let owner = format!(
+            "io-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let root = base.join(&owner);
+        fs::create_dir(&root).expect("fixture root must be exclusively created");
+        fs::write(root.join(".owned-fixture"), owner.as_bytes()).unwrap();
+        Self { base, root, owner }
+    }
+    fn target(&self) -> String {
+        self.root.join("document.ess").to_str().unwrap().into()
+    }
+    fn sidecar(&self) -> PathBuf {
+        PathBuf::from(format!("{}.eluslot-lock", self.target()))
+    }
+    fn tx_dir(&self) -> PathBuf {
+        PathBuf::from(format!("{}.eluslot-commit", self.target()))
+    }
+    fn old(&self) {
+        fs::write(self.target(), OLD).unwrap();
+    }
+    fn fixture_handle(&self) -> File {
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .share_mode(0)
+            .open(self.sidecar())
+            .expect("fixture must establish a real OS handle")
+    }
+    fn lease(&self, hooks: TestCheckpoints) -> StdFileWriteLease {
+        StdFileWriteLease::for_test(self.target(), self.fixture_handle(), hooks)
+    }
+    fn journal(&self, bytes: &[u8]) {
+        fs::create_dir(self.tx_dir()).unwrap();
+        fs::write(self.tx_dir().join("journal.v1"), bytes).unwrap();
+        fs::write(self.tx_dir().join("old.bin"), OLD).unwrap();
+        fs::write(self.tx_dir().join("new.bin"), NEW).unwrap();
+    }
+}
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        // Verify the resolved absolute target and ownership before recursive cleanup.
+        if let Ok(root) = self.root.canonicalize() {
+            if root.parent() == Some(self.base.as_path())
+                && root.starts_with(&self.base)
+                && fs::read_to_string(root.join(".owned-fixture"))
+                    .ok()
+                    .as_deref()
+                    == Some(&self.owner)
+            {
+                let _ = fs::remove_dir_all(root);
+            }
+        }
+    }
+}
+
+struct ChildFixture {
+    child: Child,
+    line: mpsc::Receiver<String>,
+}
+impl ChildFixture {
+    fn hold(f: &Fixture) -> Self {
+        let helper = std::env::var_os("FILE_COMMIT_PROBE_PATH")
+            .expect("missing helper is invalid setup, never valid RED");
+        assert!(
+            Path::new(&helper).is_file(),
+            "helper must be built before tests"
+        );
+        let mut child = Command::new(helper)
+            .arg("native-hold")
+            .arg(&f.root)
+            .arg(f.sidecar())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .expect("fixture helper must launch");
+        let stdout = child.stdout.take().unwrap();
+        let (tx, line) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut value = String::new();
+            let _ = BufReader::new(stdout).read_line(&mut value);
+            let _ = tx.send(value.trim().to_string());
+        });
+        let fixture = Self { child, line };
+        assert_eq!(
+            fixture
+                .line
+                .recv_timeout(Duration::from_secs(5))
+                .expect("helper timeout is invalid fixture setup"),
+            "READY",
+            "fixture helper must acquire its independent OS handle"
+        );
+        fixture
+    }
+    fn kill_and_wait(&mut self) {
+        self.child
+            .kill()
+            .expect("owned fixture process must terminate");
+        self.child.wait().unwrap();
+    }
+    fn release(&mut self) {
+        self.child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"EXIT\n")
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if let Some(status) = self.child.try_wait().unwrap() {
+                assert!(status.success(), "fixture helper must exit cleanly");
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "helper shutdown timeout is invalid fixture setup"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+}
+impl Drop for ChildFixture {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+fn prepared_record(f: &Fixture) -> Vec<u8> {
+    // Independent fixture encoder only. No product journal codec is implemented.
+    let mut payload = Vec::new();
+    for field in [
+        "fixture-tx".to_string(),
+        f.target(),
+        digest(OLD),
+        digest(NEW),
+        "old.bin".into(),
+        "new.bin".into(),
+    ] {
+        payload.extend_from_slice(&(field.len() as u32).to_le_bytes());
+        payload.extend_from_slice(field.as_bytes());
+    }
+    payload.push(1); // PREPARED, record version 1.
+    let mut record = b"ELUCOMMIT".to_vec();
+    record.extend_from_slice(&1u32.to_le_bytes());
+    record.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+    record.extend_from_slice(&payload);
+    record.extend_from_slice(source_sha256(&payload).as_bytes());
+    record
+}
+
+#[test]
+fn io_01_creates_exactly_one_new_directory() {
+    let f = Fixture::new();
+    let r =
+        StdFileCommit::new().create_directory_exclusive(f.root.to_str().unwrap(), "new-project");
+    assert!(r.is_ok(), "exclusive creation must succeed: {r:?}");
+    assert!(f.root.join("new-project").is_dir());
+}
+
+#[test]
+fn io_02_existing_file_or_directory_is_never_replaced() {
+    let f = Fixture::new();
+    f.old();
+    fs::create_dir(f.root.join("empty")).unwrap();
+    fs::create_dir(f.root.join("nonempty")).unwrap();
+    fs::write(f.root.join("nonempty/keep"), OLD).unwrap();
+    for name in ["document.ess", "empty", "nonempty"] {
+        let r = StdFileCommit::new().create_directory_exclusive(f.root.to_str().unwrap(), name);
+        assert!(
+            matches!(r, Err(CommitError::AlreadyExists { .. })),
+            "must reject existing target: {r:?}"
+        );
+        assert_eq!(fs::read(f.target()).unwrap(), OLD);
+        assert_eq!(fs::read(f.root.join("nonempty/keep")).unwrap(), OLD);
+    }
+}
+
+#[test]
+fn io_03_invalid_names_are_rejected_without_child_creation() {
+    let f = Fixture::new();
+    for name in ["", " ", "..", "../outside", "a/b", "CON", "a:b"] {
+        let r = StdFileCommit::new().create_directory_exclusive(f.root.to_str().unwrap(), name);
+        assert!(
+            matches!(r, Err(CommitError::InvalidPath { .. })),
+            "must reject {name:?}: {r:?}"
+        );
+        assert_eq!(fs::read_dir(&f.root).unwrap().count(), 1);
+    }
+}
+
+#[test]
+fn io_04_other_adapter_instance_cannot_take_an_owned_lease() {
+    let f = Fixture::new();
+    let first = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        first.is_ok(),
+        "first product lease must be obtainable: {:?}",
+        first.as_ref().err()
+    );
+    let _first = first.unwrap();
+    let second = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        matches!(second, Err(CommitError::Busy { .. })),
+        "second product writer must be busy: {:?}",
+        second.err()
+    );
+}
+
+#[test]
+fn io_05_independent_process_handle_blocks_product_lease() {
+    let f = Fixture::new();
+    let _child = ChildFixture::hold(&f);
+    let r = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        matches!(r, Err(CommitError::Busy { .. })),
+        "must recognize cooperating OS-held lock: {:?}",
+        r.err()
+    );
+}
+
+#[test]
+fn io_06_process_death_releases_handle_without_stale_file_deletion() {
+    let f = Fixture::new();
+    let mut child = ChildFixture::hold(&f);
+    child.kill_and_wait();
+    assert!(
+        f.sidecar().exists(),
+        "fixture precondition: persistent sidecar remains"
+    );
+    let r = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        r.is_ok(),
+        "dead process no longer owns OS handle: {:?}",
+        r.as_ref().err()
+    );
+}
+
+#[test]
+fn io_07_new_file_commit_matches_bytes_and_receipt() {
+    let f = Fixture::new();
+    let mut lease = f.lease(TestCheckpoints::default());
+    let r = lease.replace_checked(None, NEW);
+    assert!(r.is_ok(), "new target commit must succeed: {r:?}");
+    let receipt = r.unwrap();
+    assert_eq!(fs::read(f.target()).unwrap(), NEW);
+    assert_eq!(receipt.previous_digest, None);
+    assert_eq!(receipt.committed_digest, digest(NEW));
+    assert!(!receipt.transaction_id.is_empty());
+}
+
+#[test]
+fn io_08_existing_file_commit_keeps_complete_new_content() {
+    let f = Fixture::new();
+    f.old();
+    let mut lease = f.lease(TestCheckpoints::default());
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(r.is_ok(), "matching digest must permit replace: {r:?}");
+    assert_eq!(r.unwrap().previous_digest, Some(digest(OLD)));
+    assert_eq!(fs::read(f.target()).unwrap(), NEW);
+}
+
+#[test]
+fn io_09_stale_digest_rejects_without_changing_original() {
+    let f = Fixture::new();
+    f.old();
+    let mut lease = f.lease(TestCheckpoints::default());
+    let r = lease.replace_checked(Some(&digest(b"stale")), NEW);
+    assert!(
+        matches!(r, Err(CommitError::Conflict { .. })),
+        "stale digest must conflict: {r:?}"
+    );
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+}
+
+#[test]
+fn io_10_expected_presence_mismatch_never_overwrites() {
+    let f = Fixture::new();
+    f.old();
+    let mut lease = f.lease(TestCheckpoints::default());
+    let r = lease.replace_checked(None, NEW);
+    assert!(
+        matches!(r, Err(CommitError::Conflict { .. })),
+        "expected absent but present: {r:?}"
+    );
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+}
+
+#[test]
+fn io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics() {
+    for stage in [
+        CommitStage::PrepareOld,
+        CommitStage::PrepareNew,
+        CommitStage::WritePreparedJournal,
+        CommitStage::BeforePublish,
+    ] {
+        let f = Fixture::new();
+        f.old();
+        let hooks = TestCheckpoints {
+            fail_at: vec![stage],
+            ..Default::default()
+        };
+        let visited = hooks.observed.clone();
+        let mut lease = f.lease(hooks);
+        let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+        assert!(
+            matches!(&r, Err(CommitError::Storage { stage: reached, .. }) if *reached == stage),
+            "must reach requested fault, not Skeleton error: {r:?}"
+        );
+        assert!(visited.lock().unwrap().contains(&stage));
+        assert_eq!(fs::read(f.target()).unwrap(), OLD);
+    }
+}
+
+#[test]
+fn io_12_post_publish_failure_restores_old_before_ordinary_error() {
+    let f = Fixture::new();
+    f.old();
+    let hooks = TestCheckpoints {
+        fail_at: vec![CommitStage::VerifyPublished],
+        ..Default::default()
+    };
+    let visited = hooks.observed.clone();
+    let mut lease = f.lease(hooks);
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(
+        matches!(
+            &r,
+            Err(CommitError::Storage {
+                stage: CommitStage::VerifyPublished,
+                ..
+            })
+        ),
+        "must report real injected failure after restoration: {r:?}"
+    );
+    assert!(visited.lock().unwrap().contains(&CommitStage::Restore));
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+}
+
+#[test]
+fn io_13_failed_restore_retains_versions_and_blocks_followup() {
+    let f = Fixture::new();
+    f.old();
+    let hooks = TestCheckpoints {
+        fail_at: vec![CommitStage::VerifyPublished, CommitStage::Restore],
+        ..Default::default()
+    };
+    let mut lease = f.lease(hooks);
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(
+        matches!(&r, Err(CommitError::RecoveryRequired { .. })),
+        "failed restore is not a successful rollback: {r:?}"
+    );
+    if let Err(CommitError::RecoveryRequired {
+        journal_path,
+        old_version_path,
+        new_version_path,
+        ..
+    }) = r
+    {
+        assert!(Path::new(&journal_path).is_file());
+        assert_eq!(fs::read(old_version_path.unwrap()).unwrap(), OLD);
+        assert_eq!(fs::read(new_version_path.unwrap()).unwrap(), NEW);
+    }
+    let again = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(matches!(again, Err(CommitError::RecoveryRequired { .. })));
+}
+
+#[test]
+fn io_14_unfinished_prepared_record_rejects_reopen() {
+    let f = Fixture::new();
+    f.old();
+    f.journal(&prepared_record(&f));
+    let r = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        matches!(r, Err(CommitError::RecoveryRequired { .. })),
+        "unfinished journal must fail closed: {:?}",
+        r.err()
+    );
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+    assert_eq!(fs::read(f.tx_dir().join("new.bin")).unwrap(), NEW);
+}
+
+#[test]
+fn io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup() {
+    let f = Fixture::new();
+    f.old();
+    f.journal(b"unknown-version-or-corrupt-checksum");
+    let r = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        matches!(r, Err(CommitError::RecoveryRequired { .. })),
+        "unknown journal cannot be interpreted: {:?}",
+        r.err()
+    );
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+    assert_eq!(fs::read(f.tx_dir().join("old.bin")).unwrap(), OLD);
+}
+
+#[test]
+fn io_16_normal_handle_close_allows_immediate_reacquisition() {
+    let f = Fixture::new();
+    let mut child = ChildFixture::hold(&f);
+    child.release();
+    let r = StdFileCommit::new().acquire_write(&f.target());
+    assert!(
+        r.is_ok(),
+        "normal close releases OS ownership immediately: {:?}",
+        r.as_ref().err()
+    );
+}
+
+#[test]
+fn io_17_observed_external_edit_before_publish_is_not_overwritten() {
+    let f = Fixture::new();
+    f.old();
+    let path = f.target();
+    let hooks = TestCheckpoints {
+        before_publish: Some(Arc::new(move || {
+            fs::write(&path, b"EXTERNAL-CHANGE").unwrap();
+        })),
+        ..Default::default()
+    };
+    let mut lease = f.lease(hooks);
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(
+        matches!(r, Err(CommitError::Conflict { .. })),
+        "must recheck the observed target: {r:?}"
+    );
+    assert_eq!(fs::read(f.target()).unwrap(), b"EXTERNAL-CHANGE");
+}
+
+#[test]
+fn io_18a_foreign_temp_collision_is_not_deleted() {
+    let f = Fixture::new();
+    f.old();
+    let foreign = f.root.join("foreign.tmp");
+    fs::write(&foreign, b"FOREIGN").unwrap();
+    let hooks = TestCheckpoints {
+        temp_candidates: vec![
+            foreign.to_str().unwrap().into(),
+            f.root.join("owned.tmp").to_str().unwrap().into(),
+        ],
+        ..Default::default()
+    };
+    let mut lease = f.lease(hooks);
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(
+        r.is_ok(),
+        "collision must be retried using an owned new temp: {r:?}"
+    );
+    assert_eq!(fs::read(foreign).unwrap(), b"FOREIGN");
+    assert_eq!(fs::read(f.target()).unwrap(), NEW);
+}
+
+#[test]
+fn io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data() {
+    let f = Fixture::new();
+    f.old();
+    let foreign = f.root.join("foreign.tmp");
+    fs::write(&foreign, b"FOREIGN").unwrap();
+    let hooks = TestCheckpoints {
+        fail_at: vec![CommitStage::VerifyPublished, CommitStage::Cleanup],
+        ..Default::default()
+    };
+    let visited = hooks.observed.clone();
+    let mut lease = f.lease(hooks);
+    let r = lease.replace_checked(Some(&digest(OLD)), NEW);
+    assert!(
+        visited.lock().unwrap().contains(&CommitStage::Cleanup),
+        "cleanup fault must actually be reached; result={r:?}"
+    );
+    assert!(r.is_err());
+    assert_eq!(fs::read(f.target()).unwrap(), OLD);
+    assert_eq!(fs::read(foreign).unwrap(), b"FOREIGN");
+}
+
+#[test]
+fn io_read_current_observes_complete_bytes_under_a_fixture_lease() {
+    let f = Fixture::new();
+    f.old();
+    let lease = f.lease(TestCheckpoints::default());
+    assert_eq!(
+        lease.read_current(),
+        Ok(Some(OLD.to_vec())),
+        "fourth Port method must read exact bytes"
+    );
+}

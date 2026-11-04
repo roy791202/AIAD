@@ -1,0 +1,510 @@
+{
+  "module": "M08",
+  "task": "PD-P1-M08-PREP-01",
+  "status": "NATIVE_EVIDENCE_PLAN_DELIVERED_RUNTIME_BLOCKED",
+  "date": "2026-11-01T09:45:48.876006+08:00",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "authority": "Own original planning envelope and board note only; no product/test/build/package/install/process-termination action executed.",
+  "intent": "Bind Windows native acceptance to the actual reviewed artifact and module revisions; make blocked prerequisites visible instead of substituting historical builds or unit tests.",
+  "source_evidence": [
+    {
+      "path": "apps/sgenaxis-desktop/package.json",
+      "sha256": "9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/tauri.conf.json",
+      "sha256": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+      "sha256": "85f6daa9b5ee95aa37950bf2f92a9f90e9a8187361dd4395306cc867c053849a"
+    },
+    {
+      "path": "packaging/windows/portable/README.md",
+      "sha256": "065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1"
+    },
+    {
+      "path": "packaging/windows/wix/verify-install.checklist.json",
+      "sha256": "b25cf62b9cf14b2c5ed671a21f25afe760d49da2d34cf7c3e3c688f0812792aa"
+    }
+  ],
+  "observations": [
+    "package.json build script is tauri build; running it would be a real build/package action, not a harmless UI syntax check. Not run.",
+    "Current Tauri config declares EluSlot/0.1.0, frontendDist ../ui and bundle.targets=all. This static declaration does not prove portable or installer readiness.",
+    "Portable README describes a 2026-10-25 artifact. Its documented hash is historical, not proof of a current Phase1 build. No old binary launched or repackaged.",
+    "WiX verify-install checklist explicitly distinguishes contract green from elevated native install. No elevated install evidence borrowed for portable acceptance.",
+    "M02-S1 acceptance is CHANGES_REQUIRED for F1/F2 with valid RED; no product generator exists. This is a module prerequisite status, not a reason to block M08 evidence-plan preparation."
+  ],
+  "evidence_layers": {
+    "E0": "Approved spec/contracts and source inspection only",
+    "E1": "Compiled tests plus actual RED/GREEN logs with invocation/exit code",
+    "E2": "Real native adapter/filesystem fault evidence",
+    "E3": "Locked release artifact running in native UI environment",
+    "E4": "Portable/installer deployment acceptance",
+    "rule": "Higher-layer claims cannot be inferred from a lower layer. NOT RUN or BLOCKED remains explicit; evidence field presence is not behavior PASS."
+  },
+  "evidence_record_proposal": {
+    "required_fields": [
+      "run_id",
+      "recorded_at_with_timezone",
+      "module_and_case_id",
+      "branch_and_head",
+      "dirty_source_inventory_digest",
+      "approved_spec_revision",
+      "actual_executable_path",
+      "actual_executable_sha256",
+      "artifact_build_record_reference",
+      "OS_build_and_architecture",
+      "WebView2_version_or_absence",
+      "fixture_root_identifiers",
+      "command_or_manual_operator_steps",
+      "exit_or_observable_result",
+      "logs_and_capture_references",
+      "before_after_document_and_asset_hashes",
+      "verdict_and_remaining_limits"
+    ],
+    "consistency": [
+      "Executable path and bytes must match the artifact that ran, not a similarly named historical copy.",
+      "Record exact dirty source inventory used by the build: HEAD alone is insufficient.",
+      "Screenshots must be tied to same run/process identity; source captures are not native UI proof.",
+      "Missing runtime/capability marks BLOCKED_NOT_RUN; test assertion mismatch after prerequisites satisfied marks FAIL.",
+      "Evidence aggregation is read-only; M08 cannot change another module contract or status to obtain PASS."
+    ]
+  },
+  "architecture": {
+    "hexagonal_view": "Native operator/test driver -> declared UI/input boundaries -> module application/domain -> ports <- real Windows adapters. M08 observes outcomes and evidence; it does not bypass application safety.",
+    "dependency_view": "M01 identity + M03 UI + M04 history + M05 material + M06 import + M07 recovery -> M08 bounded integration cases -> human review. M02 generated skeleton validation is separately gated, not implied by existing shell launch.",
+    "ownership": "Product state stays with owning modules; fixture sandbox and evidence belong to the run. M08 health projection is not a new product SSOT.",
+    "mutation_boundary": "Future operator acts only through authorized product operations on disposable inputs; direct test corruption is isolated fault injection. No real project/recovery deletion.",
+    "transaction_boundary": "Artifact lock and fixture preparation -> run -> verify hashes/observable result -> preserve evidence -> cleanup only known disposable paths. Failure preserves diagnostic evidence and never changes external user data."
+  },
+  "cases": [
+    {
+      "id": "M08-N01",
+      "name": "Move portable program",
+      "prerequisite": "M07 complete recovery runtime + locked binary",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "move copied portable folder A to B, launch B",
+      "then": "same user recovery sessions visible; executable path is B; original project unchanged",
+      "coverage": [
+        "B1",
+        "B8"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N02",
+      "name": "Read-only original project",
+      "prerequisite": "M07 capture/store + explicit alternative save",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "edit isolated project then make original directory read-only",
+      "then": "recovery succeeds in approved user area or explicit warning; recovered content saves elsewhere",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N03",
+      "name": "Original project drive offline",
+      "prerequisite": "M05 material capture + M07 complete recovery",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "make isolated original volume unavailable then recover",
+      "then": "unsaved recovery contains required materials and can save at new location",
+      "coverage": [
+        "B4",
+        "B10"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N04",
+      "name": "Two editing sessions",
+      "prerequisite": "M01 stable identity + M07 session separation",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "edit same project in two isolated processes",
+      "then": "session namespaces do not overwrite each other",
+      "coverage": [
+        "B6",
+        "B8"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N05",
+      "name": "Kill after successful snapshot",
+      "prerequisite": "M07 durable index and material roots",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "terminate isolated test process after acknowledged snapshot",
+      "then": "restart offers last successful snapshot; never promises later unpersisted edits",
+      "coverage": [
+        "B7",
+        "B9"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N06",
+      "name": "Kill during payload/index write",
+      "prerequisite": "fault injection seam + native publication runtime",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "interrupt staged write before acknowledgement",
+      "then": "previous valid snapshot remains; incomplete version not falsely activated",
+      "coverage": [
+        "B5",
+        "B7"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N07",
+      "name": "60-second boundary",
+      "prerequisite": "M07 clock/capture runtime",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "check at 59/60/61 seconds with a changed version",
+      "then": "no early snapshot; one eligible check at deadline; no duplicate writers",
+      "coverage": [
+        "B2"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N08",
+      "name": "UI remains responsive",
+      "prerequisite": "M07 background persistence + UI observability",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "interact while large permitted snapshot writes",
+      "then": "input remains usable and changes stay pending for next capture",
+      "coverage": [
+        "B8",
+        "B12"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N09",
+      "name": "No content change",
+      "prerequisite": "M07 semantic fingerprint runtime",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "move selection and playback without content edits",
+      "then": "no new recovery payload; no baseline distortion",
+      "coverage": [
+        "B1",
+        "B12"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N10",
+      "name": "Required WebView2 unavailable",
+      "prerequisite": "isolated Windows11 image + approved dependency handling",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "launch locked portable in controlled missing-runtime environment",
+      "then": "clear prerequisite result; no application success fabricated",
+      "coverage": [
+        "B4",
+        "B11"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N11",
+      "name": "Unwritable recovery location",
+      "prerequisite": "M07 warning/alternative-location UI",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "deny write permission only in disposable recovery root",
+      "then": "persistent visible warning and explicit alternative action; no saved claim",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N12",
+      "name": "Corrupt/unknown recovery version",
+      "prerequisite": "M07 strict decoder/reader runtime",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "inject corrupt payload or unsupported metadata in disposable data root",
+      "then": "safe unavailable reason, no execution and no destructive auto-cleanup",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N13",
+      "name": "Merge/Undo during check",
+      "prerequisite": "M04/M05/M06/M07 complete integration",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "trigger check during single-document merge then Undo",
+      "then": "capture only completed or fully rolled-back state; one Undo; shared material preserved",
+      "coverage": [
+        "B6",
+        "B10"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N14",
+      "name": "Missing-dependency imported content",
+      "prerequisite": "M06 incomplete binding + M03 runtime",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "open explicitly accepted incomplete document",
+      "then": "view/save available, dependent execution/generation blocked",
+      "coverage": [
+        "B3",
+        "B10"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N15",
+      "name": "History removal",
+      "prerequisite": "M07 history storage + roots",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "remove history item for retained recovery snapshot",
+      "then": "history entry removed; document/snapshot/material bytes unchanged",
+      "coverage": [
+        "B8",
+        "B12"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    },
+    {
+      "id": "M08-N16",
+      "name": "Unicode/space portable path",
+      "prerequisite": "locked artifact + supported Windows environment",
+      "given": "locked phase1-capable artifact and disposable test environment",
+      "when": "launch from disposable path with spaces and non-ASCII characters",
+      "then": "normal startup and same user data root without developer checkout dependency",
+      "coverage": [
+        "B2",
+        "B11"
+      ],
+      "status": "BLOCKED_NOT_RUN",
+      "reason": "Required product runtime/verified artifact not delivered; this preparation does not launch or build it",
+      "evidence": [
+        "run identity + artifact hash",
+        "before/after content and material hashes",
+        "native screen/log observation",
+        "operation result and failure reason"
+      ],
+      "cleanup": "Only owned disposable fixture roots; never remove actual unresolved user recovery content"
+    }
+  ],
+  "B1_B12": {
+    "B1": [
+      "M08-N01",
+      "M08-N09"
+    ],
+    "B2": [
+      "M08-N07",
+      "M08-N16"
+    ],
+    "B3": [
+      "M08-N12",
+      "M08-N14"
+    ],
+    "B4": [
+      "M08-N02",
+      "M08-N03",
+      "M08-N10",
+      "M08-N11"
+    ],
+    "B5": [
+      "M08-N06"
+    ],
+    "B6": [
+      "M08-N04",
+      "M08-N13"
+    ],
+    "B7": [
+      "M08-N05",
+      "M08-N06"
+    ],
+    "B8": [
+      "M08-N01",
+      "M08-N04",
+      "M08-N08",
+      "M08-N15"
+    ],
+    "B9": [
+      "M08-N02",
+      "M08-N05",
+      "M08-N11"
+    ],
+    "B10": [
+      "M08-N03",
+      "M08-N13",
+      "M08-N14"
+    ],
+    "B11": [
+      "M08-N10",
+      "M08-N12",
+      "M08-N16"
+    ],
+    "B12": [
+      "M08-N08",
+      "M08-N09",
+      "M08-N15"
+    ]
+  },
+  "planned_automation": {
+    "existing_candidate": "tests/test_p1_portable_acceptance.py",
+    "status": "PROPOSED_NOT_CREATED; exact harness approval and runtime prerequisites still needed",
+    "future_command": "python -m pytest tests/test_p1_portable_acceptance.py (only after target exists and approved native environment is configured)",
+    "BDD": "module.feature in this folder describes planned operator behavior; no executable steps or functional fixture claimed"
+  },
+  "acceptance": {
+    "preparation": [
+      "Every native case has prerequisites, observable outcomes and evidence requirements",
+      "All B1-B12 categories mapped",
+      "Explicit distinction between locked-artifact behavior and historical/unit evidence",
+      "Product operations remain NOT RUN where prerequisites absent"
+    ],
+    "future_native": [
+      "All selected cases actually executed on the supported Windows11 x64 environment",
+      "Each PASS tied to actual executable hash/source build record",
+      "Failure/blocked/partial cases explained with retained evidence",
+      "Release approval remains a separate Owner decision"
+    ]
+  },
+  "next": [
+    "Prepare exact harness schema/fixtures and manual-to-automated coverage map within M08 documents",
+    "Wait for module runtime gates before build/native operations; do not repeat blocked launches",
+    "Continue other unblocked module preparation; no new Owner question required by this document"
+  ],
+  "verification": {
+    "static_links_JSON_coverage": "PASS",
+    "product_tests": "NOT RUN",
+    "native_UI": "NOT RUN",
+    "build_package": "NOT RUN",
+    "silent_install": "NOT RUN",
+    "product_source_changes": 0,
+    "full_PREP_acceptance": "NOT RUN"
+  }
+}

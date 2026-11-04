@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>F11追溯準備</title><style>body{font:16px system-ui;margin:32px;line-height:1.55;color:#182338}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:10px;vertical-align:top}pre{white-space:pre-wrap}h1,h2{color:#214b72}</style><main><h1>F11 定期復原快照：追溯準備</h1><p>文件準備；待獨立審查與 Owner。作者 /root/f11_feature_trace_packet，不能自驗收。</p><p>原卡仍保留；本包未授權產品實作、未新增已批准BDD。direct 指原F11義務，不代表已涵蓋。contextual 是M07/F12回歸；prospective 是候選recipe。</p><h2>證據界線</h2><p>accepted S1 僅純policy：不等於真timer、stable capture、material pin、durable payload/index或native ACK。最新ACK受限審查不等Owner採納；stateful response/restart/atomic baseline未證，trusted issuer fixture KeyError未修。</p><h2>原BDD逐條對照</h2><table><tr><th>ID / 歸屬</th><th>原規格</th><th>歷史policy測試</th><th>待驗oracle</th></tr><tr><td>BDD-22 / direct</td><td><pre>@BDD-22 @M07 @REQ-19
+  規則: 無變更略過
+    場景: 無變更略過
+      假如 內容與上次成功快照相同
+      當 經過下一個60秒檢查點
+      那麼 不新增復原快照</pre></td><td>m07_equal_content_skips_despite_elapsed_time</td><td>payload/index count unchanged until changed content; exactly one new successful snapshot after change<br>NOT RUN</td></tr><tr><td>BDD-23 / direct</td><td><pre>@BDD-23 @M07 @REQ-19
+  規則: 首次未保存內容
+    場景: 首次未保存內容
+      假如 新文件已有尚未保存的內容且沒有成功快照
+      當 到達60秒檢查點
+      那麼 該內容及必要素材納入首次快照</pre></td><td>m07_first_unsaved_content_requests_capture</td><td>59 no capture;60 eligible once;61 no duplicate; recovered payload and material hashes equal captured R1<br>NOT RUN</td></tr><tr><td>BDD-24 / direct</td><td><pre>@BDD-24 @M07 @REQ-20
+  規則: 寫入期間再變更
+    場景: 寫入期間再變更
+      假如 快照版本R正在保存
+      當 使用者再編輯成R加1
+      那麼 R成功只更新至R基準，R加1留待後續檢查</pre></td><td>m07_published_acknowledges_only_captured_fingerprint, m07_newer_edit_still_requests_capture_after_old_completion</td><td>baseline advances to R only;R+1 remains pending and next snapshot contains R+1<br>NOT RUN</td></tr><tr><td>BDD-25 / direct</td><td><pre>@BDD-25 @M07 @REQ-20
+  規則: 失敗重試
+    場景: 失敗重試
+      假如 已有有效快照且本輪寫入失敗
+      當 到達下一輪檢查
+      那麼 保留舊快照及待保存狀態並重試，不重疊啟動</pre></td><td>m07_failed_completion_keeps_previous_baseline, m07_next_due_check_retries_failed_capture, m07_inflight_check_does_not_overlap</td><td>old snapshot bytes/index remain usable;pending state retained;one retry next round with no overlap<br>NOT RUN</td></tr><tr><td>BDD-26 / direct</td><td><pre>@BDD-26 @M07 @REQ-20
+  規則: 不取中間狀態
+    場景: 不取中間狀態
+      假如 清空、合併或Undo尚未完成
+      當 到達檢查點
+      那麼 延後擷取直到完成或完整回復</pre></td><td>m07_mutation_defers_without_consuming_deadline, m07_stable_same_time_check_after_defer_is_eligible</td><td>no intermediate capture;stable committed or fully rolled-back content only<br>NOT RUN</td></tr><tr><td>BDD-27 / direct</td><td><pre>@BDD-27 @M07 @REQ-21
+  規則: 正式保存基準獨立
+    場景: 正式保存基準獨立
+      假如 存在成功快照及後續編輯
+      當 成功保存正式文件
+      那麼 不改快照基準、不立即刪除既有快照</pre></td><td>無直接S1證據</td><td>formal save neither advances recovery baseline nor deletes snapshots;failure never consumes dirty<br>NOT RUN</td></tr><tr><td>BDD-28 / contextual</td><td><pre>@BDD-28 @M07 @REQ-22
+  規則: 離線復原
+    場景: 離線復原
+      假如 原磁碟離線但復原內容與素材完整
+      當 從歷史開復原版本並另存
+      那麼 以未保存狀態開啟且可保存至新位置</pre></td><td>無直接S1證據</td><td>opens unsaved;offline material usable;new save succeeds without original path<br>NOT RUN</td></tr><tr><td>BDD-29 / contextual</td><td><pre>@BDD-29 @M07 @REQ-22
+  規則: 移除歷史不刪檔
+    場景: 移除歷史不刪檔
+      假如 歷史中有復原版本
+      當 移除歷史紀錄
+      那麼 文件、快照與素材仍保留</pre></td><td>無直接S1證據</td><td>entry absent;formal file/snapshot/material bytes retained<br>NOT RUN</td></tr><tr><td>BDD-30 / direct</td><td><pre>@BDD-30 @M07 @REQ-17
+  規則: 多session隔離
+    場景: 多session隔離
+      假如 同專案有兩個獨立編輯工作階段
+      當 各自保存復原快照
+      那麼 以各SessionID隔離且互不覆寫</pre></td><td>m07_other_session_completion_rejected, m07_other_project_event_rejected</td><td>distinct SessionID snapshots never overwrite;late response cannot mutate new owner/document<br>NOT RUN</td></tr></table><h2>AC11 / X07</h2><p>AC11：虛擬時鐘60秒檢查、無變更零新快照；寫入中再編輯下一輪仍保存；索引前中斷保留舊快照；多session不覆寫。</p><p>計時邊界59/60/61秒、慢寫跨多輪不重疊、素材中斷、索引中斷、權限與替代位置、正式保存失敗不吞dirty、session關閉時背景回報不得寫錯新文件。</p><p>逐次輪詢、59/60/61、慢寫不重疊、寫入失敗保留並下次重試、索引發布前舊快照、多session與late-close、正式保存與快照基準獨立，均見pending-recipes.json；沒有可執行runner，沒有有效RED/GREEN。</p><h2>來源與決策</h2><p>checkout 5b70934（管理層）與產品inventory 31babe87分開；以M01/planning/s2-green/source-current.json的796檔現場比對。新capture/provider/持久化/ACK seam一律pending Owner。</p><p><a href="bdd-tdd-trace.json">BDD↔TDD</a> · <a href="pending-recipes.json">Fixture/oracle recipes</a> · <a href="source-inputs.json">來源hash與原卡</a> · <a href="module-spec.json">範圍與限制</a> · <a href="static-verification.json">文件靜態檢查</a></p></main></html>

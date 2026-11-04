@@ -1,0 +1,388 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "status": "PREVIEW_CONTRACT_REVIEW_DELIVERED_EXACT_SCHEMA_PENDING",
+  "date": "2026-11-01T09:55:02.121512+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "authority": "Own planning envelope and own board evidence only. Proposed capability/schema details remain unapproved. No UI/product/tests changed.",
+  "baseline": [
+    "Editor/Viewer and architecture/UI binding remain within M03 responsibility",
+    "C+B and DX1-DX7 approval for M02 does not approve M03 runtime capabilities or media decoder matrix",
+    "Preview is communication/interaction evidence, never product acceptance or code execution authorization"
+  ],
+  "current_evidence": {
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/tauri.conf.json",
+        "sha256": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2"
+      }
+    ],
+    "old_inventory_drift": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "observations": [
+      "HOST DesignMeta includes title/updatedAt/targetStack; DesignDoc includes nodes/selection/product_pass. JS default meta has guides. This field mismatch is a roundtrip risk requiring a fixture, not runtime proof of an observed loss.",
+      "build_preview_html validates DesignDoc and renders node buttons with a selection-summary click handler. It escapes display values and uses textContent for the side panel. Static source shows selection interaction, not a complete navigation/form/dialog simulator.",
+      "The existing preview banner explicitly says communication only and product_pass=false; preserve that evidence boundary.",
+      "M02 read-lease/verified byte-snapshot consumer contract is adopted for future publication integration, but S2-S4 are not implemented. M03 cannot claim the current preview consumes verified new generation."
+    ]
+  },
+  "findings": [
+    {
+      "id": "M03-GAP1",
+      "severity": "P1",
+      "issue": "No frozen metadata compatibility contract covers JS guides and future interactions through HOST serialization.",
+      "next": "Enumerate authoritative fields and extension policy before codec changes; test full semantic roundtrip."
+    },
+    {
+      "id": "M03-GAP2",
+      "severity": "P1",
+      "issue": "Editor selection, Viewer mock actions and real privileged commands need separate event authority.",
+      "next": "Freeze allowlisted interaction schema and isolated state/event bridge; preview cannot invent filesystem/dispatch privileges."
+    },
+    {
+      "id": "M03-GAP3",
+      "severity": "P2",
+      "issue": "No exact stable-ID cross-location, revision rejection and unsupported-capability result matrix.",
+      "next": "Define explicit unresolved/stale/unsupported outcomes and UI states before Skeleton."
+    }
+  ],
+  "architecture_proposal": {
+    "hexagonal": "Editor/Viewer driving adapters -> approved commands -> HOST use case -> WORK immutable design/binding projections; HOST -> approved document/asset/verified-generation abstractions <- codecs/native adapters.",
+    "dependencies": "M01 selected target + document owner + M02 verified generated snapshot + M05 material availability -> M03 projected Editor/Viewer state. M04/M07 observe content commits only, not ephemeral preview changes.",
+    "ownership": "Document owner remains authoritative. Editor draft, selection and isolated mock Viewer state are explicit separate lifecycle projections, never writable mirrors of other documents.",
+    "mutation": "Editor content edits use declared application mutation boundary. Selection/cross-location is view-only. Viewer uses mock-only allowlist and cannot call arbitrary dispatch commands.",
+    "transaction": "Load/validate/bind immutable design revision -> build temporary preview projection -> replace Viewer projection only on success. Failure retains previous verified projection with stale label. No preview process writes source state.",
+    "forbidden": [
+      "UI-to-filesystem",
+      "file URL bypass of verified generation",
+      "Executing imported code as preview behavior",
+      "Treating labels as identity",
+      "Replacing real document with preview mock state"
+    ]
+  },
+  "UI_schema_proposal": {
+    "component": "DesignEditorViewer",
+    "role": "local project author without programming/Git prerequisite",
+    "controls": [
+      "mode Editor/Viewer",
+      "current target and document revision (read-only)",
+      "refresh preview",
+      "cross-locate selected item",
+      "unsupported/stale/incomplete status banner"
+    ],
+    "defaults": "Editor is safe selection/edit mode; Viewer must be explicitly entered for mock interaction. Exact persisted mode default remains proposed.",
+    "disabled": "Cross-locate disabled when mapping unresolved/ambiguous. Dependent mock action disabled if required capability/material missing. Refresh unavailable while source binding invalid.",
+    "errors": "Report stale revision, unsupported action, invalid preview or missing material without claiming success.",
+    "empty": "Explain no controls/no verified preview and provide only meaningful approved actions.",
+    "accessibility": "Visible focus, keyboard-accessible mode/actions, announced status/error, no color-only capability distinction.",
+    "mapping": {
+      "Editor selection": "M03-P03",
+      "Viewer mock action": "M03-P04",
+      "cross-location": "M03-P07/P08",
+      "refresh": "M03-P09/P10",
+      "status": "M03-P05/P12/P13"
+    }
+  },
+  "cases": [
+    {
+      "id": "M03-P01",
+      "given": "a confirmed target requires UI",
+      "when": "create project",
+      "then": "open linked UI design window under approved user flow",
+      "coverage": [
+        "B1"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P02",
+      "given": "a confirmed target has no UI",
+      "when": "create project",
+      "then": "do not open or silently manufacture a UI target",
+      "coverage": [
+        "B2"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P03",
+      "given": "Editor shows controls with author-configured behavior",
+      "when": "select a control",
+      "then": "select/edit it without executing its action",
+      "coverage": [
+        "B1",
+        "B6"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P04",
+      "given": "Viewer has an approved mock interaction",
+      "when": "activate the control",
+      "then": "update isolated preview state without editing authoritative document",
+      "coverage": [
+        "B1",
+        "B6"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P05",
+      "given": "preview target contains unsupported action or component",
+      "when": "open Viewer",
+      "then": "show unsupported capability reason; no fake successful execution",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P06",
+      "given": "design contains metadata such as guides and interaction hints",
+      "when": "save then reopen through declared codec",
+      "then": "preserve approved content fields and do not silently erase unknown required data",
+      "coverage": [
+        "B6",
+        "B11"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P07",
+      "given": "selection maps to a valid stable architecture identity",
+      "when": "request cross-location",
+      "then": "highlight the exact corresponding item without mutating content",
+      "coverage": [
+        "B10"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P08",
+      "given": "selection binding is missing or ambiguous",
+      "when": "request cross-location",
+      "then": "show unresolved reason; do not guess by label",
+      "coverage": [
+        "B3",
+        "B10"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P09",
+      "given": "new generation cannot be verified or build failed",
+      "when": "refresh Viewer",
+      "then": "retain last verified preview if available and mark it stale; never label new output successful",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P10",
+      "given": "prepared preview belongs to an earlier document revision",
+      "when": "confirm action or update",
+      "then": "reject stale binding and request refresh",
+      "coverage": [
+        "B6",
+        "B7"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P11",
+      "given": "preview refresh is in progress",
+      "when": "close window or switch project",
+      "then": "discard obsolete completion without leaking state into another session",
+      "coverage": [
+        "B5",
+        "B8"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P12",
+      "given": "untrusted preview data requests script, file URL or external resource",
+      "when": "load preview",
+      "then": "reject unsafe behavior and report reason; no privileged filesystem or command access",
+      "coverage": [
+        "B3"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P13",
+      "given": "a required material reference is unresolved",
+      "when": "open or interact with Viewer",
+      "then": "show incomplete placeholder and block dependent behavior while keeping edit/save allowed",
+      "coverage": [
+        "B4",
+        "B10"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P14",
+      "given": "Editor or Viewer has no controls",
+      "when": "open design view",
+      "then": "show meaningful empty state with keyboard navigation, no unusable action",
+      "coverage": [
+        "B2",
+        "B8"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P15",
+      "given": "document/history/recovery baselines are recorded",
+      "when": "change selection or preview playback",
+      "then": "do not create document Undo or recovery content changes",
+      "coverage": [
+        "B6",
+        "B12"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    },
+    {
+      "id": "M03-P16",
+      "given": "preview is refreshed repeatedly with identical immutable inputs",
+      "when": "compare outcomes",
+      "then": "deterministic projection without extra content mutation or duplicated event delivery",
+      "coverage": [
+        "B7",
+        "B12"
+      ],
+      "status": "PLANNED_NOT_RUN",
+      "fixture": "isolated design with stable node IDs, bound revision and fake preview events; full executable fixtures not created",
+      "valid_red": "Compile or load approved test target successfully; expected behavior assertion fails due to missing behavior only, never an absent target or broken fixture."
+    }
+  ],
+  "B1_B12": {
+    "B1": [
+      "M03-P01",
+      "M03-P03",
+      "M03-P04"
+    ],
+    "B2": [
+      "M03-P02",
+      "M03-P14"
+    ],
+    "B3": [
+      "M03-P05",
+      "M03-P08",
+      "M03-P12"
+    ],
+    "B4": [
+      "M03-P09",
+      "M03-P13"
+    ],
+    "B5": [
+      "M03-P11"
+    ],
+    "B6": [
+      "M03-P03",
+      "M03-P04",
+      "M03-P06",
+      "M03-P10",
+      "M03-P15"
+    ],
+    "B7": [
+      "M03-P10",
+      "M03-P16"
+    ],
+    "B8": [
+      "M03-P11",
+      "M03-P14"
+    ],
+    "B9": [
+      "M03-P09"
+    ],
+    "B10": [
+      "M03-P07",
+      "M03-P08",
+      "M03-P13"
+    ],
+    "B11": [
+      "M03-P05",
+      "M03-P06"
+    ],
+    "B12": [
+      "M03-P15",
+      "M03-P16"
+    ]
+  },
+  "traceability": {
+    "BDD-05": [
+      "M03-P01"
+    ],
+    "BDD-06": [
+      "M03-P02"
+    ],
+    "X03": [
+      "M03-P03",
+      "M03-P04",
+      "M03-P07",
+      "M03-P08",
+      "M03-P09",
+      "M03-P14"
+    ]
+  },
+  "future_file_scope": "Original M03 proposed envelope remains historical and unapproved. No new product file, Port or schema is authorized by this review. Exact fields/public types/native sandbox strategy still need one consolidated design proposal.",
+  "next": [
+    "Freeze metadata fields/extension preservation and concrete roundtrip vectors",
+    "Freeze mock action allowlist and stable binding/error DTOs",
+    "Freeze Viewer privilege isolation strategy before executing any interaction code",
+    "Consolidate M03 exact schema/capability proposal with remaining G04 media decisions, without reopening adopted M02 decisions"
+  ],
+  "verification": {
+    "static_JSON_links_coverage": "PASS",
+    "product_tests": "NOT RUN",
+    "native_UI": "NOT RUN",
+    "Skeleton_RED": "NOT RUN",
+    "source_changes_this_round": 0,
+    "independent_acceptance": "NOT RUN",
+    "full_module_complete": false
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "source": "docs/requirements-confirmation/phase1-spec/index.html",
+  "source_sha256": "7b6b376345c1163afa29518caf1b2da0e84e74ea78b020077a0ba182dc4f9a1e",
+  "authority": "User authorized opening execution work items; not blanket approval of proposed defaults/architecture or dispatch.",
+  "forbidden": [
+    "no product modifications before approved envelope and valid RED",
+    "no weakening BDD/tests",
+    "no green/commit/push/release",
+    "no dispatch/polling activation",
+    "no unrelated WIP or archived-card restoration"
+  ],
+  "verification": "NOT RUN; packet validation is static only",
+  "id": "PD-P1-F11-DELIVERY-01",
+  "module": "M07",
+  "title": "定期復原快照｜規格到驗收交付",
+  "kind": "task",
+  "zone": "gray",
+  "status": "BLOCKED_PENDING_APPROVED_ENVELOPE_AND_VALID_RED",
+  "phase": "P4",
+  "intent": "作者編輯未保存內容，定期保留一致的可恢復版本，原磁碟離線仍可復原。",
+  "feature_refs": [
+    "F11"
+  ],
+  "dependencies": [
+    "PD-P1-M07-PREP-01",
+    "PD-P1-G01-DEC-01",
+    "PD-P1-G03-DEC-01"
+  ],
+  "allowed_files": [
+    "docs\\requirements-confirmation\\phase1-spec\\tasks\\M07\\F11/** (planning/evidence only until exact production envelope approved)"
+  ],
+  "protected_files": [
+    "all product source/tests until exact envelope approved",
+    "all files outside approved task envelope",
+    "other primary module authoritative state"
+  ],
+  "contract": [
+    "正式基準與快照基準獨立；ProjectID/SessionID隔離；首次dirty納入。建議：非阻塞擷取不可變版本R，成功只將基準推至R，期間新變更R+1不被吞掉。",
+    "不重疊保存、不擷取中間狀態、不阻塞UI；快照不同於備份。素材完整性與快照需同版本；保存正式檔不改快照基準。",
+    "寫入失敗保留上一有效快照與待保存狀態，下一輪重試；不可寫可選替代位置；強制終止僅能恢復已成功快照，不承諾最後60秒未落地內容。"
+  ],
+  "bdd": {
+    "scenario": "作者編輯未保存內容，定期保留一致的可恢復版本，原磁碟離線仍可復原。",
+    "flow": "60秒檢查→等待當前文件操作穩定→對比成功基準→擷取一致版本→寫新快照及素材→完成後發布索引。",
+    "observable_outcome": "AC11：虛擬時鐘60秒檢查、無變更零新快照；寫入中再編輯下一輪仍保存；索引前中斷保留舊快照；多session不覆寫。",
+    "gherkin": "../phase1.feature",
+    "scenario_ids": [
+      "BDD-22",
+      "BDD-23",
+      "BDD-24",
+      "BDD-25",
+      "BDD-26",
+      "BDD-27",
+      "BDD-28",
+      "BDD-29",
+      "BDD-30"
+    ],
+    "note": "模組情境為共用regression obligation；PREP須縮成該功能精確映射，不以同模組全數代替缺失新測試"
+  },
+  "tdd": {
+    "status": "NOT RUN",
+    "cases": [
+      [
+        "X07",
+        "M07",
+        "計時邊界59/60/61秒、慢寫跨多輪不重疊、素材中斷、索引中斷、權限與替代位置、正式保存失敗不吞dirty、session關閉時背景回報不得寫錯新文件。"
+      ]
+    ],
+    "fixture": "../fixtures.json",
+    "command": "BLOCKED: PREP must bind exact current runner/test target before RED; no guessed cargo target",
+    "valid_red": "Test compiles and fails for missing target behavior; fixture/compile/environment failure is not valid RED",
+    "levels": [
+      "L0 unit",
+      "L1 component",
+      "L2 module contract",
+      "L3 real adapter",
+      "L4 adjacent regression",
+      "L5 Windows system where applicable"
+    ]
+  },
+  "steps": [
+    "核對PREP、相關G決議、精確allowed檔案與契約",
+    "完成Feature/UI schema及三層Skeleton審查；必要時修正提案並重新批准",
+    "建立實際測試及fixture；親跑並保留有效RED原始log／版本",
+    "僅填批准骨架達GREEN，不改測試意圖",
+    "跑模組合約與相鄰回歸；分類所有失敗",
+    "審查架構、所有權、transaction、素材與快照交界",
+    "更新模組HTML及REQ→BDD→TDD→結果追溯，提交獨立驗收；不自行綠燈"
+  ],
+  "deliverables": [
+    "approved-envelope.json",
+    "bdd-and-test-mapping.json",
+    "red-evidence.json",
+    "green-and-regression-evidence.json",
+    "module.html",
+    "architecture-conformance.json"
+  ],
+  "acceptance": [
+    "AC11：虛擬時鐘60秒檢查、無變更零新快照；寫入中再編輯下一輪仍保存；索引前中斷保留舊快照；多session不覆寫。",
+    "先完成architecture/contract/BDD/Skeleton/RED門檻",
+    "已確認與建議界線不被混淆；對應建議先整體批准",
+    "module contract GREEN且回歸分類",
+    "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+    "不以元件或靜態結果冒充native UI／整體完成"
+  ]
+}

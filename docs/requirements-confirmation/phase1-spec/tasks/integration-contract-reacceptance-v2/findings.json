@@ -1,0 +1,82 @@
+[
+  {
+    "id": "V2-F1",
+    "severity": "P1",
+    "rr": "RR-F5",
+    "pointer": "shared-contract.json/replay_protocol/request_digest",
+    "evidence": "SHA256(UTF8 compact JSON canonical value tree: object keys UTF8 byte sorted; strings JSON escaping as SGA-DESIGN-SEM-v1; integers decimal strings; arrays retain order; no whitespace/BOM). Input: {protocol:\"SGA-TRANSITION-v1\",issuer,role,ordinal,context,source_receipt_ids,target_identity,asset_pairs,root_manifest_ids,expected_catalog_generation}; all fields present, absent option=null; asset_pairs sorted(asset_id,digest); root_manifest_ids sorted unique. Exact bytes document fixtures required before RED.",
+    "problem": "The exact closed digest input omits pin_id, purpose, root manifest contents and imported metadata/bundle identity. Distinct authorized operation bodies can share the same request digest, contrary to same-key different-body ReplayConflict. Example pin_A Save vs pin_B Undo projects to identical declared bytes. Even with role-specific validity checking, omitted purpose or root contents can alias within an admitted role.",
+    "document_counterexample": {
+      "bodyA": {
+        "protocol": "SGA-TRANSITION-v1",
+        "issuer": "M05",
+        "role": "pin",
+        "ordinal": "0",
+        "context": {
+          "project_uuid": "22222222-2222-4222-8222-222222222222",
+          "document_uuid": "33333333-3333-4333-8333-333333333333",
+          "session_id": "session_1",
+          "owner_generation": "3",
+          "captured_revision": "7",
+          "workflow_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "source_receipt_ids": [],
+        "target_identity": "native_store_1",
+        "asset_pairs": [
+          [
+            "assetA",
+            "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+          ]
+        ],
+        "root_manifest_ids": [],
+        "expected_catalog_generation": "4",
+        "pin_id": "pin_A",
+        "purpose": "Save"
+      },
+      "bodyB": {
+        "protocol": "SGA-TRANSITION-v1",
+        "issuer": "M05",
+        "role": "pin",
+        "ordinal": "0",
+        "context": {
+          "project_uuid": "22222222-2222-4222-8222-222222222222",
+          "document_uuid": "33333333-3333-4333-8333-333333333333",
+          "session_id": "session_1",
+          "owner_generation": "3",
+          "captured_revision": "7",
+          "workflow_id": "11111111-1111-4111-8111-111111111111"
+        },
+        "source_receipt_ids": [],
+        "target_identity": "native_store_1",
+        "asset_pairs": [
+          [
+            "assetA",
+            "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+          ]
+        ],
+        "root_manifest_ids": [],
+        "expected_catalog_generation": "4",
+        "pin_id": "pin_B",
+        "purpose": "Undo"
+      },
+      "same_declared_digest": "842cc6db45e366e19476ec8732766e8c4b7b97179b341687645f1a518c45fcb8"
+    },
+    "required_correction": "Define per-role typed request body in canonical hash with ALL behavior-affecting arguments: pin purpose/id, snapshot/bundle/metadata digest, actual root manifest content digest and issuer evidence refs. Unknown fields reject; include independent same-key one-field-different negative vectors. Do not use only root IDs as root-body integrity."
+  },
+  {
+    "id": "V2-F2",
+    "severity": "P2",
+    "rr": "RR-F3",
+    "pointer": "M03-H2/effective_spec/dto and M04/effective_spec/commands_ui",
+    "problem": "New concrete fields use #/$defs/U64Decimal, but neither DTO root nor embedded ModuleSpec defines $defs. Common wire_schema contains a named schema but the local JSON pointer is unresolved. A schema consumer cannot deterministically resolve these refs.",
+    "required_correction": "Embed $defs at each explicitly designated schema root, or use exact resolvable external/absolute schema IDs. Supply complete request/response schema roots and a document ref-resolution check, preserving checked runtime range validation."
+  },
+  {
+    "id": "V2-F3",
+    "severity": "P2",
+    "rr": "RR-F4/RR-F5",
+    "pointer": "M03-H2/effective_spec/dto/errors and common replay_protocol",
+    "problem": "Common protocol requires UnverifiedOutcome/ReplayConflict/InProgress after proof loss or conflicting transition replay, while closed H2 errors still omit UnverifiedOutcome and new material outcomes have no exact adapter-to-DTO mapping. Generic closed existing error cannot represent the newly required outcome deterministically.",
+    "required_correction": "List exact public mapping for runtime loss, replay conflict, material read/proof/capacity failures; distinguish precommit error from postcommit deferred result. Include request lifecycle after binding loss/restart; never pretend old session request is resumable if no authenticated lookup exists."
+  }
+]

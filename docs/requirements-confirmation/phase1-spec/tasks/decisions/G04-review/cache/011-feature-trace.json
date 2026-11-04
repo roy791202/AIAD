@@ -1,0 +1,293 @@
+{
+  "feature": "F03",
+  "task": "PD-P1-F03-DELIVERY-01",
+  "state": "PREPARATION_ONLY_PENDING_ADOPTION_ENVELOPE_SKELETON",
+  "health": "GRAY_RETAINED",
+  "primary_module": "M02",
+  "adjacent_modules": {
+    "M01": "definition/approval source binding; persistence regression obligation",
+    "M03": "UI generated-result handoff/Editor Viewer are F04-owned adjacent regressions, not F03 replacement proof",
+    "M04": "saved design proof and typed projector dependency"
+  },
+  "original_intent": "必要決策齊備的專案產生可檢查骨架；尚未齊備者只保存定義。",
+  "original_acceptance": [
+    "AC03：條件不足只保存；條件齊備產物符合預覽；未實作區明示；生成失敗不破壞原有效內容。",
+    "先完成architecture/contract/BDD/Skeleton/RED門檻",
+    "已確認與建議界線不被混淆；對應建議先整體批准",
+    "module contract GREEN且回歸分類",
+    "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+    "不以元件或靜態結果冒充native UI／整體完成"
+  ],
+  "original_bdd": {
+    "scenario": "必要決策齊備的專案產生可檢查骨架；尚未齊備者只保存定義。",
+    "flow": "確認定義→檢查架構／契約／生成條件→預覽模組、介面、檔案及未實作標記→確認生成或退回草稿。",
+    "observable_outcome": "AC03：條件不足只保存；條件齊備產物符合預覽；未實作區明示；生成失敗不破壞原有效內容。",
+    "gherkin": "../phase1.feature",
+    "scenario_ids": [
+      "BDD-03",
+      "BDD-04"
+    ],
+    "note": "模組情境為共用regression obligation；PREP須縮成該功能精確映射，不以同模組全數代替缺失新測試"
+  },
+  "original_contract": [
+    "確認：生成程式與UI UX骨架。建議：生成紀錄綁定定義、模板版本與產物清單；再生成先預覽差異。",
+    "不實作未確認業務功能，不啟動AI、建置、外部程式、安裝或發布。UI生成與產品完整行為是不同狀態。",
+    "建議：計畫版本過期拒絕；已有檔案衝突不覆寫；失敗保留原檔並列本次殘留，不報假成功。"
+  ],
+  "trace": [
+    {
+      "id": "F03-TDD-AC03-01",
+      "requirement": "REQ-04",
+      "bdd": "BDD-03",
+      "acceptance": "AC03",
+      "original_clause": "條件不足只保存",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": "Immutable complete definition clone; separately remove necessary architecture/contract decision. Record saved definition and destination tree before action.",
+      "oracle_recipe": "Only save-definition action is offered; missing decision shown; no program/UI files created; definition save/reopen preserves user fields.",
+      "gap": "Pure SaveDefinitionOnly action is not an actual definition save or UI denial.",
+      "existing_evidence": [
+        "generation_plan.rs:90 prepare_generation",
+        "generation_plan.rs:239 validate_plan_binding",
+        "phase1_generation_plan.rs:200 m02_t01_complete_definition_yields_both_intents_without_mutation"
+      ],
+      "valid_red": "Only after Owner adoption, exact envelope and approved Skeleton: test compiles, fixture self-check passes, then fails its observable assertion because production behavior is missing. Compile, fixture, environment or timeout failure is not valid RED.",
+      "next_action": "Adopt exact generation/transaction/provider/golden design, approve bounded files and runner, materialize injectable Skeleton, add fixture and this test; do not run speculative product tests now."
+    },
+    {
+      "id": "F03-TDD-AC03-02",
+      "requirement": "REQ-04",
+      "bdd": "BDD-04",
+      "acceptance": "AC03",
+      "original_clause": "條件齊備產物符合預覽",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": "Owner-approved necessary decisions and immutable program+UI template; exact preview artifact paths/content digests; isolated target with recorded initial tree.",
+      "oracle_recipe": "After explicit confirm, both actual program/UI trees equal exact preview paths/bytes; generation identity binds approved definition/template.",
+      "gap": "No actual renderer, trusted providers, immutable golden14/transitive lock or native publication proof.",
+      "existing_evidence": [
+        "generation_plan.rs:90 prepare_generation",
+        "generation_plan.rs:239 validate_plan_binding",
+        "phase1_generation_plan.rs:200 m02_t01_complete_definition_yields_both_intents_without_mutation"
+      ],
+      "valid_red": "Only after Owner adoption, exact envelope and approved Skeleton: test compiles, fixture self-check passes, then fails its observable assertion because production behavior is missing. Compile, fixture, environment or timeout failure is not valid RED.",
+      "next_action": "Adopt exact generation/transaction/provider/golden design, approve bounded files and runner, materialize injectable Skeleton, add fixture and this test; do not run speculative product tests now."
+    },
+    {
+      "id": "F03-TDD-AC03-03",
+      "requirement": "REQ-04",
+      "bdd": "BDD-04",
+      "acceptance": "AC03",
+      "original_clause": "未實作區明示",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": "Same dual-tree preview with explicitly declared unimplemented regions in both program/UI artifact expected bytes.",
+      "oracle_recipe": "Rendered preview and emitted files show the same unimplemented regions; no claim implemented business behavior.",
+      "gap": "ArtifactIntent product discriminant is not an actual visible marker or golden content comparison.",
+      "existing_evidence": [
+        "phase1_generation_plan.rs policy-only coverage; no actual artifact output oracle"
+      ],
+      "valid_red": "Only after Owner adoption, exact envelope and approved Skeleton: test compiles, fixture self-check passes, then fails its observable assertion because production behavior is missing. Compile, fixture, environment or timeout failure is not valid RED.",
+      "next_action": "Adopt exact generation/transaction/provider/golden design, approve bounded files and runner, materialize injectable Skeleton, add fixture and this test; do not run speculative product tests now."
+    },
+    {
+      "id": "F03-TDD-AC03-04",
+      "requirement": "REQ-04",
+      "bdd": "BDD-04 + AC03 explicit failure clause",
+      "acceptance": "AC03",
+      "original_clause": "生成失敗不破壞原有效內容",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": "Seed valid old program/UI tree and active descriptor; inject rendering, seal, and activation failure before commit separately; capture raw bytes/digests and independent reader identity.",
+      "oracle_recipe": "Report failure truthfully; before-commit failure preserves all old valid bytes and active identity; classify any residuals. Unknown CAS must not be asserted unchanged without authoritative resolution.",
+      "gap": "Native multi-file transaction and failure injection seam remain unadopted; candidate document probes cannot prove rollback.",
+      "existing_evidence": [
+        "phase1_generation_plan.rs policy-only coverage; no actual artifact output oracle"
+      ],
+      "valid_red": "Only after Owner adoption, exact envelope and approved Skeleton: test compiles, fixture self-check passes, then fails its observable assertion because production behavior is missing. Compile, fixture, environment or timeout failure is not valid RED.",
+      "next_action": "Adopt exact generation/transaction/provider/golden design, approve bounded files and runner, materialize injectable Skeleton, add fixture and this test; do not run speculative product tests now."
+    }
+  ],
+  "historical_evidence": {
+    "M02_S1_RED": {
+      "status": "VALID_RED",
+      "behavior_cases": 65,
+      "failed_at_missing_body_marker": 65,
+      "fixture_checks_passed": 2,
+      "ignored": 0,
+      "exit_code": 101,
+      "reason": "All target behavior failures occur at approved unimplemented policy boundaries, not compile/setup/environment. Exit 101 is expected for this stage, not GREEN."
+    },
+    "M02_S1_GREEN": {
+      "module": "M02",
+      "slice": "M02-S1",
+      "status": "IMPLEMENTATION_GREEN_READY_FOR_ACCEPTANCE",
+      "date": "2026-11-01T11:53:15.893285+08:00",
+      "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+      "branch": "cursor/ui-bhv-arch-layer-editor",
+      "authority": "Owner product-start and standing automatic implementation authorization; original accepted exact Skeleton/envelope retained.",
+      "implementation": "Pure generation completeness, exact approval/template/identity binding, safe artifact intents and deterministic dual-plan; full binding freshness comparison.",
+      "RED_before": 68,
+      "focused_GREEN": 73,
+      "full_WORK_GREEN": 222,
+      "HOST_library_GREEN": 84,
+      "build": "cargo build -p sgenaxis-work --locked PASS (library only)",
+      "scope": {
+        "implemented_source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs",
+        "this_batch_changed_paths": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_generation_plan.rs"
+        ],
+        "source_hashes": {
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs": "8667eb4b87a013d5d04617309a0b75a1f02b2fdd0f1d2f4424d58e1d4ceedf72",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs": "a69b1a1eccd8a53a639c1ebc4d1b5f57604e35b54384f8838b8ab58cf68d222e",
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_generation_plan.rs": "d801d2eee5f2eb046994c009ad71462470e1c1db7035d59f5747431941037d2a"
+        },
+        "unchanged_baseline_files": 788,
+        "new_dependencies_ports_public_types": 0,
+        "public_function_type_signatures": "Preserved; implementation parameter local names normalized from Skeleton underscores.",
+        "existing_tests": "All original test contents/expectations preserved; M05/M07 test hashes unchanged. M02 test exactly restored to pre-implementation hash by removing one additive regression case.",
+        "M02_added_regression": "Prefix collision with intervening sibling: reproduced assertion RED before local algorithm correction, now GREEN."
+      },
+      "architecture_review": {
+        "verdict": "PRIMARY_CONFORMANCE_PASS",
+        "dependency_direction": "WORK uses domain types/standard collections only; no framework or concrete adapter dependency.",
+        "ownership": "Immutable borrowed inputs and returned projections; no new SSOT or mutation boundary.",
+        "transaction": "No persistence/IO/OS transaction introduced by pure S1 behavior.",
+        "local_implementation": "Private validation/ordering helpers only; no public schema/Port/model changes.",
+        "test_intent": "No assertions weakened/deleted/ignored; additional path case covers existing approved safety contract."
+      },
+      "verification_limits": {
+        "full_workspace": "NOT RUN; unimplemented other modules/IO are separate gates",
+        "native_UI_packaging_install": "NOT RUN",
+        "independent_implementation_acceptance": "NOT RUN; ready for separate read-only review"
+      },
+      "remaining_module_work": [
+        "No template rendering, native version publication, Store Port implementation or UI wiring in S1.",
+        "Generated application build/package and real approval source verification remain HOST/native responsibilities."
+      ],
+      "module_complete": false,
+      "commands": [
+        {
+          "name": "M02-focused",
+          "command": "cargo test -p sgenaxis-work --test phase1_generation_plan --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "M02-focused.txt"
+        },
+        {
+          "name": "M05-focused",
+          "command": "cargo test -p sgenaxis-work --test phase1_asset_roots --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "M05-focused.txt"
+        },
+        {
+          "name": "M07-focused",
+          "command": "cargo test -p sgenaxis-work --test phase1_recovery_policy --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "M07-focused.txt"
+        },
+        {
+          "name": "work-full",
+          "command": "cargo test -p sgenaxis-work --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "work-full.txt"
+        },
+        {
+          "name": "host-lib",
+          "command": "cargo test -p sgenaxis-host --lib --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "host-lib.txt"
+        },
+        {
+          "name": "work-build",
+          "command": "cargo build -p sgenaxis-work --locked",
+          "cwd": "apps/sgenaxis-desktop",
+          "exit_code": 0,
+          "log": "work-build.txt"
+        }
+      ],
+      "standing_policy": "../../../implementation-authorization-20261101.json"
+    },
+    "independent_S1_acceptance": {
+      "module": "M02",
+      "slice": "M02-S1",
+      "status": "IMPLEMENTATION_ACCEPTANCE_PASS_SLICE_ONLY",
+      "date": "2026-11-01T11:56:08.082714+08:00",
+      "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+      "branch": "cursor/ui-bhv-arch-layer-editor",
+      "reviewer": "Same assistant in a later separate read-only acceptance turn; no delegated independent reviewer.",
+      "contracts_reviewed": [
+        "Structural identity and artifact validation runs before missing-decision continuation.",
+        "Approval identity comparison is distinct from HOST authentication; exact missing causes retain accepted vocabulary.",
+        "Casefold duplicates and non-adjacent file/dir prefix collisions are rejected; deterministic binding checks cover all approved fields.",
+        "No template render, persistence or UI capability claimed."
+      ],
+      "fresh_verification": {
+        "WORK_all_tests": "222 PASS, no failed/ignored",
+        "HOST_library": "84 PASS, no failed/ignored",
+        "WORK_library_build": "PASS",
+        "focused_cases_in_WORK": 73,
+        "full_workspace_native_UI_package": "NOT RUN"
+      },
+      "architecture": {
+        "verdict": "PASS",
+        "public_model_signature": "Approved data types, enum variants and function types retained. Private helper/control-flow bodies only.",
+        "ownership": "Pure immutable inputs and returned projections; no new SSOT or mutation authority.",
+        "dependencies": "No new crate/Port/adapter/framework or infrastructure dependency.",
+        "transaction": "No native persistence, material deletion or live snapshot transaction introduced."
+      },
+      "findings": [],
+      "suggested_refactors": "None required for this scoped acceptance.",
+      "scope": "Only authorized three domain implementation sources plus additive M02 path-collision regression in delivery. Review changes no product/test files.",
+      "source_inventory": "792-file current hashes verified unchanged from primary GREEN delivery.",
+      "risks": [
+        "Acceptance proves only the pure S1 behavior and module regressions; caller wiring/real IO remain later gates.",
+        "Whole PREP/module is not complete; preserve outstanding codec/UI/transaction preparation."
+      ],
+      "module_complete": false,
+      "commands": [
+        {
+          "name": "work-full",
+          "command": "cargo test -p sgenaxis-work --locked",
+          "exit_code": 0
+        },
+        {
+          "name": "host-lib",
+          "command": "cargo test -p sgenaxis-host --lib --locked",
+          "exit_code": 0
+        },
+        {
+          "name": "work-build",
+          "command": "cargo build -p sgenaxis-work --locked",
+          "exit_code": 0
+        }
+      ],
+      "next": "Continue automatic implementation for other accepted Skeleton/valid RED slices inside approved envelopes; structural changes still replan."
+    },
+    "limits": "Historical 2026-11-01 /31babe evidence only. No M02 S2 execution artifact located; M01 S2 is inventory authority, not F03 execution proof."
+  },
+  "layers": {
+    "pure_policy": "Existing source/tests; historical results only, not rerun",
+    "UI_handler": "No prepare_generation or validate_plan_binding reference found by targeted search of app.js/lib.rs/dispatch.rs; not a global absence proof",
+    "IPC_dispatch": "F03 command wiring not demonstrated",
+    "provider": "Candidate correction Owner pending; issuer authenticity/native reservation unproved",
+    "golden": "Exact rendered dual-tree/golden14/transitive lock not demonstrated",
+    "native_transaction": "NOT RUN",
+    "build": "NOT RUN this packet; historical WORK library build does not build generated application",
+    "independent_verification": "NOT RUN for this preparation",
+    "valid_RED": "NOT RUN this packet",
+    "full_Draft": "NOT RUN"
+  },
+  "commands": {
+    "existing_policy_only": "cd D:\\AIAD\\apps\\sgenaxis-desktop; cargo test -p sgenaxis-work --test phase1_generation_plan --locked",
+    "existing_module_regression": "cargo test -p sgenaxis-work --locked",
+    "adjacent_host": "cargo test -p sgenaxis-host --lib --locked",
+    "new_feature_runner": "UNBOUND_PENDING_ADOPTED_ENVELOPE_AND_SKELETON; do not invent cargo target"
+  },
+  "acceptance_boundary": "Static packet PASS is not Feature PASS, module PASS, native proof, valid RED or Done. No new product tests or Skeleton; original thresholds unchanged.",
+  "next_action": "Owner adopts exact M02 source-fence/generation candidate and resolves provider/golden/projector gates, then approve one bounded AC03 behavior envelope and Skeleton before tests/RED."
+}

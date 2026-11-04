@@ -1,0 +1,276 @@
+{
+  "feature": "F09",
+  "primary_module": "M06",
+  "task": "PD-P1-F09-DELIVERY-01",
+  "original_packet": {
+    "source": "docs/requirements-confirmation/phase1-spec/index.html",
+    "source_sha256": "7b6b376345c1163afa29518caf1b2da0e84e74ea78b020077a0ba182dc4f9a1e",
+    "authority": "User authorized opening execution work items; not blanket approval of proposed defaults/architecture or dispatch.",
+    "forbidden": [
+      "no product modifications before approved envelope and valid RED",
+      "no weakening BDD/tests",
+      "no green/commit/push/release",
+      "no dispatch/polling activation",
+      "no unrelated WIP or archived-card restoration"
+    ],
+    "verification": "NOT RUN; packet validation is static only",
+    "id": "PD-P1-F09-DELIVERY-01",
+    "module": "M06",
+    "title": "單文件合併與身分衝突｜規格到驗收交付",
+    "kind": "task",
+    "zone": "gray",
+    "status": "BLOCKED_PENDING_APPROVED_ENVELOPE_AND_VALID_RED",
+    "phase": "P3",
+    "intent": "作者從BIN選一份文件逐項採用內容，保留本機其他文件不變。",
+    "feature_refs": [
+      "F09"
+    ],
+    "dependencies": [
+      "PD-P1-M06-PREP-01",
+      "PD-P1-G01-DEC-01",
+      "PD-P1-G02-DEC-01"
+    ],
+    "allowed_files": [
+      "docs\\requirements-confirmation\\phase1-spec\\tasks\\M06\\F09/** (planning/evidence only until exact production envelope approved)"
+    ],
+    "protected_files": [
+      "all product source/tests until exact envelope approved",
+      "all files outside approved task envelope",
+      "other primary module authoritative state"
+    ],
+    "contract": [
+      "一份目標文件加必要素材／引用；新身分與引用調整須先預覽確認。建議：方案綁定目標revision及素材版本，過期重新預覽。",
+      "不動其他文件；採用刪除也須明選。共用素材不得就地替換而影響其他文件，建議建立新內容版本。",
+      "跨文件前置條件不滿足即阻擋；來源不明ID略過或另副本；取消／失敗完整回復，不留Undo；缺基準不自動合併。"
+    ],
+    "bdd": {
+      "scenario": "作者從BIN選一份文件逐項採用內容，保留本機其他文件不變。",
+      "flow": "選單一目標→預覽增改刪／素材／衝突→逐項選擇→檢查引用及目標版本→確認→整次套用。",
+      "observable_outcome": "AC09：跨文件依賴阻擋；取消與每個注入失敗點回到同一語義狀態；未受影響資料不變；一次成功套用只占一筆Undo。",
+      "gherkin": "../phase1.feature",
+      "scenario_ids": [
+        "BDD-09",
+        "BDD-10",
+        "BDD-11",
+        "BDD-12",
+        "BDD-13",
+        "BDD-14",
+        "BDD-15",
+        "BDD-16",
+        "BDD-17",
+        "BDD-18",
+        "BDD-19"
+      ],
+      "note": "模組情境為共用regression obligation；PREP須縮成該功能精確映射，不以同模組全數代替缺失新測試"
+    },
+    "tdd": {
+      "status": "NOT RUN",
+      "cases": [
+        [
+          "X06",
+          "M06",
+          "archive重複路徑、大小寫碰撞、父目錄穿越、連結、解開炸彈、版本未知；取消每階段、空間不足、來源不可讀。"
+        ]
+      ],
+      "fixture": "../fixtures.json",
+      "command": "BLOCKED: PREP must bind exact current runner/test target before RED; no guessed cargo target",
+      "valid_red": "Test compiles and fails for missing target behavior; fixture/compile/environment failure is not valid RED",
+      "levels": [
+        "L0 unit",
+        "L1 component",
+        "L2 module contract",
+        "L3 real adapter",
+        "L4 adjacent regression",
+        "L5 Windows system where applicable"
+      ]
+    },
+    "steps": [
+      "核對PREP、相關G決議、精確allowed檔案與契約",
+      "完成Feature/UI schema及三層Skeleton審查；必要時修正提案並重新批准",
+      "建立實際測試及fixture；親跑並保留有效RED原始log／版本",
+      "僅填批准骨架達GREEN，不改測試意圖",
+      "跑模組合約與相鄰回歸；分類所有失敗",
+      "審查架構、所有權、transaction、素材與快照交界",
+      "更新模組HTML及REQ→BDD→TDD→結果追溯，提交獨立驗收；不自行綠燈"
+    ],
+    "deliverables": [
+      "approved-envelope.json",
+      "bdd-and-test-mapping.json",
+      "red-evidence.json",
+      "green-and-regression-evidence.json",
+      "module.html",
+      "architecture-conformance.json"
+    ],
+    "acceptance": [
+      "AC09：跨文件依賴阻擋；取消與每個注入失敗點回到同一語義狀態；未受影響資料不變；一次成功套用只占一筆Undo。",
+      "先完成architecture/contract/BDD/Skeleton/RED門檻",
+      "已確認與建議界線不被混淆；對應建議先整體批准",
+      "module contract GREEN且回歸分類",
+      "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+      "不以元件或靜態結果冒充native UI／整體完成"
+    ]
+  },
+  "exact_and_shared_trace": [
+    {
+      "id": "F09-TRACE-01",
+      "requirement": "REQ-12",
+      "bdd": "BDD-15",
+      "relationship": "exact original scenario",
+      "original_scenario": "@BDD-15 @M06 @REQ-12\n  規則: 跨文件阻擋\n    場景: 跨文件阻擋\n      假如 單文件合併必須修改另一文件才能一致\n      當 確認合併\n      那麼 阻擋並說明前置條件，不擴大範圍",
+      "acceptance": "AC09",
+      "test_id": "TDD-F09-01",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "target A and adjacent B canonical content/revision/history/assets/baselines captured; selected source requires B mutation",
+        "when": "confirm merge",
+        "then": "blocked with prerequisites; A/B/source unchanged; zero history"
+      },
+      "gap": "cross-document required edit actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    },
+    {
+      "id": "F09-TRACE-02",
+      "requirement": "REQ-11",
+      "bdd": "BDD-16",
+      "relationship": "exact original scenario",
+      "original_scenario": "@BDD-16 @M06 @REQ-11\n  規則: 無基準人工決策\n    場景: 無基準人工決策\n      假如 兩份內容沒有可靠共同基準\n      當 檢視合併差異\n      那麼 不自動合併，逐項提供保留本機、採用匯入或另副本",
+      "acceptance": "AC09",
+      "test_id": "TDD-F09-02",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "source and target diverge without reliable ancestor; choices keep/adopt/copy",
+        "when": "preview each choice",
+        "then": "no automatic merge; display additions/modifications/deletions/conflicts; delete only explicit choice"
+      },
+      "gap": "no reliable common baseline actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    },
+    {
+      "id": "F09-TRACE-03",
+      "requirement": "REQ-14",
+      "bdd": "BDD-17",
+      "relationship": "exact original scenario",
+      "original_scenario": "@BDD-17 @M06 @REQ-14\n  規則: ID來源不明\n    場景: ID來源不明\n      假如 相同ID但無法確認同源\n      當 預覽套用\n      那麼 暫停受影響項目並提供略過或另副本，不猜測重綁",
+      "acceptance": "AC09",
+      "test_id": "TDD-F09-03",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "same entity ID, unconfirmed issuer, equal labels; unrelated existing references",
+        "when": "preview apply",
+        "then": "affected item paused; skip/copy offered; no guessed name match or remap"
+      },
+      "gap": "unknown ID provenance actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    },
+    {
+      "id": "F09-TRACE-04",
+      "requirement": "REQ-14",
+      "bdd": "BDD-18",
+      "relationship": "exact original scenario",
+      "original_scenario": "@BDD-18 @M06 @REQ-14\n  規則: 另副本映射\n    場景: 另副本映射\n      假如 已預覽新身分及引用調整範圍\n      當 確認另建副本\n      那麼 只調整副本可確定引用，未解析標待處理，來源既有內容不變",
+      "acceptance": "AC09",
+      "test_id": "TDD-F09-04",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "parent/child/internal edge plus unresolved reference; predeclared mapping and mapping confirmation",
+        "when": "confirm copy",
+        "then": "only certain copy references rewritten; unresolved Pending; source and existing target items unchanged"
+      },
+      "gap": "copy identity preview actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    },
+    {
+      "id": "F09-TRACE-05",
+      "requirement": "REQ-11",
+      "bdd": "BDD-19",
+      "relationship": "exact original scenario",
+      "original_scenario": "@BDD-19 @M06 @REQ-11\n  規則: 合併失敗回復\n    場景: 合併失敗回復\n      假如 文件及素材已有完整前狀態\n      當 合併在任一提交階段失敗\n      那麼 回到合併前完整狀態、來源不變且不增加Undo",
+      "acceptance": "AC09",
+      "test_id": "TDD-F09-05",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "complete before target+asset+history/source state; fault at each approved transaction seam",
+        "when": "cancel or apply with one fault",
+        "then": "complete semantic target state restored; no Undo; source unchanged"
+      },
+      "gap": "cancel and injected commit failures actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    },
+    {
+      "id": "F09-TRACE-06",
+      "requirement": "REQ-15",
+      "bdd": "BDD-21",
+      "relationship": "shared cross-module exact scenario",
+      "original_scenario": "@BDD-21 @M04 @REQ-15\n  規則: 合併Undo\n    場景: 合併Undo\n      假如 單文件合併已成功並含待綁定狀態\n      當 Undo一次\n      那麼 還原整次變更及綁定限制，不刪來源或共用素材",
+      "acceptance": "AC09; AC10 shared",
+      "test_id": "TDD-F09-06",
+      "status": "PLANNED_NOT_RUN",
+      "fixture_recipe": {
+        "given": "successful single-target merge containing Pending bindings and blocked capabilities; shared material used by B",
+        "when": "Undo once",
+        "then": "whole merge restored including bindings/restrictions; source/shared material retained"
+      },
+      "gap": "one complete merge Undo actual archive/provider/HOST/UI integration missing; no executable F09 test created",
+      "evidence_class": "M04 pure S1 contextual only; no exact feature evidence",
+      "valid_RED": "After Owner/envelope/Skeleton approval: compile succeeds, then assertion fails specifically for missing declared behavior. Compile/fixture/environment/unknown test target is invalid RED."
+    }
+  ],
+  "prospective_AC_recipes": [
+    {
+      "id": "TDD-F09-AC-01",
+      "requirement": "REQ-10/REQ-12",
+      "recipe": "single selected target and necessary immutable asset versions",
+      "equivalence_limit": "AC09 scope recipe; BDD-15 is rejection only, not successful single-target equivalence",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TDD-F09-AC-02",
+      "requirement": "REQ-13",
+      "recipe": "incompatible format/version/integrity/path/internal payload stays hard blocked even with explicit incomplete acceptance",
+      "equivalence_limit": "context BDD-13/14; pure preflight oracle is not actual BIN validation",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TDD-F09-AC-03",
+      "requirement": "REQ-11",
+      "recipe": "target revision/source digest changes after preview reject and require new preview",
+      "equivalence_limit": "prospective AC09 safety recipe; not exact BDD-16/19",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TDD-F09-AC-04",
+      "requirement": "REQ-14",
+      "recipe": "FreshImportedIds full identity and internal edge mapping preview and digest confirmation",
+      "equivalence_limit": "recommended exchange design pending Owner; BDD-18 requires certain-copy mapping but does not prescribe FreshImportedIds",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "TDD-F09-AC-05",
+      "requirement": "REQ-15",
+      "recipe": "one successful apply contributes exactly one Undo; no-op zero; cancel zero",
+      "equivalence_limit": "AC09 threshold retained; BDD-21 checks Undo outcome, not full successful apply lifecycle",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "context_only": {
+    "BDD-09/10": "F08 ESS independent copy/name collision, not exact F09 merge",
+    "BDD-11/12": "F07 BIN export, not F09 merge",
+    "BDD-13/14": "shared preflight context, not successful merge/Undo",
+    "BDD-20": "clear Undo, not merge Undo"
+  },
+  "original_thresholds": [
+    "AC09：跨文件依賴阻擋；取消與每個注入失敗點回到同一語義狀態；未受影響資料不變；一次成功套用只占一筆Undo。",
+    "先完成architecture/contract/BDD/Skeleton/RED門檻",
+    "已確認與建議界線不被混淆；對應建議先整體批准",
+    "module contract GREEN且回歸分類",
+    "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+    "不以元件或靜態結果冒充native UI／整體完成"
+  ],
+  "status": "BLOCKED_PENDING_APPROVED_ENVELOPE_AND_VALID_RED",
+  "zone": "gray"
+}

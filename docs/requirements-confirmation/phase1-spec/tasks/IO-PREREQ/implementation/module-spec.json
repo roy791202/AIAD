@@ -1,0 +1,1024 @@
+{
+  "identity": {
+    "module": "file-commit",
+    "task": "PD-P1-IO-PREREQ-IMPL-01",
+    "generated_at": "2026-11-01T12:13:03.932344+08:00",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab"
+  },
+  "canonical_sources": {
+    "architecture_contracts": "../planning/module-spec.json",
+    "effective_protocol": "../planning/gap-resolution/proposal-v2-a.json",
+    "accepted_skeleton": "../planning/alignment-acceptance/primary-adjudication.json"
+  },
+  "architecture": {
+    "hexagonal_view": "Driving：後續 HOST / 本輪僅規劃的 tests → Input：FileCommitPort / FileWriteLease → Adapter 內單文件交易 → Driven：Windows FS / handle。Ports 僅 primitive data；Domain 無新增依賴。",
+    "module_dependency_view": "HOST（本輪不改）→ sgenaxis-ports ← sgenaxis-adapters::file_commit → 既有 sgenaxis-spec hash；test fixture / child helper → 公開 Ports；cfg(test) controlled seam → 同一 adapter 原始碼。",
+    "state_ownership": "lease owns handle；單次交易只擁有以 exclusive create 成功取得的 journal staging、old/new scratch。測試觀測不得成為產品 SSOT；磁碟 journal 是該次交易紀錄，非專案資料 SSOT。",
+    "mutation_boundary": "持有 lease 的 replace_checked 只能改該目標與自有 transaction artifacts；acquire 只辨識/拒絕 journal，不自動回復或清理。",
+    "transaction_boundary": "Acquire → Validate → PrepareOld/New → PREPARED → Recheck → Publish → VerifyPublished → COMMITTED → Receipt；故障 → Restore → VerifyRestored → ROLLED_BACK；無法證實則 RecoveryRequired。",
+    "external_boundary": "OS handle / 原子單檔替換只在 Windows adapter；test-only subprocess 不連入產品啟動。journal 更新與正式目標不是跨檔原子。",
+    "forbidden": [
+      "UI→FS",
+      "Domain→adapter",
+      "新增 manager/repository/Port",
+      "以 process Mutex 冒充跨程序 lease",
+      "以 stale age 刪鎖",
+      "遞迴清理使用者目錄",
+      "未核准改公開 API",
+      "把 journal 當使用者復原快照"
+    ]
+  },
+  "contracts": [
+    {
+      "phase": "exclusive create / acquire",
+      "result": "名稱非法 InvalidPath；存在 AlreadyExists；live OS handle Busy；無 journal 正常路徑可供後續取得；未完成/未知/損毀 journal 或有無法歸屬的 area 內容為 RecoveryRequired",
+      "preservation": "不改正式檔、不清理 sidecar 或未知 area"
+    },
+    {
+      "phase": "prepare 或 PREPARED 發布前故障",
+      "result": "原 bytes/不存在維持且可證明只留下自有可診斷物時回 Storage；不確定完整性/所有權則 RecoveryRequired",
+      "preservation": "不刪他人 collision；原不存在不建立正式檔；無 journal 但留有 scratch 的 area 下次 acquire fail closed"
+    },
+    {
+      "phase": "PREPARED 已有效後、publish 前偵測外部變更",
+      "result": "Conflict，保留外部版本；本次 owned 準備資料與可診斷紀錄可保留，下一次遇未終結紀錄仍 fail closed",
+      "preservation": "不以 old 覆寫外部新版本"
+    },
+    {
+      "phase": "publish / verify / COMMITTED 寫入失敗",
+      "result": "先回復 old 或原不存在，再驗證，並寫入且重讀驗證 ROLLED_BACK 後回原失敗 stage 的 Storage；回復/驗證/終態記錄失敗則 RecoveryRequired",
+      "preservation": "刪除新目標前須確認仍是本次 new，外部已改則拒絕刪除並 RecoveryRequired"
+    },
+    {
+      "phase": "COMMITTED 已寫且正式 new digest 驗證成功",
+      "result": "回 receipt；後續 cleanup 失敗不反轉為普通 Storage 或假稱沒提交",
+      "preservation": "保留有效終態與未清資料；不在此階段回滾已成功交易"
+    },
+    {
+      "phase": "cleanup",
+      "result": "只按已驗證 terminal record/hash 清理 owned old/new；保留 journal 到 artifacts 清理完，journal 最後移除；下一次 acquire 對殘存 terminal record 只讀核對，不清理",
+      "preservation": "只刪檔不遞迴；未知 entries/不相符 hash 一律不刪；只能後續 replace 的持鎖 prepare 階段完成可證實安全的 terminal 殘留清理，再開新交易"
+    },
+    {
+      "phase": "crash 與 reopen",
+      "result": "PREPARED/RECOVERY_REQUIRED/不完整 next/壞 journal 都 RecoveryRequired；有效 COMMITTED+target=new 或 ROLLED_BACK+target=old/absent 可取得 lease（僅診斷，不自動清理）；不符則 RecoveryRequired",
+      "preservation": "所有不確定檔案保留；terminal 清理可能缺少 old/new，允許只在終態與正式檔吻合時忽略已刪除 artifact；仍存在 artifact hash 不符則拒絕"
+    }
+  ],
+  "bdd": {
+    "baseline_text": "# language: zh-TW\n@planning_only @IO_PREREQ\n功能: 單文件提交與失敗保全\n  背景:\n    假如 測試使用隔離目錄與完整舊版本文件\n\n  @IO-BDD-01\n  規則: 獨佔建立\n    場景: 獨佔建立\n      假如 存在父目錄與不存在的新名稱\n      當 建立目錄\n      那麼 只建立該新目錄並返回位置\n\n  @IO-BDD-02\n  規則: 已有目標不變\n    場景: 已有目標不變\n      假如 目標為檔案、空目錄或非空目錄\n      當 要求建立\n      那麼 AlreadyExists；既有bytes及內容不變\n\n  @IO-BDD-03\n  規則: 非法名稱\n    場景: 非法名稱\n      假如 名稱空白、保留名、含separator或穿越\n      當 建立目錄\n      那麼 InvalidPath且不建立任何子目錄\n\n  @IO-BDD-04\n  規則: 同程序競爭\n    場景: 同程序競爭\n      假如 已有一個同目標lease\n      當 另一adapter instance要求lease\n      那麼 Busy且不能讀寫提交\n\n  @IO-BDD-05\n  規則: 跨程序競爭\n    場景: 跨程序競爭\n      假如 子程序持有同目標sidecar handle\n      當 父程序要求lease\n      那麼 Busy；不是只靠同程序Mutex\n\n  @IO-BDD-06\n  規則: 程序死亡釋放\n    場景: 程序死亡釋放\n      假如 子程序持有lease且無未完成journal\n      當 終止子程序後再取lease\n      那麼 OS handle釋放，sidecar仍可再次打開；不按檔案年齡刪鎖\n\n  @IO-BDD-07\n  規則: 新檔提交\n    場景: 新檔提交\n      假如 期望不存在且無目標\n      當 replace_checked(None,new)\n      那麼 完整新bytes與receipt相符\n\n  @IO-BDD-08\n  規則: 既有檔提交\n    場景: 既有檔提交\n      假如 期望digest等於現行bytes\n      當 replace_checked(Some(old),new)\n      那麼 寫入完整new，保留old版本直到交易確認\n\n  @IO-BDD-09\n  規則: 過期拒絕\n    場景: 過期拒絕\n      假如 期望digest不等於目前檔案\n      當 要求替換\n      那麼 Conflict，不更動正式目標\n\n  @IO-BDD-10\n  規則: 存在性衝突\n    場景: 存在性衝突\n      假如 期望不存在但檔案已存在，或反之\n      當 要求替換\n      那麼 Conflict，不能自動覆寫\n\n  @IO-BDD-11\n  規則: 替換前故障\n    場景: 替換前故障\n      假如 prepare/backup/temp write/sync任一步失敗\n      當 結束本次提交\n      那麼 原有效正式bytes不變，清理僅本次owned scratch\n\n  @IO-BDD-12\n  規則: 替換後可回復故障\n    場景: 替換後可回復故障\n      假如 正式replace後verify/提交紀錄階段失敗且restore可用\n      當 處理錯誤\n      那麼 舊bytes恢復後才可回普通Storage錯誤\n\n  @IO-BDD-13\n  規則: 回復本身失敗\n    場景: 回復本身失敗\n      假如 restore/restore verify失敗\n      當 回傳結果\n      那麼 RecoveryRequired，保留old/new/journal，後續破壞性提交拒絕\n\n  @IO-BDD-14\n  規則: 重啟遇未完成紀錄\n    場景: 重啟遇未完成紀錄\n      假如 上次journal未到COMMITTED/ROLLED_BACK\n      當 新程序acquire\n      那麼 拒絕並回RecoveryRequired，不猜測哪版應生效\n\n  @IO-BDD-15\n  規則: 未知或損毀journal\n    場景: 未知或損毀journal\n      假如 journal版本未知、校驗不符或含越界路徑\n      當 acquire\n      那麼 RecoveryRequired，保留所有原資料，不解析成可執行動作\n\n  @IO-BDD-16\n  規則: lease關閉\n    場景: lease關閉\n      假如 已完成lease的handle正常drop\n      當 另一程序取lease\n      那麼 成功；不需等待stale timeout\n\n  @IO-BDD-17\n  規則: 目標被外部改動\n    場景: 目標被外部改動\n      假如 prepare後偵測目標digest變更\n      當 commit前重查\n      那麼 Conflict且不覆寫；不聲稱防止任意非合作writer最後瞬間競爭\n\n  @IO-BDD-18\n  規則: 失敗不刪他人檔案\n    場景: 失敗不刪他人檔案\n      假如 owned temp名碰撞或cleanup失敗\n      當 保存或中止\n      那麼 不刪非本次create_new成功取得的檔；保留可診斷結果\n",
+    "gap_text": "# language: zh-TW\n@proposal_only @IO_GAP_PLAN_v1\n功能: 單文件提交的失敗保全與生命週期差額\n  背景:\n    假如 使用者已授權目標文件的位置\n    而且 測試使用隔離且可追溯的文件與素材\n\n  @IO_ADD_01 @IO_BDD_10\n  規則: 期望存在性必須與實際狀態一致\n    場景: 預期既有文件卻已不存在\n      假如 提交預期存在某個舊版本\n      而且 目前該文件不存在\n      當 要求保存新內容\n      那麼 回報內容衝突\n      而且 不建立正式文件\n\n  @IO_ADD_03 @IO_BDD_12\n  規則: 普通保存失敗不得留下未驗證的新狀態\n    場景: 新內容已發布但確認提交失敗\n      假如 原有文件包含完整舊內容\n      而且 新內容發布後無法完成提交確認\n      當 處理保存失敗\n      那麼 必須先恢復並確認完整舊內容才回報普通保存失敗\n\n    場景: 新建文件保存失敗需恢復原不存在狀態\n      假如 正式文件原本不存在\n      而且 新內容發布後無法完成提交確認\n      當 處理保存失敗\n      那麼 普通保存失敗表示正式文件仍不存在\n      而且 不刪除外部後來建立的其他版本\n\n  @IO_ADD_04 @IO_BDD_13\n  規則: 無法確認回復時保留可診斷內容\n    場景: 回復驗證失敗\n      假如 保存失敗後無法確認原狀態已完整回復\n      當 回報保存結果\n      那麼 明確要求復原處理\n      而且 保留仍可用的舊版本與新版本\n      而且 後續破壞性保存被阻擋\n\n  @IO_ADD_05 @IO_ADD_06 @IO_ADD_07 @IO_BDD_15\n  規則: 不可信復原紀錄不能改動文件\n    場景大綱: 分別拒絕不可信紀錄\n      假如 已有完整正式文件與旁邊保留的交易資料\n      而且 交易紀錄存在「<問題>」\n      當 嘗試取得寫入權\n      那麼 要求復原處理\n      而且 正式文件及其他保留資料不變\n      而且 不依不可信路徑刪除或恢復任何文件\n      例子:\n        | 問題 |\n        | 不支援的格式版本 |\n        | 損毀的完整性校驗 |\n        | 引用範圍外位置 |\n        | 綁定另一份正式文件 |\n        | 欄位或總長度超出限制 |\n        | 內容被截斷或多出資料 |\n\n  @IO_ADD_08 @IO_BDD_14\n  規則: 重新啟動不能猜測未完成保存的有效版本\n    場景: 新程序遇到未完成交易\n      假如 上次程序留下未完成保存紀錄與可用版本\n      當 新程序嘗試取得該文件寫入權\n      那麼 要求復原處理\n      而且 不自動選擇或覆寫任一版本\n\n  @IO_ADD_09 @IO_BDD_16\n  規則: 寫入權受持有者生命週期控制\n    場景大綱: 產品持有者結束後其他程序可以接手\n      假如 一個程序已取得文件寫入權且尚未開始保存\n      當 持有者「<結束方式>」\n      那麼 另一程序可取得該文件寫入權\n      而且 不需等待鎖定紀錄過期或刪除鎖定文件\n      例子:\n        | 結束方式 |\n        | 正常釋放寫入權 |\n        | 異常終止程序 |\n\n  @IO_ADD_10 @IO_BDD_18\n  規則: 已確認的保存成功不因事後清理失敗改報失敗\n    場景: 完整提交後無法清理暫存\n      假如 正式文件已包含完整新內容且提交已確認\n      而且 只剩自有暫存無法清理\n      當 回報保存結果\n      那麼 回報保存成功且新內容可讀\n      而且 保留可辨識的完成紀錄與未清暫存\n      而且 其他文件不被刪除\n\n  @IO_ADD_12 @IO_BDD_17\n  規則: 回復不得覆蓋非本次提交的外部內容\n    場景: 回復前正式文件已被改成第三版本\n      假如 本次保存失敗\n      而且 正式文件已被外部改成第三版本\n      當 處理回復\n      那麼 要求復原處理\n      而且 第三版本完整保留\n",
+    "history_note": "Historical planning tags preserved; accepted behavior authority is protocol A + acceptance + current owner implementation authorization."
+  },
+  "coverage_categories": {
+    "B1_success": "ADD02/11",
+    "B2_boundary": "ADD01/07/11",
+    "B3_invalid": "ADD05/06",
+    "B4_dependency": "ADD03/04",
+    "B5_partial": "ADD03/04/10",
+    "B6_consistency": "ADD01/02/12",
+    "B7_transaction": "ADD03/04/10/13",
+    "B8_lifecycle": "ADD08/09/13",
+    "B9_recovery": "ADD04/08/13",
+    "B10_cross_module": "Ports↔Adapter ADD02/09；HOST整合deferred到後續，維持本次不接入",
+    "B11_compatibility": "ADD05/07，Windows11 L3 gate",
+    "B12_regression": "既有20案例不弱化+library/WORK回歸"
+  },
+  "traceability": [
+    {
+      "requirement": "IO module contract 1",
+      "bdd": "IO-BDD-01",
+      "tests": [
+        "io_01_creates_exactly_one_new_directory"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 2",
+      "bdd": "IO-BDD-02",
+      "tests": [
+        "io_02_existing_file_or_directory_is_never_replaced"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 3",
+      "bdd": "IO-BDD-03",
+      "tests": [
+        "io_03_invalid_names_are_rejected_without_child_creation"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 4",
+      "bdd": "IO-BDD-04",
+      "tests": [
+        "io_04_other_adapter_instance_cannot_take_an_owned_lease"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 5",
+      "bdd": "IO-BDD-05",
+      "tests": [
+        "io_05_independent_process_handle_blocks_product_lease"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 6",
+      "bdd": "IO-BDD-06",
+      "tests": [
+        "io_06_process_death_releases_handle_without_stale_file_deletion"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 7",
+      "bdd": "IO-BDD-07",
+      "tests": [
+        "io_07_new_file_commit_matches_bytes_and_receipt"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 8",
+      "bdd": "IO-BDD-08",
+      "tests": [
+        "io_08_existing_file_commit_keeps_complete_new_content"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 9",
+      "bdd": "IO-BDD-09",
+      "tests": [
+        "io_09_stale_digest_rejects_without_changing_original"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 10",
+      "bdd": "IO-BDD-10",
+      "tests": [
+        "io_10_expected_presence_mismatch_never_overwrites"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 11",
+      "bdd": "IO-BDD-11",
+      "tests": [
+        "io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 12",
+      "bdd": "IO-BDD-12",
+      "tests": [
+        "io_12_post_publish_failure_restores_old_before_ordinary_error"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 13",
+      "bdd": "IO-BDD-13",
+      "tests": [
+        "io_13_failed_restore_retains_versions_and_blocks_followup"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 14",
+      "bdd": "IO-BDD-14",
+      "tests": [
+        "io_14_unfinished_prepared_record_rejects_reopen"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 15",
+      "bdd": "IO-BDD-15",
+      "tests": [
+        "io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 16",
+      "bdd": "IO-BDD-16",
+      "tests": [
+        "io_16_normal_handle_close_allows_immediate_reacquisition"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 17",
+      "bdd": "IO-BDD-17",
+      "tests": [
+        "io_17_observed_external_edit_before_publish_is_not_overwritten"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO module contract 18",
+      "bdd": "IO-BDD-18",
+      "tests": [
+        "io_18a_foreign_temp_collision_is_not_deleted",
+        "io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-01",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_01_empty_file_is_present_not_absent",
+        "gap_01_expected_absent_actual_present_digests",
+        "gap_01_expected_present_actual_absent"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-02",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_02_new_empty",
+        "gap_02_new_nonempty",
+        "gap_02_read_absent_exactly_none",
+        "gap_02_read_empty_exactly_some_empty",
+        "gap_02_replace_empty",
+        "gap_02_replace_nonempty"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-03",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_03_before_publish_absent",
+        "gap_03_before_publish_old",
+        "gap_03_commit_publish_absent",
+        "gap_03_commit_publish_old",
+        "gap_03_commit_sync_absent",
+        "gap_03_commit_sync_old",
+        "gap_03_commit_verify_absent",
+        "gap_03_commit_verify_old",
+        "gap_03_commit_write_absent",
+        "gap_03_commit_write_old",
+        "gap_03_new_sync_absent",
+        "gap_03_new_sync_old",
+        "gap_03_new_write_absent",
+        "gap_03_new_write_old",
+        "gap_03_old_sync",
+        "gap_03_old_write",
+        "gap_03_prepared_publish_absent",
+        "gap_03_prepared_publish_old",
+        "gap_03_prepared_sync_absent",
+        "gap_03_prepared_sync_old",
+        "gap_03_prepared_verify_absent",
+        "gap_03_prepared_verify_old",
+        "gap_03_prepared_write_absent",
+        "gap_03_prepared_write_old",
+        "gap_03_publish_absent",
+        "gap_03_publish_old",
+        "gap_03_verify_absent",
+        "gap_03_verify_old"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-04",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_04_commit_restore_absent",
+        "gap_04_commit_restore_old",
+        "gap_04_commit_rollback_record_publish_absent",
+        "gap_04_commit_rollback_record_publish_old",
+        "gap_04_commit_rollback_record_sync_absent",
+        "gap_04_commit_rollback_record_sync_old",
+        "gap_04_commit_rollback_record_verify_absent",
+        "gap_04_commit_rollback_record_verify_old",
+        "gap_04_commit_rollback_record_write_absent",
+        "gap_04_commit_rollback_record_write_old",
+        "gap_04_commit_verify_restored_absent",
+        "gap_04_commit_verify_restored_old",
+        "gap_04_rollback_record_publish_absent",
+        "gap_04_rollback_record_publish_old",
+        "gap_04_rollback_record_sync_absent",
+        "gap_04_rollback_record_sync_old",
+        "gap_04_rollback_record_verify_absent",
+        "gap_04_rollback_record_verify_old",
+        "gap_04_rollback_record_write_absent",
+        "gap_04_rollback_record_write_old",
+        "gap_04_verify_restore_absent",
+        "gap_04_verify_restore_old",
+        "gap_04_verify_restored_absent",
+        "gap_04_verify_restored_old"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-05",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_05_bom",
+        "gap_05_checksum",
+        "gap_05_digest",
+        "gap_05_extra_field",
+        "gap_05_field_length",
+        "gap_05_invalid_utf8",
+        "gap_05_magic",
+        "gap_05_nul",
+        "gap_05_old_pair",
+        "gap_05_overflow",
+        "gap_05_payload_length",
+        "gap_05_state",
+        "gap_05_trailing",
+        "gap_05_truncated",
+        "gap_05_txid",
+        "gap_05_version_valid_checksum"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-06",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_06_absolute",
+        "gap_06_acquire_absolute",
+        "gap_06_acquire_ads",
+        "gap_06_acquire_binding",
+        "gap_06_acquire_bom",
+        "gap_06_acquire_checksum",
+        "gap_06_acquire_device",
+        "gap_06_acquire_digest",
+        "gap_06_acquire_drive",
+        "gap_06_acquire_extra_field",
+        "gap_06_acquire_field_length",
+        "gap_06_acquire_magic",
+        "gap_06_acquire_nul",
+        "gap_06_acquire_old_pair",
+        "gap_06_acquire_old_traversal",
+        "gap_06_acquire_overflow",
+        "gap_06_acquire_oversize",
+        "gap_06_acquire_payload_length",
+        "gap_06_acquire_state",
+        "gap_06_acquire_trailing",
+        "gap_06_acquire_traversal",
+        "gap_06_acquire_truncated",
+        "gap_06_acquire_txid",
+        "gap_06_acquire_unc",
+        "gap_06_acquire_utf8",
+        "gap_06_acquire_version",
+        "gap_06_ads",
+        "gap_06_device",
+        "gap_06_drive",
+        "gap_06_old_traversal",
+        "gap_06_target_binding",
+        "gap_06_traversal",
+        "gap_06_unc",
+        "gap_06_verified_prepared_diagnostics_absent",
+        "gap_06_verified_prepared_diagnostics_old"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-07",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_07_absent",
+        "gap_07_committed",
+        "gap_07_multibyte_4096",
+        "gap_07_multibyte_4097_rejected_by_byte_count",
+        "gap_07_path_4095",
+        "gap_07_path_4096_max_record",
+        "gap_07_path_4097",
+        "gap_07_path_empty",
+        "gap_07_path_minimum_file",
+        "gap_07_path_one_byte_cannot_be_absolute_file",
+        "gap_07_prepared",
+        "gap_07_recovery",
+        "gap_07_rolledback",
+        "gap_07_total_65535_not_valid_padding",
+        "gap_07_total_65536_not_valid_padding",
+        "gap_07_total_over_limit"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-08",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_08_bad_artifact",
+        "gap_08_committed",
+        "gap_08_committed_bad_artifact",
+        "gap_08_committed_foreign",
+        "gap_08_committed_mismatch",
+        "gap_08_foreign",
+        "gap_08_missing_journal",
+        "gap_08_next_orphan",
+        "gap_08_prepared",
+        "gap_08_recovery",
+        "gap_08_rolledback",
+        "gap_08_rolledback_absent",
+        "gap_08_rolledback_absent_missing_versions",
+        "gap_08_rolledback_mismatch",
+        "gap_08_rolledback_missing_versions",
+        "gap_08_terminal_missing_versions",
+        "gap_08_unknown"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-09",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_09_product_death_allows_child",
+        "gap_09_product_drop_allows_child"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-10",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_10_active_journal_next_collision_never_deletes_foreign",
+        "gap_10_committed_cleanup_failure_stays_success",
+        "gap_10_orphan_next_collision_fails_closed",
+        "gap_10_prepare_cleanup_fault_preserves_formal_and_foreign",
+        "gap_10_rollback_cleanup_preserves_preimage",
+        "gap_10_temp_collision_foreign_kept"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-11",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_11_ads",
+        "gap_11_backslash",
+        "gap_11_empty",
+        "gap_11_existing_empty_dir",
+        "gap_11_existing_file",
+        "gap_11_existing_nonempty_dir",
+        "gap_11_forward",
+        "gap_11_parent",
+        "gap_11_parent_missing",
+        "gap_11_reserved",
+        "gap_11_space",
+        "gap_11_trailing_dot",
+        "gap_11_trailing_space",
+        "gap_11_traversal",
+        "gap_11_traversal_cannot_create_in_another_owned_root"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-12",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_12_absent_rollback_preserves_external_new_file",
+        "gap_12_prepare_external_edit_preserved",
+        "gap_12_rollback_preserves_external_replacement"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-13",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_13_cleanup",
+        "gap_13_committed",
+        "gap_13_new_synced",
+        "gap_13_prepared",
+        "gap_13_published"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    },
+    {
+      "requirement": "IO-ADD-14",
+      "bdd": "approved gap behavior / protocol A",
+      "tests": [
+        "gap_14_complete_rollback_cleanup_absent_support",
+        "gap_14_complete_rollback_cleanup_old_support",
+        "gap_14_corrupt_remaining_version_rejected_support",
+        "gap_14_fixed_clock_parallel_names_support",
+        "gap_14_fixture_collision_retry_support",
+        "gap_14_fixture_retry_exhaustion_support",
+        "gap_14_helper_health_support",
+        "gap_14_missing_helper_classified_as_fixture_failure_support",
+        "gap_14_mutation_fixtures_preserve_checksum_support",
+        "gap_14_nonzero_helper_is_fixture_failure_support",
+        "gap_14_owned_native_handle_release_support",
+        "gap_14_partial_rollback_new_removed_support",
+        "gap_14_partial_rollback_old_removed_support",
+        "gap_14_premature_journal_deletion_rejected_support",
+        "gap_14_protocol_disconnect_classified_as_fixture_failure_support",
+        "gap_14_protocol_timeout_classified_as_fixture_failure_support",
+        "gap_14_unparsed_version_diagnostics_rejected_support",
+        "gap_14_v1_encoder_support",
+        "gap_14_v1_maximum_field_vector_support"
+      ],
+      "result": "PASS_CURRENT_HOST",
+      "formal_windows11": "NOT RUN"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PD-P1-IO-PREREQ-IMPL-01",
+      "primary_module": "file-commit",
+      "scope": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs"
+      ],
+      "state": "GREEN_REGRESSION_ARCHITECTURE_PASS_WINDOWS11_PENDING",
+      "protected": "All other product modules, Ports interfaces, lib exports, manifests, lockfiles, HOST/UI/WORK/StdFS"
+    }
+  ],
+  "acceptance": {
+    "at": "2026-11-01T12:13:03.932344+08:00",
+    "module": "file-commit",
+    "task": "PD-P1-IO-PREREQ-IMPL-01",
+    "status": "GREEN_REGRESSION_ARCHITECTURE_PASS_WINDOWS11_PENDING",
+    "checkout": {
+      "branch": "cursor/ui-bhv-arch-layer-editor",
+      "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+      "preexisting_dirty": true
+    },
+    "authorization": {
+      "standing": "products may implement automatically after accepted Skeleton/RED within approved envelope",
+      "current": "Owner explicitly requested IO-PREREQ product GREEN, regression, architecture acceptance and board evidence",
+      "historical_restriction": "Historical no-product authorization flags superseded for this slice only; original reports preserved"
+    },
+    "baseline": {
+      "valid_RED": 196,
+      "support_PASS": 19,
+      "compile": "PASS",
+      "protocol_A_sha256": "78d48b4949977ea6075f12c0032dd6f2d4ffe4600de2554c874ba48c138adea7",
+      "skeleton_acceptance": "../planning/alignment-acceptance/primary-adjudication.json"
+    },
+    "tests": {
+      "retained_original_cases": 215,
+      "retained_original_product_cases": 196,
+      "original_test_file_byte_prefix_preserved": true,
+      "GREEN": 220,
+      "original_support": 19,
+      "additive_regressions": 5,
+      "ignored": 0,
+      "infrastructure_failures": 0,
+      "additional_valid_RED": [
+        "additional-red-tests.txt: partial publish cleanup",
+        "safety-red-tests.txt: alias and external edit"
+      ],
+      "regressions": {
+        "ports-adapters-lib": 101,
+        "work": 222,
+        "host-lib": 84,
+        "adapter-build": 0
+      }
+    },
+    "build": "PASS",
+    "architecture_review": {
+      "at": "2026-11-01T12:13:03.932344+08:00",
+      "reviewer": "same assistant; separate static conformance pass after GREEN, no separately delegated reviewer",
+      "architecture_verdict": "PASS_WITHIN_APPROVED_ENVELOPE",
+      "acceptance_verdict": "PARTIAL_WINDOWS11_NATIVE_GATE_PENDING",
+      "checks": [
+        {
+          "item": "Module boundary",
+          "status": "PASS",
+          "evidence": "Only Windows adapter body/private helpers and additive owned tests changed; 790 other inventoried app files unchanged."
+        },
+        {
+          "item": "Dependency direction",
+          "status": "PASS",
+          "evidence": "Ports remain primitive; adapter uses existing SPEC hash and Windows FS/handle. No WORK/HOST/UI wiring or dependency changes."
+        },
+        {
+          "item": "Public contracts and schema",
+          "status": "PASS",
+          "evidence": "Both traits, four methods, receipt/error fields and journal protocol A unchanged; original 215 cases retained byte-for-byte."
+        },
+        {
+          "item": "Ownership",
+          "status": "PASS",
+          "evidence": "Lease owns native share_mode(0) handle; transaction tracks only exclusive-created artifacts. Atomic counter creates IDs only, not a lock/state registry."
+        },
+        {
+          "item": "Mutation boundary",
+          "status": "PASS",
+          "evidence": "Only selected target and owned scratch are changed. acquire validates journal read-only. No recursive cleanup or stale-lock deletion."
+        },
+        {
+          "item": "Transaction/failure paths",
+          "status": "PASS",
+          "evidence": "Prepared -> recheck -> publish -> verify -> committed; rollback verifies original and rolled-back record. Unconfirmed state returns RecoveryRequired and retains versions."
+        },
+        {
+          "item": "Cleanup",
+          "status": "PASS",
+          "evidence": "Hash-verified terminal artifacts only; journal removed last. Committed cleanup failure keeps successful receipt. Partial publish scratch has RED-to-GREEN regression."
+        },
+        {
+          "item": "Native identity",
+          "status": "PARTIAL",
+          "evidence": "Windows10 hard-link and case-alias refusal PASS; reparse and 8.3 alias native coverage remains IO-A-F1, not claimed complete."
+        },
+        {
+          "item": "Concurrency/lifecycle",
+          "status": "PASS",
+          "evidence": "Real child-process lease busy/drop/death and five journal crash/reopen checkpoint cases GREEN on current Windows10."
+        },
+        {
+          "item": "Architecture changes",
+          "status": "PASS",
+          "evidence": "No new Port, module, manager, adapter, ownership model, schema, or transaction guarantee. Native FFI is confined to private handle identity wrapper."
+        },
+        {
+          "item": "Platform acceptance",
+          "status": "NOT RUN",
+          "evidence": "Windows11 x64 required acceptance environment unavailable; Windows10 build19045 cannot satisfy that gate."
+        },
+        {
+          "item": "System/release",
+          "status": "NOT RUN",
+          "evidence": "No HOST/UI integration, installer, DCC, full-system test, commit, push or release in this slice."
+        }
+      ],
+      "blocking_architecture_findings": []
+    },
+    "scope": {
+      "changed_files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs"
+      ],
+      "protected_files_unchanged": 790,
+      "ports_lib_helper_manifests_lockfiles_unchanged": true
+    },
+    "native_helpers": {
+      "FILE_COMMIT_PROBE_PATH": {
+        "path": "D:\\AIAD\\apps\\sgenaxis-desktop\\target\\debug\\examples\\file_commit_probe.exe",
+        "sha256": "8aa9e45f38aefefb3b5052215f2a89305172153f8e017ffe1183506f0fc07776"
+      },
+      "FILE_COMMIT_CHECKPOINT_PROBE_PATH": {
+        "path": "D:\\AIAD\\apps\\sgenaxis-desktop\\target\\debug\\examples\\file_commit_probe-7ec69fb55709f64e.exe",
+        "sha256": "664765f3efbb46d4d1dc612c467926b94303a5b700c96b6d262002c4285358a5"
+      }
+    },
+    "environment": {
+      "platform": "Windows-10-10.0.19045-SP0",
+      "python": "3.10.6 (tags/v3.10.6:9c7b4bd, Aug  1 2022, 21:53:49) [MSC v.1932 64 bit (AMD64)]",
+      "os_version": [
+        "10",
+        "10.0.19045",
+        "SP0",
+        "Multiprocessor Free"
+      ],
+      "windows11": "NOT RUN",
+      "target": "Windows11 x64",
+      "actual": "Windows10 build19045",
+      "scope": "local adapter/module verification, not application/package/release"
+    },
+    "remaining": [
+      {
+        "id": "IO-WIN11",
+        "state": "IMPLEMENTATION_BLOCKED_ENVIRONMENT",
+        "required": "Windows11 x64 native suite with rebuilt normal and checkpoint helper binaries",
+        "attempted": "verified current OS is Windows10 build19045; no Windows11 environment configured",
+        "next": "run run_checks.py and regressions on actual Windows11; no architecture/Owner design decision required"
+      },
+      {
+        "id": "IO-A-F1",
+        "state": "PARTIAL",
+        "required": "native reparse/8.3 alias coverage; hard-link and case-alias now pass"
+      }
+    ],
+    "module_complete": false,
+    "release_authorized": false
+  },
+  "results": {
+    "gap_01_empty_file_is_present_not_absent": "ok",
+    "gap_01_expected_absent_actual_present_digests": "ok",
+    "gap_01_expected_present_actual_absent": "ok",
+    "gap_02_new_empty": "ok",
+    "gap_02_new_nonempty": "ok",
+    "gap_02_read_absent_exactly_none": "ok",
+    "gap_02_read_empty_exactly_some_empty": "ok",
+    "gap_02_replace_empty": "ok",
+    "gap_02_replace_nonempty": "ok",
+    "gap_03_before_publish_absent": "ok",
+    "gap_03_before_publish_old": "ok",
+    "gap_03_commit_publish_absent": "ok",
+    "gap_03_commit_publish_old": "ok",
+    "gap_03_commit_sync_absent": "ok",
+    "gap_03_commit_sync_old": "ok",
+    "gap_03_commit_verify_absent": "ok",
+    "gap_03_commit_verify_old": "ok",
+    "gap_03_commit_write_absent": "ok",
+    "gap_03_commit_write_old": "ok",
+    "gap_03_new_sync_absent": "ok",
+    "gap_03_new_sync_old": "ok",
+    "gap_03_new_write_absent": "ok",
+    "gap_03_new_write_old": "ok",
+    "gap_03_old_sync": "ok",
+    "gap_03_old_write": "ok",
+    "gap_03_prepared_publish_absent": "ok",
+    "gap_03_prepared_publish_old": "ok",
+    "gap_03_prepared_sync_absent": "ok",
+    "gap_03_prepared_sync_old": "ok",
+    "gap_03_prepared_verify_absent": "ok",
+    "gap_03_prepared_verify_old": "ok",
+    "gap_03_prepared_write_absent": "ok",
+    "gap_03_prepared_write_old": "ok",
+    "gap_03_publish_absent": "ok",
+    "gap_03_publish_old": "ok",
+    "gap_03_verify_absent": "ok",
+    "gap_03_verify_old": "ok",
+    "gap_04_commit_restore_absent": "ok",
+    "gap_04_commit_restore_old": "ok",
+    "gap_04_commit_rollback_record_publish_absent": "ok",
+    "gap_04_commit_rollback_record_publish_old": "ok",
+    "gap_04_commit_rollback_record_sync_absent": "ok",
+    "gap_04_commit_rollback_record_sync_old": "ok",
+    "gap_04_commit_rollback_record_verify_absent": "ok",
+    "gap_04_commit_rollback_record_verify_old": "ok",
+    "gap_04_commit_rollback_record_write_absent": "ok",
+    "gap_04_commit_rollback_record_write_old": "ok",
+    "gap_04_commit_verify_restored_absent": "ok",
+    "gap_04_commit_verify_restored_old": "ok",
+    "gap_04_rollback_record_publish_absent": "ok",
+    "gap_04_rollback_record_publish_old": "ok",
+    "gap_04_rollback_record_sync_absent": "ok",
+    "gap_04_rollback_record_sync_old": "ok",
+    "gap_04_rollback_record_verify_absent": "ok",
+    "gap_04_rollback_record_verify_old": "ok",
+    "gap_04_rollback_record_write_absent": "ok",
+    "gap_04_rollback_record_write_old": "ok",
+    "gap_04_verify_restore_absent": "ok",
+    "gap_04_verify_restore_old": "ok",
+    "gap_04_verify_restored_absent": "ok",
+    "gap_04_verify_restored_old": "ok",
+    "gap_05_bom": "ok",
+    "gap_05_checksum": "ok",
+    "gap_05_digest": "ok",
+    "gap_05_extra_field": "ok",
+    "gap_05_field_length": "ok",
+    "gap_05_invalid_utf8": "ok",
+    "gap_05_magic": "ok",
+    "gap_05_nul": "ok",
+    "gap_05_old_pair": "ok",
+    "gap_05_overflow": "ok",
+    "gap_05_payload_length": "ok",
+    "gap_05_state": "ok",
+    "gap_05_trailing": "ok",
+    "gap_05_truncated": "ok",
+    "gap_05_txid": "ok",
+    "gap_05_version_valid_checksum": "ok",
+    "gap_06_absolute": "ok",
+    "gap_06_acquire_absolute": "ok",
+    "gap_06_acquire_ads": "ok",
+    "gap_06_acquire_binding": "ok",
+    "gap_06_acquire_bom": "ok",
+    "gap_06_acquire_checksum": "ok",
+    "gap_06_acquire_device": "ok",
+    "gap_06_acquire_digest": "ok",
+    "gap_06_acquire_drive": "ok",
+    "gap_06_acquire_extra_field": "ok",
+    "gap_06_acquire_field_length": "ok",
+    "gap_06_acquire_magic": "ok",
+    "gap_06_acquire_nul": "ok",
+    "gap_06_acquire_old_pair": "ok",
+    "gap_06_acquire_old_traversal": "ok",
+    "gap_06_acquire_overflow": "ok",
+    "gap_06_acquire_oversize": "ok",
+    "gap_06_acquire_payload_length": "ok",
+    "gap_06_acquire_state": "ok",
+    "gap_06_acquire_trailing": "ok",
+    "gap_06_acquire_traversal": "ok",
+    "gap_06_acquire_truncated": "ok",
+    "gap_06_acquire_txid": "ok",
+    "gap_06_acquire_unc": "ok",
+    "gap_06_acquire_utf8": "ok",
+    "gap_06_acquire_version": "ok",
+    "gap_06_ads": "ok",
+    "gap_06_device": "ok",
+    "gap_06_drive": "ok",
+    "gap_06_old_traversal": "ok",
+    "gap_06_target_binding": "ok",
+    "gap_06_traversal": "ok",
+    "gap_06_unc": "ok",
+    "gap_06_verified_prepared_diagnostics_absent": "ok",
+    "gap_06_verified_prepared_diagnostics_old": "ok",
+    "gap_07_absent": "ok",
+    "gap_07_committed": "ok",
+    "gap_07_multibyte_4096": "ok",
+    "gap_07_multibyte_4097_rejected_by_byte_count": "ok",
+    "gap_07_path_4095": "ok",
+    "gap_07_path_4096_max_record": "ok",
+    "gap_07_path_4097": "ok",
+    "gap_07_path_empty": "ok",
+    "gap_07_path_minimum_file": "ok",
+    "gap_07_path_one_byte_cannot_be_absolute_file": "ok",
+    "gap_07_prepared": "ok",
+    "gap_07_recovery": "ok",
+    "gap_07_rolledback": "ok",
+    "gap_07_total_65535_not_valid_padding": "ok",
+    "gap_07_total_65536_not_valid_padding": "ok",
+    "gap_07_total_over_limit": "ok",
+    "gap_08_bad_artifact": "ok",
+    "gap_08_committed": "ok",
+    "gap_08_committed_bad_artifact": "ok",
+    "gap_08_committed_foreign": "ok",
+    "gap_08_committed_mismatch": "ok",
+    "gap_08_foreign": "ok",
+    "gap_08_missing_journal": "ok",
+    "gap_08_next_orphan": "ok",
+    "gap_08_prepared": "ok",
+    "gap_08_recovery": "ok",
+    "gap_08_rolledback": "ok",
+    "gap_08_rolledback_absent": "ok",
+    "gap_08_rolledback_absent_missing_versions": "ok",
+    "gap_08_rolledback_mismatch": "ok",
+    "gap_08_rolledback_missing_versions": "ok",
+    "gap_08_terminal_missing_versions": "ok",
+    "gap_08_unknown": "ok",
+    "gap_09_product_death_allows_child": "ok",
+    "gap_09_product_drop_allows_child": "ok",
+    "gap_10_active_journal_next_collision_never_deletes_foreign": "ok",
+    "gap_10_committed_cleanup_failure_stays_success": "ok",
+    "gap_10_orphan_next_collision_fails_closed": "ok",
+    "gap_10_prepare_cleanup_fault_preserves_formal_and_foreign": "ok",
+    "gap_10_rollback_cleanup_preserves_preimage": "ok",
+    "gap_10_temp_collision_foreign_kept": "ok",
+    "gap_11_ads": "ok",
+    "gap_11_backslash": "ok",
+    "gap_11_empty": "ok",
+    "gap_11_existing_empty_dir": "ok",
+    "gap_11_existing_file": "ok",
+    "gap_11_existing_nonempty_dir": "ok",
+    "gap_11_forward": "ok",
+    "gap_11_parent": "ok",
+    "gap_11_parent_missing": "ok",
+    "gap_11_reserved": "ok",
+    "gap_11_space": "ok",
+    "gap_11_trailing_dot": "ok",
+    "gap_11_trailing_space": "ok",
+    "gap_11_traversal": "ok",
+    "gap_11_traversal_cannot_create_in_another_owned_root": "ok",
+    "gap_12_absent_rollback_preserves_external_new_file": "ok",
+    "gap_12_prepare_external_edit_preserved": "ok",
+    "gap_12_rollback_preserves_external_replacement": "ok",
+    "gap_13_cleanup": "ok",
+    "gap_13_committed": "ok",
+    "gap_13_new_synced": "ok",
+    "gap_13_prepared": "ok",
+    "gap_13_published": "ok",
+    "gap_14_complete_rollback_cleanup_absent_support": "ok",
+    "gap_14_complete_rollback_cleanup_old_support": "ok",
+    "gap_14_corrupt_remaining_version_rejected_support": "ok",
+    "gap_14_fixed_clock_parallel_names_support": "ok",
+    "gap_14_fixture_collision_retry_support": "ok",
+    "gap_14_fixture_retry_exhaustion_support": "ok",
+    "gap_14_helper_health_support": "ok",
+    "gap_14_missing_helper_classified_as_fixture_failure_support": "ok",
+    "gap_14_mutation_fixtures_preserve_checksum_support": "ok",
+    "gap_14_nonzero_helper_is_fixture_failure_support": "ok",
+    "gap_14_owned_native_handle_release_support": "ok",
+    "gap_14_partial_rollback_new_removed_support": "ok",
+    "gap_14_partial_rollback_old_removed_support": "ok",
+    "gap_14_premature_journal_deletion_rejected_support": "ok",
+    "gap_14_protocol_disconnect_classified_as_fixture_failure_support": "ok",
+    "gap_14_protocol_timeout_classified_as_fixture_failure_support": "ok",
+    "gap_14_unparsed_version_diagnostics_rejected_support": "ok",
+    "gap_14_v1_encoder_support": "ok",
+    "gap_14_v1_maximum_field_vector_support": "ok",
+    "implementation_case_alias_is_conservatively_refused": "ok",
+    "implementation_hard_link_target_is_refused_without_content_change": "ok",
+    "implementation_partial_publish_temp_is_owned_and_cleaned": "ok",
+    "implementation_prepare_failure_with_external_edit_is_not_ordinary_storage": "ok",
+    "implementation_same_lease_can_commit_again_with_latest_digest": "ok",
+    "io_01_creates_exactly_one_new_directory": "ok",
+    "io_02_existing_file_or_directory_is_never_replaced": "ok",
+    "io_03_invalid_names_are_rejected_without_child_creation": "ok",
+    "io_04_other_adapter_instance_cannot_take_an_owned_lease": "ok",
+    "io_05_independent_process_handle_blocks_product_lease": "ok",
+    "io_06_process_death_releases_handle_without_stale_file_deletion": "ok",
+    "io_07_new_file_commit_matches_bytes_and_receipt": "ok",
+    "io_08_existing_file_commit_keeps_complete_new_content": "ok",
+    "io_09_stale_digest_rejects_without_changing_original": "ok",
+    "io_10_expected_presence_mismatch_never_overwrites": "ok",
+    "io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics": "ok",
+    "io_12_post_publish_failure_restores_old_before_ordinary_error": "ok",
+    "io_13_failed_restore_retains_versions_and_blocks_followup": "ok",
+    "io_14_unfinished_prepared_record_rejects_reopen": "ok",
+    "io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup": "ok",
+    "io_16_normal_handle_close_allows_immediate_reacquisition": "ok",
+    "io_17_observed_external_edit_before_publish_is_not_overwritten": "ok",
+    "io_18a_foreign_temp_collision_is_not_deleted": "ok",
+    "io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data": "ok",
+    "io_read_current_observes_complete_bytes_under_a_fixture_lease": "ok"
+  },
+  "review": {
+    "at": "2026-11-01T12:13:03.932344+08:00",
+    "reviewer": "same assistant; separate static conformance pass after GREEN, no separately delegated reviewer",
+    "architecture_verdict": "PASS_WITHIN_APPROVED_ENVELOPE",
+    "acceptance_verdict": "PARTIAL_WINDOWS11_NATIVE_GATE_PENDING",
+    "checks": [
+      {
+        "item": "Module boundary",
+        "status": "PASS",
+        "evidence": "Only Windows adapter body/private helpers and additive owned tests changed; 790 other inventoried app files unchanged."
+      },
+      {
+        "item": "Dependency direction",
+        "status": "PASS",
+        "evidence": "Ports remain primitive; adapter uses existing SPEC hash and Windows FS/handle. No WORK/HOST/UI wiring or dependency changes."
+      },
+      {
+        "item": "Public contracts and schema",
+        "status": "PASS",
+        "evidence": "Both traits, four methods, receipt/error fields and journal protocol A unchanged; original 215 cases retained byte-for-byte."
+      },
+      {
+        "item": "Ownership",
+        "status": "PASS",
+        "evidence": "Lease owns native share_mode(0) handle; transaction tracks only exclusive-created artifacts. Atomic counter creates IDs only, not a lock/state registry."
+      },
+      {
+        "item": "Mutation boundary",
+        "status": "PASS",
+        "evidence": "Only selected target and owned scratch are changed. acquire validates journal read-only. No recursive cleanup or stale-lock deletion."
+      },
+      {
+        "item": "Transaction/failure paths",
+        "status": "PASS",
+        "evidence": "Prepared -> recheck -> publish -> verify -> committed; rollback verifies original and rolled-back record. Unconfirmed state returns RecoveryRequired and retains versions."
+      },
+      {
+        "item": "Cleanup",
+        "status": "PASS",
+        "evidence": "Hash-verified terminal artifacts only; journal removed last. Committed cleanup failure keeps successful receipt. Partial publish scratch has RED-to-GREEN regression."
+      },
+      {
+        "item": "Native identity",
+        "status": "PARTIAL",
+        "evidence": "Windows10 hard-link and case-alias refusal PASS; reparse and 8.3 alias native coverage remains IO-A-F1, not claimed complete."
+      },
+      {
+        "item": "Concurrency/lifecycle",
+        "status": "PASS",
+        "evidence": "Real child-process lease busy/drop/death and five journal crash/reopen checkpoint cases GREEN on current Windows10."
+      },
+      {
+        "item": "Architecture changes",
+        "status": "PASS",
+        "evidence": "No new Port, module, manager, adapter, ownership model, schema, or transaction guarantee. Native FFI is confined to private handle identity wrapper."
+      },
+      {
+        "item": "Platform acceptance",
+        "status": "NOT RUN",
+        "evidence": "Windows11 x64 required acceptance environment unavailable; Windows10 build19045 cannot satisfy that gate."
+      },
+      {
+        "item": "System/release",
+        "status": "NOT RUN",
+        "evidence": "No HOST/UI integration, installer, DCC, full-system test, commit, push or release in this slice."
+      }
+    ],
+    "blocking_architecture_findings": []
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "task": "PD-P1-F11-DELIVERY-01",
+  "module": "M07",
+  "author": "/root/f11_feature_trace_packet",
+  "status": "DOCUMENT_PREPARATION_ONLY_PENDING_INDEPENDENT_REVIEW_OWNER",
+  "classification_legend": {
+    "direct": "F11 observable obligation; does not mean implemented",
+    "contextual": "Shared M07/F12 regression context; not counted as F11 delivery proof",
+    "prospective": "Candidate integration evidence/recipe only; not approved BDD or executable evidence"
+  },
+  "rows": [
+    {
+      "bdd_id": "BDD-22",
+      "original_verbatim": "@BDD-22 @M07 @REQ-19\n  規則: 無變更略過\n    場景: 無變更略過\n      假如 內容與上次成功快照相同\n      當 經過下一個60秒檢查點\n      那麼 不新增復原快照",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_equal_content_skips_despite_elapsed_time"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-22",
+      "pending_fixture": "same captured content at every polling tick 60/120/180; changed at 240",
+      "observable_oracle": "payload/index count unchanged until changed content; exactly one new successful snapshot after change",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-23",
+      "original_verbatim": "@BDD-23 @M07 @REQ-19\n  規則: 首次未保存內容\n    場景: 首次未保存內容\n      假如 新文件已有尚未保存的內容且沒有成功快照\n      當 到達60秒檢查點\n      那麼 該內容及必要素材納入首次快照",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_first_unsaved_content_requests_capture"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-23",
+      "pending_fixture": "unsaved R1 with immutable material bytes; no successful snapshot; 59/60/61 controlled seconds",
+      "observable_oracle": "59 no capture;60 eligible once;61 no duplicate; recovered payload and material hashes equal captured R1",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-24",
+      "original_verbatim": "@BDD-24 @M07 @REQ-20\n  規則: 寫入期間再變更\n    場景: 寫入期間再變更\n      假如 快照版本R正在保存\n      當 使用者再編輯成R加1\n      那麼 R成功只更新至R基準，R加1留待後續檢查",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_published_acknowledges_only_captured_fingerprint",
+        "m07_newer_edit_still_requests_capture_after_old_completion"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-24",
+      "pending_fixture": "hold R write;edit R+1;complete R;next eligible poll",
+      "observable_oracle": "baseline advances to R only;R+1 remains pending and next snapshot contains R+1",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-25",
+      "original_verbatim": "@BDD-25 @M07 @REQ-20\n  規則: 失敗重試\n    場景: 失敗重試\n      假如 已有有效快照且本輪寫入失敗\n      當 到達下一輪檢查\n      那麼 保留舊快照及待保存狀態並重試，不重疊啟動",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_failed_completion_keeps_previous_baseline",
+        "m07_next_due_check_retries_failed_capture",
+        "m07_inflight_check_does_not_overlap"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-25",
+      "pending_fixture": "valid old payload/index;fail new material/payload/index before publication;next polling round",
+      "observable_oracle": "old snapshot bytes/index remain usable;pending state retained;one retry next round with no overlap",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-26",
+      "original_verbatim": "@BDD-26 @M07 @REQ-20\n  規則: 不取中間狀態\n    場景: 不取中間狀態\n      假如 清空、合併或Undo尚未完成\n      當 到達檢查點\n      那麼 延後擷取直到完成或完整回復",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_mutation_defers_without_consuming_deadline",
+        "m07_stable_same_time_check_after_defer_is_eligible"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-26",
+      "pending_fixture": "pause clear/merge/Undo before stable commit then complete or rollback",
+      "observable_oracle": "no intermediate capture;stable committed or fully rolled-back content only",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-27",
+      "original_verbatim": "@BDD-27 @M07 @REQ-21\n  規則: 正式保存基準獨立\n    場景: 正式保存基準獨立\n      假如 存在成功快照及後續編輯\n      當 成功保存正式文件\n      那麼 不改快照基準、不立即刪除既有快照",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [],
+      "evidence_class": "no direct S1 behavior evidence",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-27",
+      "pending_fixture": "successful recovery R then edit R+1;formal save success and separate failure branches",
+      "observable_oracle": "formal save neither advances recovery baseline nor deletes snapshots;failure never consumes dirty",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-28",
+      "original_verbatim": "@BDD-28 @M07 @REQ-22\n  規則: 離線復原\n    場景: 離線復原\n      假如 原磁碟離線但復原內容與素材完整\n      當 從歷史開復原版本並另存\n      那麼 以未保存狀態開啟且可保存至新位置",
+      "f11_relation": "contextual",
+      "rationale": "Shared M07 regression obligation; REQ-22 primary F12 history/recovery behavior; not evidence of F11 native completion",
+      "existing_policy_tests": [],
+      "evidence_class": "no direct S1 behavior evidence",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-28",
+      "pending_fixture": "isolated complete recovery payload/materials;original disk unavailable;open history and save elsewhere",
+      "observable_oracle": "opens unsaved;offline material usable;new save succeeds without original path",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-29",
+      "original_verbatim": "@BDD-29 @M07 @REQ-22\n  規則: 移除歷史不刪檔\n    場景: 移除歷史不刪檔\n      假如 歷史中有復原版本\n      當 移除歷史紀錄\n      那麼 文件、快照與素材仍保留",
+      "f11_relation": "contextual",
+      "rationale": "Shared M07 regression obligation; REQ-22 primary F12 history/recovery behavior; not evidence of F11 native completion",
+      "existing_policy_tests": [],
+      "evidence_class": "no direct S1 behavior evidence",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-29",
+      "pending_fixture": "history entry refers valid payload/materials;remove only history entry",
+      "observable_oracle": "entry absent;formal file/snapshot/material bytes retained",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    },
+    {
+      "bdd_id": "BDD-30",
+      "original_verbatim": "@BDD-30 @M07 @REQ-17\n  規則: 多session隔離\n    場景: 多session隔離\n      假如 同專案有兩個獨立編輯工作階段\n      當 各自保存復原快照\n      那麼 以各SessionID隔離且互不覆寫",
+      "f11_relation": "direct",
+      "rationale": "Original F11 snapshot obligation",
+      "existing_policy_tests": [
+        "m07_other_session_completion_rejected",
+        "m07_other_project_event_rejected"
+      ],
+      "evidence_class": "historical pure S1 policy partial",
+      "current_product_status": "NOT RUN at feature/native layer",
+      "pending_recipe_id": "F11-RECIPE-30",
+      "pending_fixture": "same project sessions A/B;different captures;late A completion after close and new document binding",
+      "observable_oracle": "distinct SessionID snapshots never overwrite;late response cannot mutate new owner/document",
+      "new_seams": "PENDING_OWNER; no new API/port/schema/transaction approval implied"
+    }
+  ],
+  "ac11_verbatim": "AC11：虛擬時鐘60秒檢查、無變更零新快照；寫入中再編輯下一輪仍保存；索引前中斷保留舊快照；多session不覆寫。",
+  "x07_verbatim": [
+    "X07",
+    "M07",
+    "計時邊界59/60/61秒、慢寫跨多輪不重疊、素材中斷、索引中斷、權限與替代位置、正式保存失敗不吞dirty、session關閉時背景回報不得寫錯新文件。"
+  ],
+  "no_new_bdd": true
+}

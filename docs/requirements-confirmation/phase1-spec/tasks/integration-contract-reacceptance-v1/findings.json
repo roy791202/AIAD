@@ -1,0 +1,234 @@
+[
+  {
+    "id": "RR-F1",
+    "severity": "P1",
+    "cx": [
+      "CX-01"
+    ],
+    "modules": [
+      "M03-H2",
+      "M04"
+    ],
+    "evidence": [
+      {
+        "package": "M03-H2",
+        "pointer": "/effective_spec/owner_binding/records/DesignOwnerRecord",
+        "actual": "private DispatchHost-owned binding_ref UUID, trusted project UUID + document UUID from existing manifest/WORK adoption, canonical reference, one S1 DocumentSession, writer window-instance nonce, checked u64 owner_generation, projection epoch"
+      },
+      {
+        "package": "M03-H2",
+        "pointer": "/effective_spec/owner_binding/owner",
+        "actual": "M04 document_owner.rs owns exactly one S1 DocumentSession per project/document; design_owner.rs facade only, no initializer/registry duplication."
+      }
+    ],
+    "problem": "Owner top-level patch makes design_owner facade, but executable record description still owns one S1 DocumentSession; architecture dependency/transaction also retains direct DesignOwner→S1 wording. A Skeleton author can instantiate a second authority.",
+    "required_document_correction": "Replace record with facade-only {binding_ref,DocumentOwnerHandle,writer_binding}; prohibit owning/constructing DocumentSession. Update hexagonal/dependency/transaction diagrams and method-level call mapping to M04 input seam. Retain typed S1 DTO imports as data only; test one registry through both routes.",
+    "affected_gate": "M03-H2 runtime Skeleton and shared-owner integration",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  },
+  {
+    "id": "RR-F2",
+    "severity": "P1",
+    "cx": [
+      "CX-06",
+      "CX-07"
+    ],
+    "modules": [
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "evidence": [
+      {
+        "package": "M05",
+        "pointer": "/effective_spec/ports/MaterialStorePort",
+        "actual": "bind_store(trusted_project_selection: opaque token) -> StoreHandle; StoreHandle.inspect_identity() -> StoreIdentity; StoreHandle.index_target() -> opaque authorized path string for FileCommitPort; StoreHandle.import_blob(trusted_source_selection, max_bytes) -> BlobReceipt; StoreHandle.verify_blob(digest, expected_size) -> VerifiedBlob; no remove, overwrite, repair or arbitrary read API."
+      },
+      {
+        "package": "M05",
+        "pointer": "/effective_spec/ports/application_inputs",
+        "actual": {
+          "resolve": "resolve(context,ordered_requests)->ResolutionSnapshot",
+          "pin": "pin(context,snapshot,purpose,operation_id)->PinReceipt",
+          "validate_pin": "validate_pin(context,pin_receipt)->VerifiedPin",
+          "read_pinned_version": "read_pinned_version(context,VerifiedPin,asset_id,digest,max_bytes)->VerifiedBytes",
+          "import_verified_versions": "import_verified_versions(context,VerifiedBundle,purpose,operation_id)->ImportedPinnedManifest",
+          "transfer": "transfer(context,pin_id,RootManifest,AuthenticatedExternalProof,operation_id)->TransferReceipt",
+          "release": "release(context,pin_id,RootBundle,operation_id)->ReleasedReceipt|RetainedReasons"
+        }
+      },
+      {
+        "package": "M05",
+        "pointer": "/effective_spec/ui/internal_only",
+        "actual": "resolve/pin/transfer/release/publish_roots and legacy alias registration are application ports, NOT Tauri arbitrary invoke commands. No Viewer or automation grant inherited from label."
+      }
+    ],
+    "problem": "Shared application API promises verified pinned bytes, but storage Port still only imports/verifies and explicitly has no arbitrary read API. Replacing application_inputs also removed original import and register/publish_roots signatures although material_import/UI and provider lifecycle still require them.",
+    "required_document_correction": "Add bounded pin-authorized immutable blob read to MaterialStorePort with native hash/size/identity lifetime and exact error type; distinguish it from arbitrary path read. Restore exact import and authenticated root registration/publish inputs (or explicit internal ownership alternatives), call mapping and envelope/test seams. Validate callers M04/M06/M07 use identical signatures, no filesystem bypass.",
+    "affected_gate": "M05 catalog/native-store Skeleton; M06 export and M07 material-copy integration",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  },
+  {
+    "id": "RR-F3",
+    "severity": "P2",
+    "cx": [
+      "CX-03"
+    ],
+    "modules": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "evidence": [
+      {
+        "package": "M04",
+        "pointer": "/effective_spec/commands_ui/list/document_save/expected_revision",
+        "actual": "u64"
+      },
+      {
+        "package": "M04",
+        "pointer": "/effective_spec/commands_ui/response",
+        "actual": "Tagged Result {ok:{kind,payload}}|{error:DocumentError}. Projection {project_uuid,document_uuid,session_uuid,generation,revision,format,semantic_profile,dirty,can_mutate,health,pending_binding_ids,blocked_capabilities}; no mutable S1 handle exposed."
+      },
+      {
+        "package": "shared",
+        "pointer": "/wire_types/U64Decimal",
+        "actual": "JSON STRING regex^(0|[1-9][0-9]*)$, checked0..18446744073709551615; no plus/leading-zero/exponent/space. Rust u64 internal. JS keeps string/BigInt; never Number roundtrip."
+      }
+    ],
+    "problem": "Common decimal-string rule and11 document grammar vectors exist, but concrete wire DTO tables still say unqualified u64 or leave generation/revision untyped. This is an incomplete schema propagation, not proof that implementation already emits unsafe JSON numbers.",
+    "required_document_correction": "Materialize decimal-string JSON schema/closed DTO output fields for every command/result carrying revision/generation/sequence/count; distinguish persisted integer schemas from UI wire. Provide per-field transport fixture at2^53+1/u64MAX/max+1 and roundtrip oracle, without changing Rust u64.",
+    "affected_gate": "Affected UI DTO Skeleton/test definition only; native/catalog domain rules unaffected",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  },
+  {
+    "id": "RR-F4",
+    "severity": "P1",
+    "cx": [
+      "CX-08",
+      "CX-15"
+    ],
+    "modules": [
+      "M03-H2",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "evidence": [
+      {
+        "package": "M03-H2",
+        "pointer": "/effective_spec/dto/responses/InstallUndoTransfer",
+        "actual": "BindingProjection; changed bool and history_depth u64 string on actual content mutation only"
+      },
+      {
+        "package": "shared",
+        "pointer": "/proof_types/MutationReceipt",
+        "actual": "{Context,before_revision,after_revision,content_semantic,pin_id?,result:Applied|NoChange|AppliedRetentionDeferred}; after commit cannot be ErrorUnchanged."
+      }
+    ],
+    "problem": "Mutation contract now requires AppliedRetentionDeferred with actual revision/pin, but H2 closed response still only BindingProjection+changed/history_depth and lacks a deferred tag/proof/stage field. Error-only transport would misreport a committed mutation.",
+    "required_document_correction": "Replace exact install/undo response schema with tagged MutationReceipt+projection and closed retained-pin/proof fields; define facade mapping and UI state for Applied/NoChange/AppliedRetentionDeferred. Preserve actual committed revision; specify replay and revoked-caller response handling across M04/M06/M07.",
+    "affected_gate": "Mutation IPC/UI integration and postcommit failure acceptance",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  },
+  {
+    "id": "RR-F5",
+    "severity": "P1",
+    "cx": [
+      "CX-06",
+      "CX-15"
+    ],
+    "modules": [
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "evidence": [
+      {
+        "package": "shared",
+        "pointer": "/wire_types/Context",
+        "actual": "project_uuid/document_uuid/session_id/owner_generation/captured_revision/operation_id; UI strings decoded to existing typed IDs/u64; not label authority."
+      },
+      {
+        "package": "M05",
+        "pointer": "/effective_spec/schema/operation_record",
+        "actual": "{operation_id, caller_binding, input_digest, result_kind, receipt_digest, generation}; immutable replay record. Results include Published|Pinned|Transferred|Released. Same ID/different digest conflicts. No eviction/restart forgetfulness."
+      },
+      {
+        "package": "M05",
+        "pointer": "/effective_spec/ports/application_inputs",
+        "actual": {
+          "pin": "pin(context,snapshot,purpose,operation_id)->PinReceipt",
+          "transfer": "transfer(context,pin_id,RootManifest,AuthenticatedExternalProof,operation_id)->TransferReceipt",
+          "release": "release(context,pin_id,RootBundle,operation_id)->ReleasedReceipt|RetainedReasons"
+        }
+      }
+    ],
+    "problem": "Context includes operation_id and every pin/import/transfer/release also accepts operation_id, but parent workflow ID vs per-M05-call replay key derivation is unspecified. Reusing the same ID with distinct bodies conflicts with M05 immutable replay records; passing different Context IDs would fail exact pin-context checks. Durable issuer proof recovery is also only opaque-ID wording, not complete replay/proof record schema.",
+    "required_document_correction": "Separate workflow_id in immutable capture Context from transition operation_id; define deterministic child keys (workflow/module/action/attempt ordinal) and immutable request digest. List exact persisted replay/proof fields sufficient to revalidate issuer/context/phase after restart; if deliberately runtime-only, expose Unverified gate and never claim restart exactly-once. Add pin→transfer and import→transfer replay fixtures.",
+    "affected_gate": "Cross-owner pin/proof/replay contract readiness; no current product bug asserted",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  },
+  {
+    "id": "RR-F6",
+    "severity": "P2",
+    "cx": [
+      "CX-11",
+      "CX-12",
+      "CX-13",
+      "CX-14",
+      "CX-16",
+      "CX-17"
+    ],
+    "modules": [
+      "M01-S3",
+      "M02",
+      "M03-C1",
+      "M03-H2",
+      "M04",
+      "M05",
+      "M06-preflight",
+      "M06",
+      "M07"
+    ],
+    "evidence": [
+      {
+        "package": "central",
+        "pointer": "/integration-test-plan.json",
+        "actual": "51 planned normal/stale/late scenario rows with generic shared context/digest fixture"
+      },
+      {
+        "package": "all9",
+        "pointer": "/test-plan/preserved_original_cases",
+        "actual": {
+          "M01-S3": 89,
+          "M02": 101,
+          "M03-C1": 36,
+          "M03-H2": 62,
+          "M04": 83,
+          "M05": 124,
+          "M06-preflight": 64,
+          "M06": 100,
+          "M07": 110
+        }
+      }
+    ],
+    "problem": "All769 original rows and51CX rows are retained, but no explicit per-original-case unaffected/amended/superseded mapping or complete structured phase/failure fixtures ties changed interfaces to old oracles. Source-writer coverage/guard construction/typed projector/golden gates are correctly named, not satisfied. For example R→R+1 late ACK fixture must locate the permitted revision transition relative to FormalWriteReservation rather than bypass its Busy rule.",
+    "required_document_correction": "Add per-case mapping (oldID→newID/unchanged intent, no deletion/weakening), complete Context/pin/issuer records plus expected call/phase sequence and failure points; identify which R+1 transitions are permitted. Define source provider error/guard/writer-coverage fixtures and exact native commands under child envelope. Keep golden/projector/Win11 readiness separate; do not label generic recipes executable RED.",
+    "affected_gate": "Executable TDD/Skeleton acceptance; document-only proposal can still await Owner with these gaps explicit",
+    "classification": "PENDING_PROPOSAL_PRECISION_OR_RESIDUAL_CONTRADICTION; not approved SPEC_CONFLICT",
+    "status": "OPEN_NOT_FIXED_THIS_READONLY_REVIEW"
+  }
+]

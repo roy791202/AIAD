@@ -1,0 +1,961 @@
+{
+  "identity": {
+    "task": "M01-M07-CONTRACT-CONSISTENCY",
+    "primary_module": "requirements-governance",
+    "at": "2026-11-01T11:12:53.063449+00:00",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "status": "CHANGES_REQUIRED_PENDING_PROPOSAL_ALIGNMENT_ONLY",
+    "product_count": 796
+  },
+  "meaning": "跨模組契約一致性審查與一次確認overlay；不是architecture批准、產品驗收或所有模組結案。17項精確修訂提案，既有驗收不重開。",
+  "authority": "Latest user explicitly authorizes integration review documents only. Pending proposals diverge; no established approved-spec contradiction found in this scoped review. Accepted S1/IO unchanged.",
+  "packages": {
+    "M01-S3": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/index.html",
+      "revision": "bccd601d207e0ec6577c0c962136c673c92ff3315fc0c26b00811548d088a62f"
+    },
+    "M02": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/index.html",
+      "revision": "9cac16c44972538c066a8378f482a94c263a1011e403d49d6dd029e9bba4cd72"
+    },
+    "M03-C1": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/index.html",
+      "revision": "9c164ed163621efcc239f96a7ab4fb8b87adb2e464acc686fd2f4c4c64afd014"
+    },
+    "M03-H2": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/index.html",
+      "revision": "36b8c19e18799ecbd7b73656293f3436de3cfeeb2456240664a03ca90b659f61"
+    },
+    "M04": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/index.html",
+      "revision": "02475492a79010ea17faf899e4aebfc9f0828817445648d5a1e1576f40900999"
+    },
+    "M05": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/index.html",
+      "revision": "af74df0ce472a9987eee4ca7ea2139369c2bd0f780971c5a2be5a04c963ee131"
+    },
+    "M06-preflight": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/index.html",
+      "revision": "190c5e15758c229a7397aee76e7221b922845aafc5c32c890333825e6323a3bb"
+    },
+    "M06": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/index.html",
+      "revision": "6f7baca8ff3b145acaa2da287eb2648676f8627dd93138e4a696430e286a6abc"
+    },
+    "M07": {
+      "report": "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/index.html",
+      "revision": "eb558d15ed99be94000f72c1f71e72a3d68eb5f8b6492e5ed01cec0238ce1434"
+    }
+  },
+  "findings": [
+    {
+      "id": "CX-01",
+      "severity": "P1",
+      "classification": "PENDING_PROPOSALS_OWNERSHIP_DIVERGENCE",
+      "modules": [
+        "M03-H2",
+        "M04"
+      ],
+      "source_fields": "M03 owner_binding.owner / M04 architecture.ownership",
+      "finding": "H2 design_owner holds DocumentSession; newer M04 requires one common DocumentOwner. Both cannot own independent registries.",
+      "proposed_exact_amendment": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+      "blocked_scope": "M03 runtime owner and all consumers until joint owner amendment",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-02",
+      "severity": "P1",
+      "classification": "PENDING_PROPOSALS_DIGEST_DIVERGENCE",
+      "modules": [
+        "M03-H2",
+        "M04",
+        "M07"
+      ],
+      "source_fields": "M03 owner_binding.semantic_profile / M04 output_serialization / M07 capture_fingerprint",
+      "finding": "Old H2 untagged JSON differs shared tagged decimal-value profile; raw payload/RECOVERY-FP hashes are distinct.",
+      "proposed_exact_amendment": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+      "blocked_scope": "New design capture/ACK/generation/restore integration",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-03",
+      "severity": "P1",
+      "classification": "WIRE_PRECISION_GAP",
+      "modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "DTO revision/generation/u64 fields across packets",
+      "finding": "Several DTOs use u64 JSON number while UI JS cannot represent all u64 exactly; M01 has decimal-string projection.",
+      "proposed_exact_amendment": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+      "blocked_scope": "All affected UI DTO transport; no domain migration",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-04",
+      "severity": "P1",
+      "classification": "INCOMPLETE_HANDOFF_ORDER",
+      "modules": [
+        "M04",
+        "M05"
+      ],
+      "source_fields": "M04 save_health.receipt / M05 transactions.formal_save",
+      "finding": "M04 original receipt→ACK omits catalog root promotion required by newer M05.",
+      "proposed_exact_amendment": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+      "blocked_scope": "Formal save integrated with material pins",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-05",
+      "severity": "P1",
+      "classification": "SCHEMA_ENUM_CONFLICT",
+      "modules": [
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "M05 schema.pin_record.state/purpose / transactions.release / M06 lifecycle.export",
+      "finding": "Pin schema Held|Transferred omits Released used by release flow; M06 adds Export purpose absent M05.",
+      "proposed_exact_amendment": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+      "blocked_scope": "M05 catalog schema/decoder and M06 Export pin",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-06",
+      "severity": "P1",
+      "classification": "PORT_SIGNATURE_DRIFT",
+      "modules": [
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "M04 MaterialResolutionPort / M05 application_inputs / M07 M05_extension / M06 ports",
+      "finding": "M04 resolve snapshot has root_proof_id; M05 snapshot lacks matching field; later export/import methods and signatures differ.",
+      "proposed_exact_amendment": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+      "blocked_scope": "Material import/export/resolve callers; real provider readiness",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-07",
+      "severity": "P1",
+      "classification": "DEPENDENCY_CYCLE",
+      "modules": [
+        "M03",
+        "M04",
+        "M05",
+        "M07"
+      ],
+      "source_fields": "Codec/projector/owner dependencies across packets",
+      "finding": "M04 open needs M05, M05 binding identity might depend M03 owner, M07 root completeness needs future providers. Whole-module prerequisite would deadlock.",
+      "proposed_exact_amendment": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+      "blocked_scope": "Remove runtime construction cycle; do not weaken Unknown retention",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-08",
+      "severity": "P1",
+      "classification": "PIN_TRANSFER_MUTATION_OUTCOME",
+      "modules": [
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "candidate install / merge/undo/restore deferred outcomes",
+      "finding": "Precommit failure preservation does not cover postcommit root-transfer failure. H2 still expects ordinary successful projection or rejection.",
+      "proposed_exact_amendment": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+      "blocked_scope": "All content-mutation/root integration",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-09",
+      "severity": "P0",
+      "classification": "NATIVE_SOURCE_BINDING_INCOMPATIBILITY",
+      "modules": [
+        "M01-copy",
+        "M05",
+        "M06"
+      ],
+      "source_fields": "M06 ProjectCopyStoragePort directory rename / IO file_commit.rs decode f[1]!=target",
+      "finding": "New-project copy stages M05 FileCommit catalog then renames directory; existing journal embeds canonical target path and rejects changed target. Rebinding a handle alone cannot fix journal.",
+      "proposed_exact_amendment": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+      "blocked_scope": "New-project copy blocked REPLAN_REQUIRED until new M01/M06 publication protocol adopted",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-10",
+      "severity": "P1",
+      "classification": "RECOVERY_AVAILABILITY_GAP",
+      "modules": [
+        "M05",
+        "M07"
+      ],
+      "source_fields": "M07 restart/root_transfer_failed / self-contained recovery requirement",
+      "finding": "Self-contained verified bundle can remain forever unavailable if original project catalog/root transfer proof inaccessible after relocation/loss.",
+      "proposed_exact_amendment": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+      "blocked_scope": "Restore readiness UI and recovery evidence state machine",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-11",
+      "severity": "P1",
+      "classification": "GENERATION_FENCE_SEAM_GAP",
+      "modules": [
+        "M01",
+        "M02",
+        "M04"
+      ],
+      "source_fields": "M02 source_contracts.stale_window and envelope",
+      "finding": "Holding source fences is stated but provider handles and source writer coordination are not in exact Store3trait envelope; naive final check races.",
+      "proposed_exact_amendment": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+      "blocked_scope": "M02 activation blocked until exact provider-fence envelope/Skeleton accepted",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-12",
+      "severity": "P1",
+      "classification": "IO_PRIVATE_READ_SEAM_PRECISION",
+      "modules": [
+        "M02",
+        "IO"
+      ],
+      "source_fields": "M02 store_contract.private_IO_seam / existing IO inspect",
+      "finding": "New journal-read helper is necessary but must not turn arbitrary metadata read into recovery approval or share files incompatibly.",
+      "proposed_exact_amendment": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+      "blocked_scope": "Only new readonly integration, accepted IO implementation not reopened",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-13",
+      "severity": "P1",
+      "classification": "CAPTURE_VS_HEALTH_POLICY_DIFFERENCE",
+      "modules": [
+        "M04",
+        "M07"
+      ],
+      "source_fields": "M04 save_health.reserve / M07 capture_fingerprint.newer_edit",
+      "finding": "M04 blocks edits during formal WriteInFlight; M07 allows newer edits during immutable snapshot publication. These are different reservations, not one global saving state.",
+      "proposed_exact_amendment": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+      "blocked_scope": "Common owner reservation model/late ACK tests",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-14",
+      "severity": "P1",
+      "classification": "FORMAT_PROFILE_FEATURE_GAP",
+      "modules": [
+        "M03",
+        "M04",
+        "M06"
+      ],
+      "source_fields": "M04 lossless XML inspection/closed clear / M06 typed merge",
+      "finding": "Lossless XML inventory is not an adopted full entity/binding merge projector. C1 JSON cannot validate ESS XML or define every merge field.",
+      "proposed_exact_amendment": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+      "blocked_scope": "M06 actual merge and ESS clear/import typed semantics; not plain readonly inspection",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-15",
+      "severity": "P1",
+      "classification": "ERROR_AND_PROOF_DOMAIN_GAP",
+      "modules": [
+        "M01",
+        "M02",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "errors and result tags across packages",
+      "finding": "Opaque proof IDs/CommitReceipt DTO fields alone do not authenticate external commits or caller authority; identical digest string shapes have unrelated meanings.",
+      "proposed_exact_amendment": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+      "blocked_scope": "All cross-owner proof constructors/IPC error DTOs",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-16",
+      "severity": "P2",
+      "classification": "ENVELOPE_OVERLAP_AND_ORDER",
+      "modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "source_fields": "candidate envelope overlap",
+      "finding": "Multiple packets name same pending owner modules and shared composition files; union is not blanket authority.",
+      "proposed_exact_amendment": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+      "blocked_scope": "Shared-file work scheduling, all future Skeletons",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    },
+    {
+      "id": "CX-17",
+      "severity": "P2",
+      "classification": "READINESS_NOT_CONTRACT_PASS",
+      "modules": [
+        "M02",
+        "M06"
+      ],
+      "source_fields": "M02 render.golden_gate / M06 integration gates",
+      "finding": "Template source bytes/transitive lock golden and typed ESS merge mappings still incomplete; count-only BDD/recipes are not executable oracle acceptance.",
+      "proposed_exact_amendment": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+      "blocked_scope": "M02 renderer/template and M06 merge readiness only; others can proceed within ready scopes",
+      "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+    }
+  ],
+  "joint_contract_overlay": {
+    "identity": "ProjectUuid UUIDv4 from trusted M01 authority. DocumentUuid denotes physical document owner identity; SessionId/OwnerGeneration/RequestId scoped runtime. AssetId opaque immutable project namespace; version=(AssetId,ContentDigest). SnapshotId/GenerationId never substitute document/session. New-copy and restored unsaved documents receive fresh doc/session identity; content entity IDs only explicit format policy/preview changes. Foreign approvals retained as provenance, not authority.",
+    "digest_domains": {
+      "DefinitionRaw": "sha256:lowerhex64 exact M01 codec bytes",
+      "TemplateRaw": "sha256:lowerhex64 sealed template manifest/source bytes",
+      "GenerationApproval": "sha256:lowerhex64 exact sorted approved refs evidence projection",
+      "DesignSemantic": "{profile:SGA-DESIGN-SEM-v1,digest:lowerhex64}",
+      "EssSemantic": "{profile:M04-EssXmlV1-semantic-v1,digest:lowerhex64}",
+      "RecoveryFingerprint": "{profile:SGA-RECOVERY-FP-v1,digest:lowerhex64}",
+      "FileRaw/CatalogRaw/ArchiveRaw/PayloadRaw": "separate typed lowerhex64; no semantic comparison; wrap prefix only explicit S1 boundary"
+    },
+    "Context": "{project_uuid,document_uuid,session_id,owner_generation:u64,captured_revision:u64,operation_id}; exactly matched by every pin/proof/apply. UI decimal-string transport per CX03; server context authoritative.",
+    "ResolutionSnapshot": "Asset/version binding validation only; NOT root completeness or durable pin. Complete requires every requested version/target answered with exact context; unknown reference-bearing fields reject mutation.",
+    "PinReceipt": "{catalog_generation,catalog_raw_digest,pin_id,Context,purpose,versions_digest,issuer_receipt_id}; only M05 creates after durable catalog proof. Consumer validate_pin verifies current Held or explicitly valid transfer state plus context. No UI mint/TTL.",
+    "RootManifest": "{provider_id,epoch,scope,kind,source_revision,completeness,references,evidence_receipt_id}. Five kinds exactly accepted S1: LiveDocuments(including persisted formal docs),UndoHistory,RedoHistory,RecoverySnapshots,InFlightTransactions. Aggregate any missing component=>Unknown; no release/GC inference from Complete material resolution.",
+    "ExternalCommitProof": "Tagged FormalFile|RecoveryIndex|DocumentMutation|ProjectCopyReady|GenerationActivation|ArchiveExport with issuer-owned proof record, Context and typed byte/projection references. Different tag cannot satisfy another use case. Committed receipt verification checks target identity/path, expected prior Option raw hash,new raw hash,transaction ID; then cross-owner transfer, then corresponding ACK.",
+    "phases": [
+      "RejectedBeforeMutation (content unchanged; safe staged/orphan assets may retained)",
+      "Applied (content committed)",
+      "AppliedRetentionDeferred (content changed; Held retained)",
+      "CommittedAckDeferred (file/index committed; required handoff/ACK missing)",
+      "UncertainPublication (block affected writer/target; preserve evidence)",
+      "VerifiedPublished (all use-case required proofs verified)",
+      "DeliveryDeferred (verified committed result not delivered to old owner)"
+    ],
+    "lock_order": "No owner callback while holding catalog/index/active IO lease. Content capture under owner reservation then release; catalog pin transition under short catalog lease then release; external write then release; root transfer separate; matching ACK last. Generation special held SOURCE read reservations acquired before active writer and released after receipt; producer updates Busy/defer (pending choice). Project copy final-path quarantine avoids moving journals.",
+    "matrix": [
+      {
+        "operation": "edit/clear/merge/undo/restore",
+        "before": "durable Candidate/Import pin",
+        "commit": "single M04 content commit",
+        "after": "live/history root transfer",
+        "late_failure": "AppliedRetentionDeferred",
+        "baseline": "formal/recovery unchanged"
+      },
+      {
+        "operation": "formal save",
+        "before": "capture+Save pin",
+        "commit": "verified FileCommit receipt",
+        "after": "formal-root transfer→captured semantic ACK",
+        "late_failure": "CommittedAckDeferred",
+        "baseline": "formal captured only"
+      },
+      {
+        "operation": "snapshot",
+        "before": "capture+Recovery pin+all material copies",
+        "commit": "payload+index proof",
+        "after": "RecoverySnapshots root transfer→S1 Published+captured recovery ACK",
+        "late_failure": "Publication/ACK deferred",
+        "baseline": "recovery captured only"
+      },
+      {
+        "operation": "generation",
+        "before": "authenticated definition/template/design/approval preview +source reservations",
+        "commit": "seal then active CAS",
+        "after": "verified immutable snapshot delivery",
+        "late_failure": "ActivatedDeliveryDeferred",
+        "baseline": "no definition/design ACK"
+      },
+      {
+        "operation": "export",
+        "before": "capture+Export pin",
+        "commit": "native durable no-replace destination",
+        "after": "safe root-based pin release attempt",
+        "late_failure": "PublishedDeliveryDeferred",
+        "baseline": "no ACK"
+      },
+      {
+        "operation": "new project copy",
+        "before": "new identities+final-path quarantine",
+        "commit": "stable-path children then Ready marker",
+        "after": "trusted M01 bind selection",
+        "late_failure": "ProjectCopyDeferred",
+        "baseline": "no source ACK"
+      }
+    ]
+  },
+  "dependency_order": [
+    {
+      "wave": 0,
+      "work": "Owner adopts CX01-CX17 overlay +specific original packet decisions; mechanical module revision update before gates",
+      "requires": []
+    },
+    {
+      "wave": 1,
+      "work": "Shared typed context/digest/proof/error/decimal-wire contracts; module child envelopes; C1 pure codec precision",
+      "requires": [
+        0
+      ]
+    },
+    {
+      "wave": 2,
+      "work": "M01 S3 native identity/auth binding; M04 pure codec/projectors; M05 native store and catalog pure contracts; M06 preflight pure slice",
+      "requires": [
+        1
+      ]
+    },
+    {
+      "wave": 3,
+      "work": "M04 single DocumentOwner +M03 facade; M05 durable catalog/pin providers; root registrations may report Unknown; no release",
+      "requires": [
+        2
+      ]
+    },
+    {
+      "wave": 4,
+      "work": "M04 formal save/root/ACK; M03 candidate install and Viewer; M06 verified archive import/export; IO source read coordination child",
+      "requires": [
+        3
+      ]
+    },
+    {
+      "wave": 5,
+      "work": "M07 self-contained snapshot/recovery; M06 typed merge/Undo; M01-copy quarantine/Ready publication; M02 source fencing after golden gate",
+      "requires": [
+        4
+      ]
+    },
+    {
+      "wave": 6,
+      "work": "Cross-owner crash/late completion/deferred proof acceptance +Windows11 native aliases/durability; module preparation/product acceptance separate",
+      "requires": [
+        5
+      ]
+    }
+  ],
+  "envelope_review": {
+    "current_authorized_writes": [
+      "docs/requirements-confirmation/phase1-spec/tasks/integration-contract-review/**",
+      "PD-P1-ESS-DEC-01 own governance evidence note only"
+    ],
+    "candidate_product_union": "Computed per-module claims below are review data, NOT combined approval or permitted current edits.",
+    "shared_path_claims": {
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/permissions/host.toml": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/capabilities/default.json": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/ui/app.js": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/ui/index.html": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/ui/styles.css": [
+        "M01-S3",
+        "M03-H2"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/Cargo.lock": [
+        "M01-S3",
+        "M04"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs": [
+        "M01-S3",
+        "M02",
+        "M03-H2",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs": [
+        "M02",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs": [
+        "M02",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs": [
+        "M02",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/document_owner.rs": [
+        "M02",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/design_owner.rs": [
+        "M03-H2",
+        "M04",
+        "M05"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/material_store.rs": [
+        "M05",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/material_store.rs": [
+        "M05",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/asset_store.rs": [
+        "M05",
+        "M07"
+      ],
+      "apps/sgenaxis-desktop/src-tauri/src/material_owner.rs": [
+        "M05",
+        "M06",
+        "M07"
+      ]
+    },
+    "module_file_claim_counts": {
+      "M01-S3": 18,
+      "M02": 38,
+      "M03-C1": 0,
+      "M03-H2": 18,
+      "M04": 22,
+      "M05": 23,
+      "M06-preflight": 0,
+      "M06": 25,
+      "M07": 26
+    },
+    "proposed_delta_after_owner": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/generation_sources.rs (new explicit SourceReadReservation abstraction)",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/generation_sources.rs (native source fence adapter)",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_generation_sources.rs (native producer/read-fence races)",
+      "existing M01 dispatch.rs/M04 document_owner.rs provider hooks already shared; new exact restrictions required",
+      "M06 archive_exchange ProjectCopyStoragePort replace directory rename with final-path QuarantinedCopy→Ready marker; reader/startup gates require explicit M01 child revision"
+    ],
+    "protected": "All product source/tests, accepted S1/IO sources/results, all original packet files, all unrelated cards/HTML shell/root metadata. No commit/push/release."
+  },
+  "integration_BDD_TDD": [
+    {
+      "id": "INT-CX-01",
+      "given": "Original exact packages and context/receipt fixtures for M03-H2,M04",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+      "trace": "CX-01",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-02",
+      "given": "Original exact packages and context/receipt fixtures for M03-H2,M04,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+      "trace": "CX-02",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-03",
+      "given": "Original exact packages and context/receipt fixtures for M01,M02,M03,M04,M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+      "trace": "CX-03",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-04",
+      "given": "Original exact packages and context/receipt fixtures for M04,M05",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+      "trace": "CX-04",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-05",
+      "given": "Original exact packages and context/receipt fixtures for M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+      "trace": "CX-05",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-06",
+      "given": "Original exact packages and context/receipt fixtures for M04,M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+      "trace": "CX-06",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-07",
+      "given": "Original exact packages and context/receipt fixtures for M03,M04,M05,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+      "trace": "CX-07",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-08",
+      "given": "Original exact packages and context/receipt fixtures for M03-H2,M04,M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+      "trace": "CX-08",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-09",
+      "given": "Original exact packages and context/receipt fixtures for M01-copy,M05,M06",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+      "trace": "CX-09",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-10",
+      "given": "Original exact packages and context/receipt fixtures for M05,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+      "trace": "CX-10",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-11",
+      "given": "Original exact packages and context/receipt fixtures for M01,M02,M04",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+      "trace": "CX-11",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-12",
+      "given": "Original exact packages and context/receipt fixtures for M02,IO",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+      "trace": "CX-12",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-13",
+      "given": "Original exact packages and context/receipt fixtures for M04,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+      "trace": "CX-13",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-14",
+      "given": "Original exact packages and context/receipt fixtures for M03,M04,M06",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+      "trace": "CX-14",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-15",
+      "given": "Original exact packages and context/receipt fixtures for M01,M02,M04,M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+      "trace": "CX-15",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-16",
+      "given": "Original exact packages and context/receipt fixtures for M01,M02,M03,M04,M05,M06,M07",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+      "trace": "CX-16",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    },
+    {
+      "id": "INT-CX-17",
+      "given": "Original exact packages and context/receipt fixtures for M02,M06",
+      "when": "exercise corrected cross-owner boundary after joint adoption",
+      "then": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+      "trace": "CX-17",
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Only after exact accepted child Skeleton compiles and independent expected context/hash/phase oracle; absence of child/native provider is not valid RED."
+    }
+  ],
+  "decision_request": {
+    "mode": "ONE_OWNER_CONFIRMATION_PENDING",
+    "adopt": "CX01-CX17 exact amendments plus referenced original decisions as modified; explicit format/limit/clear/fence/no-delete choices retained, not auto-adopted",
+    "scope": "Adoption authorizes module contract/envelope revision preparation only; Skeleton still requires fully precise accepted dependencies/fixtures. Standing implementation authorization applies only after approved Skeleton+valid RED acceptance.",
+    "non_adoption": "If a correction rejected, affected child stays blocked; other independent adopted ready slices continue. No all-or-nothing global freeze."
+  },
+  "acceptance_preserved": [
+    "M01-S2 implemented scope acceptance",
+    "M02/M05/M07-S1 implemented scope acceptances",
+    "IO implemented scope acceptance; Win11/reparse/8.3 still pending",
+    "M06 preflight64oracle document-only acceptance",
+    "M03 C1 resource document correction acceptance"
+  ],
+  "verification": "STATIC_SOURCE_AND_DOCUMENT_REVIEW_ONLY; product compile/tests/build/RED/GREEN/native NOT RUN; same assistant review, not another reviewer.",
+  "original_hashes": {
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/artifact-hashes.json": "3bb01877241d28b84e5a3be8487c12721c93e44ecc5b76b9ce612e22a9dc1ed9",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/build_packet.py": "a914c836873ff2f52113085fe25fb297f343270a168feb604985e2e3c70af447",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/decisions.json": "757a36acdc94c5bef9ef4770b4116978faca1111c53379f93de4d3506e9c4364",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/definition-wire-schema.json": "70ffaf77d5ededa0b8cfd413a1cd7d7a09688b8943df0acaca2c4e13c50b00cd",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/dto-contract.json": "4dec6433259b5fc66c734c192b170cbf35d7cdd806ed39c81f6c17c77136ca20",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/envelope.json": "19dc4f71ff9bc846726002bb4e503aea82e486066b1ce79dda565de63bf34122",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/fixtures.json": "27b44ebd984e97217b6daa985921d623bb5b4842caaa0a7679aed8e10e773ea2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/index.html": "e9e2cc9c82ba5e45676b0461f41be33b34bc2add84cc6f918b83d58a60cfb937",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json": "6c8f3c8ed9591f65430dbfe0fd6a8937645d99ae3085bcf1e1c89d143d486457",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/module-spec.json": "118cd3d583b7ca2f1c90289e8e2f6ffde533ccec8ce9d2479fe488e83d997e5a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/module.feature": "37eca672bada28e455c7d8c66868a147ef750c3e8c40d84018e277251869bbd7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/native-contract.json": "48c29a296e99010747e42723f8f8ad580a9b82172691909e77f562edf73d53cb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/permissions-and-migration.json": "2fe7d00f8f9a6244ef3dbca82862bb391566bb41c384fb7a49bdd9480e0670f2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/provenance.json": "12cbe04b948deb4872d5afdabd67abc450a3fad0423e0b63d461219fe80b47c5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/review-request.json": "23dbabb449dcd5cb45eb6b5176e69297f2c4a5c28b3966a4e8841d89ae5c7214",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/s2-wire-types.json": "3c09592ee14e8e0750229a33911e1c399bb84310a1dc8df3b1eb741e7f56791e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/step-definition-stubs.json": "15eafdbc689e7aa5fd65a2b56c29cc69419b35edcaf7659d7725c39eedb4ca20",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/test-plan.json": "742d8c0a2eef0f7f90cbd9a074c4b2ee2ff9a37adfe8fdfa94ae2a7fab6ba080",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/traceability.json": "ca165756a87a0dda24ae5e05d46ed82c382d0c009573c7420686540c57137518",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/ui-schema.json": "6bc480f735a2ad52f72f1bf98d7c12cbb766a120e5fa078450689068975075fc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/verification.json": "37d4feecd560bc8f7701008ee755b59736c9f44433bb18a2b9191be5d7760144",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/artifact-hashes.json": "ed3dec664d559582fa92991a3d4efd889928bf35ab8a72ecd53592e187e2491d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/board-evidence.json": "5ca26c827cac6fec11ccf94eb0e35f93515d94dc1f0befa217377733662e137e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/build_packet.py": "d1b415d9fe144ba92936e6b6c588c31972304b219c8f8de67bf0ad4475825608",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/envelope.json": "03c2abc73b974b145c5f58624b9a95afc7871f71667fcce0b43c64cbf79d0217",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/fixtures.json": "8f97ab69333cc3d2133264d04448080de26e457899bcf0d50ea332819a589042",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/index.html": "9d4fb79083abb24210337fad0f633a6507f000873d7a4aa226ec81a698ca53a1",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/module-spec.json": "65d2deb5e37ffe99965eca734f76bc5a746f0db7b1eb1a1cd2d1e1a3dfb8ac5a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/module.feature": "78663eb70ec1ff18b4706b0c2fbc87598e3cc9d7a94d3afb08e0eca5a6aadf79",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/review-request.json": "f22addcaa269f5002a9fc31cff8644a61893600cdc508dab10049e3aa8f3b8f4",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/step-definition-stubs.txt": "07e05d35ffcb8779c9482506f0ddeece61ebc01740a31e0545a2583c118b1187",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/test-plan.json": "ae2b3ea58f67e53d42f47f1abb07474100af9d8419a7a3cbdfdd6d70d43f7257",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/generation-exact-design/verification.json": "ac4369fbe9d04ee0214b14d94e133a9b02d3f4e45e9a88699da4fb7dd188e421",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/artifact-hashes.json": "ff32b5779fd4ef70b44c11a59c55a6c7ae617981ec102f812ff04907aa95a545",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/index.html": "39940bebea011a1542af02c6f907a82cae29effbcd4f053437bcbf4bab311d30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/module-spec.json": "947b8463f6303f0c119bb8d6923272d25e78fb1b0de8dc6395e7df28dbb60dde",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/c1-owner-packet/review-request.json": "85e445e23ced5a7768d693274fc9c905da6b470002b3aef33eb6d08ed2b571d9",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/artifact-hashes.json": "3d99e0c4ef62111142c279f80c1e9bd5b741d396766107aeeb5540fece5019ab",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/build_packet.py": "ddcb9679d1f168efc0fb6d1d748da21c6e56ad8693eb5c84df2d8180a9db17cb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/decisions.json": "7b5bf6bf3b8dabbbc7cb9d6358756f14221873a97f65b6254f375c933f7da83e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/dto-errors.json": "f33fb36558131148cfa83622606c915ff429ea622b05c91f26c2f903f52ffa9e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/envelope.json": "ce30c4213f7963778283cda341923db1071a894931c1eec4aa3799bc15b76982",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/fixtures.json": "c4e5977ac0b160b707d07c4f7f913f04e09877f75326d76deb19764a409e95b7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/index.html": "600b45a4cedbf506f679770b2c8dcb721000b7985689ec423e451dc113c0df2f",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/lifecycle.json": "ab3d5b9011d22ee4ec0d25d27e3a429a37f2970d6e821dfedc3189f4f1efe438",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/module-spec.json": "7a6380539c904471c29ba2af504afcb4eae7995a4f709f24ba0f4828e8cd0a55",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/module.feature": "ebc456e6cd55fc47724a14f92020086a638e8ae9ce9aa7b4276ee1fcd7ba4f30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/owner-binding.json": "83a980f034c044421c506d28a5bc7e94f6708e5807c670bb68223bac232944d7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/permissions.json": "facf08c4f02bae07191a19e6d68630b5f47ec6aeabb36020be8ae48a9e5f9d71",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/review-request.json": "fb3d53d8893e016547d5a474b49201dfc50f137e1a8c05e4c19ba6d173ba1144",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/source-evidence.json": "737077dc2b7424b1375e19627eef9964a5ddacd1c5d9c4933e9c58db4e070847",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/step-definition-stubs.json": "1568e23343672d8cdd11a5fce2f76b22e1a13ba7db56ff01e24f0dd20d3664a5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/test-plan.json": "5c11d890d7669323364aea8f663171523f0e33a59803ec899e6a693eb6c9db1d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/traceability.json": "d958273d26868d6181c03ec7423644e22b7cc1f54b59e7cd0b65f4bbd967fac7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/ui-schema.json": "b295401ecc1af9a5d9577ee4a0a455277efa9e70a6cd7ba69e1980d4eb609754",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/verification.json": "a38ce89535c439418df9718c999e0a332bea7d37186433f68dcdeb876d173796",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/viewer-capability.json": "96f44bbf54e3d433d859c0413d966426be82c10f77f4fff6054f45ba6ae27a50",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/artifact-hashes.json": "fbc6f2cce9c2dbd30c98a5c6d3839303f6b86b621e7368c40ad9b4dcaad80fd2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/board-evidence.json": "a1ed9f33bae6be93672260fd0f3e1645810e51adabfd10d143f982377ef26b30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/build_packet.py": "4233782829a99e08395722e0ff3a57dd0a84cf3e3006045bbeae2f3057a74044",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/envelope.json": "6c2a64dbbda90fe58638e0839d8cc7ee559c4fe1b80ef86ab81142fb6af2c50b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/fixtures.json": "471bf2972b787b9781d870e198b7fc0d6876f2a36b0e163b4d65719ea64aa231",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/index.html": "d23925aac4489b60acb31c2a323f333926dbd7d6e4054a99111e0a05c73d3e24",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module-spec.json": "18e2225595f83bc09a897fc35a622adb6c69e4348a7dcec6588e8e02178780f8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module.feature": "69098048808d9a839c664eb7e0edc1dbb4511797707fad211ef0fd4c2b97aad7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/review-request.json": "50ede96105c2a8f66a8af66a90e3e2b5dc84cdf1df89b672e9ad5ae745dff3d8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/step-definition-stubs.txt": "fce7a8f8889891e51c165fc77179a0fba22effa9395b632ddf927f143e39b466",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/test-plan.json": "a70ade690c4a690a426923e1dc27117bb497a06c1f9a9408bab915c60d585872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/verification.json": "1673b3ac193642e5651241e0b25b44a0e9424361b42143122feb6d45d60cc069",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/artifact-hashes.json": "6af0160ed1c5281abf35fa3fae545a7435d9eaa361c171ed00986a03252389b6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/board-evidence.json": "e3e15b6965a4309c96f91e48ae79239f115483553148141f0e82203d6fc32784",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/build_packet.py": "d881037b29b21b8716c98bfb33c2c54a782b9ecf30952a80d9542f491ca5a136",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/envelope.json": "3386946efcee18f4b30eb2c926c18dda05cb6093d917019c22c69b427979d9e9",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/fixtures.json": "73fab03363d2e0ff700b4f52b76720f7ce124e7d74c527c6cf98926b1343eaec",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/index.html": "def7b5d90226b049a5ad4c09b6fbfbb38166e1490064cc4a86c44b73a79b964d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/module-spec.json": "e8fd306b6419e63ea2bfc2e0744424e46c9586b37a591634ebe113f3dabb4f28",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/module.feature": "75fb21ce8bb4543c96650e5ffca273758872ac1ef33d01f66b41cc15938461b6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/review-request.json": "efb1aa368bcb76effde4912a29ceea879ab710a8d2287f56ce085069c9dc6bb7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/step-definition-stubs.txt": "f52d3856197d17068e0d1b41632d26785bf4b1f6edade5f2940ef9dac9c36515",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/test-plan.json": "bbe21812512acccb6b5b80c275a9c28f52a58496d6a7b129d69214c044385703",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/verification.json": "67e9c126d913d6aafccf2eb85f85d8e2e315d622b2b80e8a537d54d90722ec8a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/artifact-hashes.json": "b8ec8aa49df2b3552835c4b8d44d81361be772cb63473ce57ef35db1d63c3b85",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/build_packet.py": "4a984c79b757a293d6b05e4632e91199a4a3812519907c0c193f2c088b9d1f99",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/index.html": "29db0c1a235a0b37dc63fe28ccfbc6fd808b9e87796b51bb1b7739f9806a2d91",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/module-spec.json": "caef36f9421f44bf799ddb31731fbceb653187902521baf7eb4a98e00e5de3b4",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/review-request.json": "d8745ae68337d1d4cfb44de1b9356003f8ec6ca84cda37eb1daae44db9e444cb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-owner-packet/verification.json": "0d90aeb710caef920a120a40f3c7bf320f20516fad1fde8223eaad6d26da7bd3",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/artifact-hashes.json": "ef893123fc69fff044ac68c624fb8a9d64df61ff1886a2dadd7746fce8b390dc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/board-evidence.json": "27f7ba2894b7c20d5bbbb34945d2d1c0c51fd818a94a3f60a856ec830b9b32bb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/build_packet.py": "255c93bb681affdaf5c7be8d33dcf62bfbcad251cec7f226c67f15e0c503b606",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/envelope.json": "6b3bd3cd76f2896c7e92a3e3ecf9c6862dedb91b36262c8ee83505125a03a74d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/fixtures.json": "28c13f96cce2b863a24d932216b67810d650e10acecd5901ab0704845a4d4c2a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/index.html": "f9bdc1290bc57ca598b7d8a1e00619b833b005705ff7c59931a434afe5016798",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/module-spec.json": "7bf6ac1dcf496e53916b4f6f8d627864871745544b40957d4ac88535d6e218e6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/module.feature": "5c7dafb18c0fe54defdfa83efa5a3ec1b9308ab44594bd1f9b28e954131334f7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/review-request.json": "f9a6c296981ad220fd29d5786f05c22fbeb27ac74f326178f16a5b70d56df2e1",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/step-definition-stubs.txt": "b6fffc457ccb17d0c4020501e5935dec74d834ee3e03f6b60bad6097fb7f8288",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/test-plan.json": "73d67bca10815d71ef5e599f6117f8df623c0c41089b638914fcde93acf48304",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/exchange-exact-design/verification.json": "b523a9dc77c3f08d6b4e8aca99e92db7946b671693de2f22a6a7561004f3febb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/artifact-hashes.json": "545a43860b8189476855d013fe957be7b9daa4052ada5254a295f48febe5ca72",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/board-evidence.json": "f50592efcdcea09332a660991d437193ba9b0208d24a7f5cb5ec4531229decf5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/build_packet.py": "3c1674e0958d715a858d42319bb414433e787a519777ef5ae525f273007e8f96",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/envelope.json": "1cbbf4a3f3021411595ea535b09aa0348748f5ea4e59a6dd268372011f076f49",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/fixtures.json": "48902dc4f22cd5dee697e1e3589189eab6bfdc42045ee158f8ea6ee8fb8c2ac4",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/index.html": "dc7dc0dce75589600b6a1f723ab1e3717ce7aa17cf3007e2a8a4b3c6dc1b268b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/module-spec.json": "99652f27d697bf0fe431ac08eef3e4f955b0961a027ea392ae95fcd5a1740577",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/module.feature": "2b50a43ed260dd0ec60b96babbe96c1813327a0b426c252c102ccb2978642294",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/review-request.json": "5313a4829420ba66db42be9fa982c9fe686e16b89ac0f5708dbd34f641b249d7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/step-definition-stubs.txt": "5b54ca0ef6be94af0160feebeb4070dc6dbd87c891189fdfc210371a4de8efbe",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/test-plan.json": "fa0555e92f4e89cfe3cdf06e0586135daf931e1c7f96823ce40ce1ac407e6f74",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/snapshot-exact-design/verification.json": "858bff93284af7941afc7e125cd37885f6aeb0e5496d07694a8f02b8499688c3",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/artifact-hashes.json": "cd2354a94ca5686f54831bbe409eff9772d6c00ea9b8ff65fa65907828a8f73a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/case-results.json": "a2e7008ccaf3826441dfacec5c6bcca2a8c69b687410193b4c1f01e7754bfd1c",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/index.html": "75e04ffd90d194431053923b0021e1946e5336bd76298f2be58a7e82e164ad3f",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/review.json": "e4f9d0dc0fad8508c5fab7ba30e0cd16bd5a14a5ae839aaab8ae61984f6c80f2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/reviewed-input-hashes.json": "45cb1b957ddb0998d44cee76f7d7ee2b908d52095dbc6b1f8e01a0142f25d076",
+    "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/preflight-document-reacceptance/review_documents.py": "aa1983acb44a479a6cd1c8ad4e8ad8250ffa13b10cc741320bec042b740ea070",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/commands.json": "43019916e5919919745d2ada92c49856b12bdd1cd8bceff4b719c0d206036671",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/delivery-evidence.json": "b314123e66509e63b05d36ccfa38baddd880448f720a46a9310337c203e7ac56",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/host-lib.txt": "e41f90e528b784e96a391026670f43169b779f77390cae3129763a409989b946",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/index.html": "d6ea4e5f2c4fc803aadcf47f9ee58a3c1024cac858fb2563b704f16995fb4128",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/review.json": "8ae453cff88198f73179bf72af8d4b4e9f9ba1364b304fbe64f691fe96fc775b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/work-build.txt": "dab4e4707b2e6fdbdead361b4487be475974a047edea846dd92bac44f319f872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/work-full.txt": "ff1ee4d9176e9c4b1b3c44436c0b14b0af710af7f1ff88fcd44a15017df7663a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/commands.json": "43019916e5919919745d2ada92c49856b12bdd1cd8bceff4b719c0d206036671",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/delivery-evidence.json": "b314123e66509e63b05d36ccfa38baddd880448f720a46a9310337c203e7ac56",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/host-lib.txt": "e41f90e528b784e96a391026670f43169b779f77390cae3129763a409989b946",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/index.html": "107738b6ab1ab69b969291d4cb8cca453acb05274fe09b13e8937b61c02468cc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/review.json": "cffacd12eb7c859d48a8123093dcd444bb7bae37523c132142013ac70de2b7ba",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/work-build.txt": "dab4e4707b2e6fdbdead361b4487be475974a047edea846dd92bac44f319f872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/s1/green/acceptance/work-full.txt": "ff1ee4d9176e9c4b1b3c44436c0b14b0af710af7f1ff88fcd44a15017df7663a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/commands.json": "43019916e5919919745d2ada92c49856b12bdd1cd8bceff4b719c0d206036671",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/delivery-evidence.json": "b314123e66509e63b05d36ccfa38baddd880448f720a46a9310337c203e7ac56",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/host-lib.txt": "e41f90e528b784e96a391026670f43169b779f77390cae3129763a409989b946",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/index.html": "73d4f3b631b596a91a693b29ac53aeab0dac088534c24d754e62184faa5101fa",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/review.json": "3ef7f2f2e5183beecc4d49a8a4f2377b382acf22149b6ecfebec1d751f7637b0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/work-build.txt": "dab4e4707b2e6fdbdead361b4487be475974a047edea846dd92bac44f319f872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/work-full.txt": "ff1ee4d9176e9c4b1b3c44436c0b14b0af710af7f1ff88fcd44a15017df7663a",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/accepted-test-lineage.json": "94a1181e24e5ce3803b841a40e5ead28c7164e94b41556dc43c083ce81490e3a",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/adapter-build.txt": "2617e71390afd524ef2dfabf71c2363c33d7f2b4a566b6e7906043bf9848e31e",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/automation-evidence.json": "a070d99a3f1115d869049bf575d7767f557d2bda988e887b2218e5566b634900",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/board-before.json": "fe2a7f6bd3fafbbdf7c3ec2549e127dd468846eecf0c6962e5eb30cc61be004a",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/board-evidence.json": "795db1d1bcb64fbcb644b88f41a518fac1f02485636596575fa9cf56bb7c5477",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/build_report.py": "d2ccd3b87a65e5108de629f32aaa35412035215593de17aa3447e251453b2d36",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/current-state.before.json": "9c226b7a049b697bbc5674e8eff75ff9623c404c5c54a23c7fc35e2140d79eff",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/host-lib.txt": "a486faff07a34eb11260ab074010d5aacd7d4f4203520913ed211a158c807b47",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-checkpoint.json": "70e8ce5c7832c87da43cf230b158aeb2094683c8edb4b4b50ce5026ce43afb32",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-checkpoint.txt": "d4fead313816726aa56e25c201b58d0ddb416d0bbd13928040161c01a72679d1",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-compile.json": "63ddb6881c22623a81add649d9864a8cc24698126bd8501dd976c43bb7a6e060",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-compile.txt": "83ef67f605a20911a044f05285679d5861d9e93628a4f7eaa9b78a06cf61f0fa",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-environment.json": "c35602e54537ce5460a9c82caed05457da5720a83df62eec8887c8cc0eb70cfb",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-helper.json": "393d2e34c4b8f39c8661a129404d84aa2d09934d3ed44a063c77d68f09efbbc5",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-helper.txt": "086fde1824c42862bd3e429add7e74e3182712a6796aeff4302c184ee3e70a49",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-tests.json": "b2ea3df5930938db4ae63c2207e2fb37e0d68b446fe8a4f3b133c18380ae5e6a",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/independent-tests.txt": "ad9823f4564ed89296106b1f63f360053682ebb5ab907e70266a096f2948191d",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/index.html": "165aee3aeab74bb9621864db580e98d7aae188230826042ecd70f9356982b59f",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/module-spec.json": "6dd968ceb2a6ae76fdea248a3ed9eb66b21aff4e6d202f17c464d39c427ccd8e",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/ports-adapters-lib.txt": "1d61a2d675da08ba33c183dfc0f90035e013cfb694244f4616c182348be0170c",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/regression.json": "fb6f8d150ed34cdcb1cc06a7308ce4375ddd1d2a49207e9cca9319ac71d4049e",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/regression.py": "698233269df564faf45835ddd738f183df26761ec85c70b3cb6249e6e311332c",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/review.json": "7a873867cfe163bf09b8a24e8de30b476b71286f2032ad4375094c8a1d728625",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/run_checks.py": "1980945f8ea8cbd8386bec6c01a3642ed45ff9adaa908b3a353044b14cbde51c",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/source-after.json": "caa7b3b6734fc72213304783275eb00064374b7eecd0cf72c79febfc4b61804e",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/source-before.json": "c3960824dca46a1af650edda6aa4f94d04eecba7978be8521a83b9a26e965391",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/test-preservation.json": "e51df2f04d1a37881ea333a7882e02df4480a2d8c6d2316e3f1ce9598865a290",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/update_board.py": "4d520cf6fe23df220d64c877277bcc3205508a376e03d7d57b8ecb01ddae9b3a",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/verification.json": "13d09c7a36049fedcb9557d3623e5a1df675bcaccaedf6c2a4cf4c325de9a761",
+    "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/work.txt": "b0c7773adf747090376517199aae2b8b7a7a1bf833977ce7dc937e9cd1e588dd"
+  }
+}

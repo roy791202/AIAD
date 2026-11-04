@@ -1,0 +1,88 @@
+{
+  "reviewer": "/root/io_alignment_reacceptance",
+  "date": "2026-11-01",
+  "scope": "Independent static reacceptance of IO-A-R1/R2/R3 contract-preserving test alignment and captured 196 first-assertion RED; no source/test/board mutation",
+  "verdict": "PASS_FOR_SKELETON_RED_PREPARATION_STAGE_ONLY",
+  "blocking_findings": [],
+  "gates": {
+    "three_findings_disposition": "3/3 RESOLVED_FOR_THIS_STAGE",
+    "contract_alignment": "PASS",
+    "architecture_and_ownership_preserved": "PASS",
+    "one_test_file_scope": "PASS;785 protected source hashes unchanged",
+    "observed_RED_log_and_source_review": "196/196 PASS",
+    "fixture_support_evidence": "19 PASS",
+    "regression_evidence": "Ports/Adapters library101 + WORK73 PASS",
+    "product_functionality": "NOT_IMPLEMENTED_BY_DESIGN",
+    "fresh_Cargo_execution_by_this_reviewer": "NOT_RUN; parent provides fresh independent execution"
+  },
+  "resolved_findings": [
+    {
+      "id": "IO-A-R1",
+      "verdict": "RESOLVED",
+      "location": "phase1_file_commit.rs:650-703,800-839,2078-2099",
+      "reason": "The verified ROLLED_BACK record is now captured before cleanup, checked for exact target/state/transaction ID/digest fields and header+payload checksum. Formal OLD/absence and actual fault consumption remain asserted. Final layout accepts no transaction directory, empty directory after journal-last deletion, or a valid retained terminal record with intact remaining versions. Complete-cleanup support fixtures exercise both original OLD and original absence. Journal-deleted-but-artifacts-left fixture is rejected. This removes forced retention without dropping terminal evidence."
+    },
+    {
+      "id": "IO-A-R2",
+      "verdict": "RESOLVED",
+      "location": "phase1_file_commit.rs:675-703,872-921,1396-1447,2101-2128",
+      "reason": "Generic rollback cleanup no longer forces redundant old.bin to survive. Captured terminal evidence, formal preimage, foreign-file preservation, reached/consumed cleanup fault and contents of retained artifacts remain checked. Both old-first and new-first partial cleanup orders are accepted by support regressions; corrupt retained versions are rejected. Existing recovery_fault preserves old/new versions on restore or verification failure and was not weakened."
+    },
+    {
+      "id": "IO-A-R3",
+      "verdict": "RESOLVED",
+      "location": "phase1_file_commit.rs:705-736,1057,2012-2058,2131-2153",
+      "reason": "Nine clear pre-parse rejection classes require old_version_path=None and new_version_path=None. Remaining Some paths are bound to their correct old/new basename and expected exact content. Two distinct public-boundary valid PREPARED-record cases require verified diagnostic paths for original present/absent targets. A support regression rejects the prior safe-looking fabricated-path counterexample for all nine classes."
+    }
+  ],
+  "quality_dimensions": {
+    "correctness": "PASS: new checks match adopted cleanup/provenance contracts; current RED only proves missing behavior",
+    "boundaries": "PASS within named alignment scope: complete/partial cleanup, absent/present preimage, invalid-vs-valid record diagnostics separated",
+    "error_handling": "PASS: invalid fixture/setup/timeout errors are not counted RED; expected caught assertion panics belong to passing support cases",
+    "complexity": "No blocking smell; helpers stay test-local and do not create product state ownership",
+    "coupling": "PASS: no Port/public API/schema/dependency change; adapter/helper/HOST/UI/WORK protected"
+  },
+  "findings": [],
+  "follow_up": [
+    {
+      "id": "IO-A-F1",
+      "severity": "P3",
+      "status": "SEPARATELY_RECORDED_NOT_EXPANDED",
+      "description": "Native alias/reparse/hard-link refusal coverage and Windows11 real-machine acceptance remain later gates. They do not invalidate this specific Skeleton/RED correction reacceptance."
+    }
+  ],
+  "suggested_refactors": [],
+  "risks": [
+    {
+      "level": "Low",
+      "area": "current scoped change",
+      "reason": "Only one test file changed; production methods remain explicit Skeleton errors."
+    },
+    {
+      "level": "Medium",
+      "area": "future product behavior",
+      "reason": "Each RED stops at first assertion. Actual rollback, cleanup, diagnostic parsing and OS lifetime behavior remain unproven until implementation and GREEN."
+    },
+    {
+      "level": "Medium",
+      "area": "environment/compatibility",
+      "reason": "Captured evidence host is Windows10/19045; Windows11/system/UI/package/release NOT RUN."
+    }
+  ],
+  "independence_and_evidence": {
+    "source_sha256": "1e68f7139d76bd97460f732aa218ead03d8a624868ec2689978e4d84133091f6",
+    "after_archive_matches_live_source": true,
+    "protected_source_files_verified": 785,
+    "protocol_A_sha256": "78d48b4949977ea6075f12c0032dd6f2d4ffe4600de2554c874ba48c138adea7",
+    "captured_cases": 215,
+    "captured_valid_first_assertion_RED": 196,
+    "captured_support_PASS": 19,
+    "compile_exit": 0,
+    "red_exit": 101,
+    "ignored": 0,
+    "logs": "../test-alignment/*.stdout.txt / *.stderr.txt / command JSON",
+    "source_before_after": "../test-alignment/phase1_file_commit.before.txt and phase1_file_commit.after.txt"
+  },
+  "completion_boundary": "The parent may close PD-P1-IO-PREREQ-RED-01 under the owner explicit stage-closure authorization once fresh runtime/scope proof agrees. This is not full file-commit module acceptance, product implementation authorization or release approval.",
+  "reviewer_writes": "Only this review.json and index.html; no product/tests/board writes."
+}

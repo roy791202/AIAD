@@ -1,0 +1,32 @@
+{
+  "current_write_scope": "only this planning directory + own board note",
+  "proposed_files": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "role": "new Port traits、CommitError/Receipt primitive data；不得依賴OS/FS"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+      "role": "only export new port module"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+      "role": "new Windows adapter、私有journal codec/transaction states/checkpoints；不改既有StdFileSystem"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+      "role": "only export adapter under existing std-adapters/Windows gate"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs",
+      "role": "controlled stage faults + real temp FS + cross-process integration"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/examples/file_commit_probe.rs",
+      "role": "proposal: isolated child-process test helper; no UI or production startup route"
+    }
+  ],
+  "protected": "all other source/tests; HOST/UI/WORK logic/old StdFileSystem/Cargo manifests/lockfiles protected unless a separately approved dependency option changes scope",
+  "delta_from_previous": "增加1個測試輔助example候選，以實測跨程序鎖及process death，不能只用thread測試冒充。原始5-file proposal未被默認擴權。",
+  "new_dependencies_recommended": 0
+}

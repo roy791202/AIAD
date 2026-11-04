@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-01",
+  "module": "file-commit",
+  "task": "PD-P1-IO-PREREQ-RED-01",
+  "verdict": "PARTIAL",
+  "state": "INDEPENDENT_ACCEPTANCE_PARTIAL_TEST_ALIGNMENT_REQUIRED",
+  "implementation_gate": "NOT_READY_FOR_IMPLEMENTATION",
+  "product_implementation": "NOT_AUTHORIZED",
+  "checkout": {
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "preexisting_dirty_workspace": true
+  },
+  "gates": {
+    "journal_protocol_A": "PASS",
+    "public_contract_skeleton": "PASS",
+    "architecture_dependency_and_ownership": "PASS_FOR_SKELETON",
+    "compile": "PASS",
+    "observed_first_assertion_RED": "194/194 PASS",
+    "fixture_support": "12/12 PASS",
+    "source_scope": "PASS",
+    "all_test_postconditions_match_contract": "PARTIAL",
+    "diagnostic_contract_assertions": "PARTIAL"
+  },
+  "fresh_runtime": {
+    "support_pass": 12,
+    "valid_observed_RED": 194,
+    "ignored": 0,
+    "ports_adapters_library_pass": 101,
+    "work_pass": 73,
+    "environment_failures": 0,
+    "source": "primary-assertions.json and command-specific raw logs"
+  },
+  "independence": {
+    "static_reviewer": "/root/io_a_independent_acceptance",
+    "static_report": "review.json",
+    "fresh_execution_and_scope": "/root",
+    "protocol_oracle": "protocol-oracle.json (independent Python vector arithmetic, not product parsing)",
+    "scope_report": "primary-scope.json"
+  },
+  "findings": [
+    {
+      "id": "IO-A-R1",
+      "severity": "P2",
+      "category": "TEST_CONTRACT_OVERCONSTRAINT",
+      "location": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs:736-741 (ordinary_fault post=true)",
+      "contract_reference": "proposal-v2-a.json failure_semantics cleanup; journal_update; IO-G3",
+      "description": "After an ordinary rollback Storage result, the test unconditionally reads journal.v1 and requires retained ROLLED_BACK. The adopted contract allows cleanup after verified rollback, deleting owned artifacts and journal last. Thus a conforming implementation can fail this postcondition because it completed valid cleanup. The existing first assertion RED remains genuine, but that does not validate later assertions.",
+      "conforming_counterexample": [
+        "publish fails",
+        "restore OLD/absence and verify",
+        "write and verify ROLLED_BACK",
+        "remove owned old/new",
+        "remove journal last",
+        "return original-stage Storage"
+      ],
+      "test_result_for_counterexample": "fs::read(journal.v1).unwrap() fails despite contract compliance",
+      "required_action": "Use existing test-only observation callback at an approved pre-cleanup checkpoint to capture and independently validate verified ROLLED_BACK. Separately assert final formal bytes/absence, preservation and either valid retained terminal state or completed owned cleanup. Add an explicit normal rollback-cleanup-success row; do not simply delete terminal evidence assertions.",
+      "blocks": "Module-contract readiness, not observed first-assertion RED validity"
+    },
+    {
+      "id": "IO-A-R2",
+      "severity": "P2",
+      "category": "TEST_CLEANUP_ORDER_OVERCONSTRAINT",
+      "location": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs:1336-1339 (cleanup_case false)",
+      "contract_reference": "proposal-v2-a.json IO-ADD-10; failure_semantics cleanup; IO-INV-3",
+      "description": "The generic cleanup.remove failure case requires old.bin to remain even after formal OLD has been restored and verified. The approved rule protects the unique preimage, not a particular redundant copy or deletion order. A legal cleanup can delete redundant old.bin, fail deleting new.bin, retain verified journal, and preserve formal OLD. This test forbids that legal order.",
+      "conforming_counterexample": [
+        "restore and verify formal OLD",
+        "verify ROLLED_BACK",
+        "delete redundant owned old.bin",
+        "fault while removing owned new.bin",
+        "retain journal and formal OLD",
+        "return error consistent with verified rollback"
+      ],
+      "test_result_for_counterexample": "old.bin.exists() assertion fails although no unique preimage or foreign data is lost",
+      "required_action": "Define which artifact the fault targets or allow both safe cleanup orders. Assert verified formal preimage, terminal evidence, foreign preservation and remaining artifact integrity. Test unique-preimage preservation separately at an actual unverified-restoration failure.",
+      "blocks": "Module-contract readiness"
+    },
+    {
+      "id": "IO-A-R3",
+      "severity": "P2",
+      "category": "MISSING_DIAGNOSTIC_CONTRACT_ASSERTION",
+      "location": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs:947-965 (acquisition_invalid diagnostics)",
+      "contract_reference": "proposal-v2-a.json journal_v1.diagnostics and validation_order",
+      "description": "For unparseable/unknown/checksum-invalid records the contract requires old/new diagnostics None until safe artifacts have been verified. Current assertions accept Some paths if they have the expected safe parent/basename; a decoder can therefore fabricate old.bin/new.bin diagnostic provenance and still pass all these assertions. Safe path syntax is not verification of the referenced version.",
+      "counterexample": "For invalid magic or checksum return RecoveryRequired with target/journal correct, reason nonempty, old_version_path=Some(area/old.bin), new_version_path=Some(area/new.bin), without decoding or validating either artifact. Current diagnostic assertions accept this.",
+      "required_action": "For the unmistakably pre-parse cases (bad magic, unsupported version, invalid checksum/framing/oversize), explicitly require old_version_path=None and new_version_path=None. Maintain separate assertions for the valid-record/verified-artifact cases that may legitimately provide paths.",
+      "blocks": "Diagnostic contract coverage; existing RED classification remains genuine"
+    },
+    {
+      "id": "IO-A-F1",
+      "severity": "P3",
+      "category": "FOLLOW_UP_COVERAGE",
+      "location": "proposal-v2-a.json assumptions[3]/IO-G2; phase1_file_commit.rs fixture and acquisition cases",
+      "description": "The adopted path boundary promises refusal of reparse/hard-link/uncertain aliases, but the source contains no SUT-facing reparse or hard-link refusal case. snapshot() rejecting a symlink fixture is not proof that acquire refuses an aliased target. This is separate from the 14 listed gap groups; do not silently expand this review into implementation.",
+      "required_action": "Record a focused Windows-native alias-boundary test follow-up or explicit deferred coverage gate, preserving Windows11 NOT RUN until real environment evidence exists.",
+      "blocks": "Do not claim complete alias/path security acceptance; nonblocking to confirmation of the 194 observed RED failures"
+    }
+  ],
+  "affected_postcondition_rows": {
+    "IO-A-R1": [
+      "gap_03_before_publish_old",
+      "gap_03_before_publish_absent",
+      "gap_03_publish_old",
+      "gap_03_publish_absent",
+      "gap_03_verify_old",
+      "gap_03_verify_absent",
+      "gap_03_commit_write_old",
+      "gap_03_commit_sync_old",
+      "gap_03_commit_publish_old",
+      "gap_03_commit_verify_old",
+      "gap_03_commit_write_absent",
+      "gap_03_commit_sync_absent",
+      "gap_03_commit_publish_absent",
+      "gap_03_commit_verify_absent"
+    ],
+    "IO-A-R2": [
+      "gap_10_rollback_cleanup_preserves_preimage"
+    ],
+    "IO-A-R3": "All pre-parse-invalid acquisition rows need strict diagnostic assertions; observed RED remains genuine"
+  },
+  "resolution_classification": "Contract-preserving TEST_ALIGNMENT required; adopted G1-G6 and option A stay confirmed. No new protocol decision requested. Do not alter production or tests during this acceptance.",
+  "recommended_next_steps": [
+    "Capture verified rollback terminal record before permitted cleanup; allow completed owned cleanup after return and add success-cleanup branch",
+    "Target the cleanup fault by artifact/order or assert preservation without requiring a redundant old.bin; keep unique-preimage safety case separate",
+    "For invalid framing/magic/version/checksum/size require old/new diagnostics None; independently test valid-record verified-artifact paths",
+    "Record Windows-native alias/refusal follow-up separately; do not silently expand this review",
+    "After authorized test-only corrections rerun compile-valid RED, scope proof and independent acceptance before product implementation"
+  ],
+  "not_run": [
+    "Product GREEN",
+    "Windows11 acceptance (actual host Windows10 build19045)",
+    "Full system/UI regression",
+    "Packaging/release"
+  ],
+  "changed_product_or_test_files_this_review": 0,
+  "source_files_verified_unchanged": 786,
+  "original_protected_files_verified": 783,
+  "no_commit_push_dispatch_release": true
+}

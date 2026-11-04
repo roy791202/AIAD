@@ -1,0 +1,108 @@
+{
+  "source": "docs/requirements-confirmation/phase1-spec/index.html",
+  "source_sha256": "7b6b376345c1163afa29518caf1b2da0e84e74ea78b020077a0ba182dc4f9a1e",
+  "authority": "User authorized opening execution work items; not blanket approval of proposed defaults/architecture or dispatch.",
+  "forbidden": [
+    "no product modifications before approved envelope and valid RED",
+    "no weakening BDD/tests",
+    "no green/commit/push/release",
+    "no dispatch/polling activation",
+    "no unrelated WIP or archived-card restoration"
+  ],
+  "verification": "NOT RUN; packet validation is static only",
+  "id": "PD-P1-F09-DELIVERY-01",
+  "module": "M06",
+  "title": "單文件合併與身分衝突｜規格到驗收交付",
+  "kind": "task",
+  "zone": "gray",
+  "status": "BLOCKED_PENDING_APPROVED_ENVELOPE_AND_VALID_RED",
+  "phase": "P3",
+  "intent": "作者從BIN選一份文件逐項採用內容，保留本機其他文件不變。",
+  "feature_refs": [
+    "F09"
+  ],
+  "dependencies": [
+    "PD-P1-M06-PREP-01",
+    "PD-P1-G01-DEC-01",
+    "PD-P1-G02-DEC-01"
+  ],
+  "allowed_files": [
+    "docs\\requirements-confirmation\\phase1-spec\\tasks\\M06\\F09/** (planning/evidence only until exact production envelope approved)"
+  ],
+  "protected_files": [
+    "all product source/tests until exact envelope approved",
+    "all files outside approved task envelope",
+    "other primary module authoritative state"
+  ],
+  "contract": [
+    "一份目標文件加必要素材／引用；新身分與引用調整須先預覽確認。建議：方案綁定目標revision及素材版本，過期重新預覽。",
+    "不動其他文件；採用刪除也須明選。共用素材不得就地替換而影響其他文件，建議建立新內容版本。",
+    "跨文件前置條件不滿足即阻擋；來源不明ID略過或另副本；取消／失敗完整回復，不留Undo；缺基準不自動合併。"
+  ],
+  "bdd": {
+    "scenario": "作者從BIN選一份文件逐項採用內容，保留本機其他文件不變。",
+    "flow": "選單一目標→預覽增改刪／素材／衝突→逐項選擇→檢查引用及目標版本→確認→整次套用。",
+    "observable_outcome": "AC09：跨文件依賴阻擋；取消與每個注入失敗點回到同一語義狀態；未受影響資料不變；一次成功套用只占一筆Undo。",
+    "gherkin": "../phase1.feature",
+    "scenario_ids": [
+      "BDD-09",
+      "BDD-10",
+      "BDD-11",
+      "BDD-12",
+      "BDD-13",
+      "BDD-14",
+      "BDD-15",
+      "BDD-16",
+      "BDD-17",
+      "BDD-18",
+      "BDD-19"
+    ],
+    "note": "模組情境為共用regression obligation；PREP須縮成該功能精確映射，不以同模組全數代替缺失新測試"
+  },
+  "tdd": {
+    "status": "NOT RUN",
+    "cases": [
+      [
+        "X06",
+        "M06",
+        "archive重複路徑、大小寫碰撞、父目錄穿越、連結、解開炸彈、版本未知；取消每階段、空間不足、來源不可讀。"
+      ]
+    ],
+    "fixture": "../fixtures.json",
+    "command": "BLOCKED: PREP must bind exact current runner/test target before RED; no guessed cargo target",
+    "valid_red": "Test compiles and fails for missing target behavior; fixture/compile/environment failure is not valid RED",
+    "levels": [
+      "L0 unit",
+      "L1 component",
+      "L2 module contract",
+      "L3 real adapter",
+      "L4 adjacent regression",
+      "L5 Windows system where applicable"
+    ]
+  },
+  "steps": [
+    "核對PREP、相關G決議、精確allowed檔案與契約",
+    "完成Feature/UI schema及三層Skeleton審查；必要時修正提案並重新批准",
+    "建立實際測試及fixture；親跑並保留有效RED原始log／版本",
+    "僅填批准骨架達GREEN，不改測試意圖",
+    "跑模組合約與相鄰回歸；分類所有失敗",
+    "審查架構、所有權、transaction、素材與快照交界",
+    "更新模組HTML及REQ→BDD→TDD→結果追溯，提交獨立驗收；不自行綠燈"
+  ],
+  "deliverables": [
+    "approved-envelope.json",
+    "bdd-and-test-mapping.json",
+    "red-evidence.json",
+    "green-and-regression-evidence.json",
+    "module.html",
+    "architecture-conformance.json"
+  ],
+  "acceptance": [
+    "AC09：跨文件依賴阻擋；取消與每個注入失敗點回到同一語義狀態；未受影響資料不變；一次成功套用只占一筆Undo。",
+    "先完成architecture/contract/BDD/Skeleton/RED門檻",
+    "已確認與建議界線不被混淆；對應建議先整體批准",
+    "module contract GREEN且回歸分類",
+    "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+    "不以元件或靜態結果冒充native UI／整體完成"
+  ]
+}
