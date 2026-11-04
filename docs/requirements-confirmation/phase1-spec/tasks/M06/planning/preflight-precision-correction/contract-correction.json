@@ -1,0 +1,65 @@
+{
+  "status": "PROPOSED_PENDING_OWNER_NOT_APPROVED",
+  "error_contract": {
+    "InvalidInput": {
+      "field": "RFC6901 JSON pointer, rooted at /report, /context or /choice; indices decimal zero-based",
+      "reason": [
+        "Empty",
+        "ContainsNul",
+        "TooLongUtf8",
+        "TooManyItems",
+        "InvalidDigest",
+        "InvalidRevision",
+        "InvalidChoice",
+        "InvalidBlockerKind"
+      ]
+    },
+    "StaleSource": "unit",
+    "StaleTarget": "unit",
+    "CrossDocumentChangeRequired": "unit"
+  },
+  "validation_order": [
+    "/report/source_digest",
+    "/context/expected_source_digest",
+    "/report/target_document_id",
+    "/context/target_document_id",
+    "/report/target_revision",
+    "/context/target_revision",
+    "/report/blockers count",
+    "each /report/blockers/i: kind, subject, reason in ascending index",
+    "/report/missing_external_dependencies count",
+    "each missing ID ascending index",
+    "/choice"
+  ],
+  "string_validation": "No trim/normalization. Check Empty -> ContainsNul -> TooLongUtf8. Whitespace-only nonempty IDs/diagnostics remain literal data in this pure slice; HOST must apply authoritative identity rules. UTF-8 bytes, not scalar count. Digest syntax exact sha256:+64 lowercase hexadecimal; any mismatch InvalidDigest.",
+  "semantic_precedence": [
+    "after ALL structural input validation, nonempty blockers -> Blocked before freshness or cross-document checks",
+    "no blockers: source digest mismatch -> StaleSource",
+    "then target ID or revision mismatch -> StaleTarget",
+    "then requires_other_document_change -> CrossDocumentChangeRequired",
+    "then empty missing list -> AllowedComplete regardless of choice",
+    "then NotConfirmed -> NeedsDependencyConfirmation",
+    "then ExplicitlyAcceptMissingExternal -> AllowedIncomplete with dependent_capabilities_blocked=true"
+  ],
+  "blocker_order": [
+    "UnsupportedFormat",
+    "UnsupportedVersion",
+    "Integrity",
+    "MissingInternalPayload",
+    "UnsafePath",
+    "AmbiguousEntry"
+  ],
+  "blocker_duplicate_policy": "Keep identical blockers, including exact duplicates. Sort stable by kind ordinal then subject UTF-8 bytes then reason UTF-8 bytes; every supplied valid reason remains represented. Missing dependency IDs alone sort/deduplicate by UTF-8 bytes. No locale sorting/casefold.",
+  "typed_boundary": "Actual Rust report/context revisions are u64 and enum values are closed. InvalidRevision/InvalidChoice/InvalidBlockerKind are reserved future decoding oracle errors, NOT constructible L0 Rust values. No serde/decoder added to this slice. Do not count impossible enum/out-of-range construction as executable domain RED.",
+  "bounds": {
+    "document_dependency_ID_UTF8_bytes": "1..256; no NUL",
+    "diagnostic_subject_UTF8_bytes": "1..1024; no NUL",
+    "diagnostic_reason_UTF8_bytes": "1..4096; no NUL",
+    "blockers": 256,
+    "missing_external_dependencies": 4096,
+    "revision": "u64, including0",
+    "digest": "sha256: plus64 lowercase hex",
+    "overflow": "typed InvalidInput, no truncation"
+  },
+  "authority": "Clarifies unapproved M06-R1-R4 proposal; not adopted product behavior. Full archive/schema/extract/Undo remains separate."
+}

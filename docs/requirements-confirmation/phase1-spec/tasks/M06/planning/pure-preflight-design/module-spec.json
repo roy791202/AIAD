@@ -1,0 +1,137 @@
+{
+  "module": "M06",
+  "slice": "M06-S1 proposed pure preflight",
+  "revision": "M06-PREFLIGHT-v1",
+  "status": "EXACT_PURE_PREFLIGHT_PROPOSAL_NOT_APPROVED",
+  "date": "2026-11-01T11:14:01.933000+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "authority": "Only M06 planning documents and own board evidence; no code, decoder, archive library or dependency created.",
+  "intent": "Make the confirmed hard-block versus explicitly accepted missing-external-dependency distinction executable as pure policy before archive/merge runtime is ready.",
+  "architecture": {
+    "hexagonal": "Future decoder/validator adapter -> HOST trusted report mapping -> WORK evaluate_import_preflight -> immutable decision. No new output port or actual archive parser in S1.",
+    "dependencies": "M01 project/document identity and M04 revision binding are context; M05 material validity and future M06 decoder supply observations. None are mutated.",
+    "ownership": "External package bytes and target document remain owned by original source/target boundary. A preflight report/decision is derived evidence, not a new document SSOT or authority to write.",
+    "mutation": "None. No extraction, identity allocation, reference remapping, Undo entry or filesystem path access. HOST must bind verified source and target revisions before actual apply in later slices.",
+    "transaction": "S1 returns a pure decision. Real verified-source capture, staged merge/rollback and single Undo are later separately approved transactions; Allowed is not a commit receipt."
+  },
+  "public_boundary_proposed": {
+    "function": "evaluate_import_preflight(report: &ImportValidationReport, context: &ImportPreflightContext, choice: IncompleteImportChoice) -> Result<ImportPreflightDecision, ImportPreflightError>",
+    "ImportValidationReport": "source_digest:String; target_document_id:String; target_revision:u64; blockers:Vec<ImportBlocker>; missing_external_dependencies:Vec<String>; requires_other_document_change:bool",
+    "ImportPreflightContext": "expected_source_digest:String; target_document_id:String; target_revision:u64",
+    "ImportBlocker": "kind: UnsupportedFormat | UnsupportedVersion | Integrity | MissingInternalPayload | UnsafePath | AmbiguousEntry; subject:String; reason:String",
+    "IncompleteImportChoice": "NotConfirmed | ExplicitlyAcceptMissingExternal",
+    "ImportPreflightDecision": "Blocked{problems:Vec<ImportBlocker>} | NeedsDependencyConfirmation{missing:Vec<String>} | AllowedComplete | AllowedIncomplete{pending_bindings:Vec<String>, dependent_capabilities_blocked:bool}",
+    "ImportPreflightError": "InvalidInput{field,reason} | StaleSource | StaleTarget | CrossDocumentChangeRequired",
+    "note": "Nested blocker-kind enum and data DTOs only. HOST must create this report from actual verified bytes and validation, never from UI claims that a package is safe."
+  },
+  "contracts": [
+    "Validate nonempty bounded document/dependency/subject/reason strings and sha256 syntax. Same project scope is resolved by HOST before this boundary; report is not authorization.",
+    "All blocking format/version/integrity/internal-payload/path/ambiguity problems yield Blocked even if missing dependencies were explicitly accepted. No destructive action or execution exists in any outcome.",
+    "With no blockers, source digest and target document/revision must match context. Mismatch yields StaleSource/StaleTarget; never mix validated and newly reopened bytes.",
+    "With no blockers and matching context, requires_other_document_change returns CrossDocumentChangeRequired, preserving the one-target-document merge boundary.",
+    "With no blockers/cross-document change and no missing external dependency return AllowedComplete. With missing dependencies and NotConfirmed return NeedsDependencyConfirmation. Explicit acceptance returns AllowedIncomplete with exact pending IDs and dependent_capabilities_blocked=true.",
+    "Sort/deduplicate missing dependency IDs by byte order; blocker list sort by fixed kind order then subject/reason. Do not silently discard a blocking reason. Outputs are action values, not proof of full container validity, successful commit or authorization to execute."
+  ],
+  "limits_proposed_not_confirmed": {
+    "document_dependency_ID_UTF8_bytes": "1..256; no NUL",
+    "diagnostic_subject_UTF8_bytes": "1..1024; no NUL",
+    "diagnostic_reason_UTF8_bytes": "1..4096; no NUL",
+    "blockers": 256,
+    "missing_external_dependencies": 4096,
+    "revision": "u64, including0",
+    "digest": "sha256: plus64 lowercase hex",
+    "overflow": "typed InvalidInput, no truncation"
+  },
+  "file_envelope_proposed": {
+    "existing": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/merge_plan.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_import_preflight.rs"
+    ],
+    "scope": "Only proposed module declaration + pure preflight data/function/tests. No actual merge mutation in this file/slice.",
+    "future_command": "cargo test -p sgenaxis-work --test phase1_import_preflight --no-run --locked then same without --no-run",
+    "target": "NOT CREATED"
+  },
+  "fixture_plan": [
+    {
+      "id": "M06-PURE-01",
+      "given": "supported verified report with no blockers/missing dependencies and matching revisions",
+      "then": "AllowedComplete, no mutation"
+    },
+    {
+      "id": "M06-PURE-02",
+      "given": "each blocking kind plus explicit missing-external acceptance",
+      "then": "Blocked with exact kind/subject/reason; confirmation never bypasses it"
+    },
+    {
+      "id": "M06-PURE-03",
+      "given": "no blockers but missing dependency, not confirmed versus explicitly accepted",
+      "then": "NeedsDependencyConfirmation versus AllowedIncomplete/pending IDs/dependent capability block"
+    },
+    {
+      "id": "M06-PURE-04",
+      "given": "source digest or target ID/revision changes independently",
+      "then": "StaleSource/StaleTarget with no allowed outcome"
+    },
+    {
+      "id": "M06-PURE-05",
+      "given": "another target document must change",
+      "then": "CrossDocumentChangeRequired, never silently broaden merge"
+    },
+    {
+      "id": "M06-PURE-06",
+      "given": "duplicate/reordered missing IDs and blockers",
+      "then": "deterministic sorted complete reasons; no loss of hard-block severity"
+    },
+    {
+      "id": "M06-PURE-07",
+      "given": "IDs/diagnostics/counts at min/max/max+1 and invalid digest",
+      "then": "exact bounds and no truncation"
+    }
+  ],
+  "out_of_slice": [
+    "Archive choice/manifest/ZIP/SGB parser and actual expanded-byte/path/link validation",
+    "Byte capture and native source/target TOCTOU protection",
+    "Actual ID provenance/copy preview/reference adjustment",
+    "Physical extract/apply/rollback/material transfer and Undo",
+    "UI confirmation IPC and runtime capability enforcement"
+  ],
+  "acceptance_for_future_slice": [
+    "Exact preflight DTO/error/precedence and three-file scope approved before Skeleton",
+    "Every hard-block kind tested against explicit incomplete acceptance",
+    "Missing internal payload never recategorized as optional external dependency",
+    "Stale/cross-document outcomes asserted through public boundary",
+    "No archive dependency, source execution or product mutation introduced"
+  ],
+  "consolidated_review_items": [
+    {
+      "id": "M06-R1",
+      "topic": "Pure normalized-report boundary and trust/ownership separation"
+    },
+    {
+      "id": "M06-R2",
+      "topic": "Hard-block precedence and explicit incomplete-import decision semantics"
+    },
+    {
+      "id": "M06-R3",
+      "topic": "Source/target freshness and one-document preflight rejection"
+    },
+    {
+      "id": "M06-R4",
+      "topic": "Bounded input model, deterministic diagnostics and three-file Skeleton/RED scope"
+    }
+  ],
+  "next": "One consolidated exact-design review. Archive schema/limits and real merge transaction remain separate preparation; no Skeleton or actual parser implementation until approved.",
+  "verification": {
+    "source_test_changes": 0,
+    "compile_RED": "NOT RUN",
+    "archive_native_validation": "NOT RUN",
+    "independent_review": "NOT RUN",
+    "module_complete": false
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "reviewer": "/root/m06_merge_retention_review",
+  "author": "/root/m06_merge_retention_handoff",
+  "verdict": "FINDINGS_DOCUMENT_ORACLE_PENDING_OWNER",
+  "passed": 20,
+  "total": 29,
+  "static_checks": {
+    "sealed_handoff": true,
+    "schema_exact": true,
+    "no_merge_role": true,
+    "inventory_796": true,
+    "source_unchanged": true,
+    "owner_choices_pending": true
+  },
+  "findings": [
+    {
+      "id": "MR-F1",
+      "severity": "DOCUMENTARY_COVERAGE_LIMITATION",
+      "scope": "Trusted issuer fixture internal consistency; not a caller-controlled exploit and not a demonstrated violation of its trusted fixture premise",
+      "contract_pointers": [
+        "merge-retention-handoff/index.html:17 exact full request/context/issuer/target/digest lineage",
+        "merge-retention-handoff/precise-mapping.json issuer_record_fields says represented, not all dynamically validated",
+        "merge-retention-handoff/model.py evaluate import-record matched predicate and transfer-record predicate",
+        "merge-retention-handoff/immutable-issuer-fixture.json premises trusted immutable issuer lookup"
+      ],
+      "description": "The actual DOCUMENT oracle does not consume all central proof registry fields. Mutated import record target/result/source_receipt_ids/committed_generation and transfer record issuer/receipt_id/committed_generation/external_proof issuer/target remain admitted as MergeApplied. Frozen request equality is strong caller input closure but does not establish full issuer-record consistency.",
+      "counterexamples": [
+        "defensive-import-record-target",
+        "defensive-import-record-kind",
+        "defensive-import-record-source",
+        "defensive-import-record-generation",
+        "defensive-transfer-record-issuer",
+        "defensive-transfer-record-proof-target",
+        "defensive-transfer-record-proof-issuer",
+        "defensive-transfer-record-receipt",
+        "defensive-transfer-record-generation"
+      ],
+      "required_action": "Keep full-field public request validation distinct from assumed trusted-record validity. If stronger defensive record consistency is required, authorize a correction packet, add these checks, reseal and independently re-review. No production change or architecture approval implied."
+    }
+  ],
+  "boundaries": "One handoff review only; no module PASS, no Owner approval, no native capability proof. MH1..MH6 including separate Undo Held producer stay pending. Trusted issuer lookup and atomic M04 commit/catalog CAS are premises.",
+  "not_run": [
+    "native",
+    "build",
+    "product tests",
+    "valid RED",
+    "full Draft",
+    "historical preflight64",
+    "author 15+416"
+  ],
+  "next_action": "Resolve MR-F1 within a separately authorized correction packet; then independent re-review and Owner MH1..MH6 decision before implementation."
+}
