@@ -1,0 +1,289 @@
+{
+  "identity": "ProjectUuid UUIDv4 from trusted M01 authority. DocumentUuid denotes physical document owner identity; SessionId/OwnerGeneration/RequestId scoped runtime. AssetId opaque immutable project namespace; version=(AssetId,ContentDigest). SnapshotId/GenerationId never substitute document/session. New-copy and restored unsaved documents receive fresh doc/session identity; content entity IDs only explicit format policy/preview changes. Foreign approvals retained as provenance, not authority.",
+  "digest_domains": {
+    "DefinitionRaw": "sha256:lowerhex64 exact M01 codec bytes",
+    "TemplateRaw": "sha256:lowerhex64 sealed template manifest/source bytes",
+    "GenerationApproval": "sha256:lowerhex64 exact sorted approved refs evidence projection",
+    "DesignSemantic": "{profile:SGA-DESIGN-SEM-v1,digest:lowerhex64}",
+    "EssSemantic": "{profile:M04-EssXmlV1-semantic-v1,digest:lowerhex64}",
+    "RecoveryFingerprint": "{profile:SGA-RECOVERY-FP-v1,digest:lowerhex64}",
+    "FileRaw/CatalogRaw/ArchiveRaw/PayloadRaw": "separate typed lowerhex64; no semantic comparison; wrap prefix only explicit S1 boundary"
+  },
+  "Context": "{project_uuid,document_uuid,session_id,owner_generation:u64,captured_revision:u64,operation_id}; exactly matched by every pin/proof/apply. UI decimal-string transport per CX03; server context authoritative.",
+  "ResolutionSnapshot": "Asset/version binding validation only; NOT root completeness or durable pin. Complete requires every requested version/target answered with exact context; unknown reference-bearing fields reject mutation.",
+  "PinReceipt": "{catalog_generation,catalog_raw_digest,pin_id,Context,purpose,versions_digest,issuer_receipt_id}; only M05 creates after durable catalog proof. Consumer validate_pin verifies current Held or explicitly valid transfer state plus context. No UI mint/TTL.",
+  "RootManifest": "{provider_id,epoch,scope,kind,source_revision,completeness,references,evidence_receipt_id}. Five kinds exactly accepted S1: LiveDocuments(including persisted formal docs),UndoHistory,RedoHistory,RecoverySnapshots,InFlightTransactions. Aggregate any missing component=>Unknown; no release/GC inference from Complete material resolution.",
+  "ExternalCommitProof": "Tagged FormalFile|RecoveryIndex|DocumentMutation|ProjectCopyReady|GenerationActivation|ArchiveExport with issuer-owned proof record, Context and typed byte/projection references. Different tag cannot satisfy another use case. Committed receipt verification checks target identity/path, expected prior Option raw hash,new raw hash,transaction ID; then cross-owner transfer, then corresponding ACK.",
+  "phases": [
+    "RejectedBeforeMutation (content unchanged; safe staged/orphan assets may retained)",
+    "Applied (content committed)",
+    "AppliedRetentionDeferred (content changed; Held retained)",
+    "CommittedAckDeferred (file/index committed; required handoff/ACK missing)",
+    "UncertainPublication (block affected writer/target; preserve evidence)",
+    "VerifiedPublished (all use-case required proofs verified)",
+    "DeliveryDeferred (verified committed result not delivered to old owner)"
+  ],
+  "lock_order": "No owner callback while holding catalog/index/active IO lease. Content capture under owner reservation then release; catalog pin transition under short catalog lease then release; external write then release; root transfer separate; matching ACK last. Generation special held SOURCE read reservations acquired before active writer and released after receipt; producer updates Busy/defer (pending choice). Project copy final-path quarantine avoids moving journals.",
+  "matrix": [
+    {
+      "operation": "edit/clear/merge/undo/restore",
+      "before": "durable Candidate/Import pin",
+      "commit": "single M04 content commit",
+      "after": "live/history root transfer",
+      "late_failure": "AppliedRetentionDeferred",
+      "baseline": "formal/recovery unchanged"
+    },
+    {
+      "operation": "formal save",
+      "before": "capture+Save pin",
+      "commit": "verified FileCommit receipt",
+      "after": "formal-root transfer→captured semantic ACK",
+      "late_failure": "CommittedAckDeferred",
+      "baseline": "formal captured only"
+    },
+    {
+      "operation": "snapshot",
+      "before": "capture+Recovery pin+all material copies",
+      "commit": "payload+index proof",
+      "after": "RecoverySnapshots root transfer→S1 Published+captured recovery ACK",
+      "late_failure": "Publication/ACK deferred",
+      "baseline": "recovery captured only"
+    },
+    {
+      "operation": "generation",
+      "before": "authenticated definition/template/design/approval preview +source reservations",
+      "commit": "seal then active CAS",
+      "after": "verified immutable snapshot delivery",
+      "late_failure": "ActivatedDeliveryDeferred",
+      "baseline": "no definition/design ACK"
+    },
+    {
+      "operation": "export",
+      "before": "capture+Export pin",
+      "commit": "native durable no-replace destination",
+      "after": "safe root-based pin release attempt",
+      "late_failure": "PublishedDeliveryDeferred",
+      "baseline": "no ACK"
+    },
+    {
+      "operation": "new project copy",
+      "before": "new identities+final-path quarantine",
+      "commit": "stable-path children then Ready marker",
+      "after": "trusted M01 bind selection",
+      "late_failure": "ProjectCopyDeferred",
+      "baseline": "no source ACK"
+    }
+  ],
+  "contract_id": "CX-COMMON-v2-RR",
+  "status": "PROPOSED_PENDING_ONE_OWNER_CONFIRMATION",
+  "precedence": "v2 common definitions replace v1 common and exact listed module pointers only after Owner adoption. Original embedded behavior rows are historical trace, not competing runtime protocol. Context means WorkflowContext, operation_id means TransitionKey.operation_id at every material call. No in-place update to original Approved artifacts.",
+  "wire_types": {
+    "U64Decimal": "JSON STRING regex^(0|[1-9][0-9]*)$, checked0..18446744073709551615; no plus/leading-zero/exponent/space. Rust u64 internal. JS keeps string/BigInt; never Number roundtrip.",
+    "Digest": "{domain,profile?,lowerhex64}; sha256: prefix only existing M01/M02 S1 boundaries. No arbitrary cross-domain conversion.",
+    "OpaqueId": "ASCII[A-Za-z0-9_-]{1,128}; native/generated fixed-format IDs retain module constraint; actual context server-derived.",
+    "Context": "Server-derived immutable WorkflowContext {project_uuid,document_uuid,session_id,owner_generation:U64,captured_revision:U64,workflow_id:UUID}; no transition operation_id in context. Runtime authority never comes from labels/DTO."
+  },
+  "pin_enums": {
+    "state": [
+      "Held",
+      "Transferred",
+      "Released"
+    ],
+    "purpose": [
+      "Candidate",
+      "Save",
+      "Undo",
+      "Redo",
+      "Recovery",
+      "Import",
+      "Export"
+    ]
+  },
+  "material_api": {
+    "resolve": "resolve(WorkflowContext,ordered_requests)->ResolutionSnapshot",
+    "pin": "pin(WorkflowContext,ResolutionSnapshot,PinPurpose,TransitionKey)->PinReceipt",
+    "validate_pin": "validate_pin(WorkflowContext,PinReceipt)->VerifiedPin",
+    "read_pinned_version": "read_pinned_version(WorkflowContext,VerifiedPin,asset_id,digest,max_bytes:u64)->VerifiedBytes",
+    "import": "import(WorkflowContext,TrustedSourceSelection,ImportMetadata,TransitionKey)->ImportedPinnedManifest; native source bytes verified before durable immutable import; no UI path authority",
+    "import_verified_versions": "import_verified_versions(WorkflowContext,VerifiedBundle,PinPurpose,TransitionKey)->ImportedPinnedManifest",
+    "register_roots": "register_roots(TrustedProviderCapability,RootKind)->RootRegistration; internal trusted composition only; no UI registration/callback",
+    "publish_roots": "publish_roots(RootRegistration,expected_epoch:u64,RootManifest,TransitionKey)->RootObservationReceipt; owner provider attests current fenced manifest; stale epoch => StaleRoots, unknown => Unknown not empty",
+    "transfer": "transfer(WorkflowContext,pin_id,RootManifest,AuthenticatedExternalProof,TransitionKey)->TransferReceipt",
+    "release": "release(WorkflowContext,pin_id,RootBundle,TransitionKey)->ReleasedReceipt|RetainedReasons"
+  },
+  "proof_types": {
+    "ResolutionSnapshot": "{WorkflowContext,catalog_generation,catalog_raw_digest,snapshot_digest,completeness:Complete,assets,bindings}; same immutable workflow across pin/transfer; no transition operation_id in context.",
+    "VerifiedBundle": "{WorkflowContext,source_digest,entries:[asset_id,digest,size_bytes,verified_bytes_or_handle],legacy_alias_mapping}; trusted issuer verifies all bytes/hash/closure.",
+    "AuthenticatedExternalProof": "Opaque issuer receipt lookup with issuer/kind/WorkflowContext/target/evidence validation per proof_registry_record; no trusted DTO body. Missing runtime-only issuer record => UnverifiedOutcome.",
+    "TransferReceipt": "{issuer:M05,catalog_generation,catalog_raw_digest,pin_id,root_manifest_ids,external_proof_id,WorkflowContext,TransitionKey,receipt_id}; verified durable catalog commit required.",
+    "MutationReceipt": {
+      "context": "WorkflowContext",
+      "before_revision": "U64",
+      "after_revision": "U64",
+      "content_semantic": "typed digest",
+      "pin_id": "UUID|null",
+      "result": "Applied|NoChange|AppliedRetentionDeferred",
+      "stage": "None|LiveRoots|UndoRoots|RedoRoots",
+      "proof_ref": "opaque runtime mutation proof id",
+      "replayed": "bool"
+    },
+    "VerifiedBytes": "{digest,size_bytes,immutable_bytes_or_guarded_handle,store_identity}; issued only native/hash validator, not URI/path trust."
+  },
+  "quarantine_copy": {
+    "marker": ".sgenaxis/copy-state.v1.json; {schema:SGA-PROJECT-COPY-v1,project_uuid,operation_id,state:Quarantined|Ready,definition_raw_digest?,document_raw_digest?,catalog_raw_digest?,manifest_digest?}. Strict duplicate/unknown/type/project validation; quarantine written durably before any public project manifest/definition/document/catalog.",
+    "sequence": "Exclusive create FINAL target directory (never rename it after any FileCommit operation) → create Quarantined marker via checked IO → initialize validated children/catalog/pins at FINAL paths → verify full copy proofs → CAS Ready marker with exact digests → authenticate M01 open/bind. Source approvals provenance only; new project+doc identities.",
+    "reader_gate": "All official M01 open/adopt/select and startup recovery check copy marker before S2 bind; Quarantined/invalid/uncertain journal refuses project readiness. Marker absent allows existing legacy policy only if no partial-copy evidence; empty/unmarked exclusive-copy crash residue is not adopted automatically. Existing accepted S2 public API unchanged; new application wrapper gate is proposed.",
+    "failure": "Before Ready no selectable completed project; retains quarantined diagnostic+pins. After Ready delivery loss returns ProjectCopyDeliveryDeferred; no rollback/delete. Never rewrite/move private journal to fix path binding."
+  },
+  "source_reservation": {
+    "application_trait": "SourceReadReservation: snapshot_id()->SourceSnapshotId; validate_held()->Result<SourceSnapshotId,SourceFenceError>; explicit release(self). Owns authenticated snapshot identity+held producer read capability; cannot be constructed from DTO. Drop releases handles only.",
+    "SourceSnapshotId": "{issuer:Definition|Design|Approval,project_uuid,owner_generation,revision_or_epoch,typed_digest}; exact equality, not timestamp.",
+    "native_trait": "CommittedReadPort.acquire_read(trusted_target_capability)->CommittedReadLease; lease.read_verified(max_bytes)->VerifiedCommittedBytes; lease owns OS shared lock compatible with existing FileCommit exclusive writer, normalized target+readonly journal validation. No create/repair/cleanup. Missing sidecar =>Unavailable.",
+    "producer_rules": "Definition/design owner read reservation blocks their mutation and exclusive file writer until generation terminal result; acquire definition→approval HOST epoch→design before active writer. Immutable SPEC Approved revisions remain pure; HOST epoch covers evidence validity changes, not a SPEC filesystem dependency. All producer mutation routes must honor reservation; incomplete coverage =>DependencyNotReady.",
+    "io_guard": "IO-owned crate-private CommittedReadGuard unforgeable outside adapter constructor. inspect_committed_locked(&CommittedReadGuard)->Result<CommittedReadInspection,CommitError>; validates guard-bound canonical target/terminal journal/current raw digest, no path argument replacement. Public FileCommitPort unchanged.",
+    "scope": "New committed_read.rs ports/adapter/native tests plus generation_sources.rs application provider adapters. Only proposed exact child files below; accepted IO implementation not re-approved automatically."
+  },
+  "recovery_readiness": {
+    "LocalIntegrityReady": "Native coherent recovery index+payload+ALL material copies and hashes/schema verified; independent from original catalog availability.",
+    "PublicationAcknowledged": "Original M05 root transfer receipt and original captured S1 Published/ACK verified.",
+    "restore": "LocalIntegrityReady permits explicit restore to authorized destination even SourceRetentionDeferred. Destination import+durable pin+M04 new-unsaved install mandatory; original Held/Unknown retained and no fake original Published/ACK. Missing/corrupt local blob always blocks."
+  },
+  "reservation_kinds": {
+    "FormalWriteReservation": "blocks same-owner content edits until matching IO completion; read diagnostics allowed.",
+    "RecoveryAttemptReservation": "one recovery attempt; after immutable capture+pin, live healthy owner may edit. Never reuse formal saving state for whole recovery copy pipeline.",
+    "CatalogLease": "short transition only, no callbacks into document owner while held."
+  },
+  "readiness_gates": [
+    "No adoption or architecture PASS from document revision",
+    "M02 template14resources+standalone full transitive lock golden required before renderer Skeleton acceptance",
+    "ESS typed entity/parent/edge/binding projector with exact fixtures required before affected clear/merge/install",
+    "native Windows11 alias/8.3/reparse/durability separately measured; environment NOT RUN remains",
+    "No physical GC/repair/time-based pin release/no blanket union envelope",
+    "RR document proposals need separate readonly reacceptance; no self-approval",
+    "M05 receipt schema and bounded read grant candidate adoption before Port/Skeleton",
+    "Per-command exact DTO/schema and phase fixtures compiled independently before valid RED"
+  ],
+  "wire_schema": {
+    "U64Decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "maxLength": 20,
+      "semantic_validation": "parse checked u64 <=18446744073709551615; reject JSON number; never JS Number conversion"
+    },
+    "scope": "Every Tauri/JSON request, response and error revision/generation/epoch/count/size/sequence uses U64Decimal when internal type u64. Domain Rust u64 and existing persisted schemas unchanged. Actual design floating-point values remain C1 number policy, not blanket strings.",
+    "validation_order": [
+      "trusted caller",
+      "closed shape",
+      "u64 decimal syntax/range",
+      "binding generation",
+      "retained request lookup",
+      "new request captured revision",
+      "reservation/pin/commit"
+    ]
+  },
+  "replay_protocol": {
+    "workflow_id": "Server UUID minted once per immutable top-level capture. Context equality includes workflow_id; request replay maps authorized caller+session+command+request_id to same workflow. New capture/new authorized request => new workflow.",
+    "operation_id": "Internal UUIDv5(namespace=workflow_id, name=UTF8 role + \"/\" + decimal transition ordinal). Closed role: resolve|pin|import|install|undo|transfer-live|transfer-formal|transfer-recovery|release|publish|ack. Ordinal starts0; request body changes require a new operation ordinal only after explicit new transition, never to bypass conflict.",
+    "key": "(issuer,store_identity,workflow_id,operation_id); expected role and immutable context must match. Same key + same request digest returns same persisted receipt. Same key + different digest => ReplayConflict before IO. Prepared/InFlight => InProgress, never another commit.",
+    "request_digest": "SHA256(UTF8 compact JSON canonical value tree: object keys UTF8 byte sorted; strings JSON escaping as SGA-DESIGN-SEM-v1; integers decimal strings; arrays retain order; no whitespace/BOM). Input: {protocol:\"SGA-TRANSITION-v1\",issuer,role,ordinal,context,source_receipt_ids,target_identity,asset_pairs,root_manifest_ids,expected_catalog_generation}; all fields present, absent option=null; asset_pairs sorted(asset_id,digest); root_manifest_ids sorted unique. Exact bytes document fixtures required before RED.",
+    "runtime_commands": "Existing H2 request records remain runtime-only 128/binding,1024/runtime; no eviction and no durable exactly-once claim. Runtime loss => UnverifiedOutcome; never reconstruct mutation success from pin receipt alone.",
+    "resume": "Verify issuer durable store + exact target identity/raw/catalog evidence. Terminal receipt returns retained result; uncertain prepared record stays Indeterminate/Held. No automatic IO retry, rollback, ACK or release on missing evidence.",
+    "new_persistence": "M05 transition_receipts map joins the same single catalog index CAS as pin/root state. New pending schema change, not existing capability. Other issuers retain actual existing durable IO/recovery/copy receipts; do not introduce a global proof database."
+  },
+  "proof_registry_record": {
+    "schema": "SGA-MATERIAL-RECEIPT-v1 (new catalog index transition_receipts record; pending schema adoption)",
+    "fields": {
+      "issuer": "M05",
+      "receipt_id": "UUID",
+      "workflow_id": "UUID",
+      "operation_id": "UUIDv5",
+      "role": "closed transition role",
+      "ordinal": "u64 internal",
+      "request_digest": "lowerhex64",
+      "context": "WorkflowContext",
+      "store_identity": "native identity binding",
+      "target_identity": "native catalog target identity",
+      "expected_generation": "u64",
+      "committed_generation": "u64",
+      "source_receipt_ids": "ordered typed issuer IDs",
+      "pin_id": "UUID|null",
+      "asset_pairs": "sorted exact immutable pairs",
+      "root_manifest_ids": "sorted unique UUIDs",
+      "external_proof": "{issuer,receipt_id,kind,context_digest,target_identity,raw_digest,projection_digest}|null",
+      "result": "Tagged terminal Pin|Imported|Transferred|Released; no runtime DocumentMutation success here"
+    },
+    "atomicity": "Record and pin/root transition in same catalog raw commit. Logical catalog_generation/target_identity verify inclusion without circular embedding of own raw digest. External raw CommitReceipt kept as issuer evidence, not hashed into the same committed bytes.",
+    "trust": "Resolve receipt_id only server-side under native store identity+verified catalog raw bytes. UI-supplied receipt body never authoritative. Cross-store/context/action mismatch => ProofMismatch.",
+    "retention": "No receipt eviction or pin timeout in this slice. Input/index limits from M05 remain; full index => CapacityExceeded before mutation; compaction/GC separate proposal.",
+    "external_issuers": {
+      "M04": "FormalSaveProof requires IO receipt+M05 transfer+captured semantic ACK; runtime owner replay loss => UnverifiedOutcome unless all issuer evidence actually revalidated. MutationReceipt runtime only.",
+      "M07": "Immutable attempt/payload/index receipt; LocalIntegrityReady independent source ACK.",
+      "M01": "final path Ready marker and matching digests; not inherited source approval."
+    }
+  },
+  "store_read_contract": {
+    "trait": "MaterialStorePort -> StoreHandle.read_verified_blob(VerifiedStorePinGrant,digest:Digest,expected_size:u64,max_bytes:u64)->VerifiedBlobRead",
+    "grant": "Crate-private trusted constructor in M05 application composition: immutable store_identity,pin_id,workflow_id,asset_id,digest,size,pin_catalog_generation; issued only after verified Held or Transferred pin membership. Released pin denied. Not deserializable from UI.",
+    "preconditions": "0 < max_bytes <= M05 existing admitted blob limit; expected_size<=max_bytes; grant exact pair/size/store matches. Acquire safe native immutable object handle, reject alias/reparse/size/hash mismatch, no path/URI returned as authority.",
+    "result": "VerifiedBlobRead {store_identity,digest,size_bytes,immutable bounded bytes or guarded read handle}. Stream exactly expected_size, hash entire bytes before consumer install/export. Handle lifetime owns source access; no reopen-by-path.",
+    "errors": [
+      "PinNotReadable",
+      "GrantMismatch",
+      "LimitExceeded",
+      "BlobMissing",
+      "SizeMismatch",
+      "IntegrityFailure",
+      "IdentityChanged",
+      "AliasRejected",
+      "Busy",
+      "UnsupportedPlatform",
+      "IoFailure"
+    ],
+    "side_effects": "No catalog mutation, repair, delete, overwrite, fallback/latest mapping or arbitrary read. Release blocked by retained pin/fence until read operation ends."
+  },
+  "mutation_wire_result": {
+    "tag": "outcome",
+    "closed": true,
+    "Applied": {
+      "outcome": "Applied",
+      "projection": "BindingProjection",
+      "before_revision": "U64Decimal",
+      "after_revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "mutation_proof_ref": "opaque",
+      "pin_id": "UUID|null",
+      "replayed": "bool"
+    },
+    "NoChange": {
+      "outcome": "NoChange",
+      "projection": "BindingProjection",
+      "revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "replayed": "bool"
+    },
+    "AppliedRetentionDeferred": {
+      "outcome": "AppliedRetentionDeferred",
+      "projection": "BindingProjection",
+      "before_revision": "U64Decimal",
+      "after_revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "pin_id": "UUID",
+      "mutation_proof_ref": "opaque",
+      "stage": [
+        "LiveRoots",
+        "UndoRoots",
+        "RedoRoots"
+      ],
+      "reason": [
+        "DependencyNotReady",
+        "StaleRoots",
+        "IoFailure",
+        "ProofMismatch",
+        "Indeterminate"
+      ],
+      "replayed": "bool"
+    },
+    "precommit_error": "{ok:false,error:closed existing error}; zero content commit. Once S1 commit occurred cannot use ErrorUnchanged, undo rollback or failed toast implying no effect.",
+    "ui": "Show installed revision plus material retention pending; preserve Held, disable unsafe pin release/export until proofs complete. Replay returns original result, never reapply or overwrite newer projection. Writer transfer has separate BindingProjection result, never fabricate mutation/history."
+  }
+}

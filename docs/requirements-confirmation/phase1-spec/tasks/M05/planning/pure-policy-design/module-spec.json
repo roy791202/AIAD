@@ -1,0 +1,373 @@
+{
+  "module": "M05",
+  "slice": "M05-S1 proposed",
+  "revision": "M05-ROOT-POLICY-v1",
+  "status": "EXACT_PURE_POLICY_PROPOSAL_NOT_APPROVED",
+  "date": "2026-11-01T10:33:55.189416+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "authority": "Only M05 planning documents and own board evidence. No Skeleton, test target or product behavior created.",
+  "intent": "Evaluate immutable asset retention using explicit complete root projections. Pure eligibility is never authority to physically delete.",
+  "confirmed_baseline": [
+    "Single-document merge plus necessary asset/reference changes only",
+    "Undo cannot delete material still used elsewhere",
+    "Recovery contains necessary unsaved assets",
+    "Formal save retains recovery versions until an approved retention policy cleans them",
+    "M02 C+B pending precision does not block this independent M05 preparation review"
+  ],
+  "architecture": {
+    "hexagonal": "Test/future HOST use case -> WORK evaluate_asset_retention; no output port in this pure slice. Future HOST collects authoritative root projections through separately approved capabilities.",
+    "dependencies": "M04 history/document owners + M07 retained snapshots + transaction owner provide projections; M05 evaluates them without mutation. No implementation of those providers in S1.",
+    "ownership": "Owning modules retain SSOT and root lifecycle; RootSnapshot is immutable derived data. Evaluation result has no FS handle, cleanup lease or deletion token.",
+    "mutation": "None. Inputs borrowed immutably; no IDs allocated, paths resolved or catalog changed.",
+    "transaction": "None in S1. Physical cleanup still requires separately approved completeness/freshness fencing and durable catalog transaction. Never invoke remove_file based solely on Eligible."
+  },
+  "public_boundary_proposed": {
+    "function": "evaluate_asset_retention(candidate: &AssetCandidate, roots: &RootSnapshot, context: &EvaluationContext) -> Result<RetentionDecision, RetentionError>",
+    "AssetCandidate": "asset_id:String; content_digest:String; owned_by_operation:Option<String>",
+    "RootKind": "LiveDocuments | UndoHistory | RedoHistory | RecoverySnapshots | InFlightTransactions",
+    "RootReference": "asset_id:String; content_digest:String; owner_id:String",
+    "RootObservation": "kind:RootKind; revision:String; completeness:Complete|Unknown; references:Vec<RootReference>",
+    "RootSnapshot": "project_id:String; session_id:String; observations:Vec<RootObservation>",
+    "EvaluationContext": "project_id:String; session_id:String; operation_id:String; expected_root_revisions:Vec<(RootKind,String)>",
+    "RetentionDecision": "Retain { reasons:Vec<RetentionReason> } | EligibleForCleanup { asset_id:String, content_digest:String }",
+    "RetentionReason": "Referenced{kind,owner_id} | RootsIncomplete{kind} | StaleRoots{kind} | NotOwnedByOperation | IdentityConflict{asset_id}",
+    "RetentionError": "InvalidInput { field:String, reason:String }",
+    "note": "Nested Completeness and reason discriminants are data only. New Port, crypto hashing, material cache, catalog persistence, timer and cleanup manager are excluded."
+  },
+  "contracts": {
+    "order": [
+      "Validate nonempty bounded identity strings and digest syntax; reject malformed/duplicate provider kinds or duplicate expected revisions with InvalidInput.",
+      "Exactly five required root kinds must be explicitly represented. Missing kind, Unknown status or mismatched expected revision produces conservative Retain reason, never complete-empty eligibility.",
+      "Matching exact asset_id+digest reference retains by root and owner. Same asset_id with an unresolved conflicting digest retains as IdentityConflict; no guessing provenance.",
+      "Candidate belongs to this operation only when owned_by_operation equals context.operation_id. Otherwise retain as NotOwnedByOperation.",
+      "EligibleForCleanup only when all five providers are Complete and expected revisions match, no relevant reference/conflict exists and candidate is operation-owned."
+    ],
+    "identity": "root project/session equals context project/session; mismatch is InvalidInput. LiveDocuments contains every project document, not just active document. Session key does not exclude other sessions from root completeness.",
+    "output": "Reasons deduplicated and sorted by fixed root order LiveDocuments/UndoHistory/RedoHistory/RecoverySnapshots/InFlightTransactions, then reason discriminator and owner_id byte order. Eligible carries identity only; never path or permission.",
+    "failure": "No input mutation; malformed input errors do not hide root-incomplete state by pretending deletion is allowed.",
+    "trust": "HOST must obtain honest root completeness. Strings/revision equality alone do not authenticate providers or grant native deletion authority."
+  },
+  "limits_proposed_not_confirmed": {
+    "identity_UTF8_bytes": "1..256; no NUL",
+    "digest": "sha256: plus exactly64 lowercase hex",
+    "root_kinds": 5,
+    "references_per_kind": 4096,
+    "total_references": 16384,
+    "revision_UTF8_bytes": "1..256",
+    "oversize": "InvalidInput; no truncation or partial completeness claim"
+  },
+  "cases_inherited": [
+    {
+      "id": "M05-ROOT-R01",
+      "fixture": {
+        "root_condition": "candidate referenced by the current document",
+        "case": "active document"
+      },
+      "given": "candidate referenced by the current document",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain with document reason",
+      "coverage": "B1/B6",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R02",
+      "fixture": {
+        "root_condition": "candidate referenced only by another project document",
+        "case": "other document"
+      },
+      "given": "candidate referenced only by another project document",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain; current-document scan is insufficient",
+      "coverage": "B6/B10",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R03",
+      "fixture": {
+        "root_condition": "candidate absent from live document but retained in Undo",
+        "case": "Undo history"
+      },
+      "given": "candidate absent from live document but retained in Undo",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain until owning history explicitly releases it",
+      "coverage": "B8/B10",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R04",
+      "fixture": {
+        "root_condition": "undo moves candidate into redo-only reachability",
+        "case": "Redo history"
+      },
+      "given": "undo moves candidate into redo-only reachability",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain; do not treat Undo as permanent disposal",
+      "coverage": "B8/B12",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R05",
+      "fixture": {
+        "root_condition": "candidate referenced by a retained recovery version",
+        "case": "recovery snapshot"
+      },
+      "given": "candidate referenced by a retained recovery version",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain even after formal save or Undo",
+      "coverage": "B6/B10",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R06",
+      "fixture": {
+        "root_condition": "snapshot is unresolved and retention threshold exceeded",
+        "case": "unprocessed snapshot"
+      },
+      "given": "snapshot is unresolved and retention threshold exceeded",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain; numeric retention defaults do not authorize deletion",
+      "coverage": "B2/B8",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R07",
+      "fixture": {
+        "root_condition": "candidate staged for import or single-document merge",
+        "case": "in-flight transaction"
+      },
+      "given": "candidate staged for import or single-document merge",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain while transaction ownership exists",
+      "coverage": "B5/B7",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R08",
+      "fixture": {
+        "root_condition": "root provider unavailable or schema unsupported",
+        "case": "unknown provider"
+      },
+      "given": "root provider unavailable or schema unsupported",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain with root-incomplete warning",
+      "coverage": "B3/B4",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R09",
+      "fixture": {
+        "root_condition": "complete root set is empty versus a provider omitted",
+        "case": "empty versus missing"
+      },
+      "given": "complete root set is empty versus a provider omitted",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "only complete empty set permits eligibility; omitted provider retains",
+      "coverage": "B2/B3",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R10",
+      "fixture": {
+        "root_condition": "reference revision changes after cleanup preview",
+        "case": "stale evaluation"
+      },
+      "given": "reference revision changes after cleanup preview",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "reject stale evaluation; recollect before destructive action",
+      "coverage": "B6/B7",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R11",
+      "fixture": {
+        "root_condition": "this transaction created a verified orphan and every root is complete",
+        "case": "owned orphan"
+      },
+      "given": "this transaction created a verified orphan and every root is complete",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "eligible for later authorized cleanup; planning itself deletes nothing",
+      "coverage": "B1/B7",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R12",
+      "fixture": {
+        "root_condition": "candidate has another logical or physical owner",
+        "case": "shared material"
+      },
+      "given": "candidate has another logical or physical owner",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain; no deleting shared bytes after Undo",
+      "coverage": "B6/B10",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R13",
+      "fixture": {
+        "root_condition": "same asset id points to an unresolved differing version",
+        "case": "identity mismatch"
+      },
+      "given": "same asset id points to an unresolved differing version",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain and surface conflict; no name guessing",
+      "coverage": "B3/B11",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R14",
+      "fixture": {
+        "root_condition": "catalog cannot prove content identity or path ownership",
+        "case": "catalog corruption"
+      },
+      "given": "catalog cannot prove content identity or path ownership",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "retain and report integrity failure",
+      "coverage": "B3/B9",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R15",
+      "fixture": {
+        "root_condition": "new bytes staged but document commit fails",
+        "case": "replacement failure"
+      },
+      "given": "new bytes staged but document commit fails",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "old references and old bytes preserved; classify new owned orphan",
+      "coverage": "B5/B9",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R16",
+      "fixture": {
+        "root_condition": "an eligible file cannot be removed",
+        "case": "deletion failure"
+      },
+      "given": "an eligible file cannot be removed",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "report retained cleanup debt; no false success or dropped catalog entry",
+      "coverage": "B4/B9",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R17",
+      "fixture": {
+        "root_condition": "session history closes but retained snapshot remains",
+        "case": "restart"
+      },
+      "given": "session history closes but retained snapshot remains",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "release history root only; snapshot root remains",
+      "coverage": "B8/B11",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    },
+    {
+      "id": "M05-ROOT-R18",
+      "fixture": {
+        "root_condition": "cleanup would require changing another document",
+        "case": "single-document boundary"
+      },
+      "given": "cleanup would require changing another document",
+      "when": "evaluate cleanup for a named immutable asset version",
+      "then": "do not mutate it; retain asset and report dependency",
+      "coverage": "B7/B10",
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "Only after approved Skeleton: target compiles, fixture setup succeeds and intended public-boundary assertion fails for missing behavior. No compile/setup failure counts."
+    }
+  ],
+  "additional_required_cases": [
+    {
+      "id": "M05-PURE-01",
+      "given": "five complete empty providers and operation-owned orphan",
+      "when": "evaluate",
+      "then": "Eligible identity, no side effects"
+    },
+    {
+      "id": "M05-PURE-02",
+      "given": "one provider omitted versus explicitly complete empty",
+      "when": "evaluate each",
+      "then": "omitted retains; complete empty may be eligible"
+    },
+    {
+      "id": "M05-PURE-03",
+      "given": "per-kind reference count at4095/4096/4097 and total at16383/16384/16385",
+      "when": "evaluate",
+      "then": "accept bounds or typed input error, never truncate"
+    },
+    {
+      "id": "M05-PURE-04",
+      "given": "same observations in different order with repeated equivalent reasons",
+      "when": "evaluate",
+      "then": "identical sorted deduplicated decision"
+    },
+    {
+      "id": "M05-PURE-05",
+      "given": "root revision differs from expected",
+      "when": "evaluate",
+      "then": "Retain StaleRoots, not physical deletion or fresh lease claim"
+    }
+  ],
+  "file_envelope": {
+    "existing": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_asset_roots.rs"
+    ],
+    "status": "PROPOSED_NOT_APPROVED; exact signatures and input bounds still required before Skeleton",
+    "future_command": "cargo test -p sgenaxis-work --test phase1_asset_roots (cwd apps/sgenaxis-desktop; target NOT CREATED)"
+  },
+  "TDD_gate": "Target not created. After exact approval, Skeleton must compile and cases fail only for missing pure behavior. Future command cargo test -p sgenaxis-work --test phase1_asset_roots --no-run --locked then without --no-run. No test execution in this planning delivery.",
+  "acceptance_for_future_slice": [
+    "Exact complete-versus-unknown and per-root retention outcomes constrained by tests",
+    "All existing18 root scenarios plus new boundary/determinism cases traced",
+    "No IO or mutation/deletion authority introduced",
+    "Physical cleanup remains separately blocked even when pure policy returns Eligible"
+  ],
+  "consolidated_review_items": [
+    {
+      "id": "M05-R1",
+      "topic": "Pure input/output types and exactly five required root classes; LiveDocuments includes all documents/sessions"
+    },
+    {
+      "id": "M05-R2",
+      "topic": "Conservative incomplete/stale/conflicting identity outcomes and deterministic reason order"
+    },
+    {
+      "id": "M05-R3",
+      "topic": "Bounded inputs and exact three-file Skeleton/RED envelope"
+    },
+    {
+      "id": "M05-R4",
+      "topic": "Eligibility explicitly excludes deletion authorization; physical cleanup requires later transaction/fencing approval"
+    }
+  ],
+  "next": "One consolidated exact-design review; do not create Skeleton or product tests until approved. Continue unrelated ready work.",
+  "verification": {
+    "product_source_tests_changes": 0,
+    "compile_RED": "NOT RUN",
+    "native_GC": "NOT RUN",
+    "independent_review": "NOT RUN",
+    "module_complete": false
+  }
+}

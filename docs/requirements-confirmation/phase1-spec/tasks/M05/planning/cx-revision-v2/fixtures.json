@@ -1,0 +1,354 @@
+[
+  {
+    "id": "BDD-BOUNDED-READ-RR",
+    "tdd": "TDD-BOUNDED-READ-RR",
+    "finding": "RR-F2",
+    "modules": [
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "given": "Held pin covers assetA digest a size3 bytes ABC",
+    "when": "read with max_bytes3",
+    "then": "verified ABC size3; catalog unchanged",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "bytes_hex": "414243",
+        "size": "3",
+        "catalog_writes": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-RELEASED-RR",
+    "tdd": "TDD-RELEASED-RR",
+    "finding": "RR-F2",
+    "modules": [
+      "M05"
+    ],
+    "given": "Released pin and same immutable bytes exist",
+    "when": "read through closed material input",
+    "then": "PinNotReadable; zero blob reads",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "reads": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-OVERSIZE-RR",
+    "tdd": "TDD-OVERSIZE-RR",
+    "finding": "RR-F2",
+    "modules": [
+      "M05"
+    ],
+    "given": "grant size3 and max_bytes2",
+    "when": "request pinned bytes",
+    "then": "LimitExceeded before allocation/read",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "reads": 0,
+        "allocations": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-CORRUPT-RR",
+    "tdd": "TDD-CORRUPT-RR",
+    "finding": "RR-F2",
+    "modules": [
+      "M05"
+    ],
+    "given": "grant size3 digest of ABC but object ABD",
+    "when": "read pinned bytes",
+    "then": "IntegrityFailure; no consumer commit or repair",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "consumer_commits": 0,
+        "repairs": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-ROOT-EPOCH-RR",
+    "tdd": "TDD-ROOT-EPOCH-RR",
+    "finding": "RR-F2",
+    "modules": [
+      "M05"
+    ],
+    "given": "registered Live provider epoch8",
+    "when": "publish epoch7 manifest",
+    "then": "StaleRoots and previous observation retained",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "catalog_writes": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-WIRE-EXACT-RR",
+    "tdd": "TDD-WIRE-EXACT-RR",
+    "finding": "RR-F3",
+    "modules": [
+      "M01-S3",
+      "M02",
+      "M03-C1",
+      "M03-H2",
+      "M04",
+      "M05",
+      "M06-preflight",
+      "M06",
+      "M07"
+    ],
+    "given": "revision decimal string9007199254740993",
+    "when": "decode and return projection",
+    "then": "exact same string with no Number roundtrip",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "output": "9007199254740993"
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-DEFERRED-RR",
+    "tdd": "TDD-DEFERRED-RR",
+    "finding": "RR-F4",
+    "modules": [
+      "M03-H2",
+      "M04",
+      "M05"
+    ],
+    "given": "candidate pinned at R7 and Live root transfer fails after commit",
+    "when": "install candidate",
+    "then": "AppliedRetentionDeferred R8 history1 Held retained",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "commits": 1,
+        "revision": "8",
+        "history": "1",
+        "ack_calls": 0,
+        "pin": "Held"
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-TRANSITION-KEYS-RR",
+    "tdd": "TDD-TRANSITION-KEYS-RR",
+    "finding": "RR-F5",
+    "modules": [
+      "M05"
+    ],
+    "given": "one workflow and pin/import/transfer distinct roles ordinal0",
+    "when": "execute authorized transitions",
+    "then": "three distinct operation UUIDs same context workflow; no ReplayConflict",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "transition_keys": 3,
+        "workflow_count": 1
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-REPLAY-CONFLICT-RR",
+    "tdd": "TDD-REPLAY-CONFLICT-RR",
+    "finding": "RR-F5",
+    "modules": [
+      "M05"
+    ],
+    "given": "persisted operation key request digestA",
+    "when": "reuse same key with digestB",
+    "then": "ReplayConflict before catalog write",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "catalog_writes": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-RESTART-RR",
+    "tdd": "TDD-RESTART-RR",
+    "finding": "RR-F5",
+    "modules": [
+      "M05"
+    ],
+    "given": "catalog includes terminal transferred receipt under native store identity",
+    "when": "resolve receipt after restart",
+    "then": "same receipt revalidated; no repeated transfer",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "new_transfers": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-RUNTIME-LOSS-RR",
+    "tdd": "TDD-RUNTIME-LOSS-RR",
+    "finding": "RR-F5",
+    "modules": [
+      "M04",
+      "M05"
+    ],
+    "given": "runtime mutation record lost but pin persists",
+    "when": "request mutation completion after restart",
+    "then": "UnverifiedOutcome Held retained; no synthetic ACK",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "ack_calls": 0,
+        "commits": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-FOREIGNPROOF-RR",
+    "tdd": "TDD-FOREIGNPROOF-RR",
+    "finding": "RR-F5",
+    "modules": [
+      "M04",
+      "M05",
+      "M07"
+    ],
+    "given": "valid receipt from another project or issuer action",
+    "when": "transfer root or ACK",
+    "then": "ProofMismatch; Held retained",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "ack_calls": 0,
+        "transfers": 0
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-PROVIDER-UNKNOWN-RR",
+    "tdd": "TDD-PROVIDER-UNKNOWN-RR",
+    "finding": "RR-F6",
+    "modules": [
+      "M05",
+      "M07"
+    ],
+    "given": "all material pairs resolved and pinned but Recovery root provider Unknown",
+    "when": "install candidate then request release",
+    "then": "install permitted; release RetainedReasons UnknownRoots",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "install_commits": 1,
+        "pin_released": false
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  },
+  {
+    "id": "BDD-NATIVE-MISSING-RR",
+    "tdd": "TDD-NATIVE-MISSING-RR",
+    "finding": "RR-F6",
+    "modules": [
+      "M01-S3",
+      "M05",
+      "M07"
+    ],
+    "given": "native Windows11 alias fixture not executed",
+    "when": "evaluate native acceptance",
+    "then": "NOT RUN; no product readiness claim",
+    "fixture": {
+      "owner_generation": "3",
+      "captured_revision": "7",
+      "workflow_id": "11111111-1111-4111-8111-111111111111",
+      "formal_phase": "see given; no mutation during FormalWriteReservation",
+      "expected": {
+        "native": "NOT RUN"
+      }
+    },
+    "status": "PLANNED_NOT_RUN",
+    "level": "L2 module contract / L4 adjacent; native cases L3",
+    "valid_red": "Only after adopted architecture, accepted child Skeleton, independent fixture selfcheck and successful compile; absence of dependencies/golden/environment is not RED."
+  }
+]

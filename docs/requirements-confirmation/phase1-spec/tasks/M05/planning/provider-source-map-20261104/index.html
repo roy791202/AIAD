@@ -1,0 +1,316 @@
+<!doctype html><meta charset="utf-8"><title>M05 provider map</title><style>body{max-width:1100px;margin:40px auto;font:16px system-ui}pre{white-space:pre-wrap;background:#f1f3f7;padding:14px}</style><h1>M05 provider 來源對照</h1><p>新來源文件準備；非產品驗收、非採納。H1–H4 與 MP1–3 仍待處置。</p><h2>新增結論</h2><p>owned_by_operation 是呼叫者提供的字串相等檢查，不是 authenticated Held issuer。Complete/revision/reference 是投影輸入；未證明 durable inclusion 或 native fence。四欄單檔 receipt 與 semantic transfer receipt 分開。EligibleForCleanup 不允許刪除。</p><h2>責任與證據</h2><pre>[
+  {
+    &quot;proposal&quot;: &quot;Held pin identity/purpose/issuer&quot;,
+    &quot;actual&quot;: &quot;AssetCandidate.owned_by_operation: Option&lt;String&gt;&quot;,
+    &quot;source&quot;: &quot;S01,S07&quot;,
+    &quot;gap&quot;: &quot;Text equality only; no authenticated Held record/purpose/issuer lineage&quot;,
+    &quot;provider&quot;: &quot;M05+IO held-pin issuer; exact contract adoption H1/H2&quot;
+  },
+  {
+    &quot;proposal&quot;: &quot;root_manifest durable inclusion&quot;,
+    &quot;actual&quot;: &quot;RootObservation.references and completeness/revision&quot;,
+    &quot;source&quot;: &quot;S02,S05,S06&quot;,
+    &quot;gap&quot;: &quot;Owner-supplied projection membership, no durable catalog inclusion verifier&quot;,
+    &quot;provider&quot;: &quot;Five root owners + M05 catalog/inclusion provider H2/H3&quot;
+  },
+  {
+    &quot;proposal&quot;: &quot;native alias-safe identity/fence&quot;,
+    &quot;actual&quot;: &quot;EvaluationContext project/session/operation and expected_root_revisions&quot;,
+    &quot;source&quot;: &quot;S02,S04,S06&quot;,
+    &quot;gap&quot;: &quot;String identity/revision validation is not native handle or cleanup fencing&quot;,
+    &quot;provider&quot;: &quot;IO native identity/fence provider H2&quot;
+  },
+  {
+    &quot;proposal&quot;: &quot;transfer receipt lineage/generation&quot;,
+    &quot;actual&quot;: &quot;CommitReceipt target_path/previous_digest/committed_digest/transaction_id&quot;,
+    &quot;source&quot;: &quot;S08,S09,S10&quot;,
+    &quot;gap&quot;: &quot;Raw file commit proof lacks semantic profile/catalog generation/pin-root lineage&quot;,
+    &quot;provider&quot;: &quot;M04 observation + M05 issuer mapping H3&quot;
+  },
+  {
+    &quot;proposal&quot;: &quot;uncertain CAS reconciliation&quot;,
+    &quot;actual&quot;: &quot;Pure RetentionDecision; FileWriteLease.replace_checked separate boundary&quot;,
+    &quot;source&quot;: &quot;S03,S09&quot;,
+    &quot;gap&quot;: &quot;No native catalog CAS/restart/inclusion reconciliation demonstrated here&quot;,
+    &quot;provider&quot;: &quot;M05 catalog CAS and restart provider H4; no automatic retry/ACK/release&quot;
+  },
+  {
+    &quot;proposal&quot;: &quot;physical cleanup authority&quot;,
+    &quot;actual&quot;: &quot;EligibleForCleanup { asset_id, content_digest }&quot;,
+    &quot;source&quot;: &quot;S03,S07&quot;,
+    &quot;gap&quot;: &quot;Eligibility never grants delete or lease authority&quot;,
+    &quot;provider&quot;: &quot;Separately approved cleanup/fence task; original S1 expressly excludes deletion&quot;
+  }
+]</pre><h2>待決與供料</h2><pre>[
+  {
+    &quot;id&quot;: &quot;H1&quot;,
+    &quot;owner&quot;: &quot;M05+M04&quot;,
+    &quot;gap&quot;: &quot;Effective CXv3 hashes complete closed SGA-TRANSITION-v2 request recursively, including pin_id/root_manifest/external_proof. The newer M04 17-field observation has no exact assembly mapping to this body or native issuer lineage.&quot;,
+    &quot;candidate&quot;: &quot;Preserve effective v2 schema and full-body hashing. Reconcile M04 observations to frozen server-resolved body. Save purpose is immutable held-pin issuer-record binding, not a new transfer body field; changed valid body conflicts, changed source binding fails proof verification.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;H2&quot;,
+    &quot;owner&quot;: &quot;M05+IO&quot;,
+    &quot;gap&quot;: &quot;store_identity/native target identity are prose; no issuer authentication, alias-safe identity/fence validator, durable inclusion verifier or restart implementation exists.&quot;,
+    &quot;candidate&quot;: &quot;Approve exact native issuer lookup/fence/inclusion seams and failure contract before Skeleton. Document fixture membership is only an assumed lookup.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;H3&quot;,
+    &quot;owner&quot;: &quot;M05+M04+M03&quot;,
+    &quot;gap&quot;: &quot;Closed transfer-formal request is already defined by central v3 schema. TransferReceipt and registry projection need exact M04 handoff/output mapping; pin/receipt UUID lineage and semantic profile mapping remain handoff questions, not a reopening of v3 hash closure.&quot;,
+    &quot;candidate&quot;: &quot;Reuse central closed request; choose exact issuer registry to M04 response/proof mapping without inventing fields or treating prose projection as adopted runtime response.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;H4&quot;,
+    &quot;owner&quot;: &quot;M05+IO&quot;,
+    &quot;gap&quot;: &quot;Uncertain CAS and after-CAS raw proof loss cannot prove prior or committed state from response absence. Record raw digest cannot self-reference its own committed index.&quot;,
+    &quot;candidate&quot;: &quot;Record logical generation in same CAS; retain external four-field commit proof separately as issuer evidence. No new registry; explicit reconciliation revalidates raw bytes and inclusion, never auto retry/ACK/release.&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+  }
+]</pre><h2>較早黃卡嘗試</h2><pre>[
+  {
+    &quot;card&quot;: &quot;PD-P1-M01-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Inspected latest provider-source-map/review evidence; not rerun&quot;,
+    &quot;missing&quot;: &quot;CR-D1..3 exact adoption/native issuer Ready bridge&quot;,
+    &quot;provider&quot;: &quot;Owner semantic disposition + M01/IO providers&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M02-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Inspected Golden14 candidate/correction review handoff; no repeated resolver&quot;,
+    &quot;missing&quot;: &quot;GT-D1..4 null and activation exact adoption; product build/native not authorized by document pass&quot;,
+    &quot;provider&quot;: &quot;Owner and corresponding template/toolchain providers&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Inspected media capability report handoff; no repeated review&quot;,
+    &quot;missing&quot;: &quot;Exact format/SDK/limits and accepted Skeleton/valid RED/native evidence&quot;,
+    &quot;provider&quot;: &quot;Owner support subset + media fixture/renderer provider&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M04-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Read current provider map; bridge evidence distinct from M05 ownership comparison&quot;,
+    &quot;missing&quot;: &quot;G1..4 exact adoption and real root-transfer/ACK providers&quot;,
+    &quot;provider&quot;: &quot;Owner + M04/M05/IO&quot;
+  }
+]</pre><h2>精確來源</h2><h3>S01 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:1–10</h3><p>Caller-provided candidate ownership text; pure policy, no IO.</p><pre>//! M05-S1 pure retention policy. No physical cleanup behavior.
+//! Root projections are supplied by their authoritative owners through HOST.
+//! Eligibility is never permission to delete; no paths, leases or IO enter here.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetCandidate {
+    pub asset_id: String,
+    pub content_digest: String,
+    pub owned_by_operation: Option&lt;String&gt;,
+}</pre><h3>S02 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:11–49</h3><p>Five root kinds, completeness and revisions supplied as projections; no authenticated issuer fields.</p><pre>#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RootKind {
+    LiveDocuments,
+    UndoHistory,
+    RedoHistory,
+    RecoverySnapshots,
+    InFlightTransactions,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Completeness {
+    Complete,
+    Unknown,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RootReference {
+    pub asset_id: String,
+    pub content_digest: String,
+    pub owner_id: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RootObservation {
+    pub kind: RootKind,
+    pub revision: String,
+    pub completeness: Completeness,
+    pub references: Vec&lt;RootReference&gt;,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RootSnapshot {
+    pub project_id: String,
+    pub session_id: String,
+    pub observations: Vec&lt;RootObservation&gt;,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvaluationContext {
+    pub project_id: String,
+    pub session_id: String,
+    pub operation_id: String,
+    pub expected_root_revisions: Vec&lt;(RootKind, String)&gt;,
+}</pre><h3>S03 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:50–79</h3><p>Eligible result only asset ID/digest; no cleanup authority or Held receipt.</p><pre>#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetentionDecision {
+    Retain {
+        reasons: Vec&lt;RetentionReason&gt;,
+    },
+    EligibleForCleanup {
+        asset_id: String,
+        content_digest: String,
+    },
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetentionReason {
+    Referenced { kind: RootKind, owner_id: String },
+    RootsIncomplete { kind: RootKind },
+    StaleRoots { kind: RootKind },
+    NotOwnedByOperation,
+    IdentityConflict { asset_id: String },
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RetentionError {
+    InvalidInput { field: String, reason: String },
+}
+
+/// Evaluate conservative retention from immutable owner-supplied projections.
+/// An eligible identity is not a cleanup lease or a deletion authorization.
+pub fn evaluate_asset_retention(
+    candidate: &amp;AssetCandidate,
+    roots: &amp;RootSnapshot,
+    context: &amp;EvaluationContext,
+) -&gt; Result&lt;RetentionDecision, RetentionError&gt; {</pre><h3>S04 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:80–109</h3><p>Text/digest/project/session validation, not issuer authentication.</p><pre>    for (field, value) in [
+        (&quot;asset_id&quot;, candidate.asset_id.as_str()),
+        (&quot;project_id&quot;, roots.project_id.as_str()),
+        (&quot;session_id&quot;, roots.session_id.as_str()),
+        (&quot;context.project_id&quot;, context.project_id.as_str()),
+        (&quot;context.session_id&quot;, context.session_id.as_str()),
+        (&quot;operation_id&quot;, context.operation_id.as_str()),
+    ] {
+        validate_text(field, value)?;
+    }
+    validate_digest(&quot;content_digest&quot;, &amp;candidate.content_digest)?;
+    if let Some(owner) = &amp;candidate.owned_by_operation {
+        validate_text(&quot;owned_by_operation&quot;, owner)?;
+    }
+    if roots.project_id != context.project_id || roots.session_id != context.session_id {
+        return Err(invalid(
+            &quot;roots.identity&quot;,
+            &quot;project or session does not match context&quot;,
+        ));
+    }
+    let mut observed = [None; 5];
+    let mut expected = [None; 5];
+    let mut total = 0usize;
+    for observation in &amp;roots.observations {
+        let i = root_index(observation.kind);
+        if observed[i].replace(observation).is_some() {
+            return Err(invalid(&quot;observations.kind&quot;, &quot;duplicate root provider&quot;));
+        }
+        validate_text(&quot;observations.revision&quot;, &amp;observation.revision)?;
+        if observation.references.len() &gt; 4096 {</pre><h3>S05 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:110–138</h3><p>Duplicate/revision/reference-count checks do not prove durable inclusion.</p><pre>            return Err(invalid(
+                &quot;observations.references&quot;,
+                &quot;per-provider limit exceeded&quot;,
+            ));
+        }
+        total = total
+            .checked_add(observation.references.len())
+            .ok_or_else(|| invalid(&quot;references&quot;, &quot;count overflow&quot;))?;
+        if total &gt; 16384 {
+            return Err(invalid(&quot;references&quot;, &quot;total reference limit exceeded&quot;));
+        }
+        for reference in &amp;observation.references {
+            validate_text(&quot;references.asset_id&quot;, &amp;reference.asset_id)?;
+            validate_text(&quot;references.owner_id&quot;, &amp;reference.owner_id)?;
+            validate_digest(&quot;references.content_digest&quot;, &amp;reference.content_digest)?;
+        }
+    }
+    for (kind, revision) in &amp;context.expected_root_revisions {
+        let i = root_index(*kind);
+        if expected[i].replace(revision.as_str()).is_some() {
+            return Err(invalid(
+                &quot;expected_root_revisions&quot;,
+                &quot;duplicate expected provider&quot;,
+            ));
+        }
+        validate_text(&quot;expected_root_revisions.revision&quot;, revision)?;
+    }
+    let mut reasons = Vec::new();
+    for kind in [</pre><h3>S06 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:139–170</h3><p>Missing/unknown/stale roots retain conservatively; revisions compared as strings.</p><pre>        RootKind::LiveDocuments,
+        RootKind::UndoHistory,
+        RootKind::RedoHistory,
+        RootKind::RecoverySnapshots,
+        RootKind::InFlightTransactions,
+    ] {
+        let i = root_index(kind);
+        let Some(observation) = observed[i] else {
+            reasons.push(RetentionReason::RootsIncomplete { kind });
+            continue;
+        };
+        if observation.completeness == Completeness::Unknown || expected[i].is_none() {
+            reasons.push(RetentionReason::RootsIncomplete { kind });
+        } else if expected[i] != Some(observation.revision.as_str()) {
+            reasons.push(RetentionReason::StaleRoots { kind });
+        }
+        for reference in &amp;observation.references {
+            if reference.asset_id == candidate.asset_id {
+                if reference.content_digest == candidate.content_digest {
+                    reasons.push(RetentionReason::Referenced {
+                        kind,
+                        owner_id: reference.owner_id.clone(),
+                    });
+                } else {
+                    reasons.push(RetentionReason::IdentityConflict {
+                        asset_id: candidate.asset_id.clone(),
+                    });
+                }
+            }
+        }
+    }
+    if candidate.owned_by_operation.as_deref() != Some(context.operation_id.as_str()) {</pre><h3>S07 apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs:171–183</h3><p>Owned-by-operation is text equality; output identity-only, not native fence.</p><pre>        reasons.push(RetentionReason::NotOwnedByOperation);
+    }
+    reasons.sort_by(|a, b| reason_key(a).cmp(&amp;reason_key(b)));
+    reasons.dedup();
+    if reasons.is_empty() {
+        Ok(RetentionDecision::EligibleForCleanup {
+            asset_id: candidate.asset_id.clone(),
+            content_digest: candidate.content_digest.clone(),
+        })
+    } else {
+        Ok(RetentionDecision::Retain { reasons })
+    }
+}</pre><h3>S08 apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs:23–29</h3><p>Four-field single-file receipt lacks catalog generation/inclusion/Held purpose.</p><pre>    pub target_path: String,
+    pub previous_digest: Option&lt;String&gt;,
+    pub committed_digest: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]</pre><h3>S09 apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs:62–78</h3><p>File commit Port supports lease read and checked replacement, not catalog transfer.</p><pre>        single_name: &amp;str,
+    ) -&gt; Result&lt;String, CommitError&gt;;
+    fn acquire_write(&amp;self, path: &amp;str) -&gt; Result&lt;Box&lt;dyn FileWriteLease&gt;, CommitError&gt;;
+}
+
+pub trait FileWriteLease {
+    fn read_current(&amp;self) -&gt; Result&lt;Option&lt;Vec&lt;u8&gt;&gt;, CommitError&gt;;
+    fn replace_checked(
+        &amp;mut self,
+        expected_digest: Option&lt;&amp;str&gt;,
+        bytes: &amp;[u8],
+    ) -&gt; Result&lt;CommitReceipt, CommitError&gt;;
+}</pre><h3>S10 apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs:978–1002</h3><p>Concrete receipt built after single-file committed journal; no semantic catalog inclusion proof.</p><pre>                return Err(recovery(
+                    &amp;self.target_path,
+                    &quot;committed target changed&quot;,
+                    Some(&amp;tx.record),
+                ));
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) =&gt; {
+                let receipt = CommitReceipt {
+                    target_path: self.target_path.clone(),
+                    previous_digest: previous,
+                    committed_digest: tx.record.new_digest.clone(),
+                    transaction_id: tx.record.transaction_id.clone(),
+                };
+                if self.cleanup_publish_temps(&amp;tx).is_ok() {
+                    let _ = self.cleanup_terminal(&amp;tx.record);
+                }
+                Ok(receipt)
+            }
+            Err(e) =&gt; {
+                if matches!(e, CommitError::Conflict { .. }) {
+                    return Err(e);
+                }</pre><h2>驗證邊界</h2><p>6 新文件自檢；獨立審查待執行。796 authority 零漂移。HEAD 5b709343a890503ebbe24a802e43cda5647df124；與歷史來源 HEAD 不相同。native/product/build/regression NOT RUN。</p><script type="application/json" id="module-spec">{"id": "M05-PROVIDER-SOURCE-MAP-20261104", "author": "/root/yellow_m05_provider", "stage": "DOCUMENT_PREPARATION_PENDING_INDEPENDENT_REVIEW", "selected": null, "generated_at": "2026-11-04T00:59:20.213426+08:00", "branch": "cursor/ui-bhv-arch-layer-editor", "HEAD": "5b709343a890503ebbe24a802e43cda5647df124", "historical_product_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "authority": {"path": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json", "sha256": "60d81ed00f6b0b1691f42aa87e454b92f72ed84986a0be89b4f7c2dec4d6bf08", "count": 796, "drift": []}, "intent": "Map M05 actual caller-supplied retention policy and single-file receipt to missing Held issuer/inclusion/fence providers; no schema decisions.", "architecture": "Root-owner projections → HOST → M05 pure evaluation; IO single-file lease/receipt remains separate.", "contracts": ["Conservative eligibility is not deletion authority", "Existing H1-H4 proposals remain pending; preserve adopted central request closure", "Unknown proof never authorizes automatic retry/ACK/release"], "field_map": [{"proposal": "Held pin identity/purpose/issuer", "actual": "AssetCandidate.owned_by_operation: Option<String>", "source": "S01,S07", "gap": "Text equality only; no authenticated Held record/purpose/issuer lineage", "provider": "M05+IO held-pin issuer; exact contract adoption H1/H2"}, {"proposal": "root_manifest durable inclusion", "actual": "RootObservation.references and completeness/revision", "source": "S02,S05,S06", "gap": "Owner-supplied projection membership, no durable catalog inclusion verifier", "provider": "Five root owners + M05 catalog/inclusion provider H2/H3"}, {"proposal": "native alias-safe identity/fence", "actual": "EvaluationContext project/session/operation and expected_root_revisions", "source": "S02,S04,S06", "gap": "String identity/revision validation is not native handle or cleanup fencing", "provider": "IO native identity/fence provider H2"}, {"proposal": "transfer receipt lineage/generation", "actual": "CommitReceipt target_path/previous_digest/committed_digest/transaction_id", "source": "S08,S09,S10", "gap": "Raw file commit proof lacks semantic profile/catalog generation/pin-root lineage", "provider": "M04 observation + M05 issuer mapping H3"}, {"proposal": "uncertain CAS reconciliation", "actual": "Pure RetentionDecision; FileWriteLease.replace_checked separate boundary", "source": "S03,S09", "gap": "No native catalog CAS/restart/inclusion reconciliation demonstrated here", "provider": "M05 catalog CAS and restart provider H4; no automatic retry/ACK/release"}, {"proposal": "physical cleanup authority", "actual": "EligibleForCleanup { asset_id, content_digest }", "source": "S03,S07", "gap": "Eligibility never grants delete or lease authority", "provider": "Separately approved cleanup/fence task; original S1 expressly excludes deletion"}], "owner_choices": [{"id": "H1", "owner": "M05+M04", "gap": "Effective CXv3 hashes complete closed SGA-TRANSITION-v2 request recursively, including pin_id/root_manifest/external_proof. The newer M04 17-field observation has no exact assembly mapping to this body or native issuer lineage.", "candidate": "Preserve effective v2 schema and full-body hashing. Reconcile M04 observations to frozen server-resolved body. Save purpose is immutable held-pin issuer-record binding, not a new transfer body field; changed valid body conflicts, changed source binding fails proof verification.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H2", "owner": "M05+IO", "gap": "store_identity/native target identity are prose; no issuer authentication, alias-safe identity/fence validator, durable inclusion verifier or restart implementation exists.", "candidate": "Approve exact native issuer lookup/fence/inclusion seams and failure contract before Skeleton. Document fixture membership is only an assumed lookup.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H3", "owner": "M05+M04+M03", "gap": "Closed transfer-formal request is already defined by central v3 schema. TransferReceipt and registry projection need exact M04 handoff/output mapping; pin/receipt UUID lineage and semantic profile mapping remain handoff questions, not a reopening of v3 hash closure.", "candidate": "Reuse central closed request; choose exact issuer registry to M04 response/proof mapping without inventing fields or treating prose projection as adopted runtime response.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H4", "owner": "M05+IO", "gap": "Uncertain CAS and after-CAS raw proof loss cannot prove prior or committed state from response absence. Record raw digest cannot self-reference its own committed index.", "candidate": "Record logical generation in same CAS; retain external four-field commit proof separately as issuer evidence. No new registry; explicit reconciliation revalidates raw bytes and inclusion, never auto retry/ACK/release.", "status": "PROPOSED_PENDING_OWNER"}], "provider_choices": [{"id": "MP1", "question": "Exact Held/native issuer/fence contract", "selected": null}, {"id": "MP2", "question": "Exact durable catalog inclusion and receipt mapping", "selected": null}, {"id": "MP3", "question": "Uncertain CAS/restart reconciliation contract", "selected": null}], "earlier_yellow_attempts": [{"card": "PD-P1-M01-PREP-01", "attempt": "Inspected latest provider-source-map/review evidence; not rerun", "missing": "CR-D1..3 exact adoption/native issuer Ready bridge", "provider": "Owner semantic disposition + M01/IO providers"}, {"card": "PD-P1-M02-PREP-01", "attempt": "Inspected Golden14 candidate/correction review handoff; no repeated resolver", "missing": "GT-D1..4 null and activation exact adoption; product build/native not authorized by document pass", "provider": "Owner and corresponding template/toolchain providers"}, {"card": "PD-P1-M03-PREP-01", "attempt": "Inspected media capability report handoff; no repeated review", "missing": "Exact format/SDK/limits and accepted Skeleton/valid RED/native evidence", "provider": "Owner support subset + media fixture/renderer provider"}, {"card": "PD-P1-M04-PREP-01", "attempt": "Read current provider map; bridge evidence distinct from M05 ownership comparison", "missing": "G1..4 exact adoption and real root-transfer/ACK providers", "provider": "Owner + M04/M05/IO"}], "bounded_search": {"argv": ["rg", "-n", "evaluate_asset_retention|TransferReceipt|transfer_formal|held_pin", "apps/sgenaxis-desktop/crates", "-g", "*.rs"], "exit": 0, "stdout": "apps/sgenaxis-desktop/crates\\sgenaxis-work\\tests\\phase1_asset_roots.rs:65:    assert_eq!(evaluate_asset_retention(c, r, x), Ok(expected));\napps/sgenaxis-desktop/crates\\sgenaxis-work\\tests\\phase1_asset_roots.rs:260:            match evaluate_asset_retention(&c, &r, &x) {\napps/sgenaxis-desktop/crates\\sgenaxis-work\\tests\\phase1_asset_roots.rs:360:                    evaluate_asset_retention(&c, &r, &x),\napps/sgenaxis-desktop/crates\\sgenaxis-work\\tests\\phase1_asset_roots.rs:386:                    evaluate_asset_retention(&c, &r, &x),\napps/sgenaxis-desktop/crates\\sgenaxis-work\\src\\asset_reference.rs:75:pub fn evaluate_asset_retention(\n", "stderr": "", "limit": "Only Rust files under apps/sgenaxis-desktop/crates. Search absence is not runtime/global absence proof."}, "negative_probe_contract": {"text_ownership_is_authenticated_held": false, "complete_flag_is_durable_inclusion": false, "matching_revision_is_native_fence": false, "raw_receipt_is_semantic_transfer_receipt": false, "eligible_means_delete_authority": false, "missing_runtime_search_proves_global_absence": false}, "bdd": {"Given": "Source-bound pure M05 projections and IO receipt definitions", "When": "Provider evidence is mapped against proposed Held/root/receipt/fence responsibilities", "Then": "Identity-only or caller-supplied fields cannot be promoted to native authenticated/durable authority"}, "acceptance": ["Exact source spans/hashes", "No historical PASS replay", "No adoption or product mutation", "Separate unknown providers/owners and static evidence limits"], "not_run": ["native issuer authenticity", "real root collection", "catalog CAS/restart", "product tests/build/package/install", "independent review"], "module_complete": false}</script>
