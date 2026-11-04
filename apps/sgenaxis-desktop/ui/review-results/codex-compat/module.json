@@ -1,0 +1,146 @@
+{
+  "identity": {
+    "module": "agent-compatibility",
+    "provider": "Codex",
+    "task": "PD-RUST-CODEX-COMPAT-01",
+    "parent": "PD-RUST-IMPROVE-20261025",
+    "date": "2026-10-26 Asia/Taipei",
+    "zone_policy": "stay_yellow_never_self_green",
+    "state": "PLANNING_ONLY",
+    "architecture_status": "PROPOSED_NOT_APPROVED",
+    "implementation": "NOT_READY_FOR_IMPLEMENTATION",
+    "verification": "NOT RUN",
+    "plan_card_state": "READY_FOR_TDD",
+    "note": "Verification design packet only. Claude/other Agent PASS does not prove Codex compatibility."
+  },
+  "intent": {
+    "bdd_card": "Given approved module contracts and controlled inputs, When this card executes, Then verify the same contracts on an explicit Codex version and actual host; record permission/cancel/error/report/evidence; another Agent PASS does not mean Codex compatible.",
+    "scope": [
+      "Codex-only compatibility verification design",
+      "permission / cancel / error / report / evidence matrix",
+      "independent non-inheritance from Claude and other Agents",
+      "BDD + TDD backlog coverage classes without weakened assertions"
+    ],
+    "out_of_scope": [
+      "production schema/API/Ports/ownership/transaction edits",
+      "live Codex launch or auth/secret access in this planning slice",
+      "guessed argv from Claude defaults",
+      "PTY / embedded panel (embedded-agents)",
+      "board green / commit / push / release",
+      "claiming PASS from DryRun or FakeProcess"
+    ]
+  },
+  "dependencies": [
+    {
+      "id": "PD-RUST-AGENT-LOOP-01",
+      "required": "approved agent-execution binding for input/permission/cancel/report/evidence",
+      "observed": "PLANNING_ONLY"
+    },
+    {
+      "id": "PD-RUST-CLI-ENTRY-IMPL-01",
+      "required": "approved CLI entry I/O/exit/cancel/evidence contract",
+      "observed": "PLANNING_ONLY"
+    },
+    {
+      "id": "PD-RUST-INBOUND-MCP-IMPL-01",
+      "required": "if inbound in scope: query/claim/report parity with CLI",
+      "observed": "PLANNING_ONLY"
+    },
+    {
+      "id": "PD-RUST-DISPATCH-MODES-DEC-01",
+      "required": "indirect: true Codex path/version/argv target still owner-open",
+      "observed": "RED decision open; missing real Codex target"
+    }
+  ],
+  "current_facts": [
+    {
+      "fact": "CliToolKind::Codex exists; defaults path=codex args=[exec]; live_approved defaults false.",
+      "ref": "apps/sgenaxis-desktop/crates/sgenaxis-exec/src/settings.rs",
+      "implication": "Defaults are not verified Codex CLI contract evidence."
+    },
+    {
+      "fact": "StdProcess uses stdin=null; no PTY; no permission-response channel.",
+      "ref": "sgenaxis-adapters std_process; cli-first-envelope",
+      "implication": "Interactive Codex permission UX may be ARCHITECTURE_GAP until separate approval."
+    },
+    {
+      "fact": "HOST does not accept/green from provider Success alone.",
+      "ref": "dispatch Host reconciliation",
+      "implication": "Codex exit 0 never equals product acceptance."
+    },
+    {
+      "fact": "cli-first envelope already states Claude compatibility does not prove Codex.",
+      "ref": "reports/rust-improvements/continuous/cli-first-envelope/module.html",
+      "implication": "This card is the dedicated Codex row C3 sibling."
+    }
+  ],
+  "architecture": {
+    "diagram_a_hexagonal": "Owner/UI/MCP driving -> HOST approved start -> AgentPort(Cli) -> CliAgentAdapter(selected=Codex) -> ProcessPort -> StdProcess -> Codex child; chunks/terminal -> EXEC -> HOST evidence; ReportRun ingress separate if approved.",
+    "diagram_b_ownership": "Settings(path,argv,live_approved) configure only. HOST owns run/lease/acceptance. EXEC owns capture/terminal. Codex child untrusted. Claude PASS store must not write Codex matrix cells. Compatibility module owns only verification assertions and evidence layout — no second SSOT."
+  },
+  "invariants": [
+    "INV-CX-01: Codex matrix cells fill only from Codex-labeled evidence.",
+    "INV-CX-02: Missing version/path/argv/host => NOT RUN, never inferred PASS.",
+    "INV-CX-03: Provider success != product green.",
+    "INV-CX-04: Never-auto-approve; interactive gap => BLOCKED/ARCHITECTURE_GAP, not silent stdin.",
+    "INV-CX-05: Cancel yields at most one terminal; lease releases at terminal only.",
+    "INV-CX-06: Child-claimed task/run/PASS cannot authorize acceptance.",
+    "INV-CX-07: Assertions must not be weakened to force TDD_PASS."
+  ],
+  "phases": [
+    {"id": "CX-V0", "name": "Planning packet", "status": "COMPLETE_THIS_DELIVERY"},
+    {"id": "CX-V1", "name": "Owner target lock", "status": "BLOCKED_UNSET"},
+    {"id": "CX-V2", "name": "Contract freeze from deps", "status": "BLOCKED_DEPS"},
+    {"id": "CX-V3", "name": "Controlled verification", "status": "NOT RUN"},
+    {"id": "CX-V4", "name": "Independent TDD Gate + HTML", "status": "HANDOFF_PLAN_REVIEW"}
+  ],
+  "bdd": [
+    {"id": "CX-B01", "tags": ["happy", "permission", "report", "evidence"]},
+    {"id": "CX-B02", "tags": ["cancel", "lifecycle"]},
+    {"id": "CX-B03", "tags": ["error", "invalid"]},
+    {"id": "CX-B04", "tags": ["error", "partial-failure"]},
+    {"id": "CX-B05", "tags": ["inbound-mcp", "parity"]},
+    {"id": "CX-B06", "tags": ["non-inheritance", "regression"]},
+    {"id": "CX-B07", "tags": ["boundary", "state", "transaction"]}
+  ],
+  "tdd_backlog_classes": [
+    "normal",
+    "boundary",
+    "invalid",
+    "dependency_failure",
+    "partial_failure",
+    "state",
+    "transaction",
+    "lifecycle",
+    "regression_non_inheritance"
+  ],
+  "tdd_status": "NOT RUN",
+  "matrix_path": "reports/rust-improvements/codex-compat/matrix.md",
+  "feature_path": "reports/rust-improvements/codex-compat/module.feature",
+  "plan_path": "reports/rust-improvements/codex-compat/plan.md",
+  "acceptance_proposed": [
+    "AC1: Exact Codex version + host + path + argv + auth_ready + scope recorded before any real/fixture run.",
+    "AC2: Permission/cancel/error/report/evidence each have assertable Then and matrix cells.",
+    "AC3: Claude or other Agent PASS cannot set any Codex cell to PASS.",
+    "AC4: Provider exit 0 never sets product green.",
+    "AC5: Intended RED (when Skeleton exists) fails on missing Codex-compat behavior; no weakened assertions.",
+    "AC6: Dependencies and owner target gates clear before CX-V3; otherwise honest NOT RUN/BLOCKED.",
+    "AC7: This planning card stays yellow; parent greens only after independent TDD_PASS + owner acceptance."
+  ],
+  "blockers": [
+    "PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION on this card and dependencies",
+    "Owner Codex version/path/argv/host/auth/scope unset",
+    "PD-RUST-DISPATCH-MODES-DEC-01 true-provider target open",
+    "No executable Skeleton/RED for Codex-compat yet (by design this slice)",
+    "Interactive permission may require architecture beyond stdin=null ProcessPort"
+  ],
+  "results": {
+    "planning_packet": "DELIVERED",
+    "ready_for_tdd": true,
+    "ready_for_implementation": false,
+    "codex_live": "NOT RUN",
+    "secrets": "NOT ACCESSED",
+    "production_edits": 0,
+    "board_green": "NOT DONE / FORBIDDEN"
+  }
+}

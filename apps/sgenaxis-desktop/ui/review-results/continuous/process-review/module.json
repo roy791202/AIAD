@@ -1,0 +1,84 @@
+{
+  "module": "process-run-integration",
+  "task": "PD-RUST-PROC-REVIEW-01",
+  "date": "2026-10-26 Asia/Taipei",
+  "phase": "Review",
+  "status": "ARCHITECTURE_CONFORMANCE_PASS",
+  "owner_status": "YELLOW; no acceptance promotion",
+  "authority": "Owner-approved core and integration A via parent relay",
+  "scope": "Read-only seven approved production files; report writes only",
+  "findings": [
+    {
+      "id": "PROC-R1",
+      "priority": "P1",
+      "file": "crates/sgenaxis-exec/src/cli.rs",
+      "symbol": "poll_live_if_needed",
+      "contract": "INV-PROC-03,04,08 / read-error policy",
+      "observed": "try_wait ? executes before handling already-observed output error. A simultaneous try_wait error returns Err, skipping queued tail delivery, Failed terminal and direct-child cancel attempt. UI catches error and clears local active state while HOST lease has no terminal to reconcile.",
+      "reproduce": "ProcessPort scripted try_read => stdout tail + stdout_completion Error, stderr Eof; try_wait => PortError::Process. Call live poll once: current returns Err instead of chunks followed by Failed; run remains unfinished. Source control flow proof; independent executable regression requested from test owner.",
+      "classification": "Pre-existing plain wait-error behavior is a follow-up; new read-error precedence/terminal promise bypass is in current approved scope.",
+      "minimal_fix": "Classify known output read error before fallible try_wait, or retain wait result without overriding read-error terminal; preserve primary read error and captured tail, no new public API.",
+      "status": "CLOSED",
+      "fix": "Known read-error classification now precedes wait failure propagation; simultaneous wait error appended, captured tail returned before one Failed, direct child cancel attempted once.",
+      "independent_evidence": {
+        "red": "../process-tests/exec-r1-red.txt: one test compiled then failed intended naked wait Err instead of Failed event",
+        "green": "../process-tests/exec-r1-green.txt: allfeatures EXEC67 PASS including proc_r1",
+        "tauri": "../process-tests/tauri-r1-green.txt:81 PASS",
+        "test_sha256": "b98a41eb38888e42d43873c456d8a026b2fa1823c95776280c9a20a50391f50a"
+      }
+    }
+  ],
+  "conformance": {
+    "ports": "Only approved StreamCompletion enum, two ProcessOutput fields and one re-export. Trait signatures/is_empty data-only unchanged.",
+    "dependencies": "No new crate/trait/Manager; EXEC consumes ProcessPort, adapters own OS resources.",
+    "reader": "Per-stream shared bytes/completion mutex, sticky EOF/error, Interrupted retried; try_read locks both before draining so poison does not discard healthy bytes. No reader joins in polling.",
+    "lifecycle": "Observed exit stored once; deadline never reset on data; independent EOF/error observations; chunks before exactly one terminal including simultaneous stream-read/wait error. Plain wait-only error behavior unchanged, classified follow-up.",
+    "host": "cancel_run request-only does not consume events; poll reconciles lease only on terminal.",
+    "ui": "Empty batch continues; cancellation retains generation/run ID; terminal board may clear run ID but guarded continuation still finishes actual terminal. Late cancel ACK ignored after active ID changed.",
+    "scope": "Actual pre-process-app.js byte-mask comparison: all bytes outside pollRunStream/cmdCancelRun exactly preserved."
+  },
+  "policy_clarification": {
+    "deadline": "Implementation samples available states first and dual EOF wins at any poll, including >2000ms. Packet boundary_order explicitly says capture first then dual EOF completes; no reader timestamps or unattended timer were approved. This is observed-poll deadline, not proof actual reader completion took <=2s. Root notified to state this clearly; no new timestamp framework recommended."
+  },
+  "followups": [
+    {
+      "id": "PROC-F1",
+      "classification": "RELATED_FOLLOW_UP pre-existing outside two approved UI functions",
+      "file": "ui/app.js cmdStartDryRun",
+      "behavior": "Second Assign increments runPollGeneration before HOST Busy rejection and catch clears activeRunId. Existing run UI polling may be invalidated although HOST retains lease. Same code verified in pre-process snapshot.",
+      "action": "Separate bounded UI guard task; do not opportunistically edit current slice."
+    },
+    {
+      "id": "PROC-F2",
+      "classification": "RELATED_FOLLOW_UP pre-existing",
+      "behavior": "StdProcess cancel ignores native kill/wait errors; current approved scope retains existing behavior. No process-tree containment/reaping guarantee."
+    },
+    {
+      "id": "PROC-F3",
+      "classification": "RELATED_FOLLOW_UP pre-existing",
+      "behavior": "ProcessPort plain try_wait error with no known output-read error still returns ExecError; broader host/UI recovery not changed by this bounded readerror fix."
+    }
+  ],
+  "evidence": {
+    "verification": "Reviewer read actual independent RED/GREEN logs; EXEC67 and Tauri81 PASS after PROC-R1. No duplicate full suites run by reviewer.",
+    "source_sha256": {
+      "crates/sgenaxis-ports/src/process.rs": "47d6a4d2532ad8dece4fc767dcc4cdb244c24686fc7f46bdb46675fe7f5cf762",
+      "crates/sgenaxis-ports/src/lib.rs": "8d21379b7ea0c720f9d440f35b706ab16f7e199709ee0346af189a38640dc82d",
+      "crates/sgenaxis-adapters/src/std_process.rs": "56278d94da848890d1c10a03b43a3d9cad658257b04b7e7b922be162a65535ca",
+      "crates/sgenaxis-adapters/src/fake.rs": "9839a1db2ba1b436d99b448b1693ed9a353d55432f5aaf57afd815dfb034a471",
+      "crates/sgenaxis-exec/src/cli.rs": "7600d942d73adb156ea1652862d51f21e72e092af69b083343b961bcc495eaf9",
+      "src-tauri/src/dispatch.rs": "7e307824b6cebc60b239b45b85f710032cb1205b46e02e8b617bfbbe6c9ff2ed",
+      "ui/app.js": "b09b96481d6993ec755ed6ee70e46cf1b30d688024dbb390467caad5f2868584"
+    },
+    "native_ui": "NOT RUN; browser harness actual frontend/mock IPC only",
+    "compatibility": "Windows only; non-Windows NOT RUN"
+  },
+  "limitations": [
+    "Unbounded output buffers",
+    "Detached inherited pipe reader lifetime",
+    "Direct-child-only cancel",
+    "Lossy UTF8 contract retained",
+    "No Agent/network execution"
+  ],
+  "open_findings": 0
+}

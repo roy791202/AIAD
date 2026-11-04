@@ -1,0 +1,269 @@
+{
+  "module": "verification-planning",
+  "generated_at": "2026-10-26T01:34:56.563871+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "phase": "PLANNING",
+  "architecture_status": "PROPOSAL_ONLY_NOT_APPROVED",
+  "work_completed": "Two blocked reports audited and converted into bounded reviewable execution plans; no E2E/nativePASS claim",
+  "shared": {
+    "authority": "Verification plan proposal only; no architecture approval, formal test/harness/source edits, native UI actions or real Agent/network execution.",
+    "existing_evidence": "Prior cargo/module/browser gates remain module-local or actual frontend/mockIPC; none proves full system or native Tauri.",
+    "diagrams": {
+      "boundary": "Operator / future test driver\n  ↓ existing UI or HOST driving adapter\n  ↓ existing command/use-case ports\n  ↓ HOST / SPEC / EXEC / EVID / FLOW (each retains ownership)\n  ↓ existing output ports\n  ↑ filesystem / process adapters\nNative view additionally: Tauri WebView → real invoke bridge → registered command → HOST.\nTest fixtures/evidence live outside production project data.",
+      "dependencies": "Design document projection → module packet (source+SHA) → approved execution request → run event projection → evidence/report ingestion → acceptance policy\nExisting local libraries prove segments only; missing approved readiness/UI/Agent/ingress contracts are explicit gates, never guessed links.\nUI projection ← real command DTOs ← HOST authoritative state; UI never owns approval/lease.\nFilesystem adapter owns persistence operation; no test writes bypass domain mutation ports."
+    },
+    "isolation": [
+      "Unique disposable root per scenario under OS temp with run UUID; no production project or board file edits",
+      "Copy fixtures, record original fixture SHA256, keep product input .ess read-only; persist outputs only in disposable root/evidence directory",
+      "Use isolated settings path only through supported product configuration; if no supported isolation seam exists classify ARCHITECTURE_GAP and propose smallest seam before implementation",
+      "No real Agent, external provider or forbidden8787/8788 endpoints; DryRun/scriptedlocal execution explicitly labeled",
+      "Capture start/end source SHA, HEAD+dirty tree, OS/toolchain/WebView metadata; distinguish build under test from workspace HEAD",
+      "Cleanup only verified disposable roots after evidence retained; permission tests use controlled fixture failure, never machine-wide ACL change"
+    ],
+    "failure_taxonomy": {
+      "PRODUCT_FAIL": "Observable result contradicts approved contract with reproducible controlled fixture",
+      "ENVIRONMENT_BLOCKED": "Toolchain/WebView/permissions/native automation unavailable; NOT RUN for affected behavior",
+      "SPEC_CONFLICT": "Different authoritative docs disagree; stop affected slice",
+      "ARCHITECTURE_GAP": "Required mutation/isolation/provenance seam absent; no speculative test-only production bypass",
+      "FIXTURE_OR_HARNESS_ERROR": "Compile/import/locator/output-path fault; not behavioral RED",
+      "DEPENDENCY_NOT_READY": "Missing approved module contract/readiness; future end-to-end execution NOT RUN",
+      "FLAKY_UNRESOLVED": "Repeat controlled reproduction; do not treat retryPASS as clean acceptance"
+    },
+    "no_overdesign": "0 new production types/ports/crates/services/frameworks proposed. Reuse existing tests, commands and report format; at most one future system test file and one native evidence checklist/script only after chosen native surface actually supports it. No universal provider runner."
+  },
+  "cards": [
+    {
+      "card": "PD-RUST-SYSTEM-REGRESSION-01",
+      "primary_module": "cross-module-integration",
+      "plan_status": "PLAN_READY_FOR_OWNER_REVIEW",
+      "execution": "NOT_RUN_END_TO_END; module regression evidence retained separately",
+      "intent": "Verify semantic/provenance continuity across approved module boundaries and no accidental product green.",
+      "ownership": "Parent integration owns only inter-module assertions; child modules retain contracts/BDD/TDD and implementation. No parent duplicate state store.",
+      "dependencies": [
+        {
+          "id": "PD-RUST-XML-READINESS-01",
+          "required": "approved source/revision/readiness binding; current read-only .ess packet is always NOT_READY"
+        },
+        {
+          "id": "PD-RUST-UI-BEHAVIOR-LOOP-01",
+          "required": "approved UI ownership/persistence+interaction contract"
+        },
+        {
+          "id": "PD-RUST-AGENT-LOOP-01",
+          "required": "approved local/scripted execution boundary; real external Agent not implied"
+        },
+        {
+          "id": "PD-RUST-REPORT-INGRESS-IMPL-01",
+          "required": "approved report identity, trust/freshness and rejection contract"
+        }
+      ],
+      "minimal_slices": [
+        {
+          "id": "SYS-V1",
+          "kind": "Can plan now; execution approval needed",
+          "scope": "Fixture/identity inventory and existing module regression reuse; establish exact source/module/task/run/evidence ID table without adding schema",
+          "output": "Versioned fixture inventory, expected rejection statuses and evidence directory; classify missing mappings"
+        },
+        {
+          "id": "SYS-V2",
+          "kind": "After dependencies ready",
+          "scope": "One controlled local happy path using existing approved ports; .ess source→packet→task→DryRun/local run→ingress→evidence→owner acceptance gate",
+          "output": "Machine-checked ID/hash continuity and event ordering; simulation explicitly labeled"
+        },
+        {
+          "id": "SYS-V3",
+          "kind": "After SYS-V2",
+          "scope": "Stale source, wrong task/run/report binding, execution failure, cancel, approved expiry and restart cases; no new retry semantics",
+          "output": "Per-case deterministic assertions and unchanged source/preexisting state snapshots"
+        },
+        {
+          "id": "SYS-V4",
+          "kind": "Final integration review",
+          "scope": "Child module regressions and parent integration suite; compare acceptance projection before/after; owner decides release",
+          "output": "PASS/FAIL/BLOCKED/NOT RUN matrix with exact build binding"
+        }
+      ],
+      "bdd": [
+        {
+          "id": "SYS-B1",
+          "given": "Approved isolated design/module/task fixture and ready dependency revisions",
+          "when": "A controlled local run reports through approved ingress",
+          "then": "SourceSHA/revision/module/task/run/evidence identities match exactly and provider success alone never sets product green"
+        },
+        {
+          "id": "SYS-B2",
+          "given": "A packet from source revision A and source changed to B",
+          "when": "Execution readiness is checked",
+          "then": "Stale request is rejected before execution and no run/evidence success is manufactured"
+        },
+        {
+          "id": "SYS-B3",
+          "given": "An approved run and an unrelated report identity",
+          "when": "The report is submitted",
+          "then": "Wrong task/run/version binding is rejected and existing evidence/state remain unchanged"
+        },
+        {
+          "id": "SYS-B4",
+          "given": "A controlled running or draining task",
+          "when": "Execution fails or cancellation is requested",
+          "then": "Captured chunks precede one terminal, lease releases only at terminal and product does not turn green"
+        },
+        {
+          "id": "SYS-B5",
+          "given": "An approved expiring authorization/lease fixture",
+          "when": "Its declared expiry boundary is reached",
+          "then": "The owning module expiry contract governs rejection/reconcile; no process-drain timeout is substituted for authorization expiry"
+        },
+        {
+          "id": "SYS-B6",
+          "given": "A previous run finished and events/evidence reconciled",
+          "when": "A new approved run starts",
+          "then": "New run identity is distinct and previous evidence cannot authorize the new run"
+        }
+      ],
+      "fixtures": [
+        "Valid selected module and unrelated-secret sentinel .ess from existing packet fixture; copies+hashes",
+        "Malformed/stale .ess, wrong module/task/run identity, duplicate/conflicting report fixtures only per ingress contract",
+        "Scripted child success/failure/cancel/late-output from existing process tests; no remote CLI",
+        "Approved-clock expiry fixture only after actual owner expiry semantics identified; no numerical expiry invented"
+      ],
+      "observations": [
+        "Input source before/after SHA256; packet source hash/payloadhash; moduleId distinct slotId",
+        "Task binding, runID, event sequence and exactly-one terminal; evidence/report IDs and source revision",
+        "Pre/post authoritative state projection and WORK lease; acceptance response and green count; original persisted files byte equality on rejection",
+        "Logs must label simulated provider vs real process, and local vs end-to-end coverage"
+      ],
+      "ac": [
+        "Each SYS-B1..B6 has one executable parent-owned assertion or explicit dependency gate NOT RUN; no silent omission",
+        "At least success/stale/wrongbinding/fail/cancel/expiry/restart paths demonstrate required identity/state invariants",
+        "Existing .ess NOT_READY cannot be bypassed; approved readiness source is prerequisite",
+        "Failures preserve previous valid state per child contract; no auto-green from provider success",
+        "Exact fixture/source/build hashes, command/exit/log/testmapping retained; environment failures classified separately",
+        "All child regressions pass or individually classified; parent acceptance remains separate"
+      ],
+      "owner_decision": "Approve this bounded verification plan and dependency order; do not approve missing readiness/schema/Agent/ingress architecture implicitly. Exact expiry authority must be named before SYS-B5 test implementation."
+    },
+    {
+      "card": "PD-RUST-NATIVE-UI-VERIFY-01",
+      "primary_module": "desktop-ui-integration",
+      "plan_status": "PLAN_READY_FOR_OWNER_REVIEW",
+      "execution": "NATIVE_NOT_RUN; no native window launched or controlled",
+      "intent": "Prove actual Tauri WebView/real IPC/persist-reopen/error/state projection; distinguish it from existing browser mockedIPC.",
+      "existing_native_path": "tauri.conf.json withGlobalTauri=true; registered scene_save/scene_load/uidesign_save_design/uidesign_load_design; app.js uses global invoke. Missing @tauri-apps/api package alone is not a blocker and does not justify new SDK.",
+      "dependencies": [
+        {
+          "id": "PD-RUST-UI-BEHAVIOR-LOOP-01",
+          "required": "approved interaction/UI ownership/save-load contract"
+        },
+        {
+          "id": "PD-RUST-SYSTEM-REGRESSION-01",
+          "required": "corresponding integration fixture baseline; owner may approve staged native transport/persistence smoke separately without claiming complete system loop"
+        }
+      ],
+      "ui_schema": {
+        "existing_controls": "Existing project binding, scene/UI-design load/save, run status/log/Assign/Cancel; no new controls or fields",
+        "normal": "Native action invokes registered command, reflects returned state and persists in isolated project",
+        "invalid": "Path outside declared project, malformed document, missing root/input => readable error, prior active state unchanged",
+        "pending": "Assign/cancel retains current run projection until actual terminal; repeated Assign blocked while active",
+        "failure": "Controlled save denial/invalidload must not overwrite old file or clear valid state",
+        "reopen": "Close/reopen native app with isolated project and reload saved artifact; compare canonical semantic state and persisted byte/hash expectations",
+        "accessibility": "Use existing labels/focus/buttons; record keyboard reachability only on actual native surface, no redesign"
+      },
+      "minimal_slices": [
+        {
+          "id": "NATIVE-V1",
+          "scope": "Environment/build identity+isolated project preparation and evidence protocol; no UI launch in current planning",
+          "output": "Toolchain/WebView/buildhash+fixture snapshots; supported isolation seam confirmed"
+        },
+        {
+          "id": "NATIVE-V2",
+          "scope": "Native launch and one real registered query/action; verify bridge identity without monkeypatching __TAURI__",
+          "output": "Native window screenshot/video+process identity+host action/result evidence. If available automation cannot see native WebView, operator follows fixed checklist; no browser substitution"
+        },
+        {
+          "id": "NATIVE-V3",
+          "scope": "Scene and UI-design save/load/invalid/failure/reopen using existing commands and approved contract",
+          "output": "Before/after files+state projections and native action observations"
+        },
+        {
+          "id": "NATIVE-V4",
+          "scope": "Native run emptypoll/cancel/tailterminal and repeatAssign/restart; local approved fixtures only",
+          "output": "Native visible log/order/status and host lease/terminal projection; no real provider"
+        },
+        {
+          "id": "NATIVE-V5",
+          "scope": "Cross-module system fixtures only after SYS ready",
+          "output": "Native E2E matrix; results separated from earlier transport/persistence smoke"
+        }
+      ],
+      "bdd": [
+        {
+          "id": "NATIVE-B1",
+          "given": "The identified native Tauri build opens an isolated approved project",
+          "when": "The operator performs an existing load/query action",
+          "then": "Real registered IPC returns project state and native UI displays it with no mocked bridge"
+        },
+        {
+          "id": "NATIVE-B2",
+          "given": "A valid scene/UI design with recorded semantic state",
+          "when": "It is saved and loaded through native controls",
+          "then": "Disk artifact and UI/HOST projections agree per existing format contract"
+        },
+        {
+          "id": "NATIVE-B3",
+          "given": "Valid active state and malformed or out-of-root input",
+          "when": "The native load/save action is attempted",
+          "then": "Readable rejection appears and original valid state/file remains unchanged"
+        },
+        {
+          "id": "NATIVE-B4",
+          "given": "An existing persisted valid artifact and a controlled write-denied fixture",
+          "when": "Native save fails",
+          "then": "Old artifact hash remains valid and failure is visible without success indication"
+        },
+        {
+          "id": "NATIVE-B5",
+          "given": "An approved saved isolated project",
+          "when": "The native app closes and reopens the saved artifact",
+          "then": "Canonical scene/UI state matches the saved state; assumptions about auto-restore are not invented"
+        },
+        {
+          "id": "NATIVE-B6",
+          "given": "A local controlled run with delayed output",
+          "when": "It is cancelled and Assign pressed while draining",
+          "then": "Native UI stays active, tail appears once before true terminal and a new run is allowed afterward"
+        }
+      ],
+      "native_evidence_protocol": [
+        "Before launch: exact executable/build SHA, sourceHEAD+dirtytree, OS/WebView, isolatedroot, originalfixture hashes",
+        "Record native window/process identity and actual user actions; no injected __TAURI__, file:// browser or :8770 substitute",
+        "For each action pair native visible state screenshot/video with real HOST command result/log if supported; disk hash alone or screenshot alone cannot prove whole flow",
+        "Use existing logging/export surfaces; if command correlation unavailable, classify missing seam and propose minimal instrumentation separately; no hidden implementation here",
+        "Save retained scenario transcript with timestamps, input/output file hashes, state projection, error text and native reopen evidence",
+        "Native automation tool must actually support Tauri WebView on this machine; choose existing tool or manual operator checklist first, no universal harness framework"
+      ],
+      "ac": [
+        "Every NATIVE-B1..B6 has native action+realIPC/state evidence or explicitly NOT RUN; mockedIPC/browser tests cannot satisfy it",
+        "No monkeypatch/proxy/mock Tauri bridge in native proof",
+        "Save/load semantic equality and failure state/file preservation measured; user-visible errors captured",
+        "Reopen proof uses isolated test settings/project, not production user data",
+        "No network Agent/runtime permission bypass; native run tests localfixture and correctly labeled",
+        "UI architecture and schema unchanged; any missing supported isolation/observability seam returns ARCHITECTURE_GAP before code",
+        "Full native/system acceptance requires dependencies; staged smoke status remains PARTIAL until all required cases satisfied"
+      ],
+      "owner_decision": "Approve minimal native evidence checklist/fixture plan and staged transport/persistence smoke, keeping full UI behavior/system cases dependency-gated. Before execution identify available native control/observation capability; absence is environment NOT RUN, never browser PASS."
+    }
+  ],
+  "source_sha256": {
+    "apps/sgenaxis-desktop/src-tauri/tauri.conf.json": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2",
+    "apps/sgenaxis-desktop/src-tauri/src/lib.rs": "e0a20cedf5cc0e71e7fb570f4b2ac7f6bebe9d115c717f7432acb3201134e217",
+    "apps/sgenaxis-desktop/ui/app.js": "29ec34f563d487dd9d30b4d22725abfc29bd79c8698044bc78ce85abe734ec00",
+    "apps/sgenaxis-desktop/crates/sgenaxis-host/src/module_packet.rs": "553b0a119b2b139ae3036c3fa26a7500fb1d67592a2e50dda8e45e28e0d52f6c"
+  },
+  "existing_reports_review": {
+    "system": "Existing report contains partial9/15/67/295/81 gates and dependency gaps; lacks fullparentBDD/isolatedfixtures/observability/nextslices. Reuse existing evidence, add this plan only.",
+    "native": "Existing report has environment/smokeNOTRUN matrix; lacks minimal native observation protocol and phasedAC. Correct SDK dependency inference from actual globalTauri wiring."
+  },
+  "no_production_test_harness_change": true,
+  "commit_push": false
+}

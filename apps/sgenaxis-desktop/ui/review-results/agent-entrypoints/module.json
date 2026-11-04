@@ -1,0 +1,175 @@
+{
+  "identity": {
+    "module": "agent-integration",
+    "requirement": "REQ-AGENT-ENTRYPOINTS-01",
+    "task": "PD-RUST-AGENT-ENTRYPOINTS-01",
+    "parent": "PD-RUST-IMPROVE-20261025",
+    "date": "2026-10-26 Asia/Taipei",
+    "state": "PLANNING_ONLY",
+    "architecture_status": "PROPOSED_NOT_APPROVED",
+    "implementation": "NOT_STARTED",
+    "verification": "NOT RUN",
+    "plan_card_state": "PACKET_READY_FOR_TDD_REVIEW",
+    "board_zone_policy": "stay_yellow_never_self_green",
+    "note": "Integration routing map only. Reuses first closed-loop contracts; does not approve Ports, Skeleton, RED, or production work."
+  },
+  "intent": {
+    "problem": "Multiple Agent providers and entry modes (CLI, inbound MCP, Claude/Codex compat, embedded, Agent-hosted UI) must share one task/run/report contract family without each creating a second SSOT.",
+    "scope": "Planning packet: architecture notes, two diagrams, contracts/invariants sketch, BDD sketch, risks, dependency blockers, capability routing matrix with version/scope/compat/unsupported fields.",
+    "out_of_scope": [
+      "production Port / schema / DTO / ownership / transaction changes",
+      "live Agent / network / secret access",
+      "claiming architecture approval",
+      "implementing CLI-ENTRY / INBOUND-MCP / COMPAT / EMBEDDED slices",
+      "board green / commit / push / release",
+      "duplicate SSOT for tasks or reports"
+    ]
+  },
+  "dependencies": {
+    "hard": [
+      "PD-RUST-AGENT-LOOP-01",
+      "architecture gates (schema/API/Ports/ownership/transaction/BDD)",
+      "PD-RUST-EMBEDDED-AGENT-PLAN-01 (for embedded row; DEC still open)"
+    ],
+    "delivery_owners": [
+      "PD-RUST-CLI-ENTRY-IMPL-01",
+      "PD-RUST-INBOUND-MCP-IMPL-01",
+      "PD-RUST-CLAUDE-COMPAT-01",
+      "PD-RUST-CODEX-COMPAT-01",
+      "PD-RUST-EMBEDDED-AGENT-DEC-01",
+      "PD-RUST-AGENT-HOSTED-UI-01"
+    ],
+    "open_decs_affecting_matrix": [
+      "PD-RUST-DISPATCH-MODES-DEC-01",
+      "PD-RUST-EMBEDDED-AGENT-DEC-01",
+      "PD-RUST-MCP-TRANSPORT-DEC-01",
+      "PD-RUST-GUARD-DEC-01"
+    ],
+    "named_proposal_packets": [
+      "reports/rust-improvements/continuous/cli-first-envelope/module.html",
+      "reports/rust-improvements/embedded-agents/module.html",
+      "reports/rust-improvements/dispatch-modes/module.html"
+    ]
+  },
+  "capability_matrix": [
+    {
+      "capability_id": "cli-entry",
+      "owner_card": "PD-RUST-CLI-ENTRY-IMPL-01",
+      "provider": "configurable CLI (fixture then named installs)",
+      "version": "UNKNOWN",
+      "scope": "noninteractive HOST/EXEC envelope (proposed)",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "Real provider stdin/PTY not in first slice",
+      "blockers": ["PD-RUST-DISPATCH-MODES-DEC-01", "PD-RUST-AGENT-LOOP-01"]
+    },
+    {
+      "capability_id": "inbound-mcp",
+      "owner_card": "PD-RUST-INBOUND-MCP-IMPL-01",
+      "provider": "inbound MCP driving adapter",
+      "version": "UNKNOWN",
+      "scope": "claim/query/report into shared Application (proposed)",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "Must not inherit outbound AgentProvider spawn semantics",
+      "blockers": ["PD-RUST-DISPATCH-MODES-DEC-01", "PD-RUST-MCP-TRANSPORT-DEC-01", "PD-RUST-AGENT-LOOP-01"]
+    },
+    {
+      "capability_id": "claude-compat",
+      "owner_card": "PD-RUST-CLAUDE-COMPAT-01",
+      "provider": "Claude Code",
+      "version": "UNKNOWN — owner must supply",
+      "scope": "named install + mode; independent evidence row",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "Settings defaults are not verified APIs",
+      "blockers": ["PD-RUST-AGENT-LOOP-01", "PD-RUST-CLI-ENTRY-IMPL-01", "PD-RUST-INBOUND-MCP-IMPL-01", "owner target inputs"]
+    },
+    {
+      "capability_id": "codex-compat",
+      "owner_card": "PD-RUST-CODEX-COMPAT-01",
+      "provider": "Codex",
+      "version": "UNKNOWN — owner must supply",
+      "scope": "named install + host; Claude PASS ≠ Codex PASS",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "Independent row required",
+      "blockers": ["PD-RUST-AGENT-LOOP-01", "PD-RUST-CLI-ENTRY-IMPL-01", "PD-RUST-INBOUND-MCP-IMPL-01", "owner target inputs"]
+    },
+    {
+      "capability_id": "embedded",
+      "owner_card": "PD-RUST-EMBEDDED-AGENT-PLAN-01 → DEC-01 → later IMPL",
+      "provider": "Claude Code / Codex interactive (EA-A or EA-B)",
+      "version": "UNKNOWN",
+      "scope": "EluSlot hosts session; project bind + permissions required",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "ProcessPort gaps GAP-PP-01..05; DEC open",
+      "blockers": ["PD-RUST-EMBEDDED-AGENT-DEC-01", "PD-RUST-AGENT-LOOP-01"]
+    },
+    {
+      "capability_id": "agent-hosted-ui",
+      "owner_card": "PD-RUST-AGENT-HOSTED-UI-01",
+      "provider": "host-dependent embedded product UI",
+      "version": "UNKNOWN",
+      "scope": "read-only task/report first; writes separately approved",
+      "compat_status": "NOT RUN",
+      "unsupported_note": "Per-host sandbox/auth/capabilities unverified",
+      "blockers": ["PD-RUST-DISPATCH-MODES-DEC-01", "PD-RUST-INBOUND-MCP-IMPL-01"]
+    }
+  ],
+  "architecture_principles": [
+    "A1 single authoritative Rust Host",
+    "A2 reuse first closed-loop contracts",
+    "A3 entrypoint ≠ provider",
+    "A4 provider success ≠ acceptance",
+    "A5 versioned capability rows",
+    "A6 unsupported is first-class",
+    "A7 no duplicate SSOT",
+    "A8 inbound ≠ outbound provider semantics",
+    "A9 embedded session is a separate seam",
+    "A10 compat cards own provider evidence",
+    "A11 gates before Skeleton/RED",
+    "A12 this module is observational index only"
+  ],
+  "invariants": [
+    "INV-AE-01 owner card per capability",
+    "INV-AE-02 Claude/Codex independence",
+    "INV-AE-03 publish NOT RUN / NOT_SUPPORTED",
+    "INV-AE-04 explicit version/path/argv/auth/target before real-provider claims",
+    "INV-AE-05 inbound MCP ≠ outbound AgentProvider",
+    "INV-AE-06 no silent ProcessPort PTY extension",
+    "INV-AE-07 no second SSOT here",
+    "INV-AE-08 no guessed provider classifiers"
+  ],
+  "bdd_sketch_ids": [
+    "BDD-AE-01",
+    "BDD-AE-02",
+    "BDD-AE-03",
+    "BDD-AE-04",
+    "BDD-AE-05",
+    "BDD-AE-06",
+    "BDD-AE-07"
+  ],
+  "diagrams": {
+    "A_entrypoint_fan_in": "Operators/Agents → CLI-ENTRY | INBOUND-MCP | EMBEDDED | AGENT-HOSTED-UI → Application Host → shared task/run/lease/cancel/report/EVID",
+    "B_ownership_non_duplication": "AGENT-LOOP owns closed-loop SSOT; delivery cards own adapters/evidence; this card owns routing index only; forbidden second stores and auto-green"
+  },
+  "readiness": {
+    "implementation": "NOT_READY_FOR_IMPLEMENTATION",
+    "skeleton": "NOT_STARTED",
+    "intended_red": "NOT RUN",
+    "architecture_approval": "NOT CLAIMED",
+    "reasons": [
+      "PLANNING_ONLY charter",
+      "AGENT-LOOP gates open",
+      "open DECs on dispatch/embedded/MCP/guard",
+      "provider targets unspecified",
+      "no formal BDD/Skeleton authorized"
+    ]
+  },
+  "artifacts": [
+    "reports/rust-improvements/agent-entrypoints/module.html",
+    "reports/rust-improvements/agent-entrypoints/module.json",
+    "reports/rust-improvements/agent-entrypoints/architecture.md",
+    "reports/rust-improvements/agent-entrypoints/contracts-invariants.md",
+    "reports/rust-improvements/agent-entrypoints/bdd-sketch.md",
+    "reports/rust-improvements/agent-entrypoints/risks-and-blockers.md",
+    "reports/dispatch-pd/PD-RUST-AGENT-ENTRYPOINTS-01.md"
+  ]
+}

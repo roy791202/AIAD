@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex compatibility — verification planning packet</title>
+<style>
+body{font:16px/1.6 system-ui;max-width:1100px;margin:32px auto;padding:20px;background:#111820;color:#edf2f8}
+a{color:#9dccff}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,monospace;background:#0b1218;padding:12px;border:1px solid #345}
+td,th{border:1px solid #567;padding:10px;text-align:left;vertical-align:top}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+h1,h2{color:#9dccff}section{border:1px solid #374151;padding:16px;margin:16px 0}
+.badge{display:inline-block;padding:2px 8px;border:1px solid #8af;color:#8af;border-radius:4px;font-size:13px;margin-right:6px}
+.warn{background:#78350f;padding:12px;border:1px solid #b45309}
+</style>
+<body>
+<h1>驗證｜Codex 領工、執行與回報相容性</h1>
+<p>
+<span class="badge">PLANNING_ONLY</span>
+<span class="badge">NOT_READY_FOR_IMPLEMENTATION</span>
+<span class="badge">READY_FOR_TDD</span>
+<span class="badge">stay yellow</span>
+</p>
+<p>Card: <code>PD-RUST-CODEX-COMPAT-01</code> · Module: <code>agent-compatibility</code> · Provider: <b>Codex only</b> · Date: 2026-10-26 Asia/Taipei</p>
+<p class="warn"><b>Hard rule:</b> Claude Code / Cursor / DryRun / any other Agent <b>PASS ≠ Codex PASS</b>. Each matrix cell needs Codex-labeled evidence on an explicit version + actual host.</p>
+
+<section>
+<h2>Intent</h2>
+<p>Given approved module contracts and controlled inputs, when this card executes, verify the <b>same</b> contracts against a named Codex installation on a named host. Record <b>permission / cancel / error / report / evidence</b>. Do not invent argv from Claude defaults. Do not self-green.</p>
+<p>Sibling planning: <a href="../continuous/cli-first-envelope/module.html">cli-first envelope</a> (C3 Codex row) · Claude has a separate card <code>PD-RUST-CLAUDE-COMPAT-01</code>.</p>
+</section>
+
+<section>
+<h2>Canonical packet files</h2>
+<ul>
+<li><a href="plan.md">plan.md</a> — phases CX-V0…V4, evidence protocol</li>
+<li><a href="module.feature">module.feature</a> — BDD CX-B01…B07 (proposed; not executable RED)</li>
+<li><a href="matrix.md">matrix.md</a> — permission/cancel/error/report/evidence × cases</li>
+<li><a href="module.json">module.json</a> — structured SSOT for this packet</li>
+</ul>
+</section>
+
+<section>
+<h2>Dependencies (execution gate)</h2>
+<table>
+<tr><th>ID</th><th>Required</th><th>Observed</th></tr>
+<tr><td>PD-RUST-AGENT-LOOP-01</td><td>approved input/permission/cancel/report/evidence loop</td><td>PLANNING_ONLY</td></tr>
+<tr><td>PD-RUST-CLI-ENTRY-IMPL-01</td><td>approved CLI entry I/O/exit/cancel/evidence</td><td>PLANNING_ONLY</td></tr>
+<tr><td>PD-RUST-INBOUND-MCP-IMPL-01</td><td>if MCP in scope: query/claim/report parity</td><td>PLANNING_ONLY</td></tr>
+<tr><td>PD-RUST-DISPATCH-MODES-DEC-01</td><td>indirect: real Codex path/version/argv still open</td><td>RED / missing target</td></tr>
+</table>
+<p>Until gates clear + owner target lock: all verification cells stay <b>NOT RUN</b>.</p>
+</section>
+
+<section>
+<h2>Architecture (proposed views)</h2>
+<h3>A — Hexagonal control flow</h3>
+<pre>Owner / UI / inbound MCP (driving)
+  → HOST approved start (lease / fingerprint / source bind)
+  → AgentPort (Cli) → CliAgentAdapter (selected = Codex)
+  → ProcessPort → StdProcess → Codex child (path + argv + cwd)
+  → chunks / terminal → EXEC → HOST evidence association
+  → ReportRun ingress (separate approval; child claims untrusted)
+Product acceptance / board green never follows from Codex exit 0 alone.</pre>
+<h3>B — Ownership &amp; non-inheritance</h3>
+<pre>Settings(path, argv, live_approved) …… configure only (defaults ≠ verified contract)
+HOST ……………………………… owns run / lease / acceptance
+EXEC ……………………………… owns capture / terminal projection
+Codex child …………………… untrusted output + claimed IDs
+agent-compatibility (this) … owns verification matrix + evidence layout only
+Claude PASS store …………… MUST NOT write Codex matrix cells</pre>
+</section>
+
+<section>
+<h2>Current facts (read-only)</h2>
+<ul>
+<li><code>CliToolKind::Codex</code> exists; default path <code>codex</code>, args <code>["exec"]</code>, <code>live_approved=false</code> — configuration placeholders, not live contract proof.</li>
+<li>Process spawn uses <b>stdin=null</b>, no PTY, no permission-response channel → interactive Codex permission may be <code>ARCHITECTURE_GAP</code> / <code>BLOCKED</code>, not silent extension.</li>
+<li>HOST reconciles terminals; provider Success does not accept/green tasks.</li>
+</ul>
+</section>
+
+<section>
+<h2>Invariants</h2>
+<ol>
+<li><b>INV-CX-01</b> Codex cells fill only from Codex-labeled evidence.</li>
+<li><b>INV-CX-02</b> Missing version/path/argv/host → NOT RUN, never inferred PASS.</li>
+<li><b>INV-CX-03</b> Provider success ≠ product green.</li>
+<li><b>INV-CX-04</b> Never auto-approve; interactive gap → BLOCKED/ARCHITECTURE_GAP.</li>
+<li><b>INV-CX-05</b> Cancel → ≤1 terminal; lease releases at terminal only.</li>
+<li><b>INV-CX-06</b> Child-claimed PASS/task/run cannot authorize acceptance.</li>
+<li><b>INV-CX-07</b> Do not weaken assertions to obtain TDD_PASS.</li>
+</ol>
+</section>
+
+<section>
+<h2>BDD summary (see module.feature)</h2>
+<table>
+<tr><th>ID</th><th>Focus</th></tr>
+<tr><td>CX-B01</td><td>Happy: permission + host-bound report + evidence with Codex version/host</td></tr>
+<tr><td>CX-B02</td><td>Cancel ACK + drain + single terminal; no green</td></tr>
+<tr><td>CX-B03</td><td>Invalid/stale reject before spawn</td></tr>
+<tr><td>CX-B04</td><td>Nonzero/malformed → no acceptance</td></tr>
+<tr><td>CX-B05</td><td>Inbound MCP parity when in scope (else honest NOT RUN)</td></tr>
+<tr><td>CX-B06</td><td><b>Non-inheritance:</b> other Agent PASS does not mark Codex</td></tr>
+<tr><td>CX-B07</td><td>Duplicate start / restart distinct runId</td></tr>
+</table>
+</section>
+
+<section>
+<h2>TDD backlog (NOT RUN)</h2>
+<p>Define before Skeleton/RED: normal · boundary · invalid · dependency failure · partial failure · state · transaction · lifecycle · regression (non-inheritance). Effective RED must compile and fail because Codex-compat behavior is missing. Independent Gate + HTML trace; <b>no weakened assertions</b>.</p>
+</section>
+
+<section>
+<h2>Matrix (excerpt — full in matrix.md)</h2>
+<p>All cells currently <b>NOT RUN</b>. Dimensions required by card: Permission · Cancel · Error · Report · Evidence.</p>
+<table>
+<tr><th>Case</th><th>P</th><th>C</th><th>E</th><th>R</th><th>Ev</th></tr>
+<tr><td>CX-B01…B07 / CX-N01…N08</td><td>NOT RUN</td><td>NOT RUN</td><td>NOT RUN</td><td>NOT RUN</td><td>NOT RUN</td></tr>
+</table>
+</section>
+
+<section>
+<h2>Owner target lock (before CX-V3)</h2>
+<pre>Codex version: UNSET
+Executable path: UNSET
+Argv: UNSET
+Host OS/arch: UNSET
+Auth ready: UNSET (ready|not_ready|n/a — never paste secrets)
+Modes: UNSET (cli | inbound_mcp | both)
+Owner authorization: absent</pre>
+</section>
+
+<section>
+<h2>Acceptance (proposed)</h2>
+<ul>
+<li>AC1 Exact Codex version/host/path/argv/auth/scope before run</li>
+<li>AC2 Five dimensions assertable + matrix filled honestly</li>
+<li>AC3 Other Agent PASS cannot set Codex PASS</li>
+<li>AC4 Exit 0 ≠ product green</li>
+<li>AC5 Intended RED fails on missing behavior; no weak asserts</li>
+<li>AC6 Deps + target gates or honest NOT RUN/BLOCKED</li>
+<li>AC7 Stay yellow; parent greens only after TDD_PASS + owner acceptance</li>
+</ul>
+</section>
+
+<section>
+<h2>Results</h2>
+<table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>Planning packet</td><td>DELIVERED</td></tr>
+<tr><td>READY_FOR_TDD (plan review)</td><td>yes</td></tr>
+<tr><td>READY_FOR_IMPLEMENTATION</td><td>no</td></tr>
+<tr><td>Codex live / fixture execution</td><td>NOT RUN</td></tr>
+<tr><td>Secrets</td><td>NOT ACCESSED</td></tr>
+<tr><td>Production edits</td><td>0</td></tr>
+<tr><td>Board green</td><td>FORBIDDEN / not done</td></tr>
+</table>
+</section>
+
+<script type="application/json" id="module-spec">
+{"see":"module.json","task":"PD-RUST-CODEX-COMPAT-01","state":"PLANNING_ONLY","ready_for_tdd":true,"claude_pass_implies_codex":false}
+</script>
+</body>
+</html>

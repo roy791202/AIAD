@@ -1,0 +1,143 @@
+{
+  "module": "ui-binding-proposal",
+  "decision": "PD-RUST-UI-OWNERSHIP-DEC-01",
+  "phase": "PLANNING",
+  "status": "PROPOSED_NOT_APPROVED",
+  "intent": "Make existing explicit document-ref/moduleId/stable-nodeID recommendation reviewable with three exact fixture-bound samples; no source/schema write or inferred ownership.",
+  "existing_source_facts": {
+    "fixture": "apps\\sgenaxis-desktop\\crates\\sgenaxis-host\\tests\\fixtures\\module_packet.ess",
+    "sha256": "1d8b99e7ae1d83e7fb415b32cafc49f0c92792f80acc3bd660fc38516067f602",
+    "module_id": "semantic-A",
+    "slot_id": "slot-Z",
+    "architecture_ui_node_id": "ui",
+    "ui_definition_ref": "embedded-design",
+    "design_node_id": "design-button",
+    "missing_identity": "design section lacks a document ID attribute, therefore embedded-design cannot be equated to it from current file alone",
+    "packet_behavior": "SPEC packet always emits UI_SCOPE_UNRESOLVED+UI_DOCUMENT_UNRESOLVED and NOT_READY; selected nodes+context IDs only, no design bodies",
+    "codec": "Integrated .ess design is eluslot.esui XML; dedicated .sgendesign Rust codec is sgenaxis.design JSON with id/type/parentId/props/hints. Do not convert or conflate these formats."
+  },
+  "samples": [
+    {
+      "file": "mapped.proposed.json",
+      "meaning": "Explicit alias+assignment sample; consumes only exact design-button, context-only NOT_READY"
+    },
+    {
+      "file": "unmapped.proposed.json",
+      "meaning": "As-is current fixture; no inference from node adjacency/names/moduleRef or all design IDs"
+    },
+    {
+      "file": "conflict.proposed.json",
+      "meaning": "Overlapping wrong-module assignment plus missing/dangling/multiple/stale negative mutation cases; reject all selected UI bodies"
+    }
+  ],
+  "hexagonal_view": "Human-authored explicit binding request (driving input; proposed new mapping authority)\n  ↓ HOST existing packet query orchestration\n  ↓ SPEC pure binding validation/projection (proposed, unapproved)\n  ↑ existing decoder port / adapter reads explicitly supplied .ess bytes\n  → derived context projection only\nSPEC/GUARD/EVID own readiness/approval, never mapping request or HTML.",
+  "dependency_view": "HOST → SPEC policy + existing ports\nXML adapter → existing decoder abstraction\nexplicit mapping bytes + mapping SHA ─┐\nsource .ess bytes + source SHA ──────┼→ validated projection (no writeback)\nmodule member/UI/document/node IDs ──┘\nDomain/other modules unchanged; no new Manager/port/crate or inferred model.",
+  "proposed_consumption_contract": [
+    {
+      "id": "UIB-C1",
+      "meaning": "Caller explicitly provides source file and mapping bytes; no search/discovery/external reference following. First validate normal existing project-relative path policy. Proposed first slice .ess embedded design only; external .esui/.sgendesign NOT_SUPPORTED/NOT_READY, no format expansion."
+    },
+    {
+      "id": "UIB-C2",
+      "meaning": "SHA256 exact complete .ess bytes, not normalized XML. mapping source.sha256 must match and each document binding source_sha256 must match. HOST re-read freshness before response; source change => NOT_READY/stale with no body publication."
+    },
+    {
+      "id": "UIB-C3",
+      "meaning": "Exact case-sensitive architecture_document_ref must equal selected UI uiDefinitionRef. A nonempty hint alone proves nothing; explicit one-to-one alias declaration binds exact /eluslotScene/design in same SHA-bound source. Unsupported selector or zero/multiple design sections rejects."
+    },
+    {
+      "id": "UIB-C4",
+      "meaning": "module_id resolves actual moduleId not slotId; architecture_ui_node_id must be unique kind UI and declared member of exactly selected module, with matching moduleRef/layerRef per current contract."
+    },
+    {
+      "id": "UIB-C5",
+      "meaning": "design_node_ids are exact unique IDs within declared document; every ID exists exactly once. No auto descendants, parent expansion, node-name matching, spatial proximity, module name matching or union across assignments."
+    },
+    {
+      "id": "UIB-C6",
+      "meaning": "One design node may belong to at most one module in this minimal proposal. Duplicate alias/assignment/overlap, dangling references or conflicting source hashes => diagnostic+NOT_READY; no first/last wins or partial-body success."
+    },
+    {
+      "id": "UIB-C7",
+      "meaning": "Missing mapping returns current unresolved packet unchanged. Valid mapping can produce separate derived MAPPED_CONTEXT_ONLY review projection, but current ModulePacket schema/readiness stay unchanged in first slice. No silently clearing existing unresolved diagnostics in formal packet."
+    },
+    {
+      "id": "UIB-C8",
+      "meaning": "Projection binds mapping exact-byte SHA256 as well as source SHA256; same source with different mapping is different projection. Mapping revision has no timestamp-based authority, and hashes prove identity not owner approval."
+    },
+    {
+      "id": "UIB-C9",
+      "meaning": "Mapping owns declared association only after explicit owner approval of this architecture; product files remain authoritative document bodies. Human-edited sample/HTML or unsigned client payload cannot authorize execution/acceptance. Raw product_pass, behaviorHints/bddHint/tddHint are not executable UI behavior or qualified tests."
+    },
+    {
+      "id": "UIB-C10",
+      "meaning": "No writes to .ess/.esui/.sgendesign, no migration/ID repair, no persistence of new mapping authority until owner chooses lifecycle/storage. Proposed first artifact explicit in-memory request; source/mapping error leaves existing product state untouched."
+    }
+  ],
+  "state_ownership": "New explicit mapping request would become an additional authority for association only, not document content or product approval. This is architectural and currently unapproved. Prefer per-request immutable mapping bytes, no hidden sidecar autoload/canonical shadow state. Persistent storage/editor/export is a separate decision.",
+  "mutation_transaction": "Read bytes→validate/hash→resolve all IDs→build temporary projection→freshness recheck→publish context-only. Any invalid mapping publishes diagnostics only, no partial resolved design bodies; product state/files unchanged.",
+  "bdd": [
+    {
+      "id": "UIB-B1",
+      "given": "Real fixture bytes and mapped.proposed.json with explicit alias/one module/one stable design ID",
+      "when": "A read-only binding projection is requested",
+      "then": "Only design-button is associated as proposed context; source/mapping hashes bind result and readiness remains NOT_READY"
+    },
+    {
+      "id": "UIB-B2",
+      "given": "Same fixture with no mapping",
+      "when": "Context is requested",
+      "then": "Current unresolved diagnostics remain and no design body is attributed"
+    },
+    {
+      "id": "UIB-B3",
+      "given": "Conflict sample or duplicate document alias",
+      "when": "Projection is requested",
+      "then": "Conflict is visible, no precedence selection occurs, readiness NOT_READY and no partial selected bodies"
+    },
+    {
+      "id": "UIB-B4",
+      "given": "Mapping references missing design node or wrong module/UI member",
+      "when": "Projection is requested",
+      "then": "Readable dangling/membership rejection occurs without altering source"
+    },
+    {
+      "id": "UIB-B5",
+      "given": "A mapping hash-bound to previous source bytes",
+      "when": "Source changes before/during request",
+      "then": "Projection is stale/NOT_READY and no old association is asserted as current"
+    },
+    {
+      "id": "UIB-B6",
+      "given": "A valid association plus product_pass true or approval-like mapping text",
+      "when": "Binding is evaluated",
+      "then": "Association never produces READY/execution/acceptance and formal packet schema remains unchanged"
+    }
+  ],
+  "ac": [
+    "Three proposals validate against recorded real fixture identities and exact source SHA; samples explicitly PROPOSED not official schema",
+    "Independent tests after approval cover mapped/unmapped/conflict/missing/dangling/multiple/stale and no extra node leakage",
+    "Missing/invalid mapping never inferred, repaired or partially accepted; no original document or formal schema write",
+    "All projections include exact source+mapping hashes, selectors and referenced IDs; source freshness and mapping change detected",
+    "ModulePacket v1 and current readiness unchanged for first slice; context-only projection is not execution approval",
+    "No new dependency/port/Manager/state store; no external file follow or .sgendesign conversion",
+    "Owner explicitly accepts extra mapping association authority and its request-only lifecycle before skeleton/RED/implementation"
+  ],
+  "allowed_files_candidates_after_approval": [
+    "reports/rust-improvements/continuous/ui-binding-proposal/* proposal evidence",
+    "Potential pure helper private to existing sgenaxis-spec packet.rs; separate derived result API shape requires explicit review before approval",
+    "Existing HOST module_packet.rs orchestration only if needed to pass explicit mapping bytes/freshness; exact function boundary frozen after decision",
+    "One separate frozen integration test module and copied disposable fixtures; originals protected"
+  ],
+  "protected": [
+    "Existing .ess/.esml/.esui/.sgendesign fixtures and product schema",
+    "Existing public ModulePacket v1/readiness/error contract without further approval",
+    "UI save/load handlers, design codec, persistent mapping store, Agent/Guard authorization",
+    "All unrelated WIP"
+  ],
+  "cost": "Proposed first slice one pure validator + HOST request orchestration if approved; 0 new crate/Manager/port. Exact new result/input surface is a decision item, not preauthorized source change.",
+  "owner_question": "是否核准只讀 request-only UI association A：明確sourceSHA+documentRef alias+moduleId+architectureUI nodeID+designNodeIDs，僅同一.ess內embedded design；missing/dangling/multiple/conflict/stale一律NOT_READY、不猜歸屬、不改原檔/ModulePacket v1、不把映射當approval？另需確認新增association mapping是request-only工程輸入而非產品第二SSOT；核准後再鎖最小input/result骨架及RED。",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "implementation": "NOT_STARTED; sample contracts are proposed only",
+  "source_tests_unchanged": true
+}

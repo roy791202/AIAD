@@ -1,0 +1,195 @@
+{
+  "schema": "ModuleSpec-proposal/1",
+  "identity": {
+    "module": "agent-compatibility",
+    "task": "PD-RUST-CLAUDE-COMPAT-01",
+    "requirement": "REQ-AGENT-CLAUDE-01",
+    "parent": "PD-RUST-IMPROVE-20261025",
+    "date": "2026-10-26 Asia/Taipei",
+    "state": "PLANNING_ONLY",
+    "architecture_status": "PROPOSED_NOT_APPROVED",
+    "implementation": "NOT_STARTED",
+    "verification": "NOT_RUN",
+    "plan_card_state": "READY_FOR_TDD",
+    "zone_rule": "stay yellow; never self-green",
+    "note": "Verification design packet only. Does not approve schema/API/Ports, Skeleton, RED execution, or board green."
+  },
+  "intent": {
+    "problem": "Prove Claude Code can lead (claim), execute, cancel, surface errors, report, and bind EVID under controlled inputs — with explicit version + selected mode recorded — without assuming every Agent window shares the same UI.",
+    "scope": "Planning + verification design: BDD draft, TDD case taxonomy, lead/exec/cancel/error/report/EVID matrix, version/runtime fields, dependency gates. Honest NOT RUN for live Claude capability rows until deps and owner approval clear.",
+    "out_of_scope": [
+      "production Port / schema / API edits",
+      "board green / commit / push / release",
+      "assuming UI parity across Claude Code windows / MCP Apps / embedded panels",
+      "Codex compatibility (separate selection)",
+      "forging PASS from docs or Fake MCP",
+      "auto-acceptance / product green from provider success"
+    ]
+  },
+  "selected_modes_proposed": {
+    "status": "PROPOSED_NOT_OWNER_LOCKED",
+    "modes": [
+      {
+        "id": "MODE-CLI-HEADLESS",
+        "name": "Claude Code noninteractive CLI",
+        "binding": "product launches CLI via approved outbound AgentPort / HOST-EXEC",
+        "primary_behaviors": ["exec", "cancel", "error", "report", "EVID"],
+        "lead_note": "Lead/claim is product-side Assign, not Agent claim"
+      },
+      {
+        "id": "MODE-INBOUND-MCP",
+        "name": "Claude Code as inbound MCP client",
+        "binding": "Agent query/claim/heartbeat/report through inbound MCP driving adapter → same Application ports",
+        "primary_behaviors": ["lead", "exec", "cancel", "error", "report", "EVID"],
+        "lead_note": "Lead = ClaimAgentRun under Guard/lease"
+      },
+      {
+        "id": "MODE-EMBEDDED-UI",
+        "name": "Agent-window / embedded UI (capability-dependent)",
+        "binding": "optional projection only; must not be required for tools path",
+        "primary_behaviors": ["report projection"],
+        "status": "HOST_CAPABILITY_NOT_VERIFIED"
+      }
+    ],
+    "rule": "Each live row must name exactly one selected mode id + Claude Code version + runtime OS/shell. Do not collapse modes into one PASS."
+  },
+  "version_runtime_fields": {
+    "required_on_every_evidence_row": [
+      "claude_code_version",
+      "claude_cli_path",
+      "selected_mode_id",
+      "os",
+      "shell",
+      "cwd_policy",
+      "auth_readiness",
+      "argv_or_tool_surface",
+      "runtime_started_at",
+      "runtime_ended_at",
+      "result_class"
+    ],
+    "result_class_enum": ["PASS", "FAIL", "BLOCKED", "NOT_RUN", "PARTIAL"],
+    "probe_2026_10_26": {
+      "claude_cli_path": "C:\\Users\\g6812\\AppData\\Roaming\\npm\\claude.cmd",
+      "claude_code_version": "2.1.191",
+      "os": "Windows 10.0.19045",
+      "shell": "powershell",
+      "auth_readiness": "NOT_PROBED",
+      "live_capability_runs": "NOT_RUN",
+      "note": "Version probe only; no lead/exec/cancel/report/EVID live exercise; no auth or config mutation."
+    }
+  },
+  "dependency_blockers": [
+    {
+      "id": "PD-RUST-AGENT-LOOP-01",
+      "required": "Approved local/scripted Agent loop boundary (claim↔run↔report↔EVID) before real Claude substitutes for fixtures",
+      "gate": "BLOCKED_UNTIL_READY"
+    },
+    {
+      "id": "PD-RUST-CLI-ENTRY-IMPL-01",
+      "required": "Approved CLI entry / outbound Claude launch argv+cwd+cancel binding",
+      "gate": "BLOCKED_UNTIL_READY"
+    },
+    {
+      "id": "PD-RUST-INBOUND-MCP-IMPL-01",
+      "required": "Approved inbound MCP query/claim/report adapter mapping same Application ports",
+      "gate": "BLOCKED_UNTIL_READY"
+    },
+    {
+      "id": "CARD_NOTE",
+      "required": "Clear PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION + owner-approved module contract and controlled inputs",
+      "gate": "BLOCKED_UNTIL_OWNER"
+    }
+  ],
+  "behavior_matrix": {
+    "axes": ["lead", "exec", "cancel", "error", "report", "EVID"],
+    "rows": [
+      {
+        "id": "CC-LEAD",
+        "axis": "lead",
+        "planned": "Claim/query approved work under Guard; reject unauthorized/stale/fingerprint mismatch; single lease winner",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-AGENT-LOOP-01", "PD-RUST-INBOUND-MCP-IMPL-01"]
+      },
+      {
+        "id": "CC-EXEC",
+        "axis": "exec",
+        "planned": "Named Claude version + mode runs controlled task; streams/exit classified; no auto-green",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-CLI-ENTRY-IMPL-01", "PD-RUST-AGENT-LOOP-01"]
+      },
+      {
+        "id": "CC-CANCEL",
+        "axis": "cancel",
+        "planned": "Cancel reaches one terminal; lease release only at terminal; late chunks before terminal allowed per HOST contract",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-CLI-ENTRY-IMPL-01", "PD-RUST-AGENT-LOOP-01"]
+      },
+      {
+        "id": "CC-ERROR",
+        "axis": "error",
+        "planned": "Missing path/auth/approval/binding → readable reject, zero start; spawn/runtime failure → Failed terminal, prior evidence unchanged",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-CLI-ENTRY-IMPL-01"]
+      },
+      {
+        "id": "CC-REPORT",
+        "axis": "report",
+        "planned": "SubmitRunReport identity/lease/idempotency; duplicate same content stable; conflict rejected",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-INBOUND-MCP-IMPL-01", "PD-RUST-AGENT-LOOP-01"]
+      },
+      {
+        "id": "CC-EVID",
+        "axis": "EVID",
+        "planned": "Evidence bind run/task/revision; provider success ≠ FLOW acceptance; HTML/report trace independent of board color",
+        "live_status": "NOT_RUN",
+        "depends": ["PD-RUST-AGENT-LOOP-01"]
+      }
+    ]
+  },
+  "bdd": {
+    "status": "DRAFT_NOT_APPROVED",
+    "feature": "reports/rust-improvements/claude-compat/module.feature",
+    "scenarios": ["CC-B01", "CC-B02", "CC-B03", "CC-B04", "CC-B05", "CC-B06", "CC-B07", "CC-B08", "CC-B09", "CC-B10", "CC-B11", "CC-B12"]
+  },
+  "tdd": {
+    "status": "NOT_RUN",
+    "note": "待辦。有效 RED 須可編譯且因目標行為缺失失敗；獨立驗證與 HTML 追溯；不弱化斷言。",
+    "taxonomy": {
+      "normal": ["happy claim→exec→report→EVID bind", "CLI headless controlled fixture then Claude"],
+      "boundary": ["exact argv/cwd", "lease TTL edge", "single active Run busy"],
+      "invalid": ["malformed report", "wrong run id", "unapproved claim"],
+      "dependency_failure": ["missing Claude binary", "auth not ready", "inbound MCP unavailable"],
+      "partial_failure": ["chunks then process crash", "report after cancel race"],
+      "state": ["pre/post WORK lease", "Run terminal uniqueness"],
+      "transaction": ["claim+lease atomic", "report dedup atomic", "reject leaves prior state"],
+      "lifecycle": ["Created→Running→Reported|Failed|Cancelled", "restart new run id"],
+      "regression": ["Fake MCP ≠ Live", "provider success ≠ green", "UI absence ≠ tool path FAIL"]
+    },
+    "red_gate": "No READY_FOR_AI_IMPLEMENTATION until skeleton exists, contracts approved, and RED compiles while failing on missing Claude-compat behavior — not docs-only."
+  },
+  "acceptance_criteria_proposed": [
+    "AC-CC-01 Every matrix axis has PASS/FAIL/BLOCKED/NOT_RUN with version+mode+runtime fields; never silent omit",
+    "AC-CC-02 Live Claude rows use owner-selected mode and recorded version; probe≠verification",
+    "AC-CC-03 Unverified Agent UI capability = NOT_RUN / HOST_NOT_VERIFIED; tools path remains independently assertable",
+    "AC-CC-04 Dependency blockers listed; BLOCKED not forged as PASS",
+    "AC-CC-05 EVID/HTML trace independent; no board self-green",
+    "AC-CC-06 TDD taxonomy covers normal/boundary/invalid/dependency/partial/state/transaction/lifecycle/regression before impl"
+  ],
+  "official_sources_reference_only": [
+    "https://code.claude.com/docs/en/headless",
+    "https://code.claude.com/docs/en/mcp"
+  ],
+  "allowed_scope": [
+    "reports/dispatch-pd/PD-RUST-CLAUDE-COMPAT-01.md",
+    "reports/rust-improvements/claude-compat/"
+  ],
+  "protected_scope": [
+    "unapproved schema/API/Ports",
+    "production crates",
+    "board green",
+    "commit/push",
+    "other PD-* reports",
+    "whole PROJECT-BOARD.html"
+  ]
+}

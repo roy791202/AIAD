@@ -1,0 +1,353 @@
+{
+  "identity": {
+    "module": "embedded-agent-workbench",
+    "requirement": "REQ-AGENT-HOST-01",
+    "task": "PD-RUST-EMBEDDED-AGENT-PLAN-01",
+    "decision": "PD-RUST-EMBEDDED-AGENT-DEC-01",
+    "parent": "PD-RUST-IMPROVE-20261025",
+    "date": "2026-10-26 Asia/Taipei",
+    "state": "PLANNING_ONLY",
+    "architecture_status": "PROPOSED_NOT_APPROVED",
+    "implementation": "NOT_STARTED",
+    "verification": "NOT RUN",
+    "plan_card_state": "PACKET_READY_FOR_DEC",
+    "note": "This packet feeds EMBEDDED-AGENT-DEC-01. It does not approve Ports, Skeleton, RED, or production work."
+  },
+  "intent": {
+    "problem": "EluSlot should host interactive Claude Code / Codex sessions (IDE-style) while preserving project binding, permission prompts, cancellation, and evidence gates. Existing ProcessPort is a one-shot CLI output drain, not an interactive terminal or chat session boundary.",
+    "scope": "Read-only mode comparison (PTY terminal vs native panel), ProcessPort gap inventory, host capability facts, proposed session ownership + UI schema drafts, and DEC-01 decision options. No production Port or adapter changes.",
+    "out_of_scope": [
+      "production Port / ProcessPort signature changes",
+      "new PTY dependency or crate adoption",
+      "live Claude Code / Codex auth or session",
+      "VS Code extension embedding into Tauri webview",
+      "multi-provider session platform",
+      "auto-approve permissions",
+      "session persistence / resume (unless owner later chooses)",
+      "board green / commit / push / release"
+    ],
+    "assumptions_unapproved": [
+      "Owner still chooses first feasibility slice (PTY fixture vs native panel).",
+      "Existing single active Run / evidence acceptance gates remain the product authority until a separate session model is approved.",
+      "Provider conversation execution is never product acceptance."
+    ]
+  },
+  "mode_comparison": {
+    "EA-A_integrated_terminal_PTY": {
+      "id": "EA-A",
+      "name": "Integrated terminal (PTY)",
+      "proposal": "Web terminal view -> proposed session/input boundary -> PTY adapter -> official Agent CLI (or local interactive fixture first).",
+      "requires": [
+        "interactive stdin write",
+        "stdout/stderr (or PTY master) stream",
+        "terminal resize (cols/rows)",
+        "interrupt / signal or equivalent cancel",
+        "process and session cleanup on panel close",
+        "project/worktree bound before spawn"
+      ],
+      "pros": [
+        "Closest to real CLI UX; proves OS interactive capability early",
+        "Can use a benign local interactive fixture without Agent auth",
+        "Surfaces ProcessPort gaps concretely before provider choice"
+      ],
+      "cons": [
+        "Needs new seam (ProcessPort cannot absorb PTY without explicit redesign)",
+        "Permission/diff UX remains CLI-native; product cards harder",
+        "Windows ConPTY vs Unix PTY platform choice still open"
+      ],
+      "processport_fit": "DOES_NOT_FIT — current ProcessPort is non-interactive"
+    },
+    "EA-B_native_agent_panel": {
+      "id": "EA-B",
+      "name": "Native Agent panel",
+      "proposal": "EluSlot chat/session/approval/diff UI -> shared application session boundary -> provider adapters (Codex App Server documented; Claude Code headless / Agent SDK documented).",
+      "requires": [
+        "session create/bind/cancel/finalize contracts",
+        "streaming message / tool / permission events",
+        "explicit approval/deny routing (never auto-approve)",
+        "provider auth configuration",
+        "shared task/evidence gates with CLI path"
+      ],
+      "pros": [
+        "Product-owned permission and diff UX",
+        "Structured events instead of raw terminal bytes",
+        "Aligns with documented App Server / programmatic CLI paths"
+      ],
+      "cons": [
+        "Larger first slice: protocol, auth, UI schema, and ownership",
+        "Provider runtime differences still unvalidated live",
+        "Does not by itself prove OS interactive terminal capability"
+      ],
+      "processport_fit": "ORTHOGONAL — uses provider protocol adapters, not ProcessPort stdin"
+    }
+  },
+  "processport_gaps": {
+    "source_of_truth_note": "Facts below are planning inventory from prior decision/process packets and DEC-01 review evidence. This PLAN card does not re-open ProcessPort production APIs.",
+    "existing_surface": {
+      "methods": ["start", "try_wait", "cancel"],
+      "observation": "ProcessOutput stdout/stderr text plus StreamCompletion Open/Eof/Error (process-lifecycle slice)",
+      "consumers": "EXEC CliAgentAdapter / ActiveRun via AgentPort start_run / poll_chunks / cancel"
+    },
+    "gaps_for_embedded_interactive": [
+      {
+        "id": "GAP-PP-01",
+        "gap": "No interactive stdin",
+        "detail": "Documented behavior: stdin started null / non-interactive; cannot feed keystrokes or prompt answers to a TTY-oriented Agent CLI."
+      },
+      {
+        "id": "GAP-PP-02",
+        "gap": "No terminal resize",
+        "detail": "No cols/rows or window-size signal on the port; web terminal cannot drive PTY geometry."
+      },
+      {
+        "id": "GAP-PP-03",
+        "gap": "No PTY / ConPTY ownership",
+        "detail": "StdProcess owns piped Child readers for drain semantics, not a PTY master. Interactive terminal needs a different driven adapter and likely a distinct port."
+      },
+      {
+        "id": "GAP-PP-04",
+        "gap": "Cancel is direct-child + drain, not session lifecycle",
+        "detail": "Process cancel + post-exit drain prove CLI run honesty; they do not model session disconnect, resume, or panel-close semantics."
+      },
+      {
+        "id": "GAP-PP-05",
+        "gap": "No permission / question channel",
+        "detail": "ProcessPort carries opaque text streams. Approval cards require structured session events above the process adapter."
+      }
+    ],
+    "explicit_non_goals": [
+      "Do not extend ProcessPort with stdin/resize in this PLAN.",
+      "Do not treat process-lifecycle StreamCompletion approval as authorization for PTY.",
+      "Any new interactive port remains PROPOSED until DEC-01 + follow-on architecture approval."
+    ]
+  },
+  "host_capability_facts": {
+    "available_today": [
+      "AgentPort start_run / poll_chunks / cancel for CLI-style runs",
+      "Single active Run projection in UI; busy guard on duplicate Assign (ui-active-run)",
+      "HOST cancel acknowledgment + continued poll until terminal (process-lifecycle integration A)",
+      "Task / evidence acceptance gates remain product authority for CLI path",
+      "Outbound MCP / dispatch-mode planning exists separately; not the same as embedded interactive host"
+    ],
+    "not_available_or_unproven": [
+      "Embedded PTY or ConPTY adapter",
+      "Native chat/session/approval panel wired to provider protocols",
+      "Session create bound to project/worktree as first-class Host authority",
+      "Live Claude Code or Codex embedded session",
+      "VS Code extension host inside Tauri webview (explicitly not assumed)",
+      "Auth store / token lifecycle for embedded providers"
+    ]
+  },
+  "architecture_A1_A14_PROPOSED": {
+    "A1 System context": "Operator uses EluSlot Agent UI. Application owns project/task binding, permission routing, leases, and evidence acceptance. Provider (or PTY fixture) owns conversation/tool execution only.",
+    "A2 Hexagonal view": "See diagram_a.\nEluSlot Agent UI (projection)\n  -> SessionInputPort [PROPOSED]\n  -> Application: bind project/worktree + permission routing + leases + cancel/finalize\n  -> Session/Provider output ports [PROPOSED]\n       <- PTY adapter (EA-A) OR Codex App Server / Claude Code adapters (EA-B)\n  -> Existing task/evidence gates (unchanged authority)\nDomain stays free of OS/PTY/SDK types.",
+    "A3 Dependency view": "See diagram_b.\nUI/HOST -> Application session boundary -> proposed ports\nadapters -> ports\nEXEC/ProcessPort remains the CLI run path; must not silently become the interactive session path.\nForbidden: Domain -> PTY/SDK; UI -> mutable session authority; provider completion -> auto green.",
+    "A4 Responsibilities": {
+      "ui": "Projection + explicit user actions (prompt, approve/deny, cancel, close).",
+      "application": "Session identity, project binding, permission routing, cancel/finalize, lease/evidence handoff.",
+      "proposed_ports": "Portable session input/output contracts; provider-agnostic.",
+      "pty_adapter": "OS interactive process only (fixture or CLI); no product acceptance.",
+      "provider_adapters": "Codex App Server / Claude Code protocol translation only.",
+      "processport": "Unchanged CLI drain path; out of interactive session ownership."
+    },
+    "A5 Input ports": "PROPOSED SessionInputPort (create/bind, send_user_input or write_bytes, resize, respond_permission, cancel, close). Existing AgentPort unchanged for CLI runs.",
+    "A6 Output ports": "PROPOSED session event stream (stdout/bytes or structured messages, permission requests, status). ProcessPort unchanged.",
+    "A7 Driving adapters": "EluSlot Agent UI / HOST commands (proposed).",
+    "A8 Driven adapters": "PTY/ConPTY fixture adapter (EA-A) and/or provider protocol adapters (EA-B) — none approved for production yet.",
+    "A9 Dependency direction": "Adapters depend on ports; application depends on ports; Domain has no OS/provider types.",
+    "A10 State ownership": "Application owns session registry and project binding. Adapter owns OS/provider connection. UI never owns authoritative session state.",
+    "A11 Mutation boundary": "Only application finalizes session and routes permissions. Adapter emits observations. UI sends intents.",
+    "A12 Transaction boundary": "Session create must bind project/worktree before spawn. Close/cancel must not leave orphan processes. Approval is exactly-once per request id.",
+    "A13 External boundary": "OS PTY/child; Codex App Server; Claude Code CLI/SDK; user auth stores. No VS Code extension host assumption.",
+    "A14 Forbidden dependencies": [
+      "Domain -> PTY / ConPTY / SDK / network",
+      "UI -> direct process kill or token store mutation",
+      "ProcessPort silent stdin/resize extension without new approved port",
+      "provider done -> board green / evidence auto-accept",
+      "auto-approve permission prompts",
+      "silent project switch on existing session"
+    ]
+  },
+  "diagram_a_hexagonal": "EluSlot Agent UI [driving]\n  -> SessionInputPort [PROPOSED]\n  -> Application (bind + permissions + leases + finalize)\n  -> Provider/Session output [PROPOSED]\n  <- PTY adapter (EA-A) | Codex/Claude adapters (EA-B)\n  -> Existing task/evidence gates\nProcessPort/AgentPort CLI path remains parallel, not reused as interactive session.\nDomain: no OS/PTY/SDK.",
+  "diagram_b_ownership_and_gaps": "Ownership:\n  Provider/fixture = conversation + tool execution\n  Application = task/run/session authority + approvals + evidence gates\n  UI = projection + explicit actions\n\nProcessPort gaps blocking EA-A reuse:\n  GAP-PP-01 no stdin\n  GAP-PP-02 no resize\n  GAP-PP-03 no PTY ownership\n  GAP-PP-04 cancel != session lifecycle\n  GAP-PP-05 no permission channel\n\nDeps: UI/HOST -> App -> ports <- adapters\nEXEC may keep ProcessPort for CLI; must not import PTY types into Domain.",
+  "session_ownership_draft": {
+    "status": "PROPOSED_NOT_APPROVED",
+    "roles": {
+      "provider_or_fixture": "Owns conversation bytes/messages and tool execution inside its process or protocol.",
+      "application": "Owns session id, project/worktree binding, permission grant/deny authority, cancel/finalize, and handoff into existing evidence gates.",
+      "ui": "Owns only projection and explicit operator intents."
+    },
+    "lifecycle_draft": [
+      "Unconfigured / auth required",
+      "Create + bind project/worktree (mandatory before spawn)",
+      "Idle",
+      "Running (streaming)",
+      "Waiting for approval (structured; never auto)",
+      "Cancel requested / draining",
+      "Disconnected / Failed / Completed",
+      "Closed (panel close ends session in recommended first slice — no resume)"
+    ],
+    "invariants_draft": [
+      {
+        "id": "INV-EA-01",
+        "meaning": "No session spawn without bound project/worktree."
+      },
+      {
+        "id": "INV-EA-02",
+        "meaning": "Permission prompts never auto-approve; approve/deny reaches exactly one matching session request."
+      },
+      {
+        "id": "INV-EA-03",
+        "meaning": "Agent/provider completion is not product acceptance; evidence gates remain authoritative."
+      },
+      {
+        "id": "INV-EA-04",
+        "meaning": "Do not silently switch project on an existing session; rebind requires explicit close+create or approved migrate policy."
+      },
+      {
+        "id": "INV-EA-05",
+        "meaning": "Cancel/close must not leave orphan interactive processes; cleanup is part of finalize."
+      },
+      {
+        "id": "INV-EA-06",
+        "meaning": "CLI AgentPort path and embedded session path share evidence gates but must not share mutable run authority without an approved model."
+      }
+    ]
+  },
+  "ui_schema_draft": {
+    "status": "PROPOSED_NOT_APPROVED",
+    "controls": [
+      "Agent selector (Claude Code / Codex) — deferred until after feasibility if DEC chooses A",
+      "Project/worktree context (required)",
+      "Session list",
+      "Prompt composer OR terminal input (mode-dependent)",
+      "Streaming conversation OR terminal output",
+      "Permission and question cards (native panel; CLI-native for pure PTY)",
+      "Diff/evidence view (native panel; deferred on first PTY fixture)",
+      "Cancel / close (first slice: close ends session; no resume)"
+    ],
+    "states": [
+      "unconfigured",
+      "auth required",
+      "idle",
+      "running",
+      "waiting for approval",
+      "disconnected",
+      "failed",
+      "completed",
+      "closed"
+    ],
+    "rules": [
+      "no run without bound project",
+      "never auto-approve permission requests",
+      "Agent completion is not product acceptance",
+      "do not silently switch projects on existing session",
+      "first recommended slice: no persistence/resume"
+    ],
+    "fixture_ui_minimum_if_DEC_A": [
+      "project bind display",
+      "terminal surface (input + output + resize)",
+      "interrupt/cancel",
+      "close ends session"
+    ]
+  },
+  "decision_feed_DEC_01": {
+    "card": "PD-RUST-EMBEDDED-AGENT-DEC-01",
+    "recommended_option": "A",
+    "options": {
+      "A": {
+        "summary": "PTY feasibility first with one benign local interactive fixture (not live Agent auth). Prove input/resize/interrupt/close with project binding; panel close ends session; no persistence/resume; no approval auto-accept. After capability proof, choose one provider. Defer native chat/diff/permission framework.",
+        "follow_on": "Bounded fixture UI schema + two architecture views already drafted here; choose Win ConPTY vs Unix PTY research scope only after owner selects A; new PTY seam still needs explicit review before Skeleton."
+      },
+      "B": {
+        "summary": "Native provider panel first only if owner prioritizes that UX and selects a concrete provider protocol (Codex App Server or Claude Code programmatic path). Larger first slice than PTY fixture.",
+        "follow_on": "Lock one provider protocol + auth + structured event schema before Skeleton; ProcessPort remains untouched."
+      }
+    },
+    "exact_owner_question": "是否先做 PTY 最小可行性（只本機互動測試程式、輸入／resize／中斷／關閉；關閉即結束，不保存 session、不自動准權），再選 Claude Code／Codex 真正接入？",
+    "acceptance_for_later_implementation": [
+      "Claude Code and Codex evaluated separately when selected",
+      "interactive input and streamed output proven",
+      "approval/deny/cancel reaches correct session once",
+      "project/run isolation",
+      "restart/disconnect recovery specified and tested if owner later allows resume",
+      "CLI and embedded paths share task/evidence gates"
+    ]
+  },
+  "official_sources": [
+    "https://learn.chatgpt.com/docs/app-server",
+    "https://code.claude.com/docs/en/headless",
+    "https://code.claude.com/docs/en/vs-code"
+  ],
+  "limitations": [
+    "No claim that a VS Code extension can be installed directly into a Tauri webview",
+    "No PTY, SDK runtime, or authentication choice approved",
+    "No live Agent started; no provider integration tested",
+    "No production Port changes in this PLAN",
+    "Planning packet is not architecture approval and not board green"
+  ],
+  "bdd_module_draft": {
+    "status": "PROPOSED_DRAFT_FOR_DEC",
+    "feature": "Embedded Agent hosting feasibility",
+    "scenarios": [
+      {
+        "id": "BDD-EA-01",
+        "title": "Refuse spawn without project bind",
+        "given": "Agent UI is idle and no project/worktree is bound",
+        "when": "Operator attempts to start an embedded session",
+        "then": "No process or provider session is created and the UI remains unconfigured or idle with an explicit bind requirement"
+      },
+      {
+        "id": "BDD-EA-02",
+        "title": "PTY fixture input and resize (if DEC A)",
+        "given": "A bound project and a benign local interactive fixture session",
+        "when": "Operator types input and resizes the terminal",
+        "then": "Fixture receives input and resize; streamed output appears; no Agent auth is required"
+      },
+      {
+        "id": "BDD-EA-03",
+        "title": "Close ends session without resume (first slice)",
+        "given": "An active embedded fixture or session panel",
+        "when": "Operator closes the panel",
+        "then": "Session finalizes, interactive process is cleaned up, and reopen does not silently resume prior conversation"
+      },
+      {
+        "id": "BDD-EA-04",
+        "title": "Permission never auto-approves (native panel path)",
+        "given": "A session emits a permission request",
+        "when": "No operator approve/deny has been issued",
+        "then": "The tool action does not proceed and the UI stays in waiting-for-approval"
+      },
+      {
+        "id": "BDD-EA-05",
+        "title": "Provider done is not product acceptance",
+        "given": "An embedded Agent reports completion",
+        "when": "Evidence gates have not accepted the work",
+        "then": "Product acceptance remains pending and board/evidence state is unchanged by provider completion alone"
+      }
+    ]
+  },
+  "planning_closure_PLAN_01": {
+    "card": "PD-RUST-EMBEDDED-AGENT-PLAN-01",
+    "closed_at": "2026-10-26T01:30:00+08:00",
+    "deliverables": {
+      "mode_comparison_EA_A_B": "PRESENT",
+      "processport_gaps_GAP_PP_01_05": "PRESENT",
+      "host_capability_facts": "PRESENT",
+      "architecture_A1_A14_proposed": "PRESENT",
+      "diagram_a_hexagonal": "PRESENT",
+      "diagram_b_ownership_and_gaps": "PRESENT",
+      "session_ownership_draft": "PRESENT",
+      "ui_schema_draft": "PRESENT",
+      "bdd_module_draft": "PRESENT",
+      "decision_feed_DEC_01": "PRESENT"
+    },
+    "explicitly_not_included": [
+      "locked production Port schema",
+      "Skeleton / RED fixtures",
+      "production code edits",
+      "owner architecture approval",
+      "board green"
+    ]
+  }
+}

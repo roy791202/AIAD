@@ -1,0 +1,53 @@
+{
+  "identity": {
+    "task": "PD-RUST-MCP-TRANSPORT-SMOKE-01",
+    "module": "mcp-transport",
+    "title": "驗證｜真實 MCP 呼叫與失敗證據",
+    "packet_kind": "smoke_design",
+    "status": "READY_FOR_TDD",
+    "plan_state": "PLANNING_ONLY",
+    "implementation": "NOT_READY_FOR_IMPLEMENTATION",
+    "zone_rule": "stay_yellow_never_green",
+    "generated_at": "2026-10-26T02:26:00+08:00"
+  },
+  "intent": "Design Live MCP smoke that proves success and failure classes with request/result/terminal/version evidence; never substitute Fake/static for Live; NOT RUN when unconfigured.",
+  "dependencies": {
+    "impl": "PD-RUST-MCP-TRANSPORT-IMPL-01",
+    "impl_dispatch_report": "absent",
+    "decision": "PD-RUST-MCP-TRANSPORT-DEC-01",
+    "blocks_live": true
+  },
+  "live_availability": {
+    "status": "NOT_RUN",
+    "endpoint_env": "SGENAXIS_MCP_LIVE_ENDPOINT",
+    "endpoint_probe_at_planning": "UNSET",
+    "probe_fn": "mcp_live_target::probe_mcp_live_smoke_target",
+    "dials_on_probe": false
+  },
+  "scenarios": [
+    "success",
+    "invalidtool",
+    "reject",
+    "timeout",
+    "cancel",
+    "disconnect"
+  ],
+  "evidence_fields": ["request", "result", "terminal", "version"],
+  "prohibitions": [
+    "FakeMcpClient ≠ Live",
+    "StubMcpClient ≠ Live",
+    "DryRun ≠ Live",
+    "static module.html ≠ Live",
+    "no auto product acceptance"
+  ],
+  "artifacts": {
+    "module_html": "reports/rust-improvements/mcp-transport-smoke/module.html",
+    "scenario_matrix": "reports/rust-improvements/mcp-transport-smoke/scenario-matrix.json",
+    "dispatch_report": "reports/dispatch-pd/PD-RUST-MCP-TRANSPORT-SMOKE-01.md"
+  },
+  "verification": {
+    "planning_packet": "READY_FOR_TDD",
+    "live_smoke_execution": "NOT RUN",
+    "product_acceptance": "NOT CLAIMED"
+  }
+}

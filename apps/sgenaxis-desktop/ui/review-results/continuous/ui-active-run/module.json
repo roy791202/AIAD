@@ -1,0 +1,62 @@
+{
+  "module": "run-ui",
+  "task": "PD-RUST-UI-ACTIVE-RUN-01",
+  "intent": "Preserve the existing active run and its polling when Assign is pressed again.",
+  "architecture_status": "EXISTING_ARCHITECTURE_PRESERVED",
+  "authority": "Existing one-in-flight run rule enforced by DispatchHost; owner continuous minimal bugfix authorization. No new business policy.",
+  "domain": "Existing execution single-run rule; no change.",
+  "application": "Existing DispatchHost remains authoritative for execution and lease.",
+  "input_ports": [
+    "existing start_run/poll_chunks/cancel_run"
+  ],
+  "output_ports": "unchanged",
+  "driving_adapter": "Existing UI cmdStartDryRun only",
+  "driven_adapters": "unchanged",
+  "state_owner": "HOST active run/WORKlease; UI activeRunId/generation is projection, not execution authority.",
+  "mutation": "When activeRunId is non-null, refuse duplicate local start before refreshing binding/generation/invoke; existing run/poll untouched.",
+  "transaction": "No new transaction. Rejected duplicate start has zero runId/generation side effects.",
+  "public_contract": "One in-flight run; existing HOSTbusy gate stays; no API/schema/Ports/dependency change.",
+  "skeleton": "Existing cmdStartDryRun function body; add minimal early activeRunId check with existing toast/status surface; no new state/helper/framework.",
+  "allowed_files": [
+    "apps/sgenaxis-desktop/ui/app.js: cmdStartDryRun body only",
+    "existing browser mockedIPC harness newscenario only"
+  ],
+  "protected": "OtherUIfunctions,otherWIP,HOST/Ports/EXEC; priorPROC twofunctionslice unchanged.",
+  "bdd": [
+    "Given active/draining run, when Assign pressed again, then no second start invocation, currentrunId/generation and poll continue; tail once then realterminal; newstart allowed afterward."
+  ],
+  "acceptance": [
+    "Independent actualrenderedUI regression RED before source",
+    "Old4UIflows unchanged pass",
+    "Newcase proves no secondinvoke/no stopoldpoll/tailonce/terminal and later restart",
+    "No newtype/dependency; outsidecmdStartDryRun bytes identical to pre-microcard snapshot."
+  ],
+  "phase": "READY_FOR_GREEN yellow; owner acceptance pending",
+  "ui_schema": {
+    "control": "Existing Assign action",
+    "pending_state": "Busy message via existing surface; no newcontrol",
+    "validation": "activeRunId != null -> no duplicate request",
+    "failure": "Existing ongoingrun remainsvisible/cancellable/polling",
+    "success": "Newrun permitted only once active cleared by actualterminal"
+  },
+  "hexagonal": "Existing UI -> existing start_run -> HOST/EXEC -> existing ProcessPort <- adapters",
+  "dependency_view": "cmdStartDryRun -> invoke(start_run); activeprojection frompoll_chunks; no new edge",
+  "tests": "Independent originalUI4+fifth PASS; fifth includes preserved tail and postterminal run102 start/poll/tail/terminal. Existing pending/tail assertions retained; restart assertions added as coverage afterhistoricalRED.",
+  "commit_push": false,
+  "red": "Independent actualrenderedUI secondAssign yieldedfailed+lostoldpoll;directassertfailure no timeout",
+  "red_evidence": "../process-tests/ui-second-assign-results.json",
+  "verification": "Final independent browser5 PASS; workspace295/EXEC67/Tauri81 PASS. NativeTauriIPC/trueAgent NOT RUN.",
+  "syntax_check": "PASS node --check apps/sgenaxis-desktop/ui/app.js",
+  "source_sha256": "29ec34f563d487dd9d30b4d22725abfc29bd79c8698044bc78ce85abe734ec00",
+  "diff": "Exactly5lines atcmdStartDryRun entry; activeRunId check, existingtoast/status, return beforeanyawait/generation/invoke",
+  "scope_audit": "Rawbytes outsidecmdStartDryRun identical topre-ui-active-run.js; originalCRLFretained",
+  "risks": [
+    "Guard applies only after runId obtained; pre-runId doubleclick race explicitlyoutofscope.",
+    "UIis projection; HOSTbusy/lease gate remainsauthoritative.",
+    "Browserproof is actualfrontend+simulatedIPC, notnativeTauri/Agent."
+  ],
+  "independent_review": "PASS, openfindings0; sourcebytescope and postterminalrestart independentlyverified",
+  "final_test_report": "../process-tests/module.html",
+  "review_evidence": "review.json",
+  "owner_status": "Yellow; no owneracceptancepromotion"
+}

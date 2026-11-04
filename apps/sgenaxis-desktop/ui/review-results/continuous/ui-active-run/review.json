@@ -1,0 +1,25 @@
+{
+  "module": "run-ui",
+  "task": "PD-RUST-UI-ACTIVE-RUN-01",
+  "review": "PASS",
+  "owner_status": "YELLOW pending acceptance",
+  "scope": "Separate microcard; cmdStartDryRun only, not original two-function process slice",
+  "findings": [],
+  "source_sha256": "29ec34f563d487dd9d30b4d22725abfc29bd79c8698044bc78ce85abe734ec00",
+  "baseline_sha256": "b09b96481d6993ec755ed6ee70e46cf1b30d688024dbb390467caad5f2868584",
+  "scope_proof": "Raw bytes outside cmdStartDryRun identical. Inside function exactly early guard insertion; existing rest unchanged, original CRLF retained.",
+  "guard_order": "activeRunId != null guard precedes invoke availability handling, refreshProjectBinding await, log clearing, runPollGeneration mutation and start_run invoke. Guard changes only existing toast/status, returns without runId/generation side effects.",
+  "restart": "Independent actual browser/mockIPC fifth case now proves run102 start/poll/tail/terminal after run101 terminal; no second start while active/draining.",
+  "architecture": "No new state, dependency, helper, port, schema or execution authority. HOST remains authoritative.",
+  "evidence_surface": "Actual frontend/browser mockedIPC; no native Tauri/Agent proof",
+  "risks": "Concurrent start requests before first acknowledgment are outside activeRunId-nonnull bugfix; existing HOST one-run gate unchanged.",
+  "open_findings": 0,
+  "evidence": {
+    "independent_results": "../process-tests/ui-second-assign-results.json",
+    "existing_ui4": "../process-tests/ui-results.json",
+    "fifth_harness_sha256": "b25026513bb465a2336e84c642ce1b5aeb49d018f365710e1fce7f35fb3c2212",
+    "fifth_status": "PASS including postterminal run102 restart",
+    "existing_ui4_status": "PASS per independent owner gate"
+  },
+  "source_stable": true
+}

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Claude Code compatibility — verification design</title>
+<style>
+body{font:16px/1.65 system-ui,sans-serif;max-width:1120px;margin:32px auto;padding:0 24px;background:#0f1720;color:#e7eef6}
+h1,h2,h3{color:#8ec8ff}
+section{border:1px solid #314356;padding:16px;margin:18px 0;border-radius:8px}
+.badge{display:inline-block;padding:2px 8px;margin:0 6px 6px 0;border:1px solid #e0b34c;color:#e0b34c;border-radius:4px;font-size:13px}
+.ok{border-color:#5dcea0;color:#5dcea0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#182230;padding:14px;border-radius:8px;font:13px/1.5 ui-monospace,monospace}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #41536c;padding:10px;text-align:left;vertical-align:top}
+a{color:#9fd0ff}
+small{color:#9aa8b8}
+</style>
+<body>
+<h1>驗證｜Claude Code 領工、執行與回報相容性</h1>
+<p>
+  <span class="badge">PLANNING_ONLY</span>
+  <span class="badge">NOT_READY_FOR_IMPLEMENTATION</span>
+  <span class="badge ok">READY_FOR_TDD</span>
+  <span class="badge">live = NOT RUN</span>
+  <span class="badge">stay yellow</span>
+</p>
+<p>Card: <code>PD-RUST-CLAUDE-COMPAT-01</code> · Req: <code>REQ-AGENT-CLAUDE-01</code> · Module: <code>agent-compatibility</code> · Date: 2026-10-26 Asia/Taipei</p>
+<p>本封包只做驗證設計與誠實狀態表。不核准 schema/API/Ports、不做 production 變更、不自改綠、不以 <code>claude --version</code> 或文件代替相容性 PASS。</p>
+
+<section id="intent">
+<h2>Intent</h2>
+<p>Given 已核准模組契約及受控輸入，When 執行本卡，Then 以<strong>明確 Claude Code 版本</strong>與<strong>選定模式</strong>實測領工／執行／取消／錯誤／回報／EVID trace，記錄 runtime 與版本；未驗證能力 <strong>NOT RUN</strong>；不假定所有 Agent 視窗支援同一 UI。</p>
+</section>
+
+<section id="modes">
+<h2>Selected modes (proposed)</h2>
+<table>
+<tr><th>Mode</th><th>Surface</th><th>Lead</th><th>Live</th></tr>
+<tr>
+  <td><code>MODE-CLI-HEADLESS</code></td>
+  <td>Product → outbound Claude CLI</td>
+  <td>Product Assign</td>
+  <td><b>NOT RUN</b></td>
+</tr>
+<tr>
+  <td><code>MODE-INBOUND-MCP</code></td>
+  <td>Claude → inbound MCP tools → same Application ports</td>
+  <td>ClaimAgentRun</td>
+  <td><b>NOT RUN</b></td>
+</tr>
+<tr>
+  <td><code>MODE-EMBEDDED-UI</code></td>
+  <td>Agent-window / MCP Apps UI (optional projection)</td>
+  <td>N/A</td>
+  <td><b>HOST_NOT_VERIFIED / NOT RUN</b></td>
+</tr>
+</table>
+<p>一列證據 = 一個 mode + 一個 version + 一組 runtime 欄位。禁止跨 mode 合併 PASS。</p>
+</section>
+
+<section id="version-runtime">
+<h2>Version / runtime fields</h2>
+<p>每筆 evidence 必填：<code>claude_code_version</code>、<code>claude_cli_path</code>、<code>selected_mode_id</code>、<code>os</code>、<code>shell</code>、<code>cwd_policy</code>、<code>auth_readiness</code>、<code>argv_or_tool_surface</code>、<code>runtime_started_at</code>、<code>runtime_ended_at</code>、<code>result_class</code> ∈ {PASS, FAIL, BLOCKED, NOT_RUN, PARTIAL}。</p>
+<h3>Probe 2026-10-26（≠ verification）</h3>
+<pre>claude_cli_path     = C:\Users\g6812\AppData\Roaming\npm\claude.cmd
+claude_code_version = 2.1.191
+os / shell          = Windows 10.0.19045 / powershell
+auth_readiness      = NOT_PROBED
+live lead/exec/cancel/error/report/EVID = NOT RUN
+note                = version probe only; no auth/config mutation; no controlled task run</pre>
+</section>
+
+<section id="blockers">
+<h2>Dependency blockers</h2>
+<table>
+<tr><th>Dependency</th><th>Required before live</th></tr>
+<tr><td>PD-RUST-AGENT-LOOP-01</td><td>Approved claim↔run↔report↔EVID loop</td></tr>
+<tr><td>PD-RUST-CLI-ENTRY-IMPL-01</td><td>Outbound CLI argv/cwd/cancel binding</td></tr>
+<tr><td>PD-RUST-INBOUND-MCP-IMPL-01</td><td>Inbound query/claim/report adapter</td></tr>
+<tr><td>Card PLANNING_ONLY</td><td>Owner-approved contract + controlled inputs</td></tr>
+</table>
+<p>未清閘門時軸向結果只能是 <b>NOT RUN</b> 或 <b>BLOCKED</b>，不可用 Fake MCP／文件／probe 偽造 PASS。</p>
+</section>
+
+<section id="matrix">
+<h2>Behavior matrix (planned vs live)</h2>
+<table>
+<tr><th>Axis</th><th>Planned</th><th>Live</th></tr>
+<tr><td>lead</td><td>Authorized claim → one lease; stale/unauth → zero mutation</td><td><b>NOT RUN</b></td></tr>
+<tr><td>exec</td><td>Named version+mode run; exit classified; no auto-green</td><td><b>NOT RUN</b></td></tr>
+<tr><td>cancel</td><td>One terminal; lease released only at terminal</td><td><b>NOT RUN</b></td></tr>
+<tr><td>error</td><td>Missing path/auth → no start; runtime fail preserves prior EVID</td><td><b>NOT RUN</b></td></tr>
+<tr><td>report</td><td>Identity/lease/idempotency; conflict reject</td><td><b>NOT RUN</b></td></tr>
+<tr><td>EVID</td><td>Bind identities; HTML trace; provider success ≠ FLOW green</td><td><b>NOT RUN</b></td></tr>
+</table>
+<p>詳表：<a href="/review-results/claude-compat/matrix.md">matrix.md</a></p>
+</section>
+
+<section id="bdd-tdd">
+<h2>BDD / TDD</h2>
+<p>BDD draft：<a href="/review-results/claude-compat/module.feature">module.feature</a>（CC-B01…CC-B12）· status <b>DRAFT_NOT_APPROVED</b> · not executable RED.</p>
+<p>TDD：<b>NOT RUN（待辦）</b>。先定義 normal／boundary／invalid／dependency_failure／partial_failure／state／transaction／lifecycle／regression。有效 RED 須可編譯且因目標行為缺失失敗；獨立驗證與 HTML 追溯；不弱化斷言。</p>
+<pre>normal              happy claim→exec→report→EVID; CLI controlled task
+boundary            exact argv/cwd; busy Run; lease edge
+invalid             malformed/wrong-id/unapproved
+dependency_failure  missing binary; auth NOT_READY; MCP unavailable
+partial_failure     chunks then crash; cancel/report race
+state               lease pre/post; exactly-one terminal
+transaction         atomic claim+lease; dedup; reject preserves prior
+lifecycle           Running→Reported|Failed|Cancelled; restart new id
+regression          Fake≠Live; success≠green; UI absence≠tool FAIL</pre>
+</section>
+
+<section id="diagrams">
+<h2>Boundary sketch</h2>
+<pre>Operator / Claude Code (untrusted executor)
+        │  MODE-CLI-HEADLESS          │  MODE-INBOUND-MCP
+        ▼                             ▼
+  outbound AgentPort            inbound MCP driving adapter
+        └────────────┬────────────────┘
+                     ▼
+           Application (Guard → lease → Run → report)
+                     ▼
+           WORK / SPEC / FLOW / EVID  (SSOT; EVID ≠ board green)
+                     │
+           HTML / card-local report trace (projection only)
+
+MODE-EMBEDDED-UI ── optional projection ── HOST CAPABILITY NOT VERIFIED
+Tools path must remain usable without UI.</pre>
+</section>
+
+<section id="ac">
+<h2>Acceptance (proposed)</h2>
+<ul>
+<li>AC-CC-01 六軸皆有 PASS/FAIL/BLOCKED/NOT_RUN，且帶 version+mode+runtime</li>
+<li>AC-CC-02 Live 列使用 owner 鎖定 mode 與實測當下版本（probe ≠ verification）</li>
+<li>AC-CC-03 未驗證 Agent UI → NOT_RUN／HOST_NOT_VERIFIED；工具路徑可獨立斷言</li>
+<li>AC-CC-04 依賴 blockers 明示；不可偽造 PASS</li>
+<li>AC-CC-05 EVID／HTML 追溯獨立；本卡不自改綠</li>
+<li>AC-CC-06 TDD taxonomy 齊全後才進入可編譯 RED</li>
+</ul>
+</section>
+
+<section id="links">
+<h2>Packet files</h2>
+<ul>
+<li><a href="/review-results/claude-compat/plan.md">plan.md</a></li>
+<li><a href="/review-results/claude-compat/module.feature">module.feature</a></li>
+<li><a href="/review-results/claude-compat/matrix.md">matrix.md</a></li>
+<li><a href="/review-results/claude-compat/module.json">module.json</a></li>
+<li><a href="../../dispatch-pd/PD-RUST-CLAUDE-COMPAT-01.md">dispatch report</a></li>
+</ul>
+<small>Official docs (reference only): <a href="https://code.claude.com/docs/en/headless">headless</a> · <a href="https://code.claude.com/docs/en/mcp">MCP</a>. No live login/config change this card.</small>
+</section>
+
+<script type="application/json" id="module-spec">
+{"module":"agent-compatibility","task":"PD-RUST-CLAUDE-COMPAT-01","state":"PLANNING_ONLY","plan_card_state":"READY_FOR_TDD","verification":"NOT_RUN","probe_version":"2.1.191","axes":["lead","exec","cancel","error","report","EVID"]}
+</script>
+</body>
+</html>

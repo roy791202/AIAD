@@ -1,0 +1,254 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Execution Guard Planning</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;padding:20px;background:#101823;color:#dde7ef}section{padding:18px;margin:16px 0;background:#1b2939}pre{white-space:pre-wrap;overflow-wrap:anywhere}h1,h2{color:#93c5fd}</style><h1>Execution Guard — 最小設計規劃</h1><p>[Phase: Pre-TDD] [Status: WARNING]</p><p>ARCHITECTURE_GAP · 決策未核准 · 正式碼未改 · 測試 NOT RUN</p><section><h2>module</h2><pre>execution-guard</pre></section><section><h2>task</h2><pre>PD-RUST-GUARD-PLAN-02</pre></section><section><h2>decision</h2><pre>PD-RUST-GUARD-DEC-01</pre></section><section><h2>date</h2><pre>2026-10-26 Asia/Taipei</pre></section><section><h2>status</h2><pre>ARCHITECTURE_GAP</pre></section><section><h2>architecture_status</h2><pre>PROPOSED_NOT_APPROVED</pre></section><section><h2>implementation</h2><pre>BLOCKED_PENDING_OWNER_DECISION</pre></section><section><h2>board</h2><pre>YELLOW planning; decision RED</pre></section><section><h2>skill</h2><pre>tdd-pragmatic-architect</pre></section><section><h2>phase</h2><pre>Pre-TDD</pre></section><section><h2>architecture</h2><pre>{
+  &quot;A1 System context&quot;: &quot;Local desktop human, Agent caller and generic-run caller request DispatchHost; only DispatchHost may reach EXEC. Current trusted approval actor/source: NOT ESTABLISHED. spec_approve is a local command, not a separately authenticated human authority.&quot;,
+  &quot;A2 Hexagonal system view&quot;: &quot;See diagram A. GUARD pure policy remains domain; DispatchHost orchestration is application composition; Tauri UI/commands are driving adapters; EXEC is existing driven boundary.&quot;,
+  &quot;A3 Module dependency view&quot;: &quot;See diagram B. No concrete infrastructure dependency enters GUARD. No new repository, global manager, authentication subsystem or framework.&quot;,
+  &quot;A4 Responsibilities&quot;: &quot;execution-guard: evaluate validated implementation envelope before execution. SPEC owns approved contract revisions; EVID owns classified evidence; WORK owns project/root/lease; CORE owns board task projection. None currently owns trusted task intent or a complete approval binding.&quot;,
+  &quot;A5 Input ports&quot;: &quot;Existing start_run and start_implementation. Proposed reference-only implementation command shape is NOT APPROVED; existing caller-provided boolean is insufficient.&quot;,
+  &quot;A6 Output ports&quot;: &quot;Reuse existing SPEC/EVID/WORK read access and EXEC start path after approved binding design. No new production port proposed at this gate.&quot;,
+  &quot;A7 Driving adapters&quot;: &quot;Tauri commands and desktop UI; future Agent transports must share the same host check. UI presence is not proof a call came from a human.&quot;,
+  &quot;A8 Driven adapters&quot;: &quot;Existing execution adapters; planning uses no process/network/filesystem mutation. Proposed session-local record requires no persistence adapter.&quot;,
+  &quot;A9 Dependencies&quot;: &quot;Tauri -&gt; DispatchHost -&gt; validated domain values -&gt; GUARD policy; DispatchHost -&gt; existing SPEC/EVID/WORK APIs; EXEC reached only after all checks.&quot;,
+  &quot;A10 State ownership&quot;: &quot;Current SPEC and EVID stores remain authoritative only for their existing scopes. Proposed HOST session approval/intent record is a NEW owner requiring approval; not yet implemented. HTML is a projection.&quot;,
+  &quot;A11 Mutation boundary&quot;: &quot;Proposed explicit local-human confirmation creates session record; Agent can reference only, cannot register/reclassify/approve. Host checks identity/freshness every start. Exact capability separation remains an open architecture question.&quot;,
+  &quot;A12 Transaction boundary&quot;: &quot;Read current task/project/fingerprint/revision/evidence -&gt; compare all bindings -&gt; pure GUARD -&gt; existing execution preflight -&gt; start once. Any rejection before start creates zero external side effects. Revalidate before start; atomicity against revision edits must be specified before skeleton.&quot;,
+  &quot;A13 External boundary&quot;: &quot;No new server, network authority or persistent approval store. Session-only proposal excludes hostile local OS user/process security; cannot advertise authenticated human provenance without a concrete protected confirmation mechanism.&quot;,
+  &quot;A14 Forbidden dependencies&quot;: &quot;GUARD -&gt; UI/FS/OS/network; Agent-set approved or behavioral label -&gt; authority; unknown intent -&gt; generic default; contract hash -&gt; full architecture/BDD hash; stale pass -&gt; later unrelated run; direct UI/Agent -&gt; EXEC bypass.&quot;
+}</pre></section><section><h2>diagram_a</h2><pre>Desktop human / Agent / generic caller
+  -&gt; Tauri input commands
+  -&gt; DispatchHost application [proposed trusted intent/approval lookup: GAP]
+  -&gt; GUARD pure policy
+  -&gt; EXEC existing output boundary
+Domain has no UI/FS/OS dependency</pre></section><section><h2>diagram_b</h2><pre>SPEC contracts revision --read--&gt; DispatchHost &lt;--read-- EVID classified evidence
+WORK project/root/lease --read--&gt; DispatchHost &lt;--read-- CORE task id/title/zone
+Missing: trusted intent + complete approval binding
+DispatchHost -&gt; GUARD -&gt; existing EXEC start
+Proposed human confirmation -&gt; HOST session record [UNAPPROVED]</pre></section><section><h2>contracts</h2><pre>[
+  &quot;C1 Implementation start requires a host-resolved, owner-approved, current binding; caller approved/RED fields cannot grant permission.&quot;,
+  &quot;C2 Generic execution remains available only for tasks explicitly classified generic by the approved trusted flow; unknown intent rejects. No title regex or caller kind bypass.&quot;,
+  &quot;C3 Binding covers task ID, module, project identity/root, current fingerprint, approved architecture/BDD/skeleton revisions, envelope scope and qualified RED evidence identity. Existing two-field EVID binding alone does not prove this.&quot;,
+  &quot;C4 Missing/mismatched/revised/revoked/session-expired records reject before EXEC; no prior pass reuse.&quot;,
+  &quot;C5 Existing pure GUARD scope/protected-path semantics remain; successful policy check is necessary but not sufficient.&quot;,
+  &quot;C6 No production change until owner chooses authority and classification boundary; no current public API/schema is silently changed.&quot;
+]</pre></section><section><h2>invariants</h2><pre>[
+  &quot;I1 No external start before all authority/policy/binding checks.&quot;,
+  &quot;I2 Agent cannot self-classify or self-approve.&quot;,
+  &quot;I3 Generic compatibility cannot be used to execute implementation tasks.&quot;,
+  &quot;I4 Current stores do not silently gain stronger guarantees.&quot;,
+  &quot;I5 HTML status never implies executable RED/GREEN.&quot;
+]</pre></section><section><h2>bdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;G01&quot;,
+    &quot;behavior&quot;: &quot;Current approved implementation starts once&quot;,
+    &quot;given&quot;: &quot;All bindings and behavioral RED match&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;one execution starts&quot;,
+    &quot;test&quot;: &quot;TDD-G01&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G02&quot;,
+    &quot;behavior&quot;: &quot;Caller self approval is rejected&quot;,
+    &quot;given&quot;: &quot;no trusted approval exists but caller claims approved and behavioral RED&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G02&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G03&quot;,
+    &quot;behavior&quot;: &quot;Implementation cannot use generic entry&quot;,
+    &quot;given&quot;: &quot;task is authoritatively classified implementation&quot;,
+    &quot;when&quot;: &quot;generic execution is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G03&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G04&quot;,
+    &quot;behavior&quot;: &quot;Known generic task retains execution&quot;,
+    &quot;given&quot;: &quot;task is authoritatively classified generic&quot;,
+    &quot;when&quot;: &quot;generic execution is requested&quot;,
+    &quot;then&quot;: &quot;existing generic execution remains available&quot;,
+    &quot;test&quot;: &quot;TDD-G04&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G05&quot;,
+    &quot;behavior&quot;: &quot;Unknown classification rejects&quot;,
+    &quot;given&quot;: &quot;task has no authoritative intent&quot;,
+    &quot;when&quot;: &quot;execution is requested&quot;,
+    &quot;then&quot;: &quot;request rejects without implicit generic fallback&quot;,
+    &quot;test&quot;: &quot;TDD-G05&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G06&quot;,
+    &quot;behavior&quot;: &quot;Changed binding rejects&quot;,
+    &quot;given&quot;: &quot;one bound task project fingerprint architecture BDD skeleton or RED identity changed&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G06&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G07&quot;,
+    &quot;behavior&quot;: &quot;Non behavioral RED rejects&quot;,
+    &quot;given&quot;: &quot;evidence is compilation failure infrastructure failure missing or PASS&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G07&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G08&quot;,
+    &quot;behavior&quot;: &quot;Protected scope rejects&quot;,
+    &quot;given&quot;: &quot;requested changes touch a protected path&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G08&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G09&quot;,
+    &quot;behavior&quot;: &quot;Restart clears approval&quot;,
+    &quot;given&quot;: &quot;session approval was established before restart&quot;,
+    &quot;when&quot;: &quot;implementation is requested after restart&quot;,
+    &quot;then&quot;: &quot;fresh confirmation is required&quot;,
+    &quot;test&quot;: &quot;TDD-G09&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;G10&quot;,
+    &quot;behavior&quot;: &quot;Revoked approval rejects&quot;,
+    &quot;given&quot;: &quot;trusted approval was revoked&quot;,
+    &quot;when&quot;: &quot;implementation is requested&quot;,
+    &quot;then&quot;: &quot;request rejects and zero executions start&quot;,
+    &quot;test&quot;: &quot;TDD-G10&quot;,
+    &quot;status&quot;: &quot;PROPOSED_NOT_RUN&quot;
+  }
+]</pre></section><section><h2>tests</h2><pre>{
+  &quot;status&quot;: &quot;NOT RUN&quot;,
+  &quot;red&quot;: &quot;NOT ESTABLISHED; no approved skeleton&quot;,
+  &quot;levels&quot;: {
+    &quot;L0&quot;: &quot;Existing GUARD pure policy regression&quot;,
+    &quot;L1&quot;: &quot;Host binding comparisons; each dimension mutated individually&quot;,
+    &quot;L2&quot;: &quot;DispatchHost input boundaries + counting existing EXEC collaborator, zero starts on reject&quot;,
+    &quot;L3&quot;: &quot;Tauri command invocation authority separation and session lifecycle after design approval&quot;,
+    &quot;L4&quot;: &quot;Genuine generic CLI/MCP DryRun, leases and SPEC revision invalidation&quot;,
+    &quot;L5&quot;: &quot;System acceptance deferred until protected human confirmation exists&quot;
+  }
+}</pre></section><section><h2>coverage_categories</h2><pre>{
+  &quot;B1&quot;: &quot;Applicable G01/G04&quot;,
+  &quot;B2&quot;: &quot;Applicable G06; empty binding IDs&quot;,
+  &quot;B3&quot;: &quot;Applicable G02/G05&quot;,
+  &quot;B4&quot;: &quot;Applicable missing lookup/evidence&quot;,
+  &quot;B5&quot;: &quot;Applicable preflight reject leaves no pass&quot;,
+  &quot;B6&quot;: &quot;Applicable G06/G09&quot;,
+  &quot;B7&quot;: &quot;Applicable zero side effects before commit&quot;,
+  &quot;B8&quot;: &quot;Applicable G09/G10&quot;,
+  &quot;B9&quot;: &quot;Applicable rejected/revoked request cannot consume old pass&quot;,
+  &quot;B10&quot;: &quot;Applicable SPEC/EVID/WORK/CORE/EXEC&quot;,
+  &quot;B11&quot;: &quot;Applicable G04&quot;,
+  &quot;B12&quot;: &quot;Applicable existing generic/guard suites&quot;
+}</pre></section><section><h2>acceptance</h2><pre>[
+  &quot;AC1 All G01-G10 gain deterministic compiled behavioral tests with intended RED before production changes.&quot;,
+  &quot;AC2 Rejected requests produce zero process/MCP starts, no active lease and no reusable authorization.&quot;,
+  &quot;AC3 Positive implementation starts exactly once for matching current record.&quot;,
+  &quot;AC4 Genuine generic tasks preserve prior behavior; unknown/implementation generic-labelled requests reject.&quot;,
+  &quot;AC5 Public API/schema/ownership modifications explicitly approved before skeleton.&quot;,
+  &quot;AC6 Existing GUARD, HOST, EXEC, WORK, SPEC, EVID and Tauri regressions pass or failures classified.&quot;
+]</pre></section><section><h2>proposed_skeleton</h2><pre>{
+  &quot;locked_current&quot;: &quot;Existing public DTOs, modules and policy semantics remain locked. Production untouched.&quot;,
+  &quot;candidate_not_approved&quot;: &quot;Keep GUARD pure. Place one private session-owned record map and one shared pre-start validation function in DispatchHost; resolve existing SPEC/EVID/WORK state. A changed DTO may submit approval reference only. No new trait/crate/service. Exact record and human-only mutation API cannot be frozen until owner decision.&quot;,
+  &quot;readiness&quot;: &quot;NOT_READY_FOR_IMPLEMENTATION&quot;
+}</pre></section><section><h2>cost</h2><pre>{
+  &quot;new_production_crates&quot;: 0,
+  &quot;new_traits&quot;: 0,
+  &quot;new_dependencies&quot;: 0,
+  &quot;candidate_files&quot;: &quot;~2 existing dispatch/dto files plus focused tests; UI confirmation scope not estimated until capability boundary approved&quot;,
+  &quot;candidate_business_logic&quot;: &quot;one shared validation path; no generic policy engine&quot;,
+  &quot;pattern&quot;: &quot;none&quot;,
+  &quot;ROI&quot;: &quot;New repository/auth framework rejected by YAGNI; simple session record only a candidate, not authority proof&quot;
+}</pre></section><section><h2>owner_question</h2><pre>是否核准採本機桌面的人類確認作為唯一核准入口，由 HOST 保存僅本次 session 有效的工項意圖及 task/project/fingerprint/架構-BDD-skeleton revision/RED evidence 綁定；Agent 只能引用，重啟須重核准，未分類工項先拒絕執行？核准前仍須明確限定人類確認能力不可被 Agent command 自行呼叫。</pre></section><section><h2>gap</h2><pre>Existing code has no authenticated approval actor/source or authoritative task intent. A local command and in-memory approved flag do not fill the gap. Full binding not representable by existing schemas. Do not invent a new trusted repository or silently reject all generic runs.</pre></section><section><h2>risks</h2><pre>[
+  &quot;Human confirmation capability must be inaccessible to Agent self-approval, otherwise threat model remains unresolved.&quot;,
+  &quot;Session-only proposal sacrifices restart continuity and does not protect against malicious local OS user.&quot;,
+  &quot;Binding atomicity with SPEC changes and EXEC preflight requires explicit design before code.&quot;,
+  &quot;Current fixture-only SPEC loading is not real project approval ingestion.&quot;
+]</pre></section><section><h2>pending</h2><pre>[
+  &quot;Owner authority/intent decision&quot;,
+  &quot;Exact protected confirmation capability and caller threat model&quot;,
+  &quot;Approve record/DTO and revision source mapping&quot;,
+  &quot;Skeleton and independent RED&quot;,
+  &quot;Implementation and regression&quot;,
+  &quot;Owner acceptance&quot;
+]</pre></section><section><h2>evidence</h2><pre>[
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/guard_cmd.rs&quot;,
+    &quot;observation&quot;: &quot;EnvelopeDto / RedKindDto / authorize_exec_start: caller flags are policy input, not authority&quot;,
+    &quot;sha256&quot;: &quot;11705826ec44f746570974544cb444d1a9d0933a7f0fa614bade38fdc74944f1&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs&quot;,
+    &quot;observation&quot;: &quot;start_implementation 401; start_run 450 optional guard; spec_load_fixture 938 and spec_approve 966; existing tests 2329-2400&quot;,
+    &quot;sha256&quot;: &quot;0ae3e2f8063740896a2e3f92552267f2b2bf5954b94c770c453c7e1081ac390c&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dto.rs&quot;,
+    &quot;observation&quot;: &quot;StartRunArgs 94; StartImplementationArgs 130; SpecApproveArgs 438 only revision_id&quot;,
+    &quot;sha256&quot;: &quot;a9d5e3bfdf1bcb6779172c456ff1a64bb2d0925f87a1b30b723e2d8d1f9449d9&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-spec/src/store.rs&quot;,
+    &quot;observation&quot;: &quot;approve 79 sets status/hash only; no actor or task binding&quot;,
+    &quot;sha256&quot;: &quot;0e1b69434a33cd01b38a8a20186ee02e732dacb1708f9361b8745664416f8df1&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs&quot;,
+    &quot;observation&quot;: &quot;SpecRevision only contracts revision; fingerprint contracts only&quot;,
+    &quot;sha256&quot;: &quot;a218f57de84e10a91235118d8568570a2caa2b356415a65308542eb88fa09559&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-core/src/projection.rs&quot;,
+    &quot;observation&quot;: &quot;TaskRecord 70 has id/title/zone only&quot;,
+    &quot;sha256&quot;: &quot;795232fa6fe75032ffc01f548edf586d30b063f943d5dabd023b32f81cd25974&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs&quot;,
+    &quot;observation&quot;: &quot;WORK owns project registration/root/execution lease, not task intent&quot;,
+    &quot;sha256&quot;: &quot;4704591c8d20324bc1c579a9446c4a4b8b042725cc8a61f69399a82016a09694&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-evid/src/binding.rs&quot;,
+    &quot;observation&quot;: &quot;VersionBinding has spec_hash + worktree_fingerprint only&quot;,
+    &quot;sha256&quot;: &quot;04c69fad853e48cd6f37bb778fdfdd1fea546488ffa0b6926de283aa6b3ea6f8&quot;
+  },
+  {
+    &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-evid/src/store.rs&quot;,
+    &quot;observation&quot;: &quot;EvidenceStore supports classified behavioral RED + BDD ID, but not full project/task/architecture/skeleton binding&quot;,
+    &quot;sha256&quot;: &quot;2876555b216b739038a904fee8d8e23dfc39647c4b5532410bfa1f4fd12cdea5&quot;
+  }
+]</pre></section><section><h2>smallest_honest_action</h2><pre>Keep current production behavior unchanged; publish the authority gap and keep PD-RUST-GUARD-DEC-01 RED. Extra validation of caller DTO cannot transform it into trusted approval. Continue independent unblocked cards.</pre></section><section><h2>compatibility_owner_choice</h2><pre>Candidate session design preserves genuine generic runs only after explicit host-owned generic classification. Existing unclassified tasks would reject; this is an observable compatibility change requiring owner selection, not an automatic non-DryRun blanket restriction. No behavior is changed in this planning task.</pre></section><section><h2>task_breakdown</h2><pre>[
+  {
+    &quot;id&quot;: &quot;PD-RUST-GUARD-PLAN-02&quot;,
+    &quot;primary_module&quot;: &quot;execution-guard&quot;,
+    &quot;state&quot;: &quot;PLANNING_ARTIFACT_COMPLETE&quot;,
+    &quot;allowed_scope&quot;: &quot;reports/rust-improvements/continuous/execution-guard/**&quot;,
+    &quot;protected_scope&quot;: &quot;all production/tests/board/index&quot;,
+    &quot;dependencies&quot;: &quot;PD-RUST-GUARD-DEC-01 owner choice&quot;,
+    &quot;acceptance&quot;: &quot;A1-A14, source hashes, scenarios/test design, honest gap and generated report supplied&quot;
+  },
+  {
+    &quot;id&quot;: &quot;proposed-guard-implementation&quot;,
+    &quot;primary_module&quot;: &quot;execution-guard&quot;,
+    &quot;state&quot;: &quot;NOT_READY_FOR_IMPLEMENTATION&quot;,
+    &quot;dependencies&quot;: &quot;authority choice, approved APIs and skeleton, independent behavioral RED&quot;,
+    &quot;regression_modules&quot;: [
+      &quot;SPEC&quot;,
+      &quot;EVID&quot;,
+      &quot;WORK&quot;,
+      &quot;CORE&quot;,
+      &quot;EXEC&quot;,
+      &quot;Tauri&quot;
+    ]
+  }
+]</pre></section><script type="application/json" id="module-spec">{"module": "execution-guard", "task": "PD-RUST-GUARD-PLAN-02", "decision": "PD-RUST-GUARD-DEC-01", "date": "2026-10-26 Asia/Taipei", "status": "ARCHITECTURE_GAP", "architecture_status": "PROPOSED_NOT_APPROVED", "implementation": "BLOCKED_PENDING_OWNER_DECISION", "board": "YELLOW planning; decision RED", "skill": "tdd-pragmatic-architect", "phase": "Pre-TDD", "architecture": {"A1 System context": "Local desktop human, Agent caller and generic-run caller request DispatchHost; only DispatchHost may reach EXEC. Current trusted approval actor/source: NOT ESTABLISHED. spec_approve is a local command, not a separately authenticated human authority.", "A2 Hexagonal system view": "See diagram A. GUARD pure policy remains domain; DispatchHost orchestration is application composition; Tauri UI/commands are driving adapters; EXEC is existing driven boundary.", "A3 Module dependency view": "See diagram B. No concrete infrastructure dependency enters GUARD. No new repository, global manager, authentication subsystem or framework.", "A4 Responsibilities": "execution-guard: evaluate validated implementation envelope before execution. SPEC owns approved contract revisions; EVID owns classified evidence; WORK owns project/root/lease; CORE owns board task projection. None currently owns trusted task intent or a complete approval binding.", "A5 Input ports": "Existing start_run and start_implementation. Proposed reference-only implementation command shape is NOT APPROVED; existing caller-provided boolean is insufficient.", "A6 Output ports": "Reuse existing SPEC/EVID/WORK read access and EXEC start path after approved binding design. No new production port proposed at this gate.", "A7 Driving adapters": "Tauri commands and desktop UI; future Agent transports must share the same host check. UI presence is not proof a call came from a human.", "A8 Driven adapters": "Existing execution adapters; planning uses no process/network/filesystem mutation. Proposed session-local record requires no persistence adapter.", "A9 Dependencies": "Tauri -> DispatchHost -> validated domain values -> GUARD policy; DispatchHost -> existing SPEC/EVID/WORK APIs; EXEC reached only after all checks.", "A10 State ownership": "Current SPEC and EVID stores remain authoritative only for their existing scopes. Proposed HOST session approval/intent record is a NEW owner requiring approval; not yet implemented. HTML is a projection.", "A11 Mutation boundary": "Proposed explicit local-human confirmation creates session record; Agent can reference only, cannot register/reclassify/approve. Host checks identity/freshness every start. Exact capability separation remains an open architecture question.", "A12 Transaction boundary": "Read current task/project/fingerprint/revision/evidence -> compare all bindings -> pure GUARD -> existing execution preflight -> start once. Any rejection before start creates zero external side effects. Revalidate before start; atomicity against revision edits must be specified before skeleton.", "A13 External boundary": "No new server, network authority or persistent approval store. Session-only proposal excludes hostile local OS user/process security; cannot advertise authenticated human provenance without a concrete protected confirmation mechanism.", "A14 Forbidden dependencies": "GUARD -> UI/FS/OS/network; Agent-set approved or behavioral label -> authority; unknown intent -> generic default; contract hash -> full architecture/BDD hash; stale pass -> later unrelated run; direct UI/Agent -> EXEC bypass."}, "diagram_a": "Desktop human / Agent / generic caller\n  -> Tauri input commands\n  -> DispatchHost application [proposed trusted intent/approval lookup: GAP]\n  -> GUARD pure policy\n  -> EXEC existing output boundary\nDomain has no UI/FS/OS dependency", "diagram_b": "SPEC contracts revision --read--> DispatchHost <--read-- EVID classified evidence\nWORK project/root/lease --read--> DispatchHost <--read-- CORE task id/title/zone\nMissing: trusted intent + complete approval binding\nDispatchHost -> GUARD -> existing EXEC start\nProposed human confirmation -> HOST session record [UNAPPROVED]", "contracts": ["C1 Implementation start requires a host-resolved, owner-approved, current binding; caller approved/RED fields cannot grant permission.", "C2 Generic execution remains available only for tasks explicitly classified generic by the approved trusted flow; unknown intent rejects. No title regex or caller kind bypass.", "C3 Binding covers task ID, module, project identity/root, current fingerprint, approved architecture/BDD/skeleton revisions, envelope scope and qualified RED evidence identity. Existing two-field EVID binding alone does not prove this.", "C4 Missing/mismatched/revised/revoked/session-expired records reject before EXEC; no prior pass reuse.", "C5 Existing pure GUARD scope/protected-path semantics remain; successful policy check is necessary but not sufficient.", "C6 No production change until owner chooses authority and classification boundary; no current public API/schema is silently changed."], "invariants": ["I1 No external start before all authority/policy/binding checks.", "I2 Agent cannot self-classify or self-approve.", "I3 Generic compatibility cannot be used to execute implementation tasks.", "I4 Current stores do not silently gain stronger guarantees.", "I5 HTML status never implies executable RED/GREEN."], "bdd": [{"id": "G01", "behavior": "Current approved implementation starts once", "given": "All bindings and behavioral RED match", "when": "implementation is requested", "then": "one execution starts", "test": "TDD-G01", "status": "PROPOSED_NOT_RUN"}, {"id": "G02", "behavior": "Caller self approval is rejected", "given": "no trusted approval exists but caller claims approved and behavioral RED", "when": "implementation is requested", "then": "request rejects and zero executions start", "test": "TDD-G02", "status": "PROPOSED_NOT_RUN"}, {"id": "G03", "behavior": "Implementation cannot use generic entry", "given": "task is authoritatively classified implementation", "when": "generic execution is requested", "then": "request rejects and zero executions start", "test": "TDD-G03", "status": "PROPOSED_NOT_RUN"}, {"id": "G04", "behavior": "Known generic task retains execution", "given": "task is authoritatively classified generic", "when": "generic execution is requested", "then": "existing generic execution remains available", "test": "TDD-G04", "status": "PROPOSED_NOT_RUN"}, {"id": "G05", "behavior": "Unknown classification rejects", "given": "task has no authoritative intent", "when": "execution is requested", "then": "request rejects without implicit generic fallback", "test": "TDD-G05", "status": "PROPOSED_NOT_RUN"}, {"id": "G06", "behavior": "Changed binding rejects", "given": "one bound task project fingerprint architecture BDD skeleton or RED identity changed", "when": "implementation is requested", "then": "request rejects and zero executions start", "test": "TDD-G06", "status": "PROPOSED_NOT_RUN"}, {"id": "G07", "behavior": "Non behavioral RED rejects", "given": "evidence is compilation failure infrastructure failure missing or PASS", "when": "implementation is requested", "then": "request rejects and zero executions start", "test": "TDD-G07", "status": "PROPOSED_NOT_RUN"}, {"id": "G08", "behavior": "Protected scope rejects", "given": "requested changes touch a protected path", "when": "implementation is requested", "then": "request rejects and zero executions start", "test": "TDD-G08", "status": "PROPOSED_NOT_RUN"}, {"id": "G09", "behavior": "Restart clears approval", "given": "session approval was established before restart", "when": "implementation is requested after restart", "then": "fresh confirmation is required", "test": "TDD-G09", "status": "PROPOSED_NOT_RUN"}, {"id": "G10", "behavior": "Revoked approval rejects", "given": "trusted approval was revoked", "when": "implementation is requested", "then": "request rejects and zero executions start", "test": "TDD-G10", "status": "PROPOSED_NOT_RUN"}], "tests": {"status": "NOT RUN", "red": "NOT ESTABLISHED; no approved skeleton", "levels": {"L0": "Existing GUARD pure policy regression", "L1": "Host binding comparisons; each dimension mutated individually", "L2": "DispatchHost input boundaries + counting existing EXEC collaborator, zero starts on reject", "L3": "Tauri command invocation authority separation and session lifecycle after design approval", "L4": "Genuine generic CLI/MCP DryRun, leases and SPEC revision invalidation", "L5": "System acceptance deferred until protected human confirmation exists"}}, "coverage_categories": {"B1": "Applicable G01/G04", "B2": "Applicable G06; empty binding IDs", "B3": "Applicable G02/G05", "B4": "Applicable missing lookup/evidence", "B5": "Applicable preflight reject leaves no pass", "B6": "Applicable G06/G09", "B7": "Applicable zero side effects before commit", "B8": "Applicable G09/G10", "B9": "Applicable rejected/revoked request cannot consume old pass", "B10": "Applicable SPEC/EVID/WORK/CORE/EXEC", "B11": "Applicable G04", "B12": "Applicable existing generic/guard suites"}, "acceptance": ["AC1 All G01-G10 gain deterministic compiled behavioral tests with intended RED before production changes.", "AC2 Rejected requests produce zero process/MCP starts, no active lease and no reusable authorization.", "AC3 Positive implementation starts exactly once for matching current record.", "AC4 Genuine generic tasks preserve prior behavior; unknown/implementation generic-labelled requests reject.", "AC5 Public API/schema/ownership modifications explicitly approved before skeleton.", "AC6 Existing GUARD, HOST, EXEC, WORK, SPEC, EVID and Tauri regressions pass or failures classified."], "proposed_skeleton": {"locked_current": "Existing public DTOs, modules and policy semantics remain locked. Production untouched.", "candidate_not_approved": "Keep GUARD pure. Place one private session-owned record map and one shared pre-start validation function in DispatchHost; resolve existing SPEC/EVID/WORK state. A changed DTO may submit approval reference only. No new trait/crate/service. Exact record and human-only mutation API cannot be frozen until owner decision.", "readiness": "NOT_READY_FOR_IMPLEMENTATION"}, "cost": {"new_production_crates": 0, "new_traits": 0, "new_dependencies": 0, "candidate_files": "~2 existing dispatch/dto files plus focused tests; UI confirmation scope not estimated until capability boundary approved", "candidate_business_logic": "one shared validation path; no generic policy engine", "pattern": "none", "ROI": "New repository/auth framework rejected by YAGNI; simple session record only a candidate, not authority proof"}, "owner_question": "是否核准採本機桌面的人類確認作為唯一核准入口，由 HOST 保存僅本次 session 有效的工項意圖及 task/project/fingerprint/架構-BDD-skeleton revision/RED evidence 綁定；Agent 只能引用，重啟須重核准，未分類工項先拒絕執行？核准前仍須明確限定人類確認能力不可被 Agent command 自行呼叫。", "gap": "Existing code has no authenticated approval actor/source or authoritative task intent. A local command and in-memory approved flag do not fill the gap. Full binding not representable by existing schemas. Do not invent a new trusted repository or silently reject all generic runs.", "risks": ["Human confirmation capability must be inaccessible to Agent self-approval, otherwise threat model remains unresolved.", "Session-only proposal sacrifices restart continuity and does not protect against malicious local OS user.", "Binding atomicity with SPEC changes and EXEC preflight requires explicit design before code.", "Current fixture-only SPEC loading is not real project approval ingestion."], "pending": ["Owner authority/intent decision", "Exact protected confirmation capability and caller threat model", "Approve record/DTO and revision source mapping", "Skeleton and independent RED", "Implementation and regression", "Owner acceptance"], "evidence": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/guard_cmd.rs", "observation": "EnvelopeDto / RedKindDto / authorize_exec_start: caller flags are policy input, not authority", "sha256": "11705826ec44f746570974544cb444d1a9d0933a7f0fa614bade38fdc74944f1"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "observation": "start_implementation 401; start_run 450 optional guard; spec_load_fixture 938 and spec_approve 966; existing tests 2329-2400", "sha256": "0ae3e2f8063740896a2e3f92552267f2b2bf5954b94c770c453c7e1081ac390c"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "observation": "StartRunArgs 94; StartImplementationArgs 130; SpecApproveArgs 438 only revision_id", "sha256": "a9d5e3bfdf1bcb6779172c456ff1a64bb2d0925f87a1b30b723e2d8d1f9449d9"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/store.rs", "observation": "approve 79 sets status/hash only; no actor or task binding", "sha256": "0e1b69434a33cd01b38a8a20186ee02e732dacb1708f9361b8745664416f8df1"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs", "observation": "SpecRevision only contracts revision; fingerprint contracts only", "sha256": "a218f57de84e10a91235118d8568570a2caa2b356415a65308542eb88fa09559"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-core/src/projection.rs", "observation": "TaskRecord 70 has id/title/zone only", "sha256": "795232fa6fe75032ffc01f548edf586d30b063f943d5dabd023b32f81cd25974"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "observation": "WORK owns project registration/root/execution lease, not task intent", "sha256": "4704591c8d20324bc1c579a9446c4a4b8b042725cc8a61f69399a82016a09694"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-evid/src/binding.rs", "observation": "VersionBinding has spec_hash + worktree_fingerprint only", "sha256": "04c69fad853e48cd6f37bb778fdfdd1fea546488ffa0b6926de283aa6b3ea6f8"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-evid/src/store.rs", "observation": "EvidenceStore supports classified behavioral RED + BDD ID, but not full project/task/architecture/skeleton binding", "sha256": "2876555b216b739038a904fee8d8e23dfc39647c4b5532410bfa1f4fd12cdea5"}], "smallest_honest_action": "Keep current production behavior unchanged; publish the authority gap and keep PD-RUST-GUARD-DEC-01 RED. Extra validation of caller DTO cannot transform it into trusted approval. Continue independent unblocked cards.", "compatibility_owner_choice": "Candidate session design preserves genuine generic runs only after explicit host-owned generic classification. Existing unclassified tasks would reject; this is an observable compatibility change requiring owner selection, not an automatic non-DryRun blanket restriction. No behavior is changed in this planning task.", "task_breakdown": [{"id": "PD-RUST-GUARD-PLAN-02", "primary_module": "execution-guard", "state": "PLANNING_ARTIFACT_COMPLETE", "allowed_scope": "reports/rust-improvements/continuous/execution-guard/**", "protected_scope": "all production/tests/board/index", "dependencies": "PD-RUST-GUARD-DEC-01 owner choice", "acceptance": "A1-A14, source hashes, scenarios/test design, honest gap and generated report supplied"}, {"id": "proposed-guard-implementation", "primary_module": "execution-guard", "state": "NOT_READY_FOR_IMPLEMENTATION", "dependencies": "authority choice, approved APIs and skeleton, independent behavioral RED", "regression_modules": ["SPEC", "EVID", "WORK", "CORE", "EXEC", "Tauri"]}]}</script></html>
