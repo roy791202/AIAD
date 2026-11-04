@@ -1,0 +1,135 @@
+{
+  "module": "M07",
+  "task": "PD-P1-M07-PREP-01",
+  "state": "PLANNING_PENDING_OWNER",
+  "scope": "One snapshot publication handoff only",
+  "authority": {
+    "head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "inventory_files": 796,
+    "source": "M01/planning/s2-green/source-current.json"
+  },
+  "architecture": {
+    "hexagonal": "trusted capture driving adapter → M07 application publication input → recovery policy → RecoveryStore/M05 ports ← native index/catalog adapters",
+    "dependency": "M07 application → abstract recovery/material ports; native adapters implement ports; no domain filesystem",
+    "ownership": "Source owner owns live capture/baselines; M07 immutable attempt owns payload/index evidence; M05 owns pin/root receipts",
+    "mutation": "Only exact current owner can accept captured recovery ACK; live newer capture never overwritten",
+    "transaction": "payload/material durable → index CAS → LocalIntegrityReady → separate M05 root transfer → captured source ACK; no catalog/index lease held across owner callback"
+  },
+  "contracts": [
+    "LocalIntegrityReady requires payload/index/material proof, independent of original catalog",
+    "Index Failed/Unknown cannot transfer or ACK",
+    "Root deferred retains Held/Unknown and LocalIntegrityReady; no release",
+    "Matching old capture ACK updates captured recovery baseline only; formal/live state unchanged",
+    "Stale owner cannot ACK; restart proof loss cannot mint success/retry/release"
+  ],
+  "mapping": {
+    "snapshot": "evidence.snapshot_id; not document_uuid",
+    "attempt": "evidence.attempt_id; immutable for captured workflow",
+    "fingerprint": "evidence.recovery_fingerprint; typed SGA-RECOVERY-FP-v1, never payload raw",
+    "raw": "payload_raw_digest vs index prior/new raw vs material digest remain distinct",
+    "transition": "UUIDv5(workflow_id, UTF8 transfer-recovery/0); issuer/store/workflow/operation exact key",
+    "proof": "M07 ReceiptRef evidence_digest hashes full proposed evidence; M05 external_proof.raw_digest=index committed raw and projection_digest=full evidence hash; adopted issuer schema pending",
+    "request": "Full effective CXv3 closed transfer-recovery body, no purpose injection or post-hash enrichment"
+  },
+  "owner_gaps": [
+    {
+      "id": "PH-G1",
+      "owner": "M07+M04",
+      "gap": "Effective ack body requires formal_target_identity/file_receipt/captured_semantic_digest; no closed recovery-fingerprint ACK body. Do not send formal ack for recovery.",
+      "required": "Approve recovery ACK discriminated request with attempt/snapshot/context/fingerprint/index and transfer issuer refs; revision/generation fencing and replay lifecycle."
+    },
+    {
+      "id": "PH-G2",
+      "owner": "M07+IO+M05",
+      "gap": "RecoveryIndex immutable issuer record field schema/provider not implemented/adopted. Proposed evidence fixture below is documentary only.",
+      "required": "Adopt attempt/snapshot/context/target/expected-prior/new raw/index transaction/payload/material closure/fingerprint binding and authenticate server lookup."
+    },
+    {
+      "id": "PH-G3",
+      "owner": "M05",
+      "gap": "Material receipt v1 and transition_receipts atomic inclusion pending adoption; transfer fixture not present capability.",
+      "required": "Adopt exact full request hash, native store identity and external proof mapping including payload/index evidence projection."
+    },
+    {
+      "id": "PH-G4",
+      "owner": "M07",
+      "gap": "Restart issuer proof revalidation capability unavailable.",
+      "required": "Specify revalidation; missing record UnverifiedOutcome, no retry/release/ACK."
+    }
+  ],
+  "bdd_tdd": [
+    {
+      "id": "M07-PH-001",
+      "behavior": "success",
+      "test": "planned_native_M07-PH-001",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-002",
+      "behavior": "index-failure",
+      "test": "planned_native_M07-PH-002",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-003",
+      "behavior": "index-unknown",
+      "test": "planned_native_M07-PH-003",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-004",
+      "behavior": "root-deferred",
+      "test": "planned_native_M07-PH-004",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-005",
+      "behavior": "stale-owner",
+      "test": "planned_native_M07-PH-005",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-006",
+      "behavior": "newer-live-capture",
+      "test": "planned_native_M07-PH-006",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-007",
+      "behavior": "captured-ack-only",
+      "test": "planned_native_M07-PH-007",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    },
+    {
+      "id": "M07-PH-008",
+      "behavior": "restart-proof-loss",
+      "test": "planned_native_M07-PH-008",
+      "status": "PLANNED_NOT_RUN",
+      "document_witness": "fixtures.json"
+    }
+  ],
+  "acceptance": [
+    "Eight full-field documentary witnesses and closed-shape rejection check",
+    "Exact effective transfer request schema and full immutable issuer bindings",
+    "No real timer/capture/Port/Skeleton/product/native authenticity claim",
+    "Owner approves precise schema/provider gaps before future skeleton"
+  ],
+  "not_run": [
+    "independent review",
+    "native",
+    "build",
+    "product tests",
+    "valid RED",
+    "full Draft",
+    "module PASS"
+  ],
+  "next_action": "Independent read-only documentary review, then Owner resolves PH-G1..4; no Skeleton authorized"
+}

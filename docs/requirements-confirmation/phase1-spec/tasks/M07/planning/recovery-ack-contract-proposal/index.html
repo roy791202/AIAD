@@ -1,0 +1,775 @@
+<html><meta charset="utf-8"><title>M07 recovery ACK PH-G1 proposal</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;line-height:1.5}pre{white-space:pre-wrap;background:#f2f4f8;padding:18px}h1{color:#273d73}</style><h1>M07 · PH-G1 recovery ACK</h1><p>PROPOSED_PENDING_OWNER · Yellow preserved · document-only · no implementation authorization</p><p>One ACK seam. M04 remains sole DocumentOwner. Formal ACK schema unchanged.</p><h2>module</h2><pre>&quot;M07&quot;</pre><h2>task</h2><pre>&quot;PD-P1-M07-PREP-01&quot;</pre><h2>seam</h2><pre>&quot;PH-G1 only&quot;</pre><h2>state</h2><pre>&quot;PROPOSED_PENDING_OWNER&quot;</pre><h2>author</h2><pre>&quot;/root/m07_recovery_ack_packet&quot;</pre><h2>authority</h2><pre>{
+  &quot;head&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;inventory_head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+  &quot;inventory_files&quot;: 796
+}</pre><h2>intent</h2><pre>&quot;Close candidate recovery capture ACK request/response and issuer-proof mapping without changing effective formal ACK.&quot;</pre><h2>architecture</h2><pre>{
+  &quot;hexagonal&quot;: &quot;Trusted M07 observation → proposed M04 captured-recovery ACK input boundary → sole DocumentOwner → existing trusted proof lookup abstractions ← M07 index/M05 transfer issuer adapters&quot;,
+  &quot;dependency&quot;: &quot;M07 observer → M04 owner boundary; M04 depends on proof abstractions; no UI/native/domain bypass. No new API approval.&quot;,
+  &quot;ownership&quot;: &quot;M04 owns document/live state and formal/recovery baselines. M07 owns immutable attempt/index observations. M05 owns materials/pins/roots.&quot;,
+  &quot;mutation&quot;: &quot;Only M04 matching owner generation/session may ACK exact immutable capture. Baseline update is conditional monotonic by captured revision, never live content overwrite.&quot;,
+  &quot;transaction&quot;: &quot;Resolve handles/proofs outside index/catalog leases, recheck owner fence at M04 baseline commit. Owner baseline + replay terminal response must be atomic in future design; native atomicity unproved.&quot;
+}</pre><h2>boundary</h2><pre>{
+  &quot;caller&quot;: &quot;Only trusted orchestration with pre-resolved M04 capture capability; UI supplies no trusted body/proof/state. No unauthenticated caller data admitted.&quot;,
+  &quot;lookup&quot;: &quot;Fixture stands for existing issuer-owned lookup: exact (issuer, receipt_id) for M07 index and M05 root transfer; compare full context, capture and body. ReceiptRef hashes are commitments, not authorization. Never accept caller boolean verified labels.&quot;,
+  &quot;no_registry&quot;: &quot;immutable-proof.json is a documentary fixture, never a proposed document registry; proof/provider integration PH-G2..4 remains separate pending adoption.&quot;
+}</pre><h2>s1 limit</h2><pre>&quot;Accepted S1 recovery_state.rs consumes HOST-supplied Published; it has no timer, filesystem, codec, fingerprint computation, pinning, capture/provider authentication or M04 ACK integration. This proposal changes none of those facts.&quot;</pre><h2>hash</h2><pre>{
+  &quot;status&quot;: &quot;NEW_VARIANT_PROPOSED_PENDING_OWNER&quot;,
+  &quot;protocol&quot;: &quot;SGA-RECOVERY-ACK-PROPOSAL-v1&quot;,
+  &quot;role&quot;: &quot;ack-recovery&quot;,
+  &quot;issuer&quot;: &quot;M04&quot;,
+  &quot;operation_id&quot;: &quot;UUIDv5(workflow_id, UTF8 ack-recovery/0)&quot;,
+  &quot;digest&quot;: &quot;SHA256 canonical UTF8 entire admitted request recursively, including protocol/issuer/role/ordinal/context/body. Same canonical rules as CXv3; distinct protocol prevents cross-purpose replay.&quot;,
+  &quot;key&quot;: &quot;Proposed M04 owner replay store identity + workflow_id + operation_id + authenticated issuer/owner binding; physical durable store/provider pending Owner.&quot;,
+  &quot;replay&quot;: &quot;Exact retained terminal digest returns exact response, not another mutation. Changed valid body same key ReplayConflict. InFlight InProgress. Lost durable proof UnverifiedOutcome; no automatic retry/release/ACK.&quot;,
+  &quot;details&quot;: &quot;Request body commits capture owner/capability, attempt/snapshot/context, fingerprint profile+hash, immutable ordered material versions, payload raw, index prior/new raw+transaction+target, index/transfer refs. Resolve before freeze; no enrichment after hash.&quot;
+}</pre><h2>mapping</h2><pre>{
+  &quot;fingerprint&quot;: &quot;Reuse original SGA-RECOVERY-FP-v1 definition includes format/semantic/material versions/bindings. Do not replace by payload/index raw or formal semantic hash.&quot;,
+  &quot;index&quot;: &quot;index_receipt.evidence_digest hashes FULL immutable index evidence; context_digest hashes full WorkflowContext. Match target/prior/new raw/transaction/payload/materials/attempt/snapshot/fingerprint exactly.&quot;,
+  &quot;transfer&quot;: &quot;transfer_receipt.evidence_digest hashes FULL M05 immutable transfer record; request_digest must hash entire frozen transfer-recovery request. Match issuer, role, workflow, operation, context, pin, source receipt IDs, materials, roots, expected+committed generation and native store/target identity.&quot;,
+  &quot;distinction&quot;: &quot;M05 external_proof.raw_digest=index committed raw; projection_digest=index FULL evidence hash; recovery fingerprint remains independent. source_receipt_ids bind Held and index refs.&quot;
+}</pre><h2>contracts</h2><pre>[
+  &quot;Never reuse formal-only ack body/role implicitly&quot;,
+  &quot;Only M04 mutates recovery baseline; no formal baseline change&quot;,
+  &quot;Captured R ACK may succeed with live R+1 while live remains dirty&quot;,
+  &quot;Late R after acknowledged R+1 returns Superseded; no backward baseline&quot;,
+  &quot;M05 root Deferred retains LocalIntegrityReady, not Published; no ACK/release&quot;,
+  &quot;Missing or Unknown issuer evidence =&gt; UnverifiedOutcome, no automatic retry&quot;,
+  &quot;No catalog/index lease held during M04 callback&quot;
+]</pre><h2>owner options</h2><pre>[
+  {
+    &quot;id&quot;: &quot;RA-O1&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;option&quot;: &quot;Adopt distinct protocol and ack-recovery role/body/receipt mapping, replay lifecycle and atomic owner mutation&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RA-O2&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;option&quot;: &quot;Instead explicitly version effective transition schema with formal/recovery discriminated union, role/hash migration and full compatibility analysis; not performed&quot;
+  }
+]</pre><h2>tasks</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M07-RA-PLAN&quot;,
+    &quot;primary_module&quot;: &quot;M07&quot;,
+    &quot;status&quot;: &quot;PLANNING&quot;,
+    &quot;allowed&quot;: &quot;this new directory only&quot;,
+    &quot;protected&quot;: &quot;all originals/product/board/current-state/hooks/roles&quot;,
+    &quot;acceptance&quot;: &quot;20 bounded DOCUMENT witnesses and source/hash/seal checks; not implementation acceptance&quot;
+  }
+]</pre><h2>bdd tdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M07-RA-001&quot;,
+    &quot;behavior&quot;: &quot;valid captured recovery ACK&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-001&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-002&quot;,
+    &quot;behavior&quot;: &quot;newer live revision remains dirty&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-002&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-003&quot;,
+    &quot;behavior&quot;: &quot;late older ACK cannot regress recovery baseline&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-003&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-004&quot;,
+    &quot;behavior&quot;: &quot;formal baseline never changes&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-004&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-005&quot;,
+    &quot;behavior&quot;: &quot;payload raw is not recovery fingerprint&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-005&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-006&quot;,
+    &quot;behavior&quot;: &quot;index raw is not recovery fingerprint&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-006&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-007&quot;,
+    &quot;behavior&quot;: &quot;wrong transfer issuer&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-007&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-008&quot;,
+    &quot;behavior&quot;: &quot;wrong project context&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-008&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-009&quot;,
+    &quot;behavior&quot;: &quot;wrong session&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-009&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-010&quot;,
+    &quot;behavior&quot;: &quot;stale generation&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-010&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-011&quot;,
+    &quot;behavior&quot;: &quot;root deferred retains local integrity without ACK&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-011&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-012&quot;,
+    &quot;behavior&quot;: &quot;unknown root no ACK no retry&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-012&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-013&quot;,
+    &quot;behavior&quot;: &quot;restart lost issuer proof no ACK retry or release&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-013&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-014&quot;,
+    &quot;behavior&quot;: &quot;wrong material version&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-014&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-015&quot;,
+    &quot;behavior&quot;: &quot;wrong attempt&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-015&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-016&quot;,
+    &quot;behavior&quot;: &quot;wrong owner handle&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-016&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-017&quot;,
+    &quot;behavior&quot;: &quot;unknown request key rejected before lookup&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-017&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-018&quot;,
+    &quot;behavior&quot;: &quot;wrong index transaction&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-018&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-019&quot;,
+    &quot;behavior&quot;: &quot;wrong snapshot&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-019&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-RA-020&quot;,
+    &quot;behavior&quot;: &quot;wrong index evidence hash&quot;,
+    &quot;contract&quot;: &quot;Exact captured ACK binding and baseline isolation&quot;,
+    &quot;test&quot;: &quot;DOCUMENT:M07-RA-020&quot;,
+    &quot;native&quot;: &quot;NOT RUN&quot;
+  }
+]</pre><h2>assumptions</h2><pre>[
+  &quot;Immutable fixture authenticity assumed only&quot;,
+  &quot;Native durable index provider unavailable/unproved&quot;,
+  &quot;Native M05 material/root atomic inclusion unproved&quot;,
+  &quot;Native M04 replay+baseline transaction and restart provider unproved&quot;,
+  &quot;SHA256 collision resistance assumed&quot;,
+  &quot;No native interface or skeleton created&quot;
+]</pre><h2>remaining gates</h2><pre>[
+  &quot;Owner selects protocol/role/hash option and confirms architecture/contracts/BDD&quot;,
+  &quot;PH-G2 index issuer/provider adoption&quot;,
+  &quot;PH-G3 material/root transition receipt adoption&quot;,
+  &quot;PH-G4 restart proof lookup/lifecycle&quot;,
+  &quot;Approved Skeleton and intended valid RED&quot;,
+  &quot;Independent documentary review then separate native implementation acceptance&quot;
+]</pre><h2>not run</h2><pre>[
+  &quot;independent review&quot;,
+  &quot;native&quot;,
+  &quot;build&quot;,
+  &quot;product tests&quot;,
+  &quot;valid RED/GREEN&quot;,
+  &quot;full Draft2020-12&quot;,
+  &quot;module acceptance&quot;
+]</pre><h2>module complete</h2><pre>false</pre><h2>Dependency view</h2><pre>M07 observation → M04 input boundary → DocumentOwner baseline
+M04 → abstract proof lookup ← M07 index / M05 transfer issuers
+No UI setter; no second document registry; no callback under catalog/index lease.</pre><script type="application/json" id="module-spec">{"module": "M07", "task": "PD-P1-M07-PREP-01", "seam": "PH-G1 only", "state": "PROPOSED_PENDING_OWNER", "author": "/root/m07_recovery_ack_packet", "authority": {"head": "5b709343a890503ebbe24a802e43cda5647df124", "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "inventory_files": 796}, "intent": "Close candidate recovery capture ACK request/response and issuer-proof mapping without changing effective formal ACK.", "architecture": {"hexagonal": "Trusted M07 observation → proposed M04 captured-recovery ACK input boundary → sole DocumentOwner → existing trusted proof lookup abstractions ← M07 index/M05 transfer issuer adapters", "dependency": "M07 observer → M04 owner boundary; M04 depends on proof abstractions; no UI/native/domain bypass. No new API approval.", "ownership": "M04 owns document/live state and formal/recovery baselines. M07 owns immutable attempt/index observations. M05 owns materials/pins/roots.", "mutation": "Only M04 matching owner generation/session may ACK exact immutable capture. Baseline update is conditional monotonic by captured revision, never live content overwrite.", "transaction": "Resolve handles/proofs outside index/catalog leases, recheck owner fence at M04 baseline commit. Owner baseline + replay terminal response must be atomic in future design; native atomicity unproved."}, "boundary": {"caller": "Only trusted orchestration with pre-resolved M04 capture capability; UI supplies no trusted body/proof/state. No unauthenticated caller data admitted.", "lookup": "Fixture stands for existing issuer-owned lookup: exact (issuer, receipt_id) for M07 index and M05 root transfer; compare full context, capture and body. ReceiptRef hashes are commitments, not authorization. Never accept caller boolean verified labels.", "no_registry": "immutable-proof.json is a documentary fixture, never a proposed document registry; proof/provider integration PH-G2..4 remains separate pending adoption."}, "s1_limit": "Accepted S1 recovery_state.rs consumes HOST-supplied Published; it has no timer, filesystem, codec, fingerprint computation, pinning, capture/provider authentication or M04 ACK integration. This proposal changes none of those facts.", "hash": {"status": "NEW_VARIANT_PROPOSED_PENDING_OWNER", "protocol": "SGA-RECOVERY-ACK-PROPOSAL-v1", "role": "ack-recovery", "issuer": "M04", "operation_id": "UUIDv5(workflow_id, UTF8 ack-recovery/0)", "digest": "SHA256 canonical UTF8 entire admitted request recursively, including protocol/issuer/role/ordinal/context/body. Same canonical rules as CXv3; distinct protocol prevents cross-purpose replay.", "key": "Proposed M04 owner replay store identity + workflow_id + operation_id + authenticated issuer/owner binding; physical durable store/provider pending Owner.", "replay": "Exact retained terminal digest returns exact response, not another mutation. Changed valid body same key ReplayConflict. InFlight InProgress. Lost durable proof UnverifiedOutcome; no automatic retry/release/ACK.", "details": "Request body commits capture owner/capability, attempt/snapshot/context, fingerprint profile+hash, immutable ordered material versions, payload raw, index prior/new raw+transaction+target, index/transfer refs. Resolve before freeze; no enrichment after hash."}, "mapping": {"fingerprint": "Reuse original SGA-RECOVERY-FP-v1 definition includes format/semantic/material versions/bindings. Do not replace by payload/index raw or formal semantic hash.", "index": "index_receipt.evidence_digest hashes FULL immutable index evidence; context_digest hashes full WorkflowContext. Match target/prior/new raw/transaction/payload/materials/attempt/snapshot/fingerprint exactly.", "transfer": "transfer_receipt.evidence_digest hashes FULL M05 immutable transfer record; request_digest must hash entire frozen transfer-recovery request. Match issuer, role, workflow, operation, context, pin, source receipt IDs, materials, roots, expected+committed generation and native store/target identity.", "distinction": "M05 external_proof.raw_digest=index committed raw; projection_digest=index FULL evidence hash; recovery fingerprint remains independent. source_receipt_ids bind Held and index refs."}, "contracts": ["Never reuse formal-only ack body/role implicitly", "Only M04 mutates recovery baseline; no formal baseline change", "Captured R ACK may succeed with live R+1 while live remains dirty", "Late R after acknowledged R+1 returns Superseded; no backward baseline", "M05 root Deferred retains LocalIntegrityReady, not Published; no ACK/release", "Missing or Unknown issuer evidence => UnverifiedOutcome, no automatic retry", "No catalog/index lease held during M04 callback"], "owner_options": [{"id": "RA-O1", "status": "PROPOSED_PENDING_OWNER", "option": "Adopt distinct protocol and ack-recovery role/body/receipt mapping, replay lifecycle and atomic owner mutation"}, {"id": "RA-O2", "status": "PROPOSED_PENDING_OWNER", "option": "Instead explicitly version effective transition schema with formal/recovery discriminated union, role/hash migration and full compatibility analysis; not performed"}], "tasks": [{"id": "M07-RA-PLAN", "primary_module": "M07", "status": "PLANNING", "allowed": "this new directory only", "protected": "all originals/product/board/current-state/hooks/roles", "acceptance": "20 bounded DOCUMENT witnesses and source/hash/seal checks; not implementation acceptance"}], "bdd_tdd": [{"id": "M07-RA-001", "behavior": "valid captured recovery ACK", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-001", "native": "NOT RUN"}, {"id": "M07-RA-002", "behavior": "newer live revision remains dirty", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-002", "native": "NOT RUN"}, {"id": "M07-RA-003", "behavior": "late older ACK cannot regress recovery baseline", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-003", "native": "NOT RUN"}, {"id": "M07-RA-004", "behavior": "formal baseline never changes", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-004", "native": "NOT RUN"}, {"id": "M07-RA-005", "behavior": "payload raw is not recovery fingerprint", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-005", "native": "NOT RUN"}, {"id": "M07-RA-006", "behavior": "index raw is not recovery fingerprint", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-006", "native": "NOT RUN"}, {"id": "M07-RA-007", "behavior": "wrong transfer issuer", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-007", "native": "NOT RUN"}, {"id": "M07-RA-008", "behavior": "wrong project context", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-008", "native": "NOT RUN"}, {"id": "M07-RA-009", "behavior": "wrong session", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-009", "native": "NOT RUN"}, {"id": "M07-RA-010", "behavior": "stale generation", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-010", "native": "NOT RUN"}, {"id": "M07-RA-011", "behavior": "root deferred retains local integrity without ACK", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-011", "native": "NOT RUN"}, {"id": "M07-RA-012", "behavior": "unknown root no ACK no retry", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-012", "native": "NOT RUN"}, {"id": "M07-RA-013", "behavior": "restart lost issuer proof no ACK retry or release", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-013", "native": "NOT RUN"}, {"id": "M07-RA-014", "behavior": "wrong material version", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-014", "native": "NOT RUN"}, {"id": "M07-RA-015", "behavior": "wrong attempt", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-015", "native": "NOT RUN"}, {"id": "M07-RA-016", "behavior": "wrong owner handle", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-016", "native": "NOT RUN"}, {"id": "M07-RA-017", "behavior": "unknown request key rejected before lookup", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-017", "native": "NOT RUN"}, {"id": "M07-RA-018", "behavior": "wrong index transaction", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-018", "native": "NOT RUN"}, {"id": "M07-RA-019", "behavior": "wrong snapshot", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-019", "native": "NOT RUN"}, {"id": "M07-RA-020", "behavior": "wrong index evidence hash", "contract": "Exact captured ACK binding and baseline isolation", "test": "DOCUMENT:M07-RA-020", "native": "NOT RUN"}], "assumptions": ["Immutable fixture authenticity assumed only", "Native durable index provider unavailable/unproved", "Native M05 material/root atomic inclusion unproved", "Native M04 replay+baseline transaction and restart provider unproved", "SHA256 collision resistance assumed", "No native interface or skeleton created"], "remaining_gates": ["Owner selects protocol/role/hash option and confirms architecture/contracts/BDD", "PH-G2 index issuer/provider adoption", "PH-G3 material/root transition receipt adoption", "PH-G4 restart proof lookup/lifecycle", "Approved Skeleton and intended valid RED", "Independent documentary review then separate native implementation acceptance"], "not_run": ["independent review", "native", "build", "product tests", "valid RED/GREEN", "full Draft2020-12", "module acceptance"], "module_complete": false, "document_results": {"status": "PASS_DOCUMENT_ONLY_PENDING_OWNER", "witnesses": 20, "defensive_issuer_mutations": 6, "replay_hash_checks": 2, "source_pointer_checks": 12, "inventory_files": 796, "product_hashes_unchanged": true, "not_run": ["independent review", "native", "build", "product tests", "valid RED/GREEN", "full Draft2020-12", "module acceptance"], "module_pass": false}}</script><section id="document-verification"><h2>DOCUMENT verification and trace</h2><p>20 witnesses; 6 immutable issuer mutation checks; 2 replay/hash checks. Native and independent verification NOT RUN.</p><pre>{
+  &quot;status&quot;: &quot;PASS_DOCUMENT_ONLY_PENDING_OWNER&quot;,
+  &quot;witnesses&quot;: 20,
+  &quot;defensive_issuer_mutations&quot;: 6,
+  &quot;replay_hash_checks&quot;: 2,
+  &quot;source_pointer_checks&quot;: 12,
+  &quot;inventory_files&quot;: 796,
+  &quot;product_hashes_unchanged&quot;: true,
+  &quot;trace&quot;: [
+    {
+      &quot;id&quot;: &quot;M07-RA-001&quot;,
+      &quot;behavior&quot;: &quot;valid captured recovery ACK&quot;,
+      &quot;expected&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: {
+            &quot;revision&quot;: &quot;10&quot;,
+            &quot;fingerprint&quot;: {
+              &quot;profile&quot;: &quot;SGA-RECOVERY-FP-v1&quot;,
+              &quot;lowerhex64&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;
+            }
+          }
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 1,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: true
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-002&quot;,
+      &quot;behavior&quot;: &quot;newer live revision remains dirty&quot;,
+      &quot;expected&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;11&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: {
+            &quot;revision&quot;: &quot;10&quot;,
+            &quot;fingerprint&quot;: {
+              &quot;profile&quot;: &quot;SGA-RECOVERY-FP-v1&quot;,
+              &quot;lowerhex64&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;
+            }
+          }
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 1,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: true
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-003&quot;,
+      &quot;behavior&quot;: &quot;late older ACK cannot regress recovery baseline&quot;,
+      &quot;expected&quot;: &quot;Superseded&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Superseded&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: {
+            &quot;revision&quot;: &quot;11&quot;,
+            &quot;fingerprint&quot;: {
+              &quot;profile&quot;: &quot;SGA-RECOVERY-FP-v1&quot;,
+              &quot;lowerhex64&quot;: &quot;ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff&quot;
+            }
+          }
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-004&quot;,
+      &quot;behavior&quot;: &quot;formal baseline never changes&quot;,
+      &quot;expected&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;CapturedRecoveryAcknowledged&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-saved-12&quot;,
+          &quot;recovery_baseline&quot;: {
+            &quot;revision&quot;: &quot;10&quot;,
+            &quot;fingerprint&quot;: {
+              &quot;profile&quot;: &quot;SGA-RECOVERY-FP-v1&quot;,
+              &quot;lowerhex64&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;
+            }
+          }
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 1,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: true
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-005&quot;,
+      &quot;behavior&quot;: &quot;payload raw is not recovery fingerprint&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-006&quot;,
+      &quot;behavior&quot;: &quot;index raw is not recovery fingerprint&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-007&quot;,
+      &quot;behavior&quot;: &quot;wrong transfer issuer&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-008&quot;,
+      &quot;behavior&quot;: &quot;wrong project context&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-009&quot;,
+      &quot;behavior&quot;: &quot;wrong session&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000099&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-010&quot;,
+      &quot;behavior&quot;: &quot;stale generation&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;3&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-011&quot;,
+      &quot;behavior&quot;: &quot;root deferred retains local integrity without ACK&quot;,
+      &quot;expected&quot;: &quot;Deferred&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Deferred&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-012&quot;,
+      &quot;behavior&quot;: &quot;unknown root no ACK no retry&quot;,
+      &quot;expected&quot;: &quot;UnverifiedOutcome&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;UnverifiedOutcome&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-013&quot;,
+      &quot;behavior&quot;: &quot;restart lost issuer proof no ACK retry or release&quot;,
+      &quot;expected&quot;: &quot;UnverifiedOutcome&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;UnverifiedOutcome&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-014&quot;,
+      &quot;behavior&quot;: &quot;wrong material version&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-015&quot;,
+      &quot;behavior&quot;: &quot;wrong attempt&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-016&quot;,
+      &quot;behavior&quot;: &quot;wrong owner handle&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-017&quot;,
+      &quot;behavior&quot;: &quot;unknown request key rejected before lookup&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-018&quot;,
+      &quot;behavior&quot;: &quot;wrong index transaction&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-019&quot;,
+      &quot;behavior&quot;: &quot;wrong snapshot&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    },
+    {
+      &quot;id&quot;: &quot;M07-RA-020&quot;,
+      &quot;behavior&quot;: &quot;wrong index evidence hash&quot;,
+      &quot;expected&quot;: &quot;Rejected&quot;,
+      &quot;observed&quot;: {
+        &quot;result&quot;: &quot;Rejected&quot;,
+        &quot;state&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;live_revision&quot;: &quot;10&quot;,
+          &quot;formal_baseline&quot;: &quot;formal-unchanged&quot;,
+          &quot;recovery_baseline&quot;: null
+        },
+        &quot;calls&quot;: {
+          &quot;ack&quot;: 0,
+          &quot;retry&quot;: 0,
+          &quot;release&quot;: 0
+        },
+        &quot;local_integrity_ready&quot;: true,
+        &quot;published&quot;: false
+      },
+      &quot;pass_document&quot;: true
+    }
+  ],
+  &quot;defensive_paths&quot;: [
+    &quot;capture/fingerprint/lowerhex64&quot;,
+    &quot;index/evidence/payload_raw_digest&quot;,
+    &quot;transfer/request_digest&quot;,
+    &quot;transfer/committed_generation&quot;,
+    &quot;held/purpose&quot;,
+    &quot;transfer/external_proof/projection_digest&quot;
+  ],
+  &quot;not_run&quot;: [
+    &quot;independent review&quot;,
+    &quot;native&quot;,
+    &quot;build&quot;,
+    &quot;product tests&quot;,
+    &quot;valid RED/GREEN&quot;,
+    &quot;full Draft2020-12&quot;,
+    &quot;module acceptance&quot;
+  ],
+  &quot;module_pass&quot;: false
+}</pre></section></html>

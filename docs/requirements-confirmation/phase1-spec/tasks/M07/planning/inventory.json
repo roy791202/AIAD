@@ -1,0 +1,121 @@
+{
+  "module": "M07",
+  "task": "PD-P1-M07-PREP-01",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "dirty": true,
+  "evidence": "SOURCE_INSPECTION_ONLY",
+  "files": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-core/src/dirty.rs",
+      "exists": true,
+      "sha256": "8943e04d2de2e4d75ad3a5e1e63ee1838d4fcd805401b5c3c86c23819e397fe0"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "exists": true,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "exists": true,
+      "sha256": "a966c10cace2207fd800224c42fb8128c4bd84aac0cdf85135e87ee2ae28646a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "exists": true,
+      "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "exists": true,
+      "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs",
+      "exists": true,
+      "sha256": "c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "exists": true,
+      "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "exists": true,
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "exists": true,
+      "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "exists": true,
+      "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "exists": true,
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "exists": true,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/index.html",
+      "exists": true,
+      "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+      "exists": true,
+      "sha256": "df14f842965d15bbbcffad3f66b048bd1f8a48cd4749ccfc4857fa216d1d9718"
+    }
+  ],
+  "findings": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+      "line_start": 1,
+      "line_end": 117,
+      "sha256": "df14f842965d15bbbcffad3f66b048bd1f8a48cd4749ccfc4857fa216d1d9718",
+      "excerpt": "/* Private UI-local recovery helper for the currently loaded DesignDoc only. */\nconst UidesignRecovery = (() => {\n  const histories = new WeakMap();\n  const plans = new WeakMap();\n\n  function clone(value) {\n    return JSON.parse(JSON.stringify(value));\n  }\n\n  function canonical(value) {\n    if (Array.isArray(value)) return \"[\" + value.map(canonical).join(\",\") + \"]\";\n    if (value && typeof value === \"object\") {\n      return \"{\" + Object.keys(value).sort().map((key) => JSON.stringify(key) + \":\" + canonical(value[key])).join(\",\") + \"}\";\n    }\n    return JSON.stringify(value);\n  }\n\n  function createHistory() {\n    const history = Object.freeze({});\n    histories.set(history, null);\n    return history;\n  }\n\n  function prepare(input) {\n    if (!input || !input.projectRoot || !String(input.projectRoot).trim()) return { ok: false, code: \"UNBOUND_PROJECT\" };\n    if (!input.identity || !String(input.identity).trim()) return { ok: false, code: \"SCOPE_UNSUPPORTED\" };\n    if (input.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    if (!input.history || !histories.has(input.history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    if (!input.document || !input.clearedDocument) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    const before = clone(input.document);\n    const after = clone(input.clearedDocument);\n    const beforeFingerprint = canonical(before);\n    const afterFingerprint = canonical(after);\n    const plan = Object.freeze({});\n    plans.set(plan, {\n      history: input.history,\n      identity: String(input.identity),\n      projectRoot: String(input.projectRoot).trim(),\n      before,\n      after,\n      beforeFingerprint,\n      afterFingerprint,\n      beforeDirty: clone(input.dirty || {}),\n      changed: beforeFingerprint !== afterFingerprint,\n    });\n    return { ok: true, plan };\n  }\n\n  function confirm(plan, live) {\n    const checkpoint = plan && plans.get(plan);\n    if (!checkpoint || !live || !live.apply) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    // A preview token is single-use, including stale or no-op confirmation attempts.\n    plans.delete(plan);\n    if (!live.history || checkpoint.history !== live.history || !histories.has(live.history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    if (String(live.projectRoot || \"\").trim() !== checkpoint.projectRoot || live.identity !== checkpoint.identity) return { ok: false, code: \"BINDING_STALE\" };\n    if (live.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    if (canonical(live.document) !== checkpoint.beforeFingerprint) return { ok: false, code: \"WORKSPACE_STALE\" };\n    if (canonical(live.dirty || {}) !== canonical(checkpoint.beforeDirty || {})) return { ok: false, code: \"WORKSPACE_STALE\" };\n    if (!checkpoint.changed) return { ok: true, changed: false };\n    const history = live.history;\n    if (!history || !histories.has(history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    const afterDirty = { ...(checkpoint.beforeDirty || {}), design: true };\n    histories.set(history, {\n      identity: checkpoint.identity,\n      projectRoot: checkpoint.projectRoot,\n      before: clone(checkpoint.before),\n      after: clone(checkpoint.after),\n      beforeFingerprint: checkpoint.beforeFingerprint,\n      afterFingerprint: checkpoint.afterFingerprint,\n      beforeDirty: clone(checkpoint.beforeDirty || {}),\n      afterDirty,\n      applied: true,\n    });\n    try {\n      live.apply(clone(checkpoint.after), clone(afterDirty));\n    } catch (_projectionError) {\n      // The model commit precedes rendering; retain the checkpoint if projection fails.\n      return { ok: false, changed: true, code: \"PROJECTION_FAILED\" };\n    }\n    return { ok: true, changed: true };\n  }\n\n  function applyHistory(history, live, direction) {\n    if (!history || !histories.has(history) || !live || !live.apply) return { ok: false, code: \"NOTHING_TO_UNDO\" };\n    const entry = histories.get(history);\n    if (!entry || (direction === \"undo\" && !entry.applied) || (direction === \"redo\" && entry.applied)) return { ok: false, code: \"NOTHING_TO_UNDO\" };\n    if (String(live.projectRoot || \"\").trim() !== entry.projectRoot || live.identity !== entry.identity) {\n      histories.set(history, null);\n      return { ok: false, code: \"BINDING_STALE\" };\n    }\n    if (live.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    const expected = direction === \"undo\" ? entry.afterFingerprint : entry.beforeFingerprint;\n    if (canonical(live.document) !== expected) {\n      histories.set(history, null);\n      return { ok: false, code: \"WORKSPACE_STALE\" };\n    }\n    const expectedDirty = direction === \"undo\" ? entry.afterDirty : entry.beforeDirty;\n    if (canonical(live.dirty || {}) !== canonical(expectedDirty || {})) {\n      histories.set(history, null);\n      return { ok: false, code: \"WORKSPACE_STALE\" };\n    }\n    entry.applied = direction === \"redo\";\n    try {\n      live.apply(clone(direction === \"undo\" ? entry.before : entry.after), clone(direction === \"undo\" ? entry.beforeDirty : entry.afterDirty));\n    } catch (_projectionError) {\n      return { ok: false, changed: true, code: \"PROJECTION_FAILED\" };\n    }\n    return { ok: true, changed: true };\n  }\n\n  function undo(history, live) { return applyHistory(history, live, \"undo\"); }\n  function redo(history, live) { return applyHistory(history, live, \"redo\"); }\n  function canUndo(history) { const entry = history && histories.has(history) ? histories.get(history) : null; return !!(entry && entry.applied); }\n  function canRedo(history) { const entry = history && histories.has(history) ? histories.get(history) : null; return !!(entry && !entry.applied); }\n\n  return { createHistory, prepare, confirm, undo, redo, canUndo, canRedo };\n})();",
+      "observation": "WeakMap是volatile checkpoint，不是LOCALAPPDATA持久快照",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "line_start": 5002,
+      "line_end": 5028,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "excerpt": "  function persistArchDraft(opts) {\n    try {\n      if (!archDoc.meta) archDoc.meta = {};\n      archDoc.meta.encoding = \"xml\";\n      if (!archDoc.meta.viewports || typeof archDoc.meta.viewports !== \"object\") {\n        archDoc.meta.viewports = {};\n      }\n      rememberArchViewport(archViewportKey());\n      ensureArchDocUuids(archDoc);\n      localStorage.setItem(ARCH_LS_KEY, archDocToXml(archDoc));\n    } catch (_e) {\n      /* ignore quota */\n    }\n    const pathEl = document.getElementById(\"arch-xml-path\");\n    if (pathEl) pathEl.textContent = archXmlPathHint || ARCH_XML_DEFAULT_NAME;\n    if (!(opts && opts.quiet)) markSceneDirty();\n  }\n\n  function loadArchDraft() {\n    try {\n      const raw = localStorage.getItem(ARCH_LS_KEY);\n      if (!raw) return;\n      let doc = null;\n      const trimmed = String(raw).trim();\n      if (trimmed.charAt(0) === \"<\") {\n        doc = archDocFromXml(trimmed);\n      } else {",
+      "observation": "ARCH_LS_KEY單key localStorage，quota失敗ignore；不等於Project/Session復原索引",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs",
+      "line_start": 1,
+      "line_end": 35,
+      "sha256": "c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1",
+      "excerpt": "//! Stable [`ProjectId`] from canonical root (deterministic; no OS UUID).\n\nuse std::fmt;\n\n/// Opaque project identity. Stable across rebinds; derived once at first register.\n#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]\npub struct ProjectId(String);\n\nimpl ProjectId {\n    pub fn new(raw: impl Into<String>) -> Self {\n        Self(raw.into())\n    }\n\n    /// Deterministic id from a canonical root path (WORK-001: stable Project ID).\n    pub fn from_canonical_root(canonical: &str) -> Self {\n        let digest = fnv1a64(canonical.as_bytes());\n        Self(format!(\"proj_{digest:016x}\"))\n    }\n\n    pub fn as_str(&self) -> &str {\n        &self.0\n    }\n}\n\nimpl fmt::Display for ProjectId {\n    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {\n        f.write_str(&self.0)\n    }\n}\n\nimpl AsRef<str> for ProjectId {\n    fn as_ref(&self) -> &str {\n        &self.0\n    }\n}",
+      "observation": "path-derived ID不等於跨搬移穩定身份",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "line_start": 10,
+      "line_end": 30,
+      "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a",
+      "excerpt": "    /// Whether `path` exists (file or directory).\n    fn exists(&self, path: &str) -> Result<bool, PortError>;\n\n    /// Read entire file as UTF-8 text.\n    fn read_to_string(&self, path: &str) -> Result<String, PortError>;\n\n    /// Read entire file as bytes.\n    fn read(&self, path: &str) -> Result<Vec<u8>, PortError>;\n\n    /// Write bytes; prefer atomic replace when the adapter can.\n    fn write_atomic(&self, path: &str, contents: &[u8]) -> Result<(), PortError>;\n\n    /// Create directory and parents if missing.\n    fn create_dir_all(&self, path: &str) -> Result<(), PortError>;\n\n    /// Whether `path` exists and is a regular file (not a directory).\n    fn is_file(&self, path: &str) -> Result<bool, PortError>;\n\n    /// Remove a regular file. Missing path → [`PortError::NotFound`].\n    fn remove_file(&self, path: &str) -> Result<(), PortError>;\n}",
+      "observation": "無clock/user path/index transaction介面，不能讓UI自行OS操作",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "tests": "NOT RUN",
+  "native_ui": "NOT RUN",
+  "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+}

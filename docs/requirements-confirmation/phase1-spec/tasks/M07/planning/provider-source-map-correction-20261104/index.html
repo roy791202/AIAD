@@ -1,0 +1,215 @@
+<!doctype html><meta charset="utf-8"><title>M07 source correction</title><style>body{font:16px system-ui;max-width:1050px;margin:40px auto}pre{white-space:pre-wrap;background:#eee;padding:15px}</style><h1>M07 精確來源片段補正</h1><p>原封存包保留；RS06 改為212–216，RS05 改為157–174，RS04 擴為115–145。修正空片段與語意證據未涵蓋，未更改產品或待決選項。</p><p>產品/native/歷史PASS重跑：NOT RUN。MP1–4 selected=null。</p><h2>RS01 1–12</h2><p>CapturedAttempt carries supplied identifiers, fingerprint and manifest digest; no index receipt/ordinal/provider authentication fields.</p><pre>//! M07-S1 pure recovery-state policy.
+//! HOST supplies elapsed time, verified capture and durable-publication outcomes.
+//! No timer, filesystem, codec, fingerprint computation or asset pinning lives here.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapturedAttempt {
+    pub attempt_id: String,
+    pub captured_revision: u64,
+    pub captured_fingerprint: String,
+    pub asset_manifest_digest: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]</pre><h2>RS02 24–44</h2><p>Published/Failed completion is supplied event data, not durable index verification.</p><pre>    Published,
+    Failed,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecoveryEventKind {
+    Check {
+        now_ms: u64,
+        current_fingerprint: Option&lt;String&gt;,
+        mutation_in_progress: bool,
+    },
+    BeginAttempt {
+        capture: CapturedAttempt,
+    },
+    Complete {
+        attempt_id: String,
+        outcome: CompletionOutcome,
+    },
+    Close,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryEvent {</pre><h2>RS03 77–83</h2><p>Pure transition returns state/action; Published explicitly trusted HOST receipt.</p><pre>/// Returns a new state/action; it cannot mutate the caller or publish a snapshot.
+/// Published is a trusted HOST receipt, not a claim authenticated by this policy.
+pub fn transition_recovery(
+    state: &amp;RecoveryPolicyState,
+    event: &amp;RecoveryEvent,
+) -&gt; Result&lt;RecoveryTransition, RecoveryPolicyError&gt; {
+    validate_id(&quot;state.project_id&quot;, &amp;state.project_id)?;</pre><h2>RS04 115–145</h2><p>Elapsed time is supplied; 60000 check requests capture rather than running OS timer/capture.</p><pre>        RecoveryEventKind::Check {
+            now_ms,
+            current_fingerprint,
+            mutation_in_progress,
+        } =&gt; {
+            let elapsed = now_ms
+                .checked_sub(state.last_check_ms)
+                .ok_or(RecoveryPolicyError::TimeRegressed)?;
+            if elapsed &lt; 60000 {
+                RecoveryAction::NotDue
+            } else if state.inflight.is_some() || state.capture_requested {
+                next.last_check_ms = *now_ms;
+                RecoveryAction::WaitInFlight
+            } else if *mutation_in_progress {
+                RecoveryAction::DeferMutation
+            } else {
+                let current = current_fingerprint.as_ref().ok_or_else(|| {
+                    invalid(
+                        &quot;current_fingerprint&quot;,
+                        &quot;stable content fingerprint is required&quot;,
+                    )
+                })?;
+                next.last_check_ms = *now_ms;
+                if state.successful_fingerprint.as_ref() == Some(current) {
+                    RecoveryAction::SkipUnchanged
+                } else {
+                    next.capture_requested = true;
+                    RecoveryAction::RequestCapture
+                }
+            }
+        }</pre><h2>RS05 157–174</h2><p>Matching attempt Published advances supplied captured fingerprint; no issuer/index/root evidence consulted.</p><pre>        RecoveryEventKind::Complete {
+            attempt_id,
+            outcome,
+        } =&gt; {
+            let capture = state
+                .inflight
+                .as_ref()
+                .filter(|c| &amp;c.attempt_id == attempt_id)
+                .ok_or(RecoveryPolicyError::StaleAttempt)?;
+            next.inflight = None;
+            match outcome {
+                CompletionOutcome::Published =&gt; {
+                    next.successful_fingerprint = Some(capture.captured_fingerprint.clone());
+                    RecoveryAction::BaselineAdvanced
+                }
+                CompletionOutcome::Failed =&gt; RecoveryAction::RetryPending,
+            }
+        }</pre><h2>RS06 212–216</h2><p>Capture validates syntax of supplied strings; revision and raw index durability are not authenticated here.</p><pre>fn validate_capture(capture: &amp;CapturedAttempt) -&gt; Result&lt;(), RecoveryPolicyError&gt; {
+    validate_id(&quot;attempt_id&quot;, &amp;capture.attempt_id)?;
+    validate_fingerprint(&quot;captured_fingerprint&quot;, &amp;capture.captured_fingerprint)?;
+    validate_fingerprint(&quot;asset_manifest_digest&quot;, &amp;capture.asset_manifest_digest)
+}</pre><h2>DE01 272–280</h2><p>Capture clones current content and revision locally; persistence provider not invoked.</p><pre>    pub fn capture(&amp;self) -&gt; Result&lt;ImmutableDocumentSnapshot, EditError&gt; {
+        self.check_editable()?;
+        Ok(ImmutableDocumentSnapshot {
+            document_uuid: self.state.document_uuid.clone(),
+            session_uuid: self.state.session_uuid.clone(),
+            revision: self.state.content_revision,
+            content: self.state.content.clone(),
+        })
+    }</pre><h2>DE02 282–312</h2><p>Formal and recovery baseline setters are separate; recovery does not modify formal baseline.</p><pre>    pub fn acknowledge_formal_save(
+        &amp;mut self,
+        captured: Revision,
+        digest: &amp;str,
+    ) -&gt; Result&lt;SaveProjection, EditError&gt; {
+        self.check_ack(captured, digest, self.state.formal_baseline.as_ref())?;
+        self.state.formal_baseline = Some(SavedContentBaseline {
+            revision: captured,
+            semantic_digest: digest.into(),
+        });
+        Ok(SaveProjection {
+            captured_revision: captured,
+            dirty: self.dirty(),
+        })
+    }
+
+    pub fn acknowledge_recovery_save(
+        &amp;mut self,
+        captured: Revision,
+        digest: &amp;str,
+    ) -&gt; Result&lt;RecoveryProjection, EditError&gt; {
+        self.check_ack(captured, digest, self.state.snapshot_baseline.as_ref())?;
+        self.state.snapshot_baseline = Some(SavedContentBaseline {
+            revision: captured,
+            semantic_digest: digest.into(),
+        });
+        Ok(RecoveryProjection {
+            captured_revision: captured,
+            needs_snapshot: self.state.content.semantic_digest != digest,
+        })
+    }</pre><h2>DE03 354–377</h2><p>check_ack enforces digest/revision consistency and monotonic baseline, not issuer proof/replay atomicity.</p><pre>    fn check_ack(
+        &amp;self,
+        captured: Revision,
+        digest: &amp;str,
+        baseline: Option&lt;&amp;SavedContentBaseline&gt;,
+    ) -&gt; Result&lt;(), EditError&gt; {
+        self.check_editable()?;
+        if !valid_digest(digest) {
+            return Err(EditError::InvalidInput {
+                field: &quot;semanticDigest&quot;.into(),
+            });
+        }
+        if captured.0 &gt; self.state.content_revision.0
+            || (captured == self.state.content_revision
+                &amp;&amp; digest != self.state.content.semantic_digest)
+            || baseline.is_some_and(|saved| {
+                captured.0 &lt; saved.revision.0
+                    || (captured == saved.revision &amp;&amp; digest != saved.semantic_digest)
+            })
+        {
+            return Err(EditError::RevisionConflict);
+        }
+        Ok(())
+    }</pre><h2>IO01 19–29</h2><p>Single-file receipt raw fields cannot stand for full recovery index/transfer/ACK evidence.</p><pre>}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitReceipt {
+    pub target_path: String,
+    pub previous_digest: Option&lt;String&gt;,
+    pub committed_digest: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]</pre><h2>新拒絕檢查</h2><pre>[
+  {
+    &quot;id&quot;: &quot;corrected_exact_sources&quot;,
+    &quot;expected_accept&quot;: true,
+    &quot;actual_accept&quot;: true,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;old_empty_RS06&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;old_wrong_RS05&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;empty_text&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;out_of_range&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;missing_anchor&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;wrong_hash&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;wrong_text&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  },
+  {
+    &quot;id&quot;: &quot;missing_span&quot;,
+    &quot;expected_accept&quot;: false,
+    &quot;actual_accept&quot;: false,
+    &quot;passed&quot;: true
+  }
+]</pre>

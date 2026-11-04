@@ -1,0 +1,127 @@
+{
+  "module": "M07",
+  "status": "PLANNED_NOT_EXECUTED",
+  "projectA": {
+    "persistentId": "project-A-proposed",
+    "legacyRootId": "proj_A",
+    "root": "${TEMP_ROOT}/A",
+    "sessionId": "A-1"
+  },
+  "projectB": {
+    "persistentId": "project-B-proposed",
+    "root": "${TEMP_ROOT}/B",
+    "sessionId": "B-1"
+  },
+  "document": {
+    "id": "doc-1",
+    "revision": "R0",
+    "nodes": [
+      "n1",
+      "n2"
+    ],
+    "relations": [
+      [
+        "n1",
+        "n2"
+      ]
+    ],
+    "assetRefs": [
+      "shared@v1"
+    ],
+    "bindingState": "valid"
+  },
+  "otherDocument": {
+    "id": "doc-2",
+    "assetRefs": [
+      "shared@v1"
+    ]
+  },
+  "assetBytes": {
+    "shared@v1": "SHARED-V1",
+    "new@v1": "NEW-V1"
+  },
+  "baselines": {
+    "formal": "R0",
+    "snapshot": "R0"
+  },
+  "clockSeconds": [
+    0,
+    59,
+    60,
+    61,
+    120
+  ],
+  "faults": [
+    "read",
+    "validate",
+    "stage",
+    "commit",
+    "history-publish",
+    "index-publish",
+    "rollback",
+    "cleanup"
+  ],
+  "cases": {
+    "BDD-22": {
+      "given": "內容與上次成功快照相同",
+      "when": "經過下一個60秒檢查點",
+      "expected": "不新增復原快照"
+    },
+    "BDD-23": {
+      "given": "新文件已有尚未保存的內容且沒有成功快照",
+      "when": "到達60秒檢查點",
+      "expected": "該內容及必要素材納入首次快照"
+    },
+    "BDD-24": {
+      "given": "快照版本R正在保存",
+      "when": "使用者再編輯成R加1",
+      "expected": "R成功只更新至R基準，R加1留待後續檢查"
+    },
+    "BDD-25": {
+      "given": "已有有效快照且本輪寫入失敗",
+      "when": "到達下一輪檢查",
+      "expected": "保留舊快照及待保存狀態並重試，不重疊啟動"
+    },
+    "BDD-26": {
+      "given": "清空、合併或Undo尚未完成",
+      "when": "到達檢查點",
+      "expected": "延後擷取直到完成或完整回復"
+    },
+    "BDD-27": {
+      "given": "存在成功快照及後續編輯",
+      "when": "成功保存正式文件",
+      "expected": "不改快照基準、不立即刪除既有快照"
+    },
+    "BDD-28": {
+      "given": "原磁碟離線但復原內容與素材完整",
+      "when": "從歷史開復原版本並另存",
+      "expected": "以未保存狀態開啟且可保存至新位置"
+    },
+    "BDD-29": {
+      "given": "歷史中有復原版本",
+      "when": "移除歷史紀錄",
+      "expected": "文件、快照與素材仍保留"
+    },
+    "BDD-30": {
+      "given": "同專案有兩個獨立編輯工作階段",
+      "when": "各自保存復原快照",
+      "expected": "以各SessionID隔離且互不覆寫"
+    },
+    "BDD-M07-A": {
+      "given": "前一有效快照存在",
+      "when": "新payload完成但index發布中斷",
+      "expected": "舊索引與有效快照保留且baseline不更新"
+    },
+    "BDD-M07-B": {
+      "given": "僅savedAt/selection/playback不同",
+      "when": "60秒檢查",
+      "expected": "不產生新內容快照"
+    },
+    "BDD-M07-C": {
+      "given": "A的快照保存中已切換B",
+      "when": "A的保存回報成功",
+      "expected": "只更新A/session baseline不更動B"
+    }
+  },
+  "safety": "Never operate user projects or reset real board. Fixture schemas are proposals, not product schemas."
+}

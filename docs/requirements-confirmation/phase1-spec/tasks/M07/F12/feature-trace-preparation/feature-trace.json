@@ -1,0 +1,236 @@
+{
+  "task": "PD-P1-F12-DELIVERY-01",
+  "module": "M07",
+  "feature": "F12",
+  "author": "/root/f12_feature_trace_packet",
+  "state": "FEATURE_TRACE_PREPARATION_PENDING_INDEPENDENT_REVIEW_AND_OWNER",
+  "implementation": "BLOCKED_PENDING_APPROVED_ENVELOPE_AND_VALID_RED",
+  "module_complete": false,
+  "authority": {
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "live_head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "expected_parent_head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "historical_inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "product_hash_count": 796,
+    "mismatches": []
+  },
+  "intent": "作者在最近檔案找到復原版本，原專案離線仍可另存。",
+  "contracts_verbatim": [
+    "移除歷史紀錄不刪文件／快照；正式保存後保留快照。建議：顯式丟棄／清理另有影響預覽與確認。",
+    "新啟動的Undo歷史從空開始；復原只恢復內容。未處理快照永久保留是尚未批准建議，見D01。",
+    "失效路徑保留並解釋；素材缺失列明限制，不假稱完整恢復；保存失敗保留快照及編輯內容。"
+  ],
+  "acceptance_verbatim": [
+    "AC12：移動免安裝目錄不影響復原；唯讀／離線原專案可另存；移除歷史後快照仍存在；正式保存不抹快照。",
+    "先完成architecture/contract/BDD/Skeleton/RED門檻",
+    "已確認與建議界線不被混淆；對應建議先整體批准",
+    "module contract GREEN且回歸分類",
+    "記錄source SHA/hash、實際命令、fixture、log及未跑證據層",
+    "不以元件或靜態結果冒充native UI／整體完成"
+  ],
+  "trace": [
+    {
+      "bdd": "BDD-22",
+      "verbatim": "  @BDD-22 @M07 @REQ-19\n  規則: 無變更略過\n    場景: 無變更略過\n      假如 內容與上次成功快照相同\n      當 經過下一個60秒檢查點\n      那麼 不新增復原快照",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/21",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-23",
+      "verbatim": "  @BDD-23 @M07 @REQ-19\n  規則: 首次未保存內容\n    場景: 首次未保存內容\n      假如 新文件已有尚未保存的內容且沒有成功快照\n      當 到達60秒檢查點\n      那麼 該內容及必要素材納入首次快照",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/22",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-24",
+      "verbatim": "  @BDD-24 @M07 @REQ-20\n  規則: 寫入期間再變更\n    場景: 寫入期間再變更\n      假如 快照版本R正在保存\n      當 使用者再編輯成R加1\n      那麼 R成功只更新至R基準，R加1留待後續檢查",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/23",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-25",
+      "verbatim": "  @BDD-25 @M07 @REQ-20\n  規則: 失敗重試\n    場景: 失敗重試\n      假如 已有有效快照且本輪寫入失敗\n      當 到達下一輪檢查\n      那麼 保留舊快照及待保存狀態並重試，不重疊啟動",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/24",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-26",
+      "verbatim": "  @BDD-26 @M07 @REQ-20\n  規則: 不取中間狀態\n    場景: 不取中間狀態\n      假如 清空、合併或Undo尚未完成\n      當 到達檢查點\n      那麼 延後擷取直到完成或完整回復",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/25",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-27",
+      "verbatim": "  @BDD-27 @M07 @REQ-21\n  規則: 正式保存基準獨立\n    場景: 正式保存基準獨立\n      假如 存在成功快照及後續編輯\n      當 成功保存正式文件\n      那麼 不改快照基準、不立即刪除既有快照",
+      "relation": "F12_DIRECT",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/26",
+      "prospective_cases": [
+        "F12-P08"
+      ],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-28",
+      "verbatim": "  @BDD-28 @M07 @REQ-22\n  規則: 離線復原\n    場景: 離線復原\n      假如 原磁碟離線但復原內容與素材完整\n      當 從歷史開復原版本並另存\n      那麼 以未保存狀態開啟且可保存至新位置",
+      "relation": "F12_DIRECT",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/27",
+      "prospective_cases": [
+        "F12-P03",
+        "F12-P04",
+        "F12-P05"
+      ],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-29",
+      "verbatim": "  @BDD-29 @M07 @REQ-22\n  規則: 移除歷史不刪檔\n    場景: 移除歷史不刪檔\n      假如 歷史中有復原版本\n      當 移除歷史紀錄\n      那麼 文件、快照與素材仍保留",
+      "relation": "F12_DIRECT",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/28",
+      "prospective_cases": [
+        "F12-P07"
+      ],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    },
+    {
+      "bdd": "BDD-30",
+      "verbatim": "  @BDD-30 @M07 @REQ-17\n  規則: 多session隔離\n    場景: 多session隔離\n      假如 同專案有兩個獨立編輯工作階段\n      當 各自保存復原快照\n      那麼 以各SessionID隔離且互不覆寫",
+      "relation": "SHARED_CONTEXTUAL_REGRESSION",
+      "feature_evidence": "NOT RUN",
+      "original_fixture": "fixtures.json#scenarios/29",
+      "prospective_cases": [],
+      "limit": "S1 pure policy or module-wide proposal cases do not establish this F12 native behavior."
+    }
+  ],
+  "prospective_cases": [
+    "F12-P01",
+    "F12-P02",
+    "F12-P03",
+    "F12-P04",
+    "F12-P05",
+    "F12-P06",
+    "F12-P07",
+    "F12-P08",
+    "F12-P09",
+    "F12-P10",
+    "F12-P11"
+  ],
+  "separation": {
+    "F12_direct": [
+      "BDD-27",
+      "BDD-28",
+      "BDD-29"
+    ],
+    "shared_contextual": [
+      "BDD-22",
+      "BDD-23",
+      "BDD-24",
+      "BDD-25",
+      "BDD-26",
+      "BDD-30"
+    ],
+    "AC12_prospective": "F12-P01..P11; no authority to alter original BDD; BDD-32 remains M08 cross-module relocation obligation"
+  },
+  "evidence_limits": [
+    "Accepted S1 only pure policy supplied trusted Published; no timer/capture/pinning/durable payload/index or recovery UI",
+    "Recovery ACK correction PASS_BOUNDED_CORRECTION_ONLY_PENDING_OWNER is document guard evidence, not native history/recovery/save lifecycle",
+    "No build, product test, valid RED/GREEN, native UI, package, install or module acceptance run",
+    "S1 historical acceptance identifies same assistant later readonly turn, not delegated independent acceptance under current role rule"
+  ],
+  "owner_pending": [
+    "D01 permanent retention of unhandled snapshots remains proposal pending Owner; no retention policy selected",
+    "M07-D1..D7 joint adoption and CXv3 remain pending Owner",
+    "Recovery ACK ordinal /0 illustrative versus fixed-zero schema remains pending Owner",
+    "PH-G2 index issuer/provider, PH-G3 material/root receipts, PH-G4 restart lookup remain pending",
+    "No new schema, port, ACK protocol, root registration or physical GC authorization"
+  ],
+  "architecture_projection": {
+    "hexagonal": "History UI → approved input boundary (future binding) → M07 orchestration/policy → declared output abstractions → storage/material adapters. This is an existing proposal summary, not new interface approval.",
+    "dependency": "M07 coordinates M04 document owner and M05 material owner through pending approved boundaries; M08 owns portable environment validation.",
+    "ownership": "M04 authoritative live document and formal/recovery baseline; M07 immutable snapshot/history observations; M05 materials/pins/roots; UI projection only.",
+    "mutation": "Opening recovery must pass M04 mutation boundary; no UI filesystem/state bypass. Exact seam pending Owner.",
+    "transaction": "Restore validate/prepare before owner commit; formal save and recovery publication retain distinct boundaries; exact durable rollback/ACK semantics remain pending.",
+    "sources": [
+      "tasks/M07/planning/cx-revision-v3/shared-contract.json",
+      "tasks/M07/planning/recovery-ack-contract-correction/module-spec.json"
+    ]
+  },
+  "scope": {
+    "allowed": "this directory only",
+    "protected": "product/tests/original specs/board/hooks/commit",
+    "no_dispatch": true
+  },
+  "acceptance_for_this_packet": [
+    "Original BDD22..30 preserved verbatim",
+    "Direct/contextual/prospective coverage disjoint and explicit",
+    "All F12 recipe results NOT RUN and commands unbound",
+    "796 historical source hashes checked against live files",
+    "Independent reviewer required; author checks static integrity only"
+  ],
+  "current_owner_instruction": {
+    "at": "2026-11-03T10:57:03.220Z",
+    "source": "Current user heartbeat relayed by parent /root; no verified filesystem path",
+    "rules": [
+      "board.json sole management authority; Yellow→Gray→Red priority",
+      "Proceed original-scope document preparation; Owner adoption still gate",
+      "Do not rerun historical PASS as progress",
+      "Product needs approved envelope + accepted Skeleton + valid RED",
+      "No commit/push/role-hook mutation; 796 inventory authority unchanged"
+    ],
+    "old_heartbeat": "2026-10-26 file is historical context only, not latest Owner authority"
+  },
+  "ui_schema_preparation": {
+    "status": "PROSPECTIVE_PENDING_OWNER_NOT_IMPLEMENTATION_AUTHORITY",
+    "role": "Author",
+    "controls": [
+      "Recent files/recovery entry: project name + recovery marker + snapshot time",
+      "Preview: time/location/material completeness + explicit unavailable reason",
+      "Open recovery: unsaved content; no implicit save",
+      "Save original and Save As are distinct explicit choices",
+      "Remove history is separate from cleanup; cleanup proposal remains pending"
+    ],
+    "states": [
+      "empty history",
+      "loading/preview unavailable",
+      "invalid original path retained with explanation",
+      "missing material with accurate limits",
+      "opened unsaved",
+      "save failure preserving edits and snapshot"
+    ],
+    "validation": [
+      "Do not claim complete restore with missing material",
+      "No automatic original overwrite or cleanup",
+      "No forged path/DTO authority"
+    ],
+    "accessibility": "Pending exact UI review: keyboard reachable controls, visible focus, labels, announced failure; no native proof",
+    "mapping": "F12-P01..P11 recipe interactions; no new approved BDD"
+  },
+  "diagrams": {
+    "hexagonal_existing_proposal_projection": "External history UI → Input boundary (pending binding) → [M07 application/policy] → Output abstractions (pending adoption) ← Storage / M05 adapters",
+    "module_dependency_existing_proposal_projection": "UI → M07 history/recovery orchestration → M04 document owner (mutation/baselines)\nM07 → M05 material/pin/root owner\nM08 portable environment → M07 recovery discovery verification\nNo UI→filesystem or UI→mutable document bypass",
+    "authority": "Projected only from cx-v3 shared-contract + recovery ACK correction; does not invent or approve new architecture"
+  },
+  "lessons_applied": [
+    "Pure S1 trusted Published is not durable native recovery proof",
+    "Bounded ACK admission witnesses do not prove response relation/replay/restart/atomic baseline; malformed trusted issuer fixture remains a known unproved provider seam",
+    "Never promote dictionary/hash checks or proposal case totals to F12 functional evidence",
+    "Historical S1 same-assistant acceptance identity limitation remains disclosed under current independence rule"
+  ]
+}

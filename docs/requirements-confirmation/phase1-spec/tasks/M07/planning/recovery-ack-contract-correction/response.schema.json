@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "const": "SGA-RECOVERY-ACK-PROPOSAL-v1"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "request_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "result": {
+          "const": "CapturedRecoveryAcknowledged",
+          "type": "string"
+        },
+        "capture_context": {
+          "type": "object",
+          "properties": {
+            "project_uuid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "document_uuid": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "session_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "owner_generation": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,19})$",
+              "description": "Checked runtime u64 decimal <=18446744073709551615"
+            },
+            "captured_revision": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,19})$",
+              "description": "Checked runtime u64 decimal <=18446744073709551615"
+            },
+            "workflow_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          },
+          "required": [
+            "project_uuid",
+            "document_uuid",
+            "session_id",
+            "owner_generation",
+            "captured_revision",
+            "workflow_id"
+          ],
+          "additionalProperties": false
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "acknowledged_fingerprint": {
+          "type": "object",
+          "properties": {
+            "profile": {
+              "type": "string",
+              "const": "SGA-RECOVERY-FP-v1"
+            },
+            "lowerhex64": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "profile",
+            "lowerhex64"
+          ],
+          "additionalProperties": false
+        },
+        "baseline_effect": {
+          "const": "CapturedRecoveryOnly",
+          "type": "string"
+        },
+        "formal_baseline_changed": {
+          "const": false,
+          "type": "boolean"
+        },
+        "live_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
+          "description": "Checked runtime u64 decimal <=18446744073709551615"
+        }
+      },
+      "required": [
+        "protocol",
+        "operation_id",
+        "request_digest",
+        "result",
+        "capture_context",
+        "attempt_id",
+        "snapshot_id",
+        "acknowledged_fingerprint",
+        "baseline_effect",
+        "formal_baseline_changed",
+        "live_revision"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "string",
+          "const": "SGA-RECOVERY-ACK-PROPOSAL-v1"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "request_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "result": {
+          "enum": [
+            "Rejected",
+            "Deferred",
+            "UnverifiedOutcome",
+            "Superseded",
+            "ReplayConflict",
+            "InProgress"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "InvalidRequest",
+            "ProofMismatch",
+            "WrongOwner",
+            "RootDeferred",
+            "MissingIssuerProof",
+            "OlderThanBaseline",
+            "ChangedRequest",
+            "PendingRecord"
+          ],
+          "type": "string"
+        },
+        "baseline_effect": {
+          "const": "None",
+          "type": "string"
+        },
+        "retry_allowed": {
+          "const": false,
+          "type": "boolean"
+        },
+        "release_allowed": {
+          "const": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "protocol",
+        "operation_id",
+        "request_digest",
+        "result",
+        "reason",
+        "baseline_effect",
+        "retry_allowed",
+        "release_allowed"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

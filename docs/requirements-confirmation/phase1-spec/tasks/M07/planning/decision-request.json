@@ -1,0 +1,84 @@
+{
+  "status": "PROPOSED_NOT_APPROVED",
+  "module": "M07",
+  "items": [
+    {
+      "id": "D1",
+      "gate": "G01",
+      "title": "持久身份與檔案契約",
+      "observation": "目前ProjectId依路徑；ESS v1已含work/architecture/design；manifest只登記文件。",
+      "recommendation": "保留ESS v1讀取相容；新增版本化ProjectDefinition持久UUID及legacy root-key對照；BIN另定manifest含原格式payload，不偷換ESS。",
+      "alternatives": "全面改成單一新ESS格式遷移大；只用root ID不足搬移定位。",
+      "affected_modules": [
+        "M01",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "schema/identity/migration未批准前，不寫新格式。"
+    },
+    {
+      "id": "D2",
+      "gate": "G01/G03",
+      "title": "文件權威與多視窗同步",
+      "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。",
+      "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。",
+      "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。",
+      "affected_modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"
+    },
+    {
+      "id": "D4",
+      "gate": "G02/G03",
+      "title": "文件Undo與穩定capture",
+      "observation": "core EditSession是selection history；UI recovery是volatile清空checkpoint；無素材pin。",
+      "recommendation": "保留selection原契約；WORK加入document before/after revision及compound history，HOST協調pin；M07取stable immutable revision。fingerprint排除selection/viewport/playback及純savedAt。",
+      "alternatives": "擴EditSession管全部文件會混責；只用UI快照無法證明多視窗與素材一致。",
+      "affected_modules": [
+        "M03",
+        "M04",
+        "M07"
+      ],
+      "blocking": "Undo/capture lifecycle與test seam需批准。"
+    },
+    {
+      "id": "D5",
+      "gate": "G02/G03",
+      "title": "完整回復與並發提交",
+      "observation": "write_atomic單檔temp＋rename、last-commit-wins；Port沒有CAS/list/transaction。",
+      "recommendation": "先不可變素材＋pins，後單文件commit pointer，保留舊版本；成功才入Undo。正式檔多程序需OS鎖或具體協定拒過期覆寫，不能把Mutex當跨程序鎖。新能力先列精確Port提案；rollback失敗保留復原資料並阻擋破壞性後續。",
+      "alternatives": "依次寫檔best-effort rollback不滿足完整回復；整個DB框架成本高，先不採。",
+      "affected_modules": [
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "transaction未批准，merge/replace/undo/GC不可實作；失敗保證不可自降為warning。"
+    },
+    {
+      "id": "D6",
+      "gate": "G01/G03",
+      "title": "BIN、素材引用根及保留預設",
+      "observation": "SGB三entry不含新BIN完整manifest/material；快照及GC協定未存在。",
+      "recommendation": "BIN版本化archive＋manifest（ZIP為候選，先固定版本與限額）；roots含活文件/Undo/快照/交易。未處理快照不自動刪；已處理30天/至少10份、2GiB軟警告、歷史50項都是待批准預設；未知root一律保留。",
+      "alternatives": "可選SGB擴充但需安全parser/版本契約；自動刪未處理快照有資料遺失風險不建議。",
+      "affected_modules": [
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "archive/schema阻擋BIN；保留數值只阻擋自動清理，不阻擋保守不刪方案。"
+    }
+  ]
+}

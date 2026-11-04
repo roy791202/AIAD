@@ -1,0 +1,267 @@
+{
+  "type": "object",
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "const": "SGA-RECOVERY-ACK-PROPOSAL-v1"
+    },
+    "issuer": {
+      "type": "string",
+      "const": "M04"
+    },
+    "role": {
+      "type": "string",
+      "const": "ack-recovery"
+    },
+    "ordinal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,19})$",
+      "description": "Checked runtime u64 decimal <=18446744073709551615"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "project_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "document_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "session_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "owner_generation": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
+          "description": "Checked runtime u64 decimal <=18446744073709551615"
+        },
+        "captured_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
+          "description": "Checked runtime u64 decimal <=18446744073709551615"
+        },
+        "workflow_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "project_uuid",
+        "document_uuid",
+        "session_id",
+        "owner_generation",
+        "captured_revision",
+        "workflow_id"
+      ],
+      "additionalProperties": false
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "source_owner_handle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "capture_handle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "captured_recovery_fingerprint": {
+          "type": "object",
+          "properties": {
+            "profile": {
+              "type": "string",
+              "const": "SGA-RECOVERY-FP-v1"
+            },
+            "lowerhex64": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "profile",
+            "lowerhex64"
+          ],
+          "additionalProperties": false
+        },
+        "material_versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "size_bytes": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,19})$",
+                "description": "Checked runtime u64 decimal <=18446744073709551615"
+              }
+            },
+            "required": [
+              "asset_id",
+              "digest",
+              "size_bytes"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4096
+        },
+        "payload_raw_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index_target_identity": {
+          "type": "object",
+          "properties": {
+            "volume_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "file_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "canonical_target": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "volume_id",
+            "file_id",
+            "canonical_target"
+          ],
+          "additionalProperties": false
+        },
+        "index_expected_prior_raw_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index_committed_raw_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index_transaction_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "index_receipt": {
+          "type": "object",
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "const": "M07"
+            },
+            "receipt_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "kind": {
+              "type": "string",
+              "const": "RecoveryIndex"
+            },
+            "context_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "evidence_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "issuer",
+            "receipt_id",
+            "kind",
+            "context_digest",
+            "evidence_digest"
+          ],
+          "additionalProperties": false
+        },
+        "transfer_receipt": {
+          "type": "object",
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "const": "M05"
+            },
+            "receipt_id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "kind": {
+              "type": "string",
+              "const": "RecoveryTransfer"
+            },
+            "context_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "evidence_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "issuer",
+            "receipt_id",
+            "kind",
+            "context_digest",
+            "evidence_digest"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "source_owner_handle",
+        "capture_handle",
+        "attempt_id",
+        "snapshot_id",
+        "captured_recovery_fingerprint",
+        "material_versions",
+        "payload_raw_digest",
+        "index_target_identity",
+        "index_expected_prior_raw_digest",
+        "index_committed_raw_digest",
+        "index_transaction_id",
+        "index_receipt",
+        "transfer_receipt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "protocol",
+    "issuer",
+    "role",
+    "ordinal",
+    "context",
+    "body"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sgenaxis:proposal:recovery-ack:v1:request"
+}

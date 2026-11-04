@@ -1,0 +1,261 @@
+{
+  "module": "M07",
+  "task": "PD-P1-M07-PREP-01",
+  "seam": "PH-G1 only",
+  "state": "PROPOSED_PENDING_OWNER",
+  "author": "/root/m07_recovery_ack_packet",
+  "authority": {
+    "head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "inventory_files": 796
+  },
+  "intent": "Close candidate recovery capture ACK request/response and issuer-proof mapping without changing effective formal ACK.",
+  "architecture": {
+    "hexagonal": "Trusted M07 observation → proposed M04 captured-recovery ACK input boundary → sole DocumentOwner → existing trusted proof lookup abstractions ← M07 index/M05 transfer issuer adapters",
+    "dependency": "M07 observer → M04 owner boundary; M04 depends on proof abstractions; no UI/native/domain bypass. No new API approval.",
+    "ownership": "M04 owns document/live state and formal/recovery baselines. M07 owns immutable attempt/index observations. M05 owns materials/pins/roots.",
+    "mutation": "Only M04 matching owner generation/session may ACK exact immutable capture. Baseline update is conditional monotonic by captured revision, never live content overwrite.",
+    "transaction": "Resolve handles/proofs outside index/catalog leases, recheck owner fence at M04 baseline commit. Owner baseline + replay terminal response must be atomic in future design; native atomicity unproved."
+  },
+  "boundary": {
+    "caller": "Only trusted orchestration with pre-resolved M04 capture capability; UI supplies no trusted body/proof/state. No unauthenticated caller data admitted.",
+    "lookup": "Fixture stands for existing issuer-owned lookup: exact (issuer, receipt_id) for M07 index and M05 root transfer; compare full context, capture and body. ReceiptRef hashes are commitments, not authorization. Never accept caller boolean verified labels.",
+    "no_registry": "immutable-proof.json is a documentary fixture, never a proposed document registry; proof/provider integration PH-G2..4 remains separate pending adoption."
+  },
+  "s1_limit": "Accepted S1 recovery_state.rs consumes HOST-supplied Published; it has no timer, filesystem, codec, fingerprint computation, pinning, capture/provider authentication or M04 ACK integration. This proposal changes none of those facts.",
+  "hash": {
+    "status": "NEW_VARIANT_PROPOSED_PENDING_OWNER",
+    "protocol": "SGA-RECOVERY-ACK-PROPOSAL-v1",
+    "role": "ack-recovery",
+    "issuer": "M04",
+    "operation_id": "UUIDv5(workflow_id, UTF8 ack-recovery/0)",
+    "digest": "SHA256 canonical UTF8 entire admitted request recursively, including protocol/issuer/role/ordinal/context/body. Same canonical rules as CXv3; distinct protocol prevents cross-purpose replay.",
+    "key": "Proposed M04 owner replay store identity + workflow_id + operation_id + authenticated issuer/owner binding; physical durable store/provider pending Owner.",
+    "replay": "Exact retained terminal digest returns exact response, not another mutation. Changed valid body same key ReplayConflict. InFlight InProgress. Lost durable proof UnverifiedOutcome; no automatic retry/release/ACK.",
+    "details": "Request body commits capture owner/capability, attempt/snapshot/context, fingerprint profile+hash, immutable ordered material versions, payload raw, index prior/new raw+transaction+target, index/transfer refs. Resolve before freeze; no enrichment after hash."
+  },
+  "mapping": {
+    "fingerprint": "Reuse original SGA-RECOVERY-FP-v1 definition includes format/semantic/material versions/bindings. Do not replace by payload/index raw or formal semantic hash.",
+    "index": "index_receipt.evidence_digest hashes FULL immutable index evidence; context_digest hashes full WorkflowContext. Match target/prior/new raw/transaction/payload/materials/attempt/snapshot/fingerprint exactly.",
+    "transfer": "transfer_receipt.evidence_digest hashes FULL M05 immutable transfer record; request_digest must hash entire frozen transfer-recovery request. Match issuer, role, workflow, operation, context, pin, source receipt IDs, materials, roots, expected+committed generation and native store/target identity.",
+    "distinction": "M05 external_proof.raw_digest=index committed raw; projection_digest=index FULL evidence hash; recovery fingerprint remains independent. source_receipt_ids bind Held and index refs."
+  },
+  "contracts": [
+    "Never reuse formal-only ack body/role implicitly",
+    "Only M04 mutates recovery baseline; no formal baseline change",
+    "Captured R ACK may succeed with live R+1 while live remains dirty",
+    "Late R after acknowledged R+1 returns Superseded; no backward baseline",
+    "M05 root Deferred retains LocalIntegrityReady, not Published; no ACK/release",
+    "Missing or Unknown issuer evidence => UnverifiedOutcome, no automatic retry",
+    "No catalog/index lease held during M04 callback"
+  ],
+  "owner_options": [
+    {
+      "id": "RA-O1",
+      "status": "PROPOSED_PENDING_OWNER",
+      "option": "Adopt distinct protocol and ack-recovery role/body/receipt mapping, replay lifecycle and atomic owner mutation"
+    },
+    {
+      "id": "RA-O2",
+      "status": "PROPOSED_PENDING_OWNER",
+      "option": "Instead explicitly version effective transition schema with formal/recovery discriminated union, role/hash migration and full compatibility analysis; not performed"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "M07-RA-PLAN",
+      "primary_module": "M07",
+      "status": "PLANNING",
+      "allowed": "this new directory only",
+      "protected": "all originals/product/board/current-state/hooks/roles",
+      "acceptance": "20 bounded DOCUMENT witnesses and source/hash/seal checks; not implementation acceptance"
+    }
+  ],
+  "bdd_tdd": [
+    {
+      "id": "M07-RA-001",
+      "behavior": "valid captured recovery ACK",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-001",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-002",
+      "behavior": "newer live revision remains dirty",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-002",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-003",
+      "behavior": "late older ACK cannot regress recovery baseline",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-003",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-004",
+      "behavior": "formal baseline never changes",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-004",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-005",
+      "behavior": "payload raw is not recovery fingerprint",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-005",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-006",
+      "behavior": "index raw is not recovery fingerprint",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-006",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-007",
+      "behavior": "wrong transfer issuer",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-007",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-008",
+      "behavior": "wrong project context",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-008",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-009",
+      "behavior": "wrong session",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-009",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-010",
+      "behavior": "stale generation",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-010",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-011",
+      "behavior": "root deferred retains local integrity without ACK",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-011",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-012",
+      "behavior": "unknown root no ACK no retry",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-012",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-013",
+      "behavior": "restart lost issuer proof no ACK retry or release",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-013",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-014",
+      "behavior": "wrong material version",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-014",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-015",
+      "behavior": "wrong attempt",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-015",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-016",
+      "behavior": "wrong owner handle",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-016",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-017",
+      "behavior": "unknown request key rejected before lookup",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-017",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-018",
+      "behavior": "wrong index transaction",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-018",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-019",
+      "behavior": "wrong snapshot",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-019",
+      "native": "NOT RUN"
+    },
+    {
+      "id": "M07-RA-020",
+      "behavior": "wrong index evidence hash",
+      "contract": "Exact captured ACK binding and baseline isolation",
+      "test": "DOCUMENT:M07-RA-020",
+      "native": "NOT RUN"
+    }
+  ],
+  "assumptions": [
+    "Immutable fixture authenticity assumed only",
+    "Native durable index provider unavailable/unproved",
+    "Native M05 material/root atomic inclusion unproved",
+    "Native M04 replay+baseline transaction and restart provider unproved",
+    "SHA256 collision resistance assumed",
+    "No native interface or skeleton created"
+  ],
+  "remaining_gates": [
+    "Owner selects protocol/role/hash option and confirms architecture/contracts/BDD",
+    "PH-G2 index issuer/provider adoption",
+    "PH-G3 material/root transition receipt adoption",
+    "PH-G4 restart proof lookup/lifecycle",
+    "Approved Skeleton and intended valid RED",
+    "Independent documentary review then separate native implementation acceptance"
+  ],
+  "not_run": [
+    "independent review",
+    "native",
+    "build",
+    "product tests",
+    "valid RED/GREEN",
+    "full Draft2020-12",
+    "module acceptance"
+  ],
+  "module_complete": false,
+  "document_results": {
+    "status": "PASS_DOCUMENT_ONLY_PENDING_OWNER",
+    "witnesses": 20,
+    "defensive_issuer_mutations": 6,
+    "replay_hash_checks": 2,
+    "source_pointer_checks": 12,
+    "inventory_files": 796,
+    "product_hashes_unchanged": true,
+    "not_run": [
+      "independent review",
+      "native",
+      "build",
+      "product tests",
+      "valid RED/GREEN",
+      "full Draft2020-12",
+      "module acceptance"
+    ],
+    "module_pass": false
+  }
+}

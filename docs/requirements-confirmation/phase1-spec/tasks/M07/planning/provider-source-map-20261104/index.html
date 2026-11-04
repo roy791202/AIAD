@@ -1,0 +1,360 @@
+<!doctype html><meta charset="utf-8"><title>M07 provider source map</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;padding:16px}pre{white-space:pre-wrap;background:#f2f4f8;padding:16px}h2{border-top:2px solid #ccd;padding-top:20px}</style><h1>M07 recovery provider 來源與證據邊界</h1><p>新靜態對照；未採納 RA protocol／ordinal，產品與 native 未驗。Published 是 HOST 提供的可信輸入，不是本策略認證的 durable index。</p><h2>四個未決橋接</h2><h3>MP1 RA-L1</h3><p>CapturedAttempt has no ordinal or operation-id formula. Syntax validation of attempt string does not select /0 or a general ordinal formula.</p><p>Provider: M07 operation-id/ordinal design author + Owner exact semantic selection；selected=null</p><h3>MP2 RA-L2 / PH-G4</h3><p>Pure policy state and local recovery baseline setter are distinct source boundaries; no source evidence here for durable replay terminal response + baseline atomic transaction/restart proof.</p><p>Provider: M04 owner/replay transaction and durable restart provider; cross-module reviewer；selected=null</p><h3>MP3 RA-L3 / PH-G2</h3><p>Trusted Published enum and four-field single-file raw receipt do not authenticate immutable RecoveryIndex issuer/context/material/payload evidence. Malformed trusted fixture remains outside caller admission proof.</p><p>Provider: M07 immutable RecoveryIndex issuer/lookup + native persistence provider；selected=null</p><h3>MP4 PH-G3</h3><p>Captured asset digest and cloned asset references do not establish M05 Held/root-transfer generation/inclusion/fence evidence.</p><p>Provider: M05 authenticated immutable transfer/Held/root provider；selected=null</p><h2>精確來源片段</h2><h3>RS01</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:1–12</p><p>CapturedAttempt carries supplied identifiers, fingerprint and manifest digest; no index receipt/ordinal/provider authentication fields.</p><pre>//! M07-S1 pure recovery-state policy.
+//! HOST supplies elapsed time, verified capture and durable-publication outcomes.
+//! No timer, filesystem, codec, fingerprint computation or asset pinning lives here.
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapturedAttempt {
+    pub attempt_id: String,
+    pub captured_revision: u64,
+    pub captured_fingerprint: String,
+    pub asset_manifest_digest: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]</pre><h3>RS02</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:24–44</p><p>Published/Failed completion is supplied event data, not durable index verification.</p><pre>    Published,
+    Failed,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecoveryEventKind {
+    Check {
+        now_ms: u64,
+        current_fingerprint: Option&lt;String&gt;,
+        mutation_in_progress: bool,
+    },
+    BeginAttempt {
+        capture: CapturedAttempt,
+    },
+    Complete {
+        attempt_id: String,
+        outcome: CompletionOutcome,
+    },
+    Close,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryEvent {</pre><h3>RS03</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:77–83</p><p>Pure transition returns state/action; Published explicitly trusted HOST receipt.</p><pre>/// Returns a new state/action; it cannot mutate the caller or publish a snapshot.
+/// Published is a trusted HOST receipt, not a claim authenticated by this policy.
+pub fn transition_recovery(
+    state: &amp;RecoveryPolicyState,
+    event: &amp;RecoveryEvent,
+) -&gt; Result&lt;RecoveryTransition, RecoveryPolicyError&gt; {
+    validate_id(&quot;state.project_id&quot;, &amp;state.project_id)?;</pre><h3>RS04</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:125–158</p><p>Elapsed time is supplied; 60000 check requests capture rather than running OS timer/capture.</p><pre>            } else if state.inflight.is_some() || state.capture_requested {
+                next.last_check_ms = *now_ms;
+                RecoveryAction::WaitInFlight
+            } else if *mutation_in_progress {
+                RecoveryAction::DeferMutation
+            } else {
+                let current = current_fingerprint.as_ref().ok_or_else(|| {
+                    invalid(
+                        &quot;current_fingerprint&quot;,
+                        &quot;stable content fingerprint is required&quot;,
+                    )
+                })?;
+                next.last_check_ms = *now_ms;
+                if state.successful_fingerprint.as_ref() == Some(current) {
+                    RecoveryAction::SkipUnchanged
+                } else {
+                    next.capture_requested = true;
+                    RecoveryAction::RequestCapture
+                }
+            }
+        }
+        RecoveryEventKind::BeginAttempt { capture } =&gt; {
+            if state.inflight.is_some() {
+                return Err(RecoveryPolicyError::AttemptAlreadyActive);
+            }
+            if !state.capture_requested {
+                return Err(RecoveryPolicyError::CaptureNotRequested);
+            }
+            next.capture_requested = false;
+            next.inflight = Some(capture.clone());
+            RecoveryAction::AttemptRegistered
+        }
+        RecoveryEventKind::Complete {
+            attempt_id,</pre><h3>RS05</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:171–192</p><p>Matching attempt Published advances supplied captured fingerprint; no issuer/index/root evidence consulted.</p><pre>                }
+                CompletionOutcome::Failed =&gt; RecoveryAction::RetryPending,
+            }
+        }
+        RecoveryEventKind::Close =&gt; {
+            next.closed = true;
+            next.capture_requested = false;
+            RecoveryAction::Closed
+        }
+    };
+    Ok(RecoveryTransition {
+        state: next,
+        action,
+    })
+}
+
+fn invalid(field: &amp;str, reason: &amp;str) -&gt; RecoveryPolicyError {
+    RecoveryPolicyError::InvalidInput {
+        field: field.into(),
+        reason: reason.into(),
+    }
+}</pre><h3>RS06</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs:236–240</p><p>Capture validates syntax of supplied strings; revision and raw index durability are not authenticated here.</p><pre></pre><h3>DE01</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:272–280</p><p>Capture clones current content and revision locally; persistence provider not invoked.</p><pre>    pub fn capture(&amp;self) -&gt; Result&lt;ImmutableDocumentSnapshot, EditError&gt; {
+        self.check_editable()?;
+        Ok(ImmutableDocumentSnapshot {
+            document_uuid: self.state.document_uuid.clone(),
+            session_uuid: self.state.session_uuid.clone(),
+            revision: self.state.content_revision,
+            content: self.state.content.clone(),
+        })
+    }</pre><h3>DE02</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:282–312</p><p>Formal and recovery baseline setters are separate; recovery does not modify formal baseline.</p><pre>    pub fn acknowledge_formal_save(
+        &amp;mut self,
+        captured: Revision,
+        digest: &amp;str,
+    ) -&gt; Result&lt;SaveProjection, EditError&gt; {
+        self.check_ack(captured, digest, self.state.formal_baseline.as_ref())?;
+        self.state.formal_baseline = Some(SavedContentBaseline {
+            revision: captured,
+            semantic_digest: digest.into(),
+        });
+        Ok(SaveProjection {
+            captured_revision: captured,
+            dirty: self.dirty(),
+        })
+    }
+
+    pub fn acknowledge_recovery_save(
+        &amp;mut self,
+        captured: Revision,
+        digest: &amp;str,
+    ) -&gt; Result&lt;RecoveryProjection, EditError&gt; {
+        self.check_ack(captured, digest, self.state.snapshot_baseline.as_ref())?;
+        self.state.snapshot_baseline = Some(SavedContentBaseline {
+            revision: captured,
+            semantic_digest: digest.into(),
+        });
+        Ok(RecoveryProjection {
+            captured_revision: captured,
+            needs_snapshot: self.state.content.semantic_digest != digest,
+        })
+    }</pre><h3>DE03</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:354–377</p><p>check_ack enforces digest/revision consistency and monotonic baseline, not issuer proof/replay atomicity.</p><pre>    fn check_ack(
+        &amp;self,
+        captured: Revision,
+        digest: &amp;str,
+        baseline: Option&lt;&amp;SavedContentBaseline&gt;,
+    ) -&gt; Result&lt;(), EditError&gt; {
+        self.check_editable()?;
+        if !valid_digest(digest) {
+            return Err(EditError::InvalidInput {
+                field: &quot;semanticDigest&quot;.into(),
+            });
+        }
+        if captured.0 &gt; self.state.content_revision.0
+            || (captured == self.state.content_revision
+                &amp;&amp; digest != self.state.content.semantic_digest)
+            || baseline.is_some_and(|saved| {
+                captured.0 &lt; saved.revision.0
+                    || (captured == saved.revision &amp;&amp; digest != saved.semantic_digest)
+            })
+        {
+            return Err(EditError::RevisionConflict);
+        }
+        Ok(())
+    }</pre><h3>IO01</h3><p>apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs:19–29</p><p>Single-file receipt raw fields cannot stand for full recovery index/transfer/ACK evidence.</p><pre>}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitReceipt {
+    pub target_path: String,
+    pub previous_digest: Option&lt;String&gt;,
+    pub committed_digest: String,
+    pub transaction_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]</pre><h2>較早黃卡嘗試與缺條件</h2><pre>[
+  {
+    &quot;card&quot;: &quot;PD-P1-M01-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect latest provider map; do not rerun&quot;,
+    &quot;missing&quot;: &quot;CR-D1..3 precise adoption and real lease/Ready issuer&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M02-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect new Golden14 correction review; do not rerun&quot;,
+    &quot;missing&quot;: &quot;GT-D1..4 product selection and formal golden admission; activation adoption&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect media capability review; do not rerun&quot;,
+    &quot;missing&quot;: &quot;Exact support subset/SDK/threshold and native renderer provider&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M04-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect receipt/root/ACK map; do not rerun&quot;,
+    &quot;missing&quot;: &quot;G1..4 adoption and real semantic receipt/root/ACK bridge providers&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M05-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect retention provider map; do not rerun&quot;,
+    &quot;missing&quot;: &quot;H1..4 adoption and authenticated Held/inclusion/fence provider&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M06-PREP-01&quot;,
+    &quot;action&quot;: &quot;Inspect merge provider map; do not rerun&quot;,
+    &quot;missing&quot;: &quot;MH1..6 decisions; BDD19 unchanged; real cross-module rollback provider&quot;,
+    &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+  }
+]</pre><h2>界線與新自檢</h2><pre>{
+  &quot;author&quot;: &quot;/root/yellow_m07_provider&quot;,
+  &quot;task&quot;: &quot;PD-P1-M07-PREP-01&quot;,
+  &quot;status&quot;: &quot;NEW_STATIC_PROVIDER_MAP_PENDING_INDEPENDENT_REVIEW&quot;,
+  &quot;generated_at&quot;: &quot;2026-11-04T01:19:41.276336+08:00&quot;,
+  &quot;head&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;authority_count&quot;: 796,
+  &quot;authority_drift&quot;: [],
+  &quot;original_scope&quot;: &quot;PD-P1-M07-PREP-01.json: planning only, existing product/tests protected&quot;,
+  &quot;proposal_binding&quot;: {
+    &quot;path&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M07/planning/recovery-ack-contract-correction/module-spec.json&quot;,
+    &quot;sha256&quot;: &quot;fc2cb24c61f671545acdbae63614af2a16dbb660668a2e17d72a9e8da4b92fe0&quot;,
+    &quot;pointers&quot;: {
+      &quot;/correction&quot;: {
+        &quot;RA-R1&quot;: &quot;Full recursive request schema/type guard before body/context; no broad exception catch. Supplied envelope/state remain trusted.&quot;,
+        &quot;RA-L1&quot;: &quot;Original /0 operation formula ambiguous with admitted u64 ordinal. Ordinal 1 and maximum preserve original admission; ACK operation_id is not computed by evaluator. Owner must choose illustrative /0 with admitted ordinal formula OR explicitly revised fixed-zero schema. Neither adopted.&quot;,
+        &quot;RA-L2&quot;: &quot;Response shape only. Relational response binding and stateful replay/idempotency/conflict/inflight/restart/atomic baseline+response NOT PROVEN. Dictionary/hash witness only retained equality/hash difference. No new stateful seam.&quot;,
+        &quot;RA-L3&quot;: &quot;Authentic structurally complete immutable issuer fixture is premise. Malformed index evidence {} still KeyError outside caller admission, not a native robustness proof. Separate provider seam requires Owner approval.&quot;
+      },
+      &quot;/remaining_gates&quot;: [
+        &quot;Owner selects protocol/role/hash option and confirms architecture/contracts/BDD&quot;,
+        &quot;PH-G2 index issuer/provider adoption&quot;,
+        &quot;PH-G3 material/root transition receipt adoption&quot;,
+        &quot;PH-G4 restart proof lookup/lifecycle&quot;,
+        &quot;Approved Skeleton and intended valid RED&quot;,
+        &quot;Independent documentary review then separate native implementation acceptance&quot;
+      ],
+      &quot;/owner_options&quot;: [
+        {
+          &quot;id&quot;: &quot;RA-O1&quot;,
+          &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+          &quot;option&quot;: &quot;Adopt distinct protocol and ack-recovery role/body/receipt mapping, replay lifecycle and atomic owner mutation&quot;
+        },
+        {
+          &quot;id&quot;: &quot;RA-O2&quot;,
+          &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+          &quot;option&quot;: &quot;Instead explicitly version effective transition schema with formal/recovery discriminated union, role/hash migration and full compatibility analysis; not performed&quot;
+        },
+        {
+          &quot;id&quot;: &quot;RA-C-O1&quot;,
+          &quot;status&quot;: &quot;PENDING_OWNER&quot;,
+          &quot;option&quot;: &quot;Illustrative /0: define admitted ordinal operation formula&quot;
+        },
+        {
+          &quot;id&quot;: &quot;RA-C-O2&quot;,
+          &quot;status&quot;: &quot;PENDING_OWNER&quot;,
+          &quot;option&quot;: &quot;Explicit schema revision fixed ordinal string 0&quot;
+        }
+      ]
+    }
+  },
+  &quot;bridges&quot;: [
+    {
+      &quot;id&quot;: &quot;MP1&quot;,
+      &quot;gate&quot;: &quot;RA-L1&quot;,
+      &quot;actual&quot;: [
+        &quot;RS01&quot;,
+        &quot;RS06&quot;
+      ],
+      &quot;gap&quot;: &quot;CapturedAttempt has no ordinal or operation-id formula. Syntax validation of attempt string does not select /0 or a general ordinal formula.&quot;,
+      &quot;provider&quot;: &quot;M07 operation-id/ordinal design author + Owner exact semantic selection&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;MP2&quot;,
+      &quot;gate&quot;: &quot;RA-L2 / PH-G4&quot;,
+      &quot;actual&quot;: [
+        &quot;RS03&quot;,
+        &quot;RS05&quot;,
+        &quot;DE02&quot;,
+        &quot;DE03&quot;
+      ],
+      &quot;gap&quot;: &quot;Pure policy state and local recovery baseline setter are distinct source boundaries; no source evidence here for durable replay terminal response + baseline atomic transaction/restart proof.&quot;,
+      &quot;provider&quot;: &quot;M04 owner/replay transaction and durable restart provider; cross-module reviewer&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;MP3&quot;,
+      &quot;gate&quot;: &quot;RA-L3 / PH-G2&quot;,
+      &quot;actual&quot;: [
+        &quot;RS01&quot;,
+        &quot;RS02&quot;,
+        &quot;RS05&quot;,
+        &quot;IO01&quot;
+      ],
+      &quot;gap&quot;: &quot;Trusted Published enum and four-field single-file raw receipt do not authenticate immutable RecoveryIndex issuer/context/material/payload evidence. Malformed trusted fixture remains outside caller admission proof.&quot;,
+      &quot;provider&quot;: &quot;M07 immutable RecoveryIndex issuer/lookup + native persistence provider&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;MP4&quot;,
+      &quot;gate&quot;: &quot;PH-G3&quot;,
+      &quot;actual&quot;: [
+        &quot;RS01&quot;,
+        &quot;RS05&quot;,
+        &quot;DE01&quot;
+      ],
+      &quot;gap&quot;: &quot;Captured asset digest and cloned asset references do not establish M05 Held/root-transfer generation/inclusion/fence evidence.&quot;,
+      &quot;provider&quot;: &quot;M05 authenticated immutable transfer/Held/root provider&quot;,
+      &quot;selected&quot;: null
+    }
+  ],
+  &quot;earlier_yellow_attempts&quot;: [
+    {
+      &quot;card&quot;: &quot;PD-P1-M01-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect latest provider map; do not rerun&quot;,
+      &quot;missing&quot;: &quot;CR-D1..3 precise adoption and real lease/Ready issuer&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    },
+    {
+      &quot;card&quot;: &quot;PD-P1-M02-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect new Golden14 correction review; do not rerun&quot;,
+      &quot;missing&quot;: &quot;GT-D1..4 product selection and formal golden admission; activation adoption&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    },
+    {
+      &quot;card&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect media capability review; do not rerun&quot;,
+      &quot;missing&quot;: &quot;Exact support subset/SDK/threshold and native renderer provider&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    },
+    {
+      &quot;card&quot;: &quot;PD-P1-M04-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect receipt/root/ACK map; do not rerun&quot;,
+      &quot;missing&quot;: &quot;G1..4 adoption and real semantic receipt/root/ACK bridge providers&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    },
+    {
+      &quot;card&quot;: &quot;PD-P1-M05-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect retention provider map; do not rerun&quot;,
+      &quot;missing&quot;: &quot;H1..4 adoption and authenticated Held/inclusion/fence provider&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    },
+    {
+      &quot;card&quot;: &quot;PD-P1-M06-PREP-01&quot;,
+      &quot;action&quot;: &quot;Inspect merge provider map; do not rerun&quot;,
+      &quot;missing&quot;: &quot;MH1..6 decisions; BDD19 unchanged; real cross-module rollback provider&quot;,
+      &quot;status&quot;: &quot;affected implementation blocked; other future original scope preparation remains eligible&quot;
+    }
+  ],
+  &quot;scoped_search&quot;: {
+    &quot;command&quot;: [
+      &quot;rg&quot;,
+      &quot;-n&quot;,
+      &quot;transition_recovery|acknowledge_recovery_save|RecoveryIndex&quot;,
+      &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src&quot;
+    ],
+    &quot;exit&quot;: 1,
+    &quot;stdout&quot;: &quot;&quot;,
+    &quot;stderr&quot;: &quot;&quot;,
+    &quot;limit&quot;: &quot;Only literal Rust/source tree matches in HOST/src; no global/runtime absence claim.&quot;
+  },
+  &quot;selected&quot;: null,
+  &quot;product_pass&quot;: false,
+  &quot;limits&quot;: [
+    &quot;New static source mapping only; not runtime wiring absence or durability proof&quot;,
+    &quot;No ordinal formula chosen, no RA-O1/O2 adoption&quot;,
+    &quot;Existing historical S1 acceptance remains preserved, not rerun&quot;,
+    &quot;Product/native/build/valid RED/regression NOT RUN&quot;
+  ]
+}</pre>
