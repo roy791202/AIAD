@@ -1,0 +1,84 @@
+{
+  "card": "PD-REL-03",
+  "bdd": "BDD-PD-REL-03",
+  "title": "VERIFY-INSTALL — silent install / uninstall checklist (WiX MSI)",
+  "product": "SGenAxis",
+  "version": "0.1.0",
+  "msi_name_pattern": "SGenAxis-{version}-windows-x64.msi",
+  "packager": "wix",
+  "aligns_with": [
+    "SGenAxis.wxs",
+    "packaging.manifest.json silent.*",
+    "README.md VERIFY-INSTALL"
+  ],
+  "notes": [
+    "Elevated msiexec /qn is optional. Without elevation, elevated checks MUST be NOT RUN — never forge PASS.",
+    "Contract green does not require elevated install (PD-REL-03 protect)."
+  ],
+  "checks": [
+    {
+      "id": "VI-EXIT-INSTALL",
+      "category": "exit",
+      "requires_elevated": true,
+      "description": "Silent install msiexec /i /qn exits 0",
+      "command_template": "msiexec /i {msi} /qn /norestart /l*v {log_install}"
+    },
+    {
+      "id": "VI-EXIT-UNINSTALL",
+      "category": "exit",
+      "requires_elevated": true,
+      "description": "Silent uninstall msiexec /x /qn exits 0",
+      "command_template": "msiexec /x {msi} /qn /norestart /l*v {log_uninstall}"
+    },
+    {
+      "id": "VI-LOG-INSTALL",
+      "category": "log",
+      "requires_elevated": true,
+      "description": "Install log file is written and non-empty after msiexec /l*v",
+      "path_template": "{out_dir}/verify-install-install.log"
+    },
+    {
+      "id": "VI-FILE-EXE",
+      "category": "files",
+      "requires_elevated": true,
+      "description": "Installed exe exists under Program Files",
+      "path_template": "%ProgramFiles%/SGenAxis/SGenAxis.exe"
+    },
+    {
+      "id": "VI-SHORTCUT-STARTMENU",
+      "category": "shortcut",
+      "requires_elevated": true,
+      "description": "Start Menu shortcut SGenAxis.lnk exists (WiX ApplicationShortcut)",
+      "path_template": "%ProgramData%/Microsoft/Windows/Start Menu/Programs/SGenAxis/SGenAxis.lnk"
+    },
+    {
+      "id": "VI-FILE-GONE",
+      "category": "files",
+      "requires_elevated": true,
+      "description": "After uninstall, Program Files exe is removed",
+      "path_template": "%ProgramFiles%/SGenAxis/SGenAxis.exe",
+      "expect_absent": true
+    },
+    {
+      "id": "VI-SHORTCUT-GONE",
+      "category": "shortcut",
+      "requires_elevated": true,
+      "description": "After uninstall, Start Menu shortcut is removed",
+      "path_template": "%ProgramData%/Microsoft/Windows/Start Menu/Programs/SGenAxis/SGenAxis.lnk",
+      "expect_absent": true
+    },
+    {
+      "id": "VI-CONTRACT-MSI",
+      "category": "files",
+      "requires_elevated": false,
+      "description": "Built MSI artifact exists for VERIFY-INSTALL (dry / pre-check)",
+      "path_template": "{out_dir}/SGenAxis-{version}-windows-x64.msi"
+    },
+    {
+      "id": "VI-CONTRACT-SILENT",
+      "category": "exit",
+      "requires_elevated": false,
+      "description": "Manifest silent install/uninstall commands are msiexec /qn (documented; not executed here)"
+    }
+  ]
+}

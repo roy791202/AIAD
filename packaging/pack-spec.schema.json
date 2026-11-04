@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aiad.local/schemas/pack-spec.v1.json",
+  "title": "AIAD PackSpec v1",
+  "description": "Cross-platform pack artifact contract (BDD-PD-M4-PACK-SPEC-01). Required artifact fields: os, arch, path, sha256, status.",
+  "type": "object",
+  "required": [
+    "schema",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "aiad.pack-spec.v1"
+    },
+    "cardId": {
+      "type": "string"
+    },
+    "bdd": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "BLOCKED",
+        "NOT RUN",
+        "PARTIAL"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "os",
+          "arch",
+          "path",
+          "sha256",
+          "status"
+        ],
+        "properties": {
+          "os": {
+            "enum": [
+              "windows",
+              "macos",
+              "linux"
+            ]
+          },
+          "arch": {
+            "enum": [
+              "x64",
+              "arm64",
+              "x86",
+              "universal"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "description": "64 hex chars, or empty when NOT RUN / missing"
+          },
+          "status": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "BLOCKED",
+              "NOT RUN",
+              "PARTIAL"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,58 @@
+{
+  "card": "PD-M4-MAC-STUB-01",
+  "bdd": "BDD-PD-M4-MAC-STUB-01",
+  "stub_contract": "inline — PD-M4-PACK-SPEC-01 may land in parallel; fields aligned to os/arch/path/sha256/status",
+  "packager": {
+    "primary": "macos-stub",
+    "product": "SGenAxis",
+    "version": "0.1.0",
+    "artifact_name_pattern": "SGenAxis-{version}-macos-{arch}.stub",
+    "formats": ["app-stub", "pkg-stub"],
+    "notarize_required": false,
+    "stapling_required": false
+  },
+  "payload": {
+    "stage_name": "SGenAxis.app",
+    "source_relpath": "apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop",
+    "note": "Real Darwin binary expected only on macOS hosts; stub never forges a payload hash on non-Darwin."
+  },
+  "targets": {
+    "macos": {
+      "status": "stub",
+      "format": "app-stub",
+      "arch": ["arm64", "x86_64"],
+      "host_required": "Darwin"
+    },
+    "windows": {
+      "status": "unsupported",
+      "reason": "use packaging/windows/wix"
+    },
+    "linux": {
+      "status": "unsupported",
+      "reason": "M4 linux stub is separate card"
+    }
+  },
+  "status_vocabulary": ["PASS", "FAIL", "BLOCKED", "NOT RUN", "PARTIAL"],
+  "non_darwin_policy": {
+    "status": "NOT RUN",
+    "forbid_pass": true,
+    "detail": "Non-Darwin hosts must report NOT RUN for macOS packaging — never forge PASS."
+  },
+  "darwin_stub_policy": {
+    "status_without_notarize": "PARTIAL",
+    "forbid_pass_without_real_artifact": true,
+    "detail": "Darwin stub may produce a local app-stub; notarize/stapling are out of scope and must not be claimed PASS."
+  },
+  "artifact_fields": {
+    "required": ["os", "arch", "path", "sha256", "status"],
+    "os": "macos",
+    "status_enum": ["PASS", "FAIL", "BLOCKED", "NOT RUN", "PARTIAL"]
+  },
+  "entry": {
+    "script": "build_macos_stub.py",
+    "aliases": ["build_macos.py", "build-macos-stub.py"],
+    "shell_wrapper": "build-macos.sh",
+    "contract_selftest": "contract_selftest.py",
+    "result_json": "out/macos-pack-result.json"
+  }
+}
