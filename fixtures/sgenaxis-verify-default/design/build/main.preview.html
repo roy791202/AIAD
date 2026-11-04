@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Form — communication preview</title>
+<style>
+body{margin:0;font:14px/1.45 Segoe UI,Microsoft JhengHei,sans-serif;background:#12141a;color:#e8eaef}
+.banner{position:sticky;top:0;z-index:9;background:#252117;color:#f2b544;border-bottom:1px solid #5b4b29;padding:8px 12px}
+.wrap{display:grid;grid-template-columns:1fr 280px;gap:12px;padding:12px;min-height:70vh}
+.stage{background:#1a1d24;border:1px solid #2a3140;border-radius:8px;padding:16px;min-height:360px}
+.form{border:1px dashed #5b6a82;border-radius:6px;padding:16px;min-height:280px;background:#0f1218}
+.nodes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.node{appearance:none;border:1px solid #3a4558;background:#222833;color:#e8eaef;border-radius:6px;padding:8px 10px;cursor:pointer;text-align:left}
+.node:hover,.node:focus{border-color:#6ea8fe;outline:none}
+.node.is-on{border-color:#f2b544;box-shadow:0 0 0 1px #f2b54455}
+.tag{display:block;font-size:11px;color:#9aa3b2}
+.nm{font-weight:600}
+.side{background:#1a1d24;border:1px solid #2a3140;border-radius:8px;padding:12px}
+.side h2{margin:0 0 8px;font-size:13px;color:#9aa3b2;text-transform:uppercase}
+.kv{margin:6px 0;font-size:13px}
+.kv b{color:#9aa3b2;font-weight:500;display:inline-block;min-width:4.5rem}
+.hint{margin-top:10px;padding:8px;background:#141820;border-radius:6px;white-space:pre-wrap;font-size:12px;color:#c5cad3}
+.foot{padding:8px 12px;color:#9aa3b2;font-size:12px}
+</style>
+</head>
+<body>
+<div class="banner" role="note">SGenAxis Design Preview · 溝通用 · 非產品／非正式 PASS</div>
+<div class="wrap">
+  <main class="stage">
+    <div class="form" id="form">
+      <div><strong>Form</strong> <span style="color:#9aa3b2">· vanilla-tauri</span></div>
+      <div class="nodes" id="nodes"><button type="button" class="node" data-id="node-form-root" data-type="Form" data-name="Form" data-bdd="" data-tdd=""><span class="tag">Form</span><span class="nm">Form</span></button><button type="button" class="node" data-id="node-form-sfbvzb" data-type="Form" data-name="Form" data-bdd="" data-tdd=""><span class="tag">Form</span><span class="nm">Form</span></button><button type="button" class="node" data-id="node-group-qz1wjy" data-type="Group" data-name="Group" data-bdd="" data-tdd=""><span class="tag">Group</span><span class="nm">Group</span></button><button type="button" class="node" data-id="node-button-pglmzy" data-type="Button" data-name="Button" data-bdd="" data-tdd=""><span class="tag">Button</span><span class="nm">Button</span></button><button type="button" class="node" data-id="node-checkbox-wr3uqm" data-type="CheckBox" data-name="CheckBox" data-bdd="" data-tdd=""><span class="tag">CheckBox</span><span class="nm">CheckBox</span></button><button type="button" class="node" data-id="node-label-2exfd9" data-type="Label" data-name="Label" data-bdd="" data-tdd=""><span class="tag">Label</span><span class="nm">Label</span></button><button type="button" class="node" data-id="node-progressbar-0esvzz" data-type="ProgressBar" data-name="ProgressBar" data-bdd="" data-tdd=""><span class="tag">ProgressBar</span><span class="nm">ProgressBar</span></button><button type="button" class="node" data-id="node-group-fhx47c" data-type="Group" data-name="Group" data-bdd="" data-tdd=""><span class="tag">Group</span><span class="nm">Group</span></button><button type="button" class="node" data-id="node-label-cqyc6b" data-type="Label" data-name="Label" data-bdd="" data-tdd=""><span class="tag">Label</span><span class="nm">Label</span></button><button type="button" class="node" data-id="node-progressbar-krz0uv" data-type="ProgressBar" data-name="ProgressBar" data-bdd="" data-tdd=""><span class="tag">ProgressBar</span><span class="nm">ProgressBar</span></button></div>
+    </div>
+  </main>
+  <aside class="side" aria-label="選取摘要">
+    <h2>選取</h2>
+    <div class="kv"><b>Name</b> <span id="pName">—</span></div>
+    <div class="kv"><b>Type</b> <span id="pType">—</span></div>
+    <div class="kv"><b>Id</b> <span id="pId">—</span></div>
+    <div class="hint" id="pBdd">點選左側控件檢視 BDD／需求註記</div>
+    <div class="hint" id="pTdd" hidden></div>
+  </aside>
+</div>
+<p class="foot">format=sgenaxis.design v1 · product_pass=false · 非 VERIFY／GA 證據</p>
+<script>
+(function(){
+  var nodes=document.getElementById('nodes');
+  function sel(btn){
+    nodes.querySelectorAll('.node').forEach(function(b){b.classList.remove('is-on');});
+    btn.classList.add('is-on');
+    document.getElementById('pName').textContent=btn.getAttribute('data-name')||'—';
+    document.getElementById('pType').textContent=btn.getAttribute('data-type')||'—';
+    document.getElementById('pId').textContent=btn.getAttribute('data-id')||'—';
+    var bdd=btn.getAttribute('data-bdd')||'';
+    var tdd=btn.getAttribute('data-tdd')||'';
+    document.getElementById('pBdd').textContent=bdd?('BDD: '+bdd):'（無 BDD 註記）';
+    var t=document.getElementById('pTdd');
+    if(tdd){t.hidden=false;t.textContent='TDD: '+tdd;} else {t.hidden=true;}
+  }
+  nodes.addEventListener('click',function(ev){
+    var btn=ev.target.closest('.node');
+    if(!btn) return;
+    sel(btn);
+  });
+  var first=nodes.querySelector('.node');
+  if(first) sel(first);
+})();
+</script>
+</body>
+</html>

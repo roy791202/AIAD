@@ -45,7 +45,9 @@ def test_panel_arch_has_dag_canvas():
     assert 'id="archRulerH"' in body
     assert 'id="archFormSize"' in body
     assert 'id="archGridSize"' in body
-    assert "編輯草稿" in body
+    assert 'id="arch-edit"' not in body
+    assert "編輯草稿" not in body
+    assert 'id="arch-refresh"' not in body
 
 
 def test_strict_arch_node_kinds():
@@ -79,7 +81,7 @@ def test_strict_arch_node_kinds():
 
 
 def test_arch_layer_pack_same_attr_and_single_inter_layer_edge():
-    """Layer 可定義 packs 屬性；同屬性可拖入打包；Layer↔Layer 只畫一條線。"""
+    """Layer 類別由子物件推導（如 API→Layer.API）；同質可拖入；Layer↔Layer 單線。"""
     js = JS.read_text(encoding="utf-8")
     assert '"Layer"' in js
     assert "ARCH_PACKABLE_KINDS" in js
@@ -87,6 +89,10 @@ def test_arch_layer_pack_same_attr_and_single_inter_layer_edge():
     assert "memberIds" in js
     assert "packNodeIntoLayer" in js
     assert "canPackNodeIntoLayer" in js
+    assert "syncLayerIdentityFromMembers" in js
+    assert "newArchUuid" in js
+    assert "ensureArchDocUuids" in js
+    assert "Layer." in js
     assert "effectiveArchEndpoint" in js
     assert "findArchLayerContaining" in js
     assert "seenPair" in js or "pairKey" in js
@@ -95,7 +101,7 @@ def test_arch_layer_pack_same_attr_and_single_inter_layer_edge():
     assert 'id="archLayerPacksKind"' in html
     assert 'id="archNodePacksKind"' in html
     assert 'id="archLayerMembers"' in html
-    assert "packs" in html.lower() or "packs Node Type" in html
+    assert "由子物件" in html or "Layer.API" in html
     css = CSS.read_text(encoding="utf-8")
     assert ".arch-node.is-layer" in css or 'data-kind="Layer"' in css
     assert "arch-layer-members" in css
@@ -134,10 +140,21 @@ def test_arch_spec_assignment_and_unassigned():
     assert "applyArchTreeDrop" in js
     assert "findArchTreeDropTarget" in js
     assert "renderArchTreeLayerBranch" in js
+    assert "renderArchTreeRootBranch" in js
     assert "data-tree-layer" in js
     assert "data-tree-module" in js
+    assert "data-tree-root" in js
     assert "data-tree-draft" in js
     assert "archTrayDrag" in js
+    assert "archUnparentSelected" in js
+    assert "archParentSelectedToLast" in js
+    assert "archAddSelectionToNewLayer" in js
+    assert "showArchTreeContextMenu" in js
+    assert "archTreeMarquee" in js
+    assert "wireArchTreeNodeSelect" in js
+    assert "archTreeNodePassesFilter" in js
+    assert "wireArchTreeFilters" in js
+    assert "archTreeKindVisible" in js
     assert "syncArchAssignmentsFromModules" in js
     assert "assignNodeToModule" in js
     assert "clearNodeAssignment" in js
@@ -146,6 +163,17 @@ def test_arch_spec_assignment_and_unassigned():
     assert 'id="arch-unassigned-list"' in html
     assert "架構樹" in html
     assert "arch-unassigned-tree" in html
+    assert 'id="arch-tree-actions"' in html
+    assert 'id="arch-tree-parent"' in html
+    assert 'id="arch-tree-unparent"' in html
+    assert 'id="arch-tree-add-layer"' in html
+    assert 'id="arch-tree-filter-q"' in html
+    chrome = html[html.find('arch-panel-toolbar') : html.find('id="arch-node-strip"')]
+    assert 'id="arch-tree-unparent"' not in chrome
+    assert 'id="arch-tree-parent"' not in chrome
+    assert 'id="arch-tree-kind-toggle"' in html
+    assert 'id="arch-tree-kind-menu"' in html
+    assert "篩選類別" in html
     assert 'role="tree"' in html
     assert 'id="archNodeLayerRef"' in html
     assert 'id="archNodeModuleRef"' in html
@@ -160,7 +188,12 @@ def test_arch_spec_assignment_and_unassigned():
     assert ".arch-tree-leaf" in css
     assert ".arch-tree-drop" in css
     assert ".arch-unassigned-tree" in css
+    assert ".arch-tree-filters" in css
+    assert ".arch-tree-kind-menu" in css
+    assert ".arch-tree-ctx" in css
+    assert ".arch-tree-marquee" in css
     assert "is-drop-target" in css
+    assert "is-root-drop" in css
 
 
 def test_arch_marquee_multiselect_and_group_move():
@@ -195,21 +228,27 @@ def test_arch_arrange_selection():
 
 
 def test_arch_kind_picker_graphical_icons():
-    """＋節點開啟圖示面板；類別對應 ui/icons/arch/{Kind}.svg。"""
+    """工具列下方「節點」整排新增；類別對應 ui/icons/arch/{Kind}.svg。"""
     html = HTML.read_text(encoding="utf-8")
-    assert 'id="arch-add-node"' in html
-    assert 'id="arch-kind-picker"' in html
-    assert 'id="arch-kind-grid"' in html
+    assert 'id="arch-add-node"' not in html
+    assert 'id="arch-kind-picker"' not in html
     assert 'id="arch-packs-grid"' in html
+    assert 'id="arch-node-strip"' in html
+    assert 'id="arch-node-strip-grid"' in html
+    assert 'id="arch-node-strip-packs-grid"' in html
+    assert "節點" in html
     js = JS.read_text(encoding="utf-8")
     assert "ARCH_KIND_ICONS" in js
     assert "wireArchKindPicker" in js
-    assert "renderArchKindPickerGrid" in js
+    assert "renderArchNodeStrip" in js
+    assert "renderArchNodeStripPacks" in js
     assert "icons/arch/" in js
     assert "DEPLOYMENT_NODE_REGISTRY" in js
     css = CSS.read_text(encoding="utf-8")
     assert ".arch-kind-picker" in css
     assert ".arch-kind-tile" in css
+    assert ".arch-node-strip" in css
+    assert ".arch-node-strip-tile" in css
     icons_dir = ROOT / "apps" / "sgenaxis-desktop" / "ui" / "icons" / "arch"
     for k in KINDS + ["Layer"]:
         assert (icons_dir / f"{k}.svg").is_file(), f"missing icon for {k}"
@@ -351,10 +390,16 @@ def test_arch_middle_button_pan_and_wheel_zoom():
     assert "wireCanvasMiddleNav" in js
     assert "arch-canvas-shell" in js
     assert "setArchZoom" in js
+    assert "syncArchZoomBox" in js
+    assert "rememberArchViewport" in js
+    assert "recallArchViewport" in js
+    assert "archViewportMemory" in js
+    assert "archMmbPanActive" in js
     assert "button !== 1" in js or "ev.button !== 1" in js
     assert "wheel" in js
     css = CSS.read_text(encoding="utf-8")
     assert "is-mmb-panning" in css
+    assert ".arch-stage-wrap" in css
 
 
 def test_arch_grid_infinite_extend():
@@ -366,6 +411,62 @@ def test_arch_grid_infinite_extend():
     assert "不硬夾上界" in js or "無限延伸" in js
 
 
+def test_arch_layer_interior_edit_and_spec():
+    """非 UI Layer 進入內層：slot A : Module name、子節點連線、規劃書屬性、匯入程式、返回上一層。"""
+    js = JS.read_text(encoding="utf-8")
+    assert "formatModuleSlotLabel" in js
+    assert 'return "slot " + (legacy ? legacy[1] : letter) + " : " + name' in js
+    assert "enterArchLayer" in js
+    assert "leaveArchLayer" in js
+    assert "archLayerStack" in js
+    assert "appendArchInteriorSlotNodes" in js
+    assert "importArchProgramFile" in js
+    assert "importArchProgramFiles" in js
+    assert "webkitRelativePath" in js
+    assert "ARCH_SPEC_FIELDS" in js
+    assert "implementationRef" in js
+    assert "renderArchSpecPanel" in js
+    assert 'if (n.kind === "Layer") enterArchLayer(n.id);' in js
+    assert "arch-layer-enter" not in js
+    assert "is-member" in js
+    assert "innerX" in js
+    html = HTML.read_text(encoding="utf-8")
+    assert 'id="arch-layer-nav"' in html
+    assert 'id="arch-layer-back"' in html
+    assert 'id="arch-layer-back-fab"' in html
+    assert "返回上一層" in html
+    css = CSS.read_text(encoding="utf-8")
+    assert ".arch-layer-back-fab" in css
+    assert 'id="arch-import-program"' in html
+    assert 'id="arch-program-file" multiple' in html
+    assert 'id="arch-program-dir" webkitdirectory' in html
+    assert "選取檔案" in html
+    assert "含子目錄" in html
+    assert "匯入程式" in html
+    assert 'data-arch-tab="spec"' in html
+    assert 'id="archSpecPanel"' in html
+    assert ".arch-layer-nav" in css
+    assert ".arch-node.is-module-slot" in css
+    assert ".arch-edge-path.is-member" in css
+
+
+def test_arch_edge_select_delete_and_connect_menu():
+    """節點／連線可選取刪除；兩節點右鍵 Connect 下列通道清單。"""
+    js = JS.read_text(encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8")
+    css = CSS.read_text(encoding="utf-8")
+    assert "selectArchEdge" in js
+    assert "deleteArchSelectedEdge" in js
+    assert "openArchConnectMenu" in js
+    assert "archConnectChannelRows" in js
+    assert "applyArchConnectChannel" in js
+    assert 'id="arch-connect-menu"' in html
+    assert 'id="arch-connect-list"' in html
+    assert ">Connect<" in html
+    assert ".arch-edge-hit" in css
+    assert ".arch-connect-list" in css
+
+
 def test_ui_bhv_arch_ui_layer_entry():
     """UI-bhv：UI Layer 節點 Edit → 獨立視窗；視窗→UI 編輯；無側欄入口。"""
     js = JS.read_text(encoding="utf-8")
@@ -374,6 +475,10 @@ def test_ui_bhv_arch_ui_layer_entry():
     assert "openArchUiLayer" in js
     assert "openUiDesignWindow" in js
     assert "isArchUiLayerNode" in js
+    assert 'normalizeArchKind(node.packsKind) === "UI"' in js
+    assert "UI_NODE_TYPES" in js
+    assert "uiExclusive" in js
+    assert "retainUiExclusiveNodes" in js
     assert "arch-ui-edit" in js
     assert 'archAttr("uiLayerId"' in js
     assert 'archAttr("uiDefinitionRef"' in js
@@ -391,3 +496,216 @@ def test_ui_bhv_arch_ui_layer_entry():
     assert ".arch-ui-layer-panel" in css
     assert ".arch-ui-edit" in css
     assert ".uidesign-window" in css
+
+
+def test_arch_common_attrs_and_port_schema():
+    """共用屬性、Port schema、UI Layer root/asset、width/height、meta.viewports 出現在 JS 與 XML 存檔路徑。"""
+    js = JS.read_text(encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8")
+    save = js[js.index("function archDocToXml") : js.index("function archDocFromXml")]
+    load = js[js.index("function archDocFromXml") : js.index("function applyArchDoc")]
+    names = [
+        "createdAt",
+        "updatedAt",
+        "contentHash",
+        "schemaVersion",
+        "dependencies",
+        "dependencyType",
+        "bddSpecs",
+        "tddSpecs",
+        "dataType",
+        "schemaRef",
+        "required",
+        "cardinality",
+        "constraints",
+        "defaultValue",
+        "errorTypeRefs",
+        "description",
+        "rootNodeId",
+        "assetRefs",
+        "width",
+        "height",
+        "viewports",
+        "zoom",
+        "scrollLeft",
+        "scrollTop",
+    ]
+    for name in names:
+        assert name in js, name
+        assert name in save, "save " + name
+        assert name in load, "load " + name
+    assert "ensureArchCommonAttrs" in js
+    assert "opts.fresh" in js
+    assert "既有節點缺 createdAt" in js
+    assert "blankArchPort" in js
+    assert "ARCH_KIND_IO" in js
+    assert "touchArchNodeUpdatedAt" in js
+    apply = js[
+        js.index("function applyArchInspectorInputs") : js.index(
+            "function setArchInspectorTab"
+        )
+    ]
+    assert "readArchCommonInspector" in apply
+    assert "touchArchNodeUpdatedAt" in js[
+        js.index("function readArchCommonInspector") : js.index(
+            "function fillArchPortInspectorList"
+        )
+    ]
+    assert "archViewportMemory" in js
+    assert "meta.viewports" in js
+    assert "hydrateArchViewportMemory" in js
+    assert "button !== 1" in js
+    common = js[
+        js.index("function ensureArchCommonAttrs") : js.index(
+            "function touchArchNodeUpdatedAt"
+        )
+    ]
+    assert "workflowStatus" not in common
+    assert "testStatus" not in common
+    assert 'id="archNodeCreatedAt"' in html
+    assert 'id="archNodeUpdatedAt"' in html
+    assert 'id="archNodeContentHash"' in html
+    assert 'id="archNodeSchemaVersion"' in html
+    assert 'id="archNodeDependencies"' in html
+    assert 'id="archNodeBddSpecs"' in html
+    assert 'id="archNodeTddSpecs"' in html
+    assert 'id="archNodeWidth"' in html
+    assert 'id="archNodeHeight"' in html
+    assert 'id="archUiRootNodeId"' in html
+    assert 'id="archUiAssetRefs"' in html
+    assert "label|dataType|schemaRef|required|cardinality|constraints|defaultValue|errorTypeRefs|description" in html
+
+
+# DEC-4 A — Tasks Node.html 專屬欄位。Module 不是節點；workflow／test 不加到這四類。
+EXTRA_KIND_FIELDS = {
+    "CodeFile": [
+        "filePath",
+        "language",
+        "contentHash",
+        "repositoryRef",
+        "commitRef",
+    ],
+    "Test": ["testSuiteRef", "testFramework", "testVersion", "resultSummary"],
+    "Build": ["buildProfile", "inputRefs", "artifactRefs", "buildResult"],
+    "AITask": ["modelPolicy", "promptVersion", "contextRefs", "budgetPolicy"],
+}
+
+
+def test_arch_extra_kinds_codefile_test_build_aitask():
+    """ARCH_NODE_KINDS 含 CodeFile／Test／Build／AITask，且 Inspector／XML 路徑列出專屬欄位。"""
+    js = JS.read_text(encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8")
+    kinds_m = re.search(r"const ARCH_NODE_KINDS = \[(.*?)\];", js, re.S)
+    assert kinds_m, "ARCH_NODE_KINDS missing"
+    kinds = re.findall(r'"([^"]+)"', kinds_m.group(1))
+    for kind in EXTRA_KIND_FIELDS:
+        assert kind in kinds
+    assert "Module" not in kinds
+    fields_block = js[
+        js.index("const ARCH_EXTRA_KIND_FIELDS") : js.index(
+            "function archExtraKindAttrs"
+        )
+    ]
+    for kind, fields in EXTRA_KIND_FIELDS.items():
+        assert kind in fields_block
+        for field in fields:
+            assert f'"{field}"' in fields_block
+    io = js[js.index("const ARCH_KIND_IO") : js.index("const ARCH_EXTRA_KIND_FIELDS")]
+    for kind in EXTRA_KIND_FIELDS:
+        assert kind + ":" in io
+        assert "inLabel" in io
+        assert "outLabel" in io
+    ensure = js[
+        js.index("function ensureArchExtraKindFields") : js.index(
+            "function renderArchExtraKindPanel"
+        )
+    ]
+    assert "workflowStatus" not in ensure
+    assert "testStatus" not in ensure
+    save = js[js.index("function archDocToXml") : js.index("function archDocFromXml")]
+    assert "archExtraKindAttrs" in save
+    load = js[js.index("function archDocFromXml") : js.index("function applyArchDoc")]
+    assert "ensureArchExtraKindFields" in load
+    assert 'id="archExtraKindPanel"' in html
+    assert 'id="archExtraKindFields"' in html
+    add_chunk = html[html.index('id="archAddKind"') : html.index('id="archAddKind"') + 2200]
+    for kind in EXTRA_KIND_FIELDS:
+        assert f'value="{kind}"' in add_chunk
+        assert (UI / "icons" / "arch" / f"{kind}.svg").is_file()
+
+
+# UI-bhv.html §7，加上文件有、派工清單漏掉的 Dropdown／Select。
+UI_BHV_KINDS = [
+    "Window", "Page", "Dialog", "Overlay", "Component",
+    "Panel", "Group", "Layout", "Row", "Column", "Grid",
+    "ScrollView", "Splitter", "Spacer", "Separator",
+    "MenuBar", "Menu", "MenuItem", "Toolbar", "TabView", "TabItem",
+    "Breadcrumb", "TreeView", "TreeItem", "Pagination",
+    "Label", "Button", "Icon", "Image", "Link", "Badge", "Divider",
+    "TextInput", "TextArea", "NumberInput", "Checkbox", "RadioGroup",
+    "Dropdown", "Slider", "ColorPicker", "DatePicker", "Form", "FormField",
+    "FilePicker", "Table", "ListView", "DataGrid", "PropertyGrid",
+    "TextView", "CodeView", "LogView", "Chart",
+    "Viewport3D", "SceneView", "Gizmo", "Timeline", "GraphView", "NodeCanvas",
+    "PropertyInspector", "AssetBrowser",
+    "ProgressBar", "Spinner", "Toast", "Alert", "Tooltip", "StatusIndicator",
+    "NotificationCenter", "Popover", "ContextMenu", "Drawer", "FloatingPanel",
+    "TooltipOverlay", "ModalOverlay", "ShortcutBinding", "CommandBinding",
+    "DragHandle", "DropTarget", "SelectionModel", "StateController",
+    "DockWorkspace", "DocumentWorkspace", "EditorWorkspace", "AssetWorkspace",
+    "ViewportWorkspace", "DebugWorkspace",
+]
+
+
+def test_ui_bhv_catalog_kinds_reject_non_ui():
+    """§7 種類進 UI 工具視窗；addPaletteNode 仍拒絕架構種類。"""
+    js = JS.read_text(encoding="utf-8")
+    html = HTML.read_text(encoding="utf-8")
+    start = js.index("const UI_BHV_SECTIONS")
+    end = js.index("const UI_TYPE_ALIASES")
+    block = js[start:end]
+    found = re.findall(r'\["([A-Za-z0-9]+)", \[', block)
+    assert found == UI_BHV_KINDS
+    for kind in UI_BHV_KINDS:
+        assert f'["{kind}", [' in block
+    assert "Dropdown / Select" in js
+    alias = js[end : js.index("function isUiExclusiveNodeType")]
+    assert 'LineEdit: "TextInput"' in alias
+    assert 'CheckBox: "Checkbox"' in alias
+    assert 'Select: "Dropdown"' in alias
+    assert '"ComboBox"' in alias
+    for bad in (
+        "API",
+        "Domain",
+        "CodeFile",
+        "WorkItem",
+        "Deployment",
+        "Layer",
+        "Module",
+        "AITask",
+        "Build",
+        "Test",
+    ):
+        assert f'["{bad}", [' not in block
+        assert f'"{bad}"' not in alias
+    fn = js[
+        js.index("function addPaletteNode") : js.index(
+            "function deleteSelectedDesignNode"
+        )
+    ]
+    assert "isUiExclusiveNodeType" in fn
+    assert "UI 工具視窗只接受 UI 專屬節點" in fn
+    assert fn.index("if (!isUiExclusiveNodeType(type))") < fn.index(
+        "designDoc.nodes.push"
+    )
+    assert "ensureUiKindProperties" in js
+    assert "node.properties" in js
+    assert "uiExclusive" in js
+    assert 'scope = "ui"' in js or 'scope: "ui"' in js
+    assert "renderUiBhvPalette" in js
+    assert 'id="desKindProps"' in html
+    assert 'data-palette="LineEdit"' in html
+    assert 'data-palette="CheckBox"' in html
+    assert 'data-palette="ComboBox"' in html
+    assert 'data-palette="Button"' in html
+

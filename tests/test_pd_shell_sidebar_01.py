@@ -1,8 +1,8 @@
-"""TDD-PD-SHELL-SIDEBAR-01 — sidebar IA: primary tabs + bottom More menu.
+"""TDD-PD-SHELL-SIDEBAR-01 — shell IA: top primary tabs + Tasks drawer.
 
-Primary tabs: Diagram → Tasks status → Git status → Setting.
-Other panels (Agent／佈版／Spec／Report／Ports／Listen) live in bottom dropdown.
-Tasks Status keeps four-zone filters. No WebView driver.
+Primary tabs (full-width top strip): Diagram → Tasks status → Git status → Setting.
+Agent／佈版／監聽／報告 live in the Tasks drawer (no More menu / Ports panel).
+Tasks Status keeps zone filters. No WebView driver.
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ MAIN_TAB_IDS = (
     "nav-settings",
 )
 
-MORE_PANELS = ("agent", "deploy", "spec", "report", "ports", "listen")
-ZONE_FILTERS = ("gray", "yellow", "red", "green")
+TASKS_DRAWER_NAVS = ("agent", "deploy", "listen", "report")
+ZONE_FILTERS = ("gray", "yellow", "orange", "red", "green")
 ALL_FILTERS = ("overview",) + ZONE_FILTERS + ("accepted",)
 
 
@@ -41,6 +41,21 @@ def _sidebar(html: str) -> str:
     end = html.find("</nav>", start)
     assert start != -1 and end != -1, "sidebar nav missing"
     return html[start:end]
+
+
+def _view_tabs(html: str) -> str:
+    start = html.find('id="side-rail"')
+    assert start != -1, "toolbar view tabs (#side-rail) missing"
+    # include opening tag
+    start = html.rfind("<", 0, start)
+    end = html.find("</div>", html.find('id="nav-settings"', start))
+    assert end != -1, "nav-settings close missing"
+    # close outer side-rail wrapper (side-tabs + rail)
+    end = html.find("</div>", end + 1)
+    assert end != -1
+    end = html.find("</div>", end + 1)
+    assert end != -1
+    return html[start : end + len("</div>")]
 
 
 def test_assets_and_prototype_ssot_exist():
@@ -52,30 +67,46 @@ def test_prototype_main_path_includes_ui_design():
     proto = PROTOTYPE.read_text(encoding="utf-8")
     for anchor in PROTO_MAIN:
         assert anchor in proto, f"prototype missing: {anchor}"
-    for filt in ALL_FILTERS:
+    # Prototype predates 待核准(orange); product shell has the full filter set.
+    for filt in ("overview", "gray", "yellow", "red", "green", "accepted"):
         assert f'data-filter="{filt}"' in proto, f"prototype filter missing: {filt}"
 
 
 def test_sidebar_primary_tabs_order_diagram_tasks_git_setting():
     html = HTML.read_text(encoding="utf-8")
+    tabs = _view_tabs(html)
     side = _sidebar(html)
-    assert 'data-nav-main-path="1"' in side
-    assert 'data-nav-ssot="side-tabs"' in side
-    assert 'id="side-tabs"' in side
+    assert 'data-nav-main-path="1"' in tabs
+    assert 'data-nav-ssot="side-tabs"' in tabs
+    assert 'id="side-tabs"' in tabs
+    assert "toolbar-view-tabs" in tabs
+    path_pos = html.find('id="project-path-box"')
+    rail_pos = html.find('id="side-rail"')
+    assert path_pos != -1 and rail_pos != -1 and path_pos < rail_pos, (
+        "view-tab icons must sit after project path"
+    )
     positions = []
     for nid in MAIN_TAB_IDS:
-        pos = side.find(f'id="{nid}"')
+        pos = tabs.find(f'id="{nid}"')
         assert pos != -1, f"primary tab missing id={nid}"
         positions.append(pos)
     assert positions == sorted(positions), (
-        "sidebar tabs must be Diagram→Tasks status→Git status→Setting"
+        "tabs must be Diagram→Tasks status→Git status→Setting"
     )
-    assert "Diagram" in side
-    assert "Tasks status" in side
-    assert "Git status" in side
-    assert "Setting" in side
-    assert 'id="side-rail"' in side
+    assert "Diagram" in tabs
+    assert "Tasks status" in tabs
+    assert "Git status" in tabs
+    assert "Setting" in tabs
+    assert 'id="side-more-toggle"' not in tabs
+    assert "icons/nav/diagram.svg" in tabs
+    assert "icons/nav/tasks.svg" in tabs
+    assert "icons/nav/git.svg" in tabs
+    assert "icons/nav/settings.svg" in tabs
+    assert "side-tab-icon" in tabs
     assert 'id="side-drawer"' in side
+    # Primary tabs live in toolbar, not inside the drawer column
+    for nid in MAIN_TAB_IDS:
+        assert f'id="{nid}"' not in side
     # UI 設計改為獨立視窗：側欄不再有 UI 設計入口
     assert 'id="sec-uidesign"' not in side
     assert 'data-panel="uidesign"' not in side
@@ -86,9 +117,9 @@ def test_tasks_status_four_zone_filters_and_workbench_chrome():
     side = _sidebar(html)
     assert 'id="sec-tasks-status"' in side
     assert 'id="btn-clear-status-filter"' in side
-    assert "overview-dots" in side
     assert "status-item-left" in side
     assert "counter-badge" in side
+    assert ".overview-dots" in CSS.read_text(encoding="utf-8")
     for filt in ALL_FILTERS:
         assert f'data-filter="{filt}"' in side, f"missing filter: {filt}"
     for filt in ZONE_FILTERS:
@@ -98,27 +129,38 @@ def test_tasks_status_four_zone_filters_and_workbench_chrome():
         assert 'data-zone-filter="1"' in chunk, f"zone filter not marked: {filt}"
 
 
-def test_more_menu_demoted_routes_at_bottom():
+def test_tasks_drawer_entries_no_more_menu():
     html = HTML.read_text(encoding="utf-8")
     side = _sidebar(html)
-    assert 'data-nav-secondary="1"' in side or 'id="sec-nav-secondary"' in side
-    assert 'id="side-more-toggle"' in side
-    assert 'id="side-more-menu"' in side
-    sec_start = side.find('id="side-more-menu"')
-    assert sec_start != -1
-    more = side[sec_start:]
-    settings_pos = side.find('id="nav-settings"')
-    assert settings_pos != -1 and settings_pos < sec_start, "More menu must follow primary tabs"
-    for panel in MORE_PANELS:
-        assert f'id="nav-{panel}"' in more, f"More menu missing nav-{panel}"
-        assert f'data-panel="{panel}"' in more
+    assert 'id="side-more-toggle"' not in html
+    assert 'id="side-more-menu"' not in side
+    assert 'id="sec-nav-secondary"' not in side
+    assert 'id="nav-ports"' not in html
+    assert 'id="panel-ports"' not in html
+    assert 'id="nav-spec"' not in html
+    assert 'id="panel-spec"' not in html
+    tasks = side[side.find('id="sec-tasks-status"') :]
+    for panel in TASKS_DRAWER_NAVS:
+        assert f'id="nav-{panel}"' in tasks, f"Tasks drawer missing nav-{panel}"
+        assert f'data-panel="{panel}"' in tasks
 
 
 def test_panel_routes_intact_including_uidesign_shell():
     html = HTML.read_text(encoding="utf-8")
-    for panel in ("agent", "board", "deploy", "arch", "git", "settings", *MORE_PANELS):
+    for panel in (
+        "agent",
+        "board",
+        "deploy",
+        "arch",
+        "git",
+        "settings",
+        "listen",
+        "report",
+    ):
         assert f'id="panel-{panel}"' in html, f"missing panel-{panel}"
         assert f'data-panel="{panel}"' in html
+    assert 'id="panel-ports"' not in html
+    assert 'id="panel-spec"' not in html
     assert 'id="panel-uidesign"' in html
     assert 'id="uidesign-window"' in html
     assert 'id="uidesign-designer"' in html or 'id="designCanvas"' in html
@@ -133,8 +175,9 @@ def test_js_wires_clear_filter_and_side_tabs():
     assert "setBoardFilter" in js
     assert "showPanel" in js
     assert "syncSideTabs" in js
-    assert "setSideMoreOpen" in js
-    assert "side-more-toggle" in js
+    assert "setSideMoreOpen" not in js
+    assert "side-more-toggle" not in js
+    assert "cmdPortsRefresh" not in js
 
 
 def test_css_status_and_side_tabs_chrome():
@@ -150,11 +193,10 @@ def test_css_status_and_side_tabs_chrome():
         ".side-tabs-bar",
         ".side-tabs",
         ".side-tab-label",
+        ".side-tab-icon",
         ".side-drawer",
         ".side-tab-body",
-        ".side-more",
-        ".side-more-menu",
-        "aria-orientation=\"horizontal\"",
+        'aria-orientation="horizontal"',
     ):
         assert sel in css or sel in HTML.read_text(encoding="utf-8"), (
             f"missing: {sel}"
@@ -162,6 +204,12 @@ def test_css_status_and_side_tabs_chrome():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="side-rail"' in html
     assert 'id="side-drawer"' in html
-    assert 'data-drawer-open=' in html
+    assert "data-drawer-open=" in html
     assert "side-tab-label" in html
+    assert "side-tab-icon" in html
+    assert "visually-hidden" in html
     assert 'aria-orientation="horizontal"' in html
+    for name in ("diagram", "tasks", "git", "settings"):
+        assert (UI / "icons" / "nav" / f"{name}.svg").is_file()
+    assert ".side-more-menu" not in css
+    assert ".ports-toolbar" not in css
