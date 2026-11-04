@@ -1,0 +1,339 @@
+{
+  "identity": {
+    "module": "M02",
+    "revision": "M02-EXACT-CB-v1",
+    "date": "2026-11-01",
+    "state": "EXACT_DESIGN_PROPOSED_PENDING_ONE_CONFIRMATION",
+    "source_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab"
+  },
+  "requirement_summary": "先以C完成不寫檔的生成門檻、綁定與雙骨架計畫；之後以B將完整不可變產物版本發布，再用單一active描述檔切換。此文件只精確化已採納方向，不自行批准新Port/schema/布局。",
+  "confirmed": [
+    "C＋B方向已採納，不重問方向",
+    "缺必要決策只保存定義並列出差額；足夠時預設程式與UI UX雙骨架",
+    "本機作者不需Git或開發知識；不執行模板、不自動build/下載/安裝依賴",
+    "IO單文件Skeleton/RED階段已通過，不等同FileCommit產品實作或多檔原子提交",
+    "整個M02模組完成與C純計畫切片完成分開"
+  ],
+  "assumptions": [
+    "初始模板只對已採納的Windows11 x64／local desktop／Rust＋Vanilla UI／Tauri2／has_ui=true組合驗證；其他組合明示UnsupportedTarget並保存定義，不偽造支援。",
+    "純C切片不依賴IO runtime或新Store Port；B及consumer切片需IO實作、M01持久化與原生驗證就緒。",
+    "生成版本預設保留，不新增自動GC。M05/M07的素材/快照清理規則不自動套用到生成版本。",
+    "生成不是.ess文件Undo操作；不改M04歷史或源文件。重生改動以新生成版本表示，非覆寫使用者內容。",
+    "不承諾對惡意同權限程序、任意非合作writer或硬體斷電的全域CAS/絕對耐久。"
+  ],
+  "architecture": {
+    "A1_context": "作者確認生成預覽；M01提供不可變定義，M02產生計畫與版本，M03僅消費已啟用且驗證的不可變內容，M08另做環境驗收。",
+    "A2_hexagonal": "UI/Test → Tauri Command → DispatchHost → HOST GenerationUseCase → WORK pure generation policy；HOST → existing FileSystemPort/FileCommitPort + proposed GenerationArtifactPort ← Windows generation-store adapter。",
+    "A3_dependency": "M01 ProjectDefinition → M02 WORK plan；HOST maps template/approval codecs and renders bytes；Adapters → Ports + existing SPEC hash；WORK不新增serde/SPEC/FS/OS依賴。",
+    "A4_responsibility": "WORK只驗證欄位與不可變綁定/產物意圖；HOST核實approval來源、模板內容、渲染與發布；adapter獨佔擁有staging並提供受保護讀取快照。",
+    "A5_input": [
+      "prepare_generation（唯讀）",
+      "confirm_generation（明確寫入）",
+      "cancel_generation（消耗未套用計畫）",
+      "read_current_generation（唯讀consumer）"
+    ],
+    "A6_output": [
+      "FileSystemPort：已授權根的模板/SPEC bytes讀取，不擴充現有語意",
+      "FileCommitPort/FileWriteLease：active.json單檔writer lease/read_current/replace_checked",
+      "GenerationArtifactPort + OwnedGenerationStage + GenerationReadLease：本提案三trait，10方法，公開值均為primitive/opaque bytes"
+    ],
+    "A7_driving": "Vanilla UI、公開邊界測試與受控child consumer；本輪未接入。",
+    "A8_driven": "Windows generation store、本機唯讀template catalog；假Port用於L2 fault injection。",
+    "A9_direction": "UI不可呼叫FS/Store adapter；Domain無OS/serializer；Host只經Port寫入。新adapter可共享file_commit內部coordination/唯讀journal判斷，不更改公開FileCommit契約。",
+    "A10_ownership": "M01/WORK仍是專案定義SSOT。C的GenerationPlan為派生值；HOST每專案GenerationSession最多持有1個準備計畫及其渲染bytes。版本目錄是派生產物，active.json僅指定可見版本，不是另一個專案內容SSOT。",
+    "A11_mutation": "只有核准HOST confirm用例可在固定受管區建立版本和替換active。prepare/cancel未確認計畫不寫FS；reader不清理、不恢復、不寫檔。",
+    "A12_transaction": "唯讀prepare → 使用者確認 → initialize namespace → acquire active writer lease → recheck binding → stage/write/verify → seal不可變版本 → 再查定義/approval → FileCommit替換active → receipt；失敗保留舊active或回RecoveryRequired。不是跨檔原子交易。",
+    "A13_external": "本機經HOST授權project root；所有relative artifact路徑驗證，拒絕reparse/hard-link/不確定別名；未知marker/版本/檔案不自動接管或刪除。",
+    "A14_forbidden": [
+      "逐檔覆寫當多檔原子",
+      "讀取未提交active瞬間值",
+      "UI直讀產物檔或使用file URL繞過驗證",
+      "adapters解析/批准業務approval",
+      "將測試通過外推build/功能驗收",
+      "模板任意eval/shell/網路/Plugin"
+    ],
+    "status": "PROPOSED_FOR_ONE_CONFIRMATION"
+  },
+  "layout": {
+    "root": "<authorized project root>/.sgenaxis/generated/",
+    "identity": "store.json",
+    "activation": "active.json（不存在表示尚無啟用版本）",
+    "coordination": "active.json.eluslot-lock及FileCommit自己的journal區；沿IO方案A，不另創writer鎖規約",
+    "staging": "staging/<generation_id>/",
+    "versions": "versions/<generation_id>/",
+    "generation_id": "32個小寫hex，由HOST於confirm分配；exclusive create才確定擁有，碰撞至多32次後明確失敗，無密碼學授權含義",
+    "version_manifest": "versions/<generation_id>/artifact-manifest.json",
+    "protected": [
+      ".sgenaxis/project-manifest.json",
+      "原.ess/.sgendesign/專案定義",
+      "來源模板",
+      "所有未受管資料與既有生成版本"
+    ],
+    "bootstrap": "prepare只inspect，不建目錄。確認後initialize獨佔建立generated根；先準備固定child dirs與協調側檔，持內部writer協調handle，最後create_new完整寫入+sync store.json。既有Ready marker須綁定相同project_uuid且固定根/非reparse。缺/壞marker或不明殘留fail closed；不自動補寫、清空或接管。並行初始化者Busy，先前中斷則RecoveryRequired。",
+    "no_gc": "本階段不刪已seal版本，不清舊active版本。取消只可顯式abort未seal的本次owned staging；abort不確定時保留路徑診斷。Drop只關閉handle，不隱式刪樹。"
+  },
+  "reader_consistency": {
+    "hazard": "FileCommit可能先發布active再驗證/回復；直接read(active.json)會看見尚未完成的瞬間值，因此不允許consumer繞過讀租約。",
+    "rule": "GenerationReadLease在同一active側檔取得OS共享read handle；與FileCommit exclusive writer互斥，允許多reader。側檔必須已存在，reader不create、不寫。取得後唯讀檢查IO journal：PREPARED/未知/損毀/RecoveryRequired拒絕，合法terminal需與active bytes一致。缺協調檔/未Ready namespace拒絕，不假稱已初始化。",
+    "lifetime": "HOST持read lease到active/manifest解析、所有檔hash與完整性驗證及byte snapshot複製完成才釋放。M03接收此不可變byte snapshot，不再直接讀活動檔案。writer不得在持read lease時重入；同一用例鎖順序為namespace bootstrap（若必要，先完成並釋放）→active writer或reader二選一→stage handle。",
+    "readonly": "初始化已完成的唯讀專案可用read-only handle讀；寫權不足不自動降級為未協調讀取。生成不可用不妨礙另一模組以原既有流程檢視.ess。",
+    "scope": "新增的是本提案的consumer能力與private coordination seam，須確認後才建骨架；不把IO-A-F1原生證據當已完成。"
+  },
+  "pure_C_contract": {
+    "public_functions_proposed": [
+      "prepare_generation(definition: &ProjectDefinition, template: &GenerationTemplateContract, context: &GenerationPolicyContext) -> Result<GenerationDecision, GenerationPlanError>",
+      "validate_plan_binding(plan: &GenerationPlan, current: &GenerationBinding) -> Result<(), GenerationPlanError>"
+    ],
+    "types": {
+      "GenerationTemplateContract": "template_ref: existing TemplateReference; target: TargetCapability; artifacts: Vec<ArtifactIntent>",
+      "TargetCapability": "form/platform/language/framework strings, has_ui:bool；第一模板要求desktop/windows-x64/rust/tauri2＋vanilla/true",
+      "GenerationPolicyContext": "binding: GenerationBinding; verified_approval_refs:Vec<String>; required_approvals_satisfied:bool；僅HOST核實後輸入，不是domain自證授權",
+      "GenerationBinding": "project_uuid:String; definition_revision:DefinitionRevision; definition_digest:String; target_id:String; template_ref:TemplateReference; approval_digest:String; base_activation_digest:Option<String>",
+      "ArtifactIntent": "relative_path:String; product: Program|UiUx; template_key:String",
+      "GenerationPlan": "binding:GenerationBinding; artifact_intents:Vec<ArtifactIntent>；無FS handle、Clock、serializer、可變專案別名",
+      "GenerationDecision": "SaveDefinitionOnly { missing:Vec<FieldPath> } | Prepared { plan:GenerationPlan }",
+      "GenerationPlanError": "InvalidInput{field,reason} / UnsupportedTarget{target_id} / TemplateMismatch{field} / ApprovalMismatch{field} / InvalidArtifactPath{path,reason} / DuplicateArtifact{path} / StaleBinding{field}"
+    },
+    "order": "先拒壞身份/型別/重複ID/非法模板或路徑；再合併M01 completeness projection、未confirmed需求/open_decisions與未滿足approval為sorted/dedup missing清單，回SaveOnly不生成；完整才檢查選定target與模板相容性，Prepared必含program與ui_ux。",
+    "requirements": "confirmed requirements需有非空intent與acceptance；unresolved/tentative需求列missing。definition/template/target綁定必須相同，不能只憑名稱。approval_refs非空不等同真實批准。",
+    "identity_and_hash": "WORK不做crypto認證或讀SPEC；digest語法要求sha256:＋64lowerhex，由HOST以既有SPEC hash驗證原始bytes。HOST保存定義typed snapshot及同次codec bytes，confirm以typed equality＋revision與重新核實approval檢查新鮮度，不能以原始approval字串自行放行。",
+    "mutations": "所有函數不改輸入、不保存定義或檔案。SaveOnly是建議動作值；真正保存由M01已批准用例負責。",
+    "not_in_C": [
+      "JSON codec/模板讀取與render",
+      "真實approval驗證",
+      "新Port或IO",
+      "active/版本區初始化",
+      "UI/dispatch"
+    ]
+  },
+  "ports_proposed": {
+    "new_file": "sgenaxis-ports/src/generation_store.rs；3個object-safe trait，10方法；沒有新Manager/Repository",
+    "GenerationArtifactPort": [
+      "inspect(&self,key:&GenerationStoreKey)->Result<GenerationStoreObservation,GenerationStoreError>",
+      "initialize(&self,key:&GenerationStoreKey)->Result<(),GenerationStoreError>",
+      "begin_owned(&self,key:&GenerationStoreKey,generation_id:&str)->Result<Box<dyn OwnedGenerationStage>,GenerationStoreError>",
+      "acquire_read(&self,key:&GenerationStoreKey)->Result<Box<dyn GenerationReadLease>,GenerationStoreError>"
+    ],
+    "OwnedGenerationStage": [
+      "write_new(&mut self,relative_path:&str,bytes:&[u8])->Result<(),GenerationStoreError>",
+      "seal(self:Box<Self>,manifest_bytes:&[u8],projection:&GenerationManifestProjection)->Result<SealedGeneration,GenerationStoreError>",
+      "abort(self:Box<Self>)->Result<StageAbortReceipt,GenerationStoreError>"
+    ],
+    "GenerationReadLease": [
+      "active_bytes(&self)->Option<&[u8]>",
+      "read_manifest(&self,generation_id:&str)->Result<Vec<u8>,GenerationStoreError>",
+      "verify_sealed(&self,generation_id:&str,projection:&GenerationManifestProjection)->Result<VerifiedGenerationSnapshot,GenerationStoreError>"
+    ],
+    "DTO": {
+      "GenerationStoreKey": "project_root:String + project_uuid:String；資料構造不是授權，每次Port都重新確認根/marker/固定路徑",
+      "GenerationStoreObservation": "Absent | Ready{store_root:String}；inspect唯讀，不能觀察未提交active當SSOT",
+      "GenerationFileRef": "relative_path:String,product:String,size_bytes:u64,digest:String；product只允許program/ui_ux",
+      "GenerationManifestProjection": "project_uuid:String,generation_id:String,manifest_digest:String,files:Vec<GenerationFileRef>；HOST先驗證manifest bytes/schema/投影一致性，adapter不批准業務資料",
+      "SealedGeneration": "project_uuid,generation_id,version_root,manifest_digest:String；只有驗證且no-replace seal成功才產生",
+      "VerifiedGenerationSnapshot": "project_uuid,generation_id,manifest_digest:String; files:Vec<{relative_path:String,digest:String,bytes:Vec<u8>}>；總bytes受上限限制，讀租約保護下複製",
+      "StageAbortReceipt": "removed_owned_paths:Vec<String>；只有本次owned staging全部移除才Ok；未清項目以GenerationStoreError::RecoveryRequired{owned_paths,reason}回報",
+      "GenerationStoreError": "InvalidPath{path,reason}/StoreIdentityMismatch{path}/Busy{path}/AlreadyExists{path}/UnsupportedVersion{schema,version}/Integrity{path,reason}/LimitExceeded{field,limit}/Storage{stage,path,reason}/RecoveryRequired{owned_paths,reason}"
+    },
+    "contracts": [
+      "write_new只能create_new，不覆寫stage內同名檔；以ASCII casefold檢查碰撞，拒reparse/hardlink和穿越。",
+      "seal驗證每個預期檔size/hash及完整tree無未知entries，先create_new manifest，完整sync，再同卷no-replace發布到versions；即使目標是空目錄也不覆寫。",
+      "seal失敗消耗handle後只關閉資源，錯誤必回保留路徑；已seal版本不由abort/Drop刪除。",
+      "verify_sealed檢查fixed manifest raw hash與HOST已驗證投影、所有檔的真實bytes/hash、沒有多餘/缺失/被修改檔；不以marker存在代替驗證。",
+      "reader不得寫入或清journal；private共享coordination檢查沿用已確認IO v1終態，不另改FileCommit公開trait。",
+      "只讀marker與固定metadata，無合法marker之既有namespace一律拒絕；不遞迴刪使用者專案。",
+      "verify_sealed屬read lease自身方法，root/project及協調handle由lease私有持有；caller不能用任意DTO取代guard。回傳完整bounded bytes snapshot後才可釋放。HOST只解析metadata，codec不持有OS handle。"
+    ]
+  },
+  "wire_contracts": {
+    "common": "UTF-8 JSON，無BOM；寫出物用LF結尾。schema/version固定1，unknown keys/duplicate JSON keys/float數字/無效UTF8/trailing bytes拒絕。definition_revision使用canonical decimal string（0..u64MAX），activation_sequence為1..u64MAX，其餘size/count為有界整數。JSON Schema另存schemas/，byte界限與重複keys由語意驗證補足。",
+    "hashes": "sha256:＋64小寫hex。template source_digest=已封裝template.json原始bytes之hash（file table含各source檔hash）；不在自身JSON內嵌自己的hash。artifact-manifest digest=其實際序列化bytes；file table不列manifest自身。active descriptor也不含自身digest；base digest由FileCommit讀raw bytes後計算。未改bytes不重新排版；模板檔案內容變動必須改version與digest。",
+    "store_marker": "schema=sgenaxis.generation-store,version=1,project_uuid,store_id(32lowerhex)；固定根不存在才建立，不含active/current狀態。",
+    "template_manifest": "schema=sgenaxis.generation-template,version=1,template_id,template_version,compatibility{form,platform,language,framework,has_ui},artifacts[{relative_path,product,template_key,source_digest,encoding}]；source檔內容在已授權bundle固定根；不允許commands/install/scripts欄位。",
+    "artifact_manifest": "schema=sgenaxis.generation-artifacts,version=1,project_uuid,generation_id,binding{definition_revision,definition_digest,target_id,template_id,template_version,template_digest,approval_digest},files[{relative_path,product,size_bytes,digest}]；files依relative_path ASCII byte升冪，program/ui_ux各至少一筆且與準備plan完全相同。",
+    "activation_descriptor": "schema=sgenaxis.generation-activation,version=1,project_uuid,generation_id,activation_sequence(1..u64MAX decimal string),manifest_digest；不儲存任意version_root。根由固定layout＋generation_id組成。序號取前一合法active+1；滿額SequenceOverflow拒絕，原active不變。",
+    "limits_proposed": {
+      "active_bytes": 16384,
+      "store_marker_bytes": 4096,
+      "template_manifest_bytes": 262144,
+      "artifact_manifest_bytes": 1048576,
+      "files": 128,
+      "each_file_bytes": 4194304,
+      "total_payload_bytes": 33554432,
+      "relative_path_ascii_bytes": 240,
+      "path_components": 16,
+      "definition_name_utf8_bytes": 1024,
+      "definition_purpose_utf8_bytes": 16384
+    },
+    "relative_path_grammar": "首尾不能斜線；以/分段，每段1..64 ASCII bytes，僅A-Z a-z 0-9 _ - .；拒.和..、空段、尾點、Windows保留名含副檔名、反斜線/冒號/NUL/UNC/drive/device；整個path≤240且≤16段；ASCII casefold後唯一。檔案表不允許file/dir prefix碰撞。",
+    "template_variables": "只允許declared文字插值，不執行expression。display_name/purpose只能以JSON字串常值或HTML text escaped輸出；Rust identifiers/包識別由UUID衍生ASCII project_<uuid32>與local.sgenaxis.p<uuid32>，不把任意名稱當檔名或程式碼。未知token拒絕；source原始bytes與render後bytes各自界限驗證。",
+    "scope_of_limits": "以上為本次建議預設，不冒稱已採納；Unicode長度以UTF8 bytes另驗，不拿JSON Schema maxLength代替。任何新需求超限須重審，不默默截斷。"
+  },
+  "first_template": {
+    "id": "local-tauri-vanilla",
+    "template_version": "1.0.0",
+    "matrix": "desktop/windows-x64/rust/tauri2+vanilla/has_ui=true",
+    "product_paths": [
+      "program/src-tauri/Cargo.toml",
+      "program/src-tauri/build.rs",
+      "program/src-tauri/tauri.conf.json",
+      "program/src-tauri/src/main.rs",
+      "program/src-tauri/src/domain/mod.rs",
+      "program/src-tauri/src/ports/mod.rs",
+      "program/README.md",
+      "ui-ux/index.html",
+      "ui-ux/app.js",
+      "ui-ux/styles.css",
+      "ui-ux/ui-schema.json",
+      "ui-ux/README.md",
+      "program/src-tauri/Cargo.lock",
+      "program/src-tauri/rust-toolchain.toml"
+    ],
+    "rules": "只產生可審查的骨架/契約標記與未實作行為，不生成假的成功業務邏輯。依賴pins與toolchain matrix需在模板golden封存時從已稽核本機lock明列，不下載或宣稱建置成功。此JSON/example只是schema/plan fixture，完整模板內容與build golden不是本輪已交付產品。",
+    "pins_proposed_from_local_lock": {
+      "serde": "1.0.229",
+      "serde_json": "1.0.154",
+      "tauri": "2.12.5",
+      "tauri-build": "2.7.4"
+    },
+    "rust_toolchain_proposed": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "pin_gate": "S2前封存該模板自己的完整transitive Cargo.lock及resource字節golden；不能把含其他workspace根包的現有Cargo.lock原樣搬給生成專案。固定直接pins不等於已證明transitive build；此gate未做不宣稱可建置。",
+    "pins_source": {
+      "path": "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+      "sha256": "85f6daa9b5ee95aa37950bf2f92a9f90e9a8187361dd4395306cc867c053849a"
+    }
+  },
+  "publication_flow": [
+    {
+      "step": "prepare",
+      "effect": "只讀定義、可信catalog/SPEC。HOST用既有SpecStore驗證所需revision為Approved、content_hash與來源相符，再映射WORK policy；不足SaveOnly或明確error。讀現行active必持read lease；捕捉base digest。渲染bytes與plan只存在HOST本專案session。"
+    },
+    {
+      "step": "confirm",
+      "effect": "請求只有plan_id與預覽digest，不接受UI回傳路徑/任意files。檢查同project/session、完整typed定義相等與revision、template raw hash和approval來源仍有效。initialize之後取active writer lease；再次比對base digest。"
+    },
+    {
+      "step": "prepare-owned",
+      "effect": "分配generation_id、exclusive stage，逐個create_new寫入已預覽bytes，sync/驗證每檔、manifest及tree；全部通過才seal到versions，不自動接管任何既有目錄。"
+    },
+    {
+      "step": "activate",
+      "effect": "仍持writer lease，再檢查definition/template/approval綁定未變；replace_checked(base_digest,active bytes)。receipt成功後回GenerationActivated；COMMITTED後cleanup問題沿IO語意，不把已提交誤報為未寫入。"
+    },
+    {
+      "step": "reader",
+      "effect": "取得共享read lease＋檢查IO journal；讀active，核對project/序號/id；解析manifest raw bytes＋digest及投影；verify_sealed得到有界byte snapshot，釋放lease後交給consumer。Busy保留前一已驗證snapshot並標示尚未刷新。"
+    }
+  ],
+  "failure_matrix": [
+    {
+      "at": "prepare/cancel未確認",
+      "result": "無FS寫入；取消只消耗待確認計畫；原專案/active不變"
+    },
+    {
+      "at": "舊計畫/approval/template/base變動",
+      "result": "StalePlan或Conflict，原active不變；不得用同名稱猜版本"
+    },
+    {
+      "at": "initialize損壞/unknown marker",
+      "result": "StoreIdentityMismatch/RecoveryRequired；不清空namespace，不自動選版本"
+    },
+    {
+      "at": "begin/write/verify/seal之前失敗或取消",
+      "result": "不啟用；對本次owned stage顯式abort，刪除失敗則保留診斷，不修改未知/舊版本。Drop只關閉handle"
+    },
+    {
+      "at": "seal目的版本已存在",
+      "result": "AlreadyExists，即使empty也不覆寫；stage仍有可診斷ownership，明確重試新id或取消"
+    },
+    {
+      "at": "seal後active更新前失敗/取消",
+      "result": "舊active不變；sealed新版本保留為未啟用，不做即時GC"
+    },
+    {
+      "at": "active IO普通失敗",
+      "result": "沿FileCommit已驗證回復語意回錯誤；保留所有新舊sealed版本；不把新版本存在當已啟用"
+    },
+    {
+      "at": "active IO RecoveryRequired",
+      "result": "保留IO journal/old/new描述檔及版本；後續publishing與reader fail closed，舊已驗證記憶snapshot可檢視但不宣稱目前狀態已確認"
+    },
+    {
+      "at": "確認後/activate臨界點取消",
+      "result": "activate一旦開始不把cancel當可回退；等單檔交易結果再回Activated或明確error，不能已成功卻回Cancelled"
+    },
+    {
+      "at": "consumer遇未知/壞/缺檔/hash不符",
+      "result": "Integrity/UnsupportedVersion，不執行、不載入新內容，不改active或原檔"
+    },
+    {
+      "at": "seal/activate間程序異常",
+      "result": "未啟用版本保留；reader遵IOjournal和active的已驗證終態，不自動修復或清理"
+    }
+  ],
+  "IPC_and_UI_proposed": {
+    "commands": [
+      "generation_prepare { target_id, template_ref }",
+      "generation_confirm { plan_id, preview_digest }",
+      "generation_cancel { plan_id }",
+      "generation_current {}"
+    ],
+    "binding": "project/session由HOST目前已授權context解析；不接受UI傳入project_root、files、store_root、approval_passed。每個計畫限目前開啟session，重啟失效。",
+    "controls": "模板id/version/source_digest唯讀；預覽程式/UI UX兩樹與缺決策；明確生成/重新準備/取消。缺決策、過期、未知模板、Busy時禁用生成並給文字原因。",
+    "statuses": [
+      "DefinitionOnly",
+      "Prepared",
+      "Publishing",
+      "ActivatedSkeletonOnly",
+      "CancelledBeforeActivation",
+      "StalePlan",
+      "Busy",
+      "RecoveryRequired"
+    ],
+    "publication_error": "typed result成功與error互斥，保持先前已驗證內容；不顯示『功能完成』或『build成功』。M03 consumer無UI→FS。",
+    "plan_lifecycle": {
+      "id": "HOST assigns unique 32-lowercase-hex plan_id; one pending plan per authorized project/session. No wall-clock TTL or new Clock port.",
+      "digest": "preview_digest = sha256 of exact UTF-8 preview JSON response bytes stored by HOST; UI echoes the opaque digest. Not a digest reconstructed from UI fields.",
+      "invalidate": "New prepare replaces old plan; cancel, successful activation, project switch, session close and restart invalidate it. Stale binding rejects confirmation and requires prepare again.",
+      "confirm": "Compare plan_id and preview_digest, then freshly compare definition revision/digest, template raw digest, trusted approvals and base activation under writer lease before mutation.",
+      "result": "Tagged response: DefinitionOnly{missing}, Prepared{plan_id,preview_digest,preview}, ActivatedSkeletonOnly{generation_id,activation_sequence}, CancelledBeforeActivation{}, Error{code,message,retryable,recovery_paths}. Error and success payloads are mutually exclusive. Busy/StalePlan/RecoveryRequired are error codes; Publishing is progress only."
+    }
+  },
+  "decision_batch": [
+    {
+      "id": "M02-DX1",
+      "topic": "C純計畫兩函數/八類primitive模型、HOST驗證approval責任、SaveOnly語意與三檔envelope",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX2",
+      "topic": ".sgenaxis/generated固定布局、marker bootstrap、無自動GC、單active序號",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX3",
+      "topic": "三trait十方法＋共享read lease與private IO協調 seam，防止consumer看見未完成active",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX4",
+      "topic": "四種JSON schema、raw-byte digest規則、UTF8/ASCII路徑與數量/容量上限",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX5",
+      "topic": "發布/取消臨界點、失敗保全、封存版本保留與讀取一致性表",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX6",
+      "topic": "第一模板id/version、14個雙骨架產物路徑、相容矩陣與不可執行模板變數規則",
+      "status": "建議採用，待本次一次確認"
+    },
+    {
+      "id": "M02-DX7",
+      "topic": "S1先Skeleton/RED，再各自審查S2/HOST、S3/adapter、S4/consumer的精確範圍及測試門檻",
+      "status": "建議採用，待本次一次確認"
+    }
+  ],
+  "implementation_authority": "本輪只有文件與看板證據更新。採納C+B方向不等於本提案新API/schema/limits全數核准。本次細節確認後先建立C/S1 Skeleton與有效RED；產品實作與S2～S4仍需各自完整engineering packet/原生gate，不跳步。"
+}

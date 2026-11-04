@@ -1,0 +1,68 @@
+{
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "historical_inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "inventory_count": 796,
+  "inventory_drift": [],
+  "read_only_sources": {
+    "AGENTS.md": "0924af432bdec9aac7344b81150a750b1c346cfc5e2d034fd32260233553e4e6",
+    "docs/board.json": "ef06a4af1a7a5e1208879d519403e9ddc8f46f50431040dd66fdba0270d85fa2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/current-state.json": "6d6b84109533aa2a1eb21dd56737e55d159787bf6c1c9fb812136de24afd5c2b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/activation-source-fence-handoff/module-spec.json": "67947729dbe422c42715037d9564d9ed04f3ff967653be85a529132384826cfb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/activation-source-fence-handoff/check_packet.py": "a90b147351e8eaab963528b1b0d9c61cc70b7bc13aed32d11cb1e8c80a3b1cd6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/activation-source-fence-review/review.json": "c577849255a74adb814be5eb585498fec4768ca25d0182270f3e99ccba027387",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/activation-source-fence-review/fixtures.json": "67724453526f9ff803524c051b1102d831063e3beb1066354ae76bf5407c9c77",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json": "60d81ed00f6b0b1691f42aa87e454b92f72ed84986a0be89b4f7c2dec4d6bf08"
+  },
+  "proof_pointers": [
+    {
+      "field": "request.plan_id, preview_digest, operation_id",
+      "source": "../generation-exact-design/module-spec.json#/lifecycle/confirm",
+      "rule": "Closed client request only these three fields; exact saved preview lookup. WorkflowContext/paths/proofs never supplied as trusted DTO authority."
+    },
+    {
+      "field": "owner_captured / owner_before_cas / owner_delivery",
+      "source": "../cx-revision-v3/shared-contract.json#/wire_types/Context",
+      "rule": "Exact server context equality before CAS; delivery rechecks owner. Confirmed CAS after owner loss => ActivatedDeliveryDeferred; no rollback or unchanged claim."
+    },
+    {
+      "field": "sources[Definition]",
+      "source": "../cx-revision-v3/shared-contract.json#/source_reservation",
+      "rule": "M01 immutable definition revision/raw digest with owner reservation + verified committed read; M01 remains definition authority."
+    },
+    {
+      "field": "sources[Approval], approved_refs[]",
+      "source": "../generation-exact-design/module-spec.json#/source_contracts/approval_port",
+      "rule": "Actual immutable Approved SPEC module+revision+content_hash and HOST validity epoch. Source epoch reservation covers approval validity producer changes; no SPEC filesystem dependency."
+    },
+    {
+      "field": "sources[Design], design_saved_proof",
+      "source": "../generation-exact-design/module-spec.json#/source_contracts/design_port",
+      "rule": "M04 exact saved design revision/profile/semantic digest + formal Saved proof verified by issuer; changed/dirty/missing saved proof => DesignSaveRequired, no implicit Save or M04/M01 ACK."
+    },
+    {
+      "field": "native target_identity / seal directory_identity",
+      "source": "../cx-revision-v3/shared-contract.json#/source_reservation/native_trait",
+      "rule": "Trusted native capability canonical target and held OS shared read lease, readonly journal validation; no create/repair/cleanup. Native active writer identity verified independently."
+    },
+    {
+      "field": "projector.typed_profile",
+      "source": "../cx-revision-v3/shared-contract.json#/readiness_gates",
+      "rule": "M03/M04 typed design projector fixture evidence dependency; no blind opaque design parsing."
+    },
+    {
+      "field": "seal generation_id + manifest_digest",
+      "source": "../generation-exact-design/module-spec.json#/store_contract/seal_proof",
+      "rule": "Immutable exact byte/tree verification + durable no-replace publication required; seal alone never activates."
+    },
+    {
+      "field": "expected_active + cas.receipt",
+      "source": "../generation-exact-design/module-spec.json#/lifecycle/publish",
+      "rule": "Native checked CAS binds exact previous raw digest, new active descriptor raw digest, canonical target and nonempty transaction_id; authenticate issuer record and GenerationActivation tag."
+    },
+    {
+      "field": "template immutable digest/golden14/transitive lock",
+      "source": "../cx-revision-v3/shared-contract.json#/readiness_gates",
+      "rule": "14 actual template resources and standalone complete transitive lock golden are missing prerequisites, fixture true is hypothetical only."
+    }
+  ]
+}

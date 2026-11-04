@@ -1,0 +1,141 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Owner 可逐項回覆清單</title><style>body{font:16px system-ui;max-width:1120px;margin:40px auto;padding:0 24px;line-height:1.65;color:#172033}article{border:1px solid #ccd5df;border-radius:12px;padding:20px;margin:18px 0}pre{white-space:pre-wrap;background:#f3f6fa;padding:12px}a{color:#145ca8}.tag{color:#8a4e00}</style><h1>目前真正需要 Owner 決策的清單</h1><p>可回覆「GT-D1 A；GT-D2 A；GT-D4a A；GT-D4b A」。GT-D3 本輪免回覆；其目標組合已採納，版本與工具鏈證據由工程角色補。所有建議均未代選。</p><p class="tag">候選文件／產品語意待處置；產品 build、native 與驗收並未因此通過。</p>
+<article id="GT-D1"><h2>GT-D1 — 首版模板的可見內容</h2><p>首版是否採用現有靜態空殼候選？</p><ul>
+<li><b>A</b>：首版只生成靜態空殼；指定業務控制項另走模組規格與骨架</li>
+<li><b>B</b>：首版需指定控制項；回覆控制項及可見行為，工程角色先補規格候選</li>
+</ul>
+<p><b>建議：</b>A</p>
+<p><b>實際候選：</b>頁面只有專案標題與「候選骨架；業務行為尚未實作」狀態文字；controls=[]、events=[]；main.rs 啟動 Tauri shell，domain/ports 為骨架，無業務 command。</p>
+<p><b>影響：</b>main.rs、domain/ports、ui-ux 頁面；不影響已採納雙骨架方向。</p><p>證據：
+<a href="../golden14-candidate-20261104/expected/ui-ux/index.html">index.html</a> · <a href="../golden14-candidate-20261104/expected/ui-ux/ui-schema.json">ui-schema.json</a> · <a href="../golden14-candidate-20261104/expected/program/src-tauri/src/main.rs">main.rs</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="GT-D2"><h2>GT-D2 — 新產物初始版本；示例身分不作正式身分</h2><p>新生成專案的首個 package/config 版本是否使用候選 0.1.0？</p><ul>
+<li><b>A</b>：新專案初始版本 0.1.0；身分由既有已核准定義映射</li>
+<li><b>B</b>：指定另一個初始版本／產品政策（請填值）</li>
+</ul>
+<p><b>建議：</b>A；只確認候選新增的初始版本政策。識別欄位來源、合法化與衝突檢查由工程角色補。</p>
+<p><b>實際候選：</b>fixture productName=Golden14 Candidate、package=golden14-candidate、identifier=org.example.golden14candidate；全部只是 proposal fixture。Cargo.toml 與 tauri.conf.json version=0.1.0，非正式使用者專案資料。</p>
+<p><b>影響：</b>Cargo.toml、tauri.conf.json、標題與 README；不要求重批既有 project UUID／definition 綁定。</p><p>證據：
+<a href="../golden14-candidate-20261104/input.json">input.json</a> · <a href="../golden14-candidate-20261104/expected/program/src-tauri/Cargo.toml">Cargo.toml</a> · <a href="../golden14-candidate-20261104/expected/program/src-tauri/tauri.conf.json">tauri.conf.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="GT-D3"><h2>GT-D3 — 工具鏈與版本證據：工程補齊，本輪免回覆</h2><p>既有 Windows11 x64／local desktop／Rust＋Vanilla UI／Tauri2／has_ui=true 組合已採納，本輪不再詢問。</p><ul>
+</ul>
+<p><b>建議：</b>工程角色核對精確 pins、target、完整 lock、工具版本、可重現 build 與相容性；若結果要求改已採納目標，再提交具體差異決策。</p>
+<p><b>實際候選：</b>候選 rust-toolchain channel=1.99.1、minimal、x86_64-pc-windows-msvc；tauri-build =2.7.4、tauri =2.12.5、serde =1.0.229（derive）、serde_json =1.0.154。standalone lock 406 packages（405 registry）；離線解析/metadata 證據已有，產品 build/native 未驗。</p>
+<p><b>影響：</b>Cargo manifest／lock／toolchain；這些精確版本目前只是候選技術選型，不能以文件 PASS 自行升格採納。</p><p>證據：
+<a href="../golden14-candidate-20261104/expected/program/src-tauri/rust-toolchain.toml">rust-toolchain.toml</a> · <a href="../golden14-candidate-20261104/expected/program/src-tauri/Cargo.toml">Cargo.toml</a> · <a href="../golden14-candidate-20261104/toolchain-evidence.json">toolchain-evidence.json</a> · <a href="../../s1/adoption.json">adoption.json</a> · <a href="../exact-design/module-spec.json">module-spec.json</a>
+</p><p>selected = null；工程工作，本輪免回覆</p></article>
+<article id="GT-D4"><h2>GT-D4 — 模板預設體驗：分兩小項回覆</h2><p>請分別回覆 GT-D4a（視窗）及 GT-D4b（打包預設）。CSP／schema 技術有效性由工程角色補，不要求你審 raw schema。</p><ul>
+<li><b>GT-D4a.A</b>：預設視窗 960×640</li>
+<li><b>GT-D4a.B</b>：指定其他尺寸（寬×高）</li>
+<li><b>GT-D4b.A</b>：首版只生成，不自動打包；候選 bundle.active=false</li>
+<li><b>GT-D4b.B</b>：需要可手動打包的模板配置；先由工程提出明確候選，不自動執行 build/安裝</li>
+</ul>
+<p><b>建議：</b>GT-D4a.A、GT-D4b.A</p>
+<p><b>實際候選：</b>tauri.conf.json window=960×640，CSP=&quot;default-src &#x27;self&#x27;; style-src &#x27;self&#x27;&quot;，bundle.active=false；frontendDist=../../ui-ux。ui-schema 為 golden14.candidate-ui v1／SkeletonStatus／reviewer／空 controls 與 events。</p>
+<p><b>影響：</b>視窗與交付內容政策；改 CSP／bundle／UI schema 需工程檢查資源載入與既有契約，不自動批准其技術實作。</p><p>證據：
+<a href="../golden14-candidate-20261104/expected/program/src-tauri/tauri.conf.json">tauri.conf.json</a> · <a href="../golden14-candidate-20261104/expected/ui-ux/ui-schema.json">ui-schema.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="DEC-M02-01"><h2>DEC-M02-01 — 啟用時來源更新</h2><p>啟用鎖住來源時，來源更新的使用者結果？</p><ul>
+<li><b>A</b>：立即回 Busy，本次不修改，由使用者明確重試</li>
+<li><b>B</b>：Defer，本次不修改；工程先補明確解除保留與後續操作流程</li>
+</ul>
+<p><b>建議：</b>A</p>
+<p><b>實際候選：</b>現有 activation/source-fence 補正仍為提案；AF-OWNER-2 wire mapping 由工程處理，AF-OWNER-3 不確定結果不等自動重試。</p>
+<p><b>影響：</b>M02 F02–F03</p><p>證據：
+<a href="../activation-source-fence-correction/index.html">index.html</a> · <a href="../../../M01/planning/owner-confirmation-checklist-20261104/checklist.json">checklist.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="DEC-M03-01"><h2>DEC-M03-01 — 預覽首版支援範圍</h2><p>八維度各填「首版需要／明確排除／延後」；需要時填可見結果，不需指定 decoder SDK。</p><ul>
+<li><b>A</b>：首版先保留目前 selection-only communication preview；其他媒體逐維延後</li>
+<li><b>B</b>：指定要先支援的維度及可見結果（工程再補精確格式／limits／fixtures）</li>
+</ul>
+<p><b>建議：</b>A；若產品需要媒體預覽，改選 B 並列用途。</p>
+<p><b>實際候選：</b>八維度：文字、靜態影像、向量、動畫、音訊、未知/opaque素材、未解析素材/綁定、目前 selection-only communication preview。依賴圖示 PNG 不證明 imported-media decoder。</p>
+<p><b>影響：</b>M03 preview/media 支援範圍</p><p>證據：
+<a href="../../../M03/planning/media-capability-options-20261104/index.html">index.html</a> · <a href="../../../M01/planning/owner-confirmation-checklist-20261104/checklist.json">checklist.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="DEC-M04-01"><h2>DEC-M04-01 — 儲存後保留與 ACK 的先後</h2><p>逐項處置現有 G1–G4 候選，尤其 root 成功後才 ACK 的產品結果。</p><ul>
+<li><b>A</b>：接受候選的保守順序：證據缺失維持 Held／不推斷已釋放；root 成功後才 ACK</li>
+<li><b>B</b>：指定要修改的 G 子項及預期可見結果</li>
+</ul>
+<p><b>建議：</b>A；實際 receipt／root／ACK wire 與原生 provider 由工程補。</p>
+<p><b>實際候選：</b>G1 capture、G2 Held 證據、G3 錯誤觀察、G4 ACK 順序仍待精確採納，原有單檔 receipt 不等 semantic ACK。</p>
+<p><b>影響：</b>M04 F05、F10</p><p>證據：
+<a href="../../../M04/planning/save-retention-observation-proposal/index.html">index.html</a> · <a href="../../../M01/planning/owner-confirmation-checklist-20261104/checklist.json">checklist.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="DEC-M05-01"><h2>DEC-M05-01 — 提交結果不確定時的使用者處置</h2><p>無法證明 retention/CAS 提交結果時，是否維持需人工核對？</p><ul>
+<li><b>A</b>：維持需人工核對；不自動重試、ACK 或釋放</li>
+<li><b>B</b>：需要其他可見恢復流程（請描述）；工程先提安全與契約方案</li>
+</ul>
+<p><b>建議：</b>A</p>
+<p><b>實際候選：</b>H1–H4 request/proof/response/reconciliation 是待採納精確提案；issuer/fence/inclusion 的真實證據由工程提供。</p>
+<p><b>影響：</b>M05 F06</p><p>證據：
+<a href="../../../M05/planning/retention-receipt-mapping-proposal/index.html">index.html</a> · <a href="../../../M01/planning/owner-confirmation-checklist-20261104/checklist.json">checklist.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<article id="DEC-M07-01"><h2>DEC-M07-01 — Recovery ACK 協定方向</h2><p>Recovery ACK 採哪個已列出的提案方向？</p><ul>
+<li><b>A</b>：RA-O1：獨立 ack-recovery protocol／role／body／receipt 與 atomic owner mutation</li>
+<li><b>B</b>：RA-O2：正式版本化 formal/recovery discriminated union，工程補 migration/相容分析</li>
+</ul>
+<p><b>建議：</b>A</p>
+<p><b>實際候選：</b>formal-save ACK 現有語意保留；新 recovery 協定尚未採納。ordinal 公式／collision／replay／restart 證據由工程補，illustrative /0 不能當已批准公式。</p>
+<p><b>影響：</b>M07 F11–F12及M04 ACK owner</p><p>證據：
+<a href="../../../M07/planning/recovery-ack-contract-correction/index.html">index.html</a> · <a href="../../../M01/planning/owner-confirmation-checklist-20261104/checklist.json">checklist.json</a>
+</p><p>selected = null；需要 Owner 回覆</p></article>
+<h2>工程角色可補，不列為 Owner 授權題</h2><ul>
+<li><b>GT-D3</b>：既有目標不重問；核對 pins/toolchain/lock/build與原生環境證據，若需改目標提交差異。</li>
+<li><b>GT-D2</b>：正式 identity 來源映射／合法化／衝突範例；示例值不得當正式身分。</li>
+<li><b>GT-D4</b>：CSP、本機資源載入、UI schema、bundle 配置技術驗證；不將技術檢查丟給 Owner。</li>
+<li><b>M01 CR-D1/2/3</b>：先補真實 lease／Ready issuer／完整發布形狀與 migration 對照，再提交需要 Owner 選擇的具體差異。</li>
+<li><b>M06 MH1–MH6／BDD19</b>：現行 BDD19 完整恢復繼續有效，不要求再確認；工程補原子／補償 seam 可行性。只有提出 deferred retention 行為變更才請 Owner 選。</li>
+<li><b>M07 ordinal</b>：工程先補精確公式與 collision/replay 範例，未完成前不要求 Owner 選字串0或未知公式。</li>
+<li><b>IO／跨模組</b>：原 scope provider／manifest／hash／fixture／envelope 文件準備直接派工；Win11隔離機或外部存取若需Owner窗口另列供料，不當產品語意批准。</li>
+</ul><h2>已採納，不再問</h2><ul>
+<li>M01-S2-D1–D7 ledger facts preserved</li>
+<li>M02-DX1–DX7</li>
+<li>M02 first target Windows11 x64/local desktop/Rust+Vanilla UI/Tauri2/has_ui=true</li>
+<li>既有切片採納與歷史證據保留；沒有逐項ledger不否定歷史採納</li>
+</ul><h2>實際候選檔內容</h2>
+<h3>expected/program/src-tauri/Cargo.toml</h3><pre>[workspace]
+resolver = &quot;2&quot;
+
+[package]
+name = &quot;golden14-candidate&quot;
+version = &quot;0.1.0&quot;
+edition = &quot;2021&quot;
+
+[build-dependencies]
+tauri-build = { version = &quot;=2.7.4&quot;, features = [] }
+
+[dependencies]
+tauri = { version = &quot;=2.12.5&quot;, features = [] }
+serde = { version = &quot;=1.0.229&quot;, features = [&quot;derive&quot;] }
+serde_json = &quot;=1.0.154&quot;
+</pre>
+<h3>expected/program/src-tauri/tauri.conf.json</h3><pre>{
+  &quot;$schema&quot;: &quot;https://schema.tauri.app/config/2&quot;,
+  &quot;productName&quot;: &quot;Golden14 Candidate&quot;,
+  &quot;version&quot;: &quot;0.1.0&quot;,
+  &quot;identifier&quot;: &quot;org.example.golden14candidate&quot;,
+  &quot;build&quot;: { &quot;frontendDist&quot;: &quot;../../ui-ux&quot; },
+  &quot;app&quot;: { &quot;windows&quot;: [{ &quot;title&quot;: &quot;Golden14 Candidate&quot;, &quot;width&quot;: 960, &quot;height&quot;: 640 }], &quot;security&quot;: { &quot;csp&quot;: &quot;default-src &#x27;self&#x27;; style-src &#x27;self&#x27;&quot; } },
+  &quot;bundle&quot;: { &quot;active&quot;: false }
+}
+</pre>
+<h3>expected/program/src-tauri/rust-toolchain.toml</h3><pre>[toolchain]
+channel = &quot;1.99.1&quot;
+profile = &quot;minimal&quot;
+targets = [&quot;x86_64-pc-windows-msvc&quot;]
+</pre>
+<h3>expected/ui-ux/ui-schema.json</h3><pre>{
+  &quot;schema&quot;: &quot;golden14.candidate-ui&quot;,
+  &quot;version&quot;: 1,
+  &quot;status&quot;: &quot;PROPOSED_NOT_ADOPTED&quot;,
+  &quot;component&quot;: &quot;SkeletonStatus&quot;,
+  &quot;userRole&quot;: &quot;reviewer&quot;,
+  &quot;controls&quot;: [],
+  &quot;events&quot;: [],
+  &quot;emptyState&quot;: &quot;Business behavior not implemented&quot;,
+  &quot;validation&quot;: &quot;No user input&quot;,
+  &quot;accessibility&quot;: { &quot;language&quot;: &quot;zh-Hant&quot;, &quot;statusRole&quot;: &quot;status&quot; }
+}
+</pre>
+<p>來源796／漂移0；live HEAD 5b709343a890503ebbe24a802e43cda5647df124，與歷史31babe87分列。作者自檢不等獨立審查。</p><script type="application/json" id="reply-checklist">{"author": "/root/owner_reply_list", "status": "PROPOSED_REPLY_SURFACE_PENDING_INDEPENDENT_REVIEW", "selected": null, "product_pass": false, "items": [{"id": "GT-D1", "title": "首版模板的可見內容", "question": "首版是否採用現有靜態空殼候選？", "options": {"A": "首版只生成靜態空殼；指定業務控制項另走模組規格與骨架", "B": "首版需指定控制項；回覆控制項及可見行為，工程角色先補規格候選"}, "recommended": "A", "actual_candidate": "頁面只有專案標題與「候選骨架；業務行為尚未實作」狀態文字；controls=[]、events=[]；main.rs 啟動 Tauri shell，domain/ports 為骨架，無業務 command。", "impact": "main.rs、domain/ports、ui-ux 頁面；不影響已採納雙骨架方向。", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\ui-ux\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\ui-ux\\ui-schema.json", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\src\\main.rs"], "requires_owner_reply": true, "selected": null}, {"id": "GT-D2", "title": "新產物初始版本；示例身分不作正式身分", "question": "新生成專案的首個 package/config 版本是否使用候選 0.1.0？", "options": {"A": "新專案初始版本 0.1.0；身分由既有已核准定義映射", "B": "指定另一個初始版本／產品政策（請填值）"}, "recommended": "A；只確認候選新增的初始版本政策。識別欄位來源、合法化與衝突檢查由工程角色補。", "actual_candidate": "fixture productName=Golden14 Candidate、package=golden14-candidate、identifier=org.example.golden14candidate；全部只是 proposal fixture。Cargo.toml 與 tauri.conf.json version=0.1.0，非正式使用者專案資料。", "impact": "Cargo.toml、tauri.conf.json、標題與 README；不要求重批既有 project UUID／definition 綁定。", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\input.json", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\Cargo.toml", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\tauri.conf.json"], "requires_owner_reply": true, "selected": null}, {"id": "GT-D3", "title": "工具鏈與版本證據：工程補齊，本輪免回覆", "question": "既有 Windows11 x64／local desktop／Rust＋Vanilla UI／Tauri2／has_ui=true 組合已採納，本輪不再詢問。", "options": {}, "recommended": "工程角色核對精確 pins、target、完整 lock、工具版本、可重現 build 與相容性；若結果要求改已採納目標，再提交具體差異決策。", "actual_candidate": "候選 rust-toolchain channel=1.99.1、minimal、x86_64-pc-windows-msvc；tauri-build =2.7.4、tauri =2.12.5、serde =1.0.229（derive）、serde_json =1.0.154。standalone lock 406 packages（405 registry）；離線解析/metadata 證據已有，產品 build/native 未驗。", "impact": "Cargo manifest／lock／toolchain；這些精確版本目前只是候選技術選型，不能以文件 PASS 自行升格採納。", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\rust-toolchain.toml", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\Cargo.toml", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\toolchain-evidence.json", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\s1\\adoption.json", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\exact-design\\module-spec.json"], "requires_owner_reply": false, "selected": null}, {"id": "GT-D4", "title": "模板預設體驗：分兩小項回覆", "question": "請分別回覆 GT-D4a（視窗）及 GT-D4b（打包預設）。CSP／schema 技術有效性由工程角色補，不要求你審 raw schema。", "options": {"GT-D4a.A": "預設視窗 960×640", "GT-D4a.B": "指定其他尺寸（寬×高）", "GT-D4b.A": "首版只生成，不自動打包；候選 bundle.active=false", "GT-D4b.B": "需要可手動打包的模板配置；先由工程提出明確候選，不自動執行 build/安裝"}, "recommended": "GT-D4a.A、GT-D4b.A", "actual_candidate": "tauri.conf.json window=960×640，CSP=\"default-src 'self'; style-src 'self'\"，bundle.active=false；frontendDist=../../ui-ux。ui-schema 為 golden14.candidate-ui v1／SkeletonStatus／reviewer／空 controls 與 events。", "impact": "視窗與交付內容政策；改 CSP／bundle／UI schema 需工程檢查資源載入與既有契約，不自動批准其技術實作。", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\program\\src-tauri\\tauri.conf.json", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\golden14-candidate-20261104\\expected\\ui-ux\\ui-schema.json"], "requires_owner_reply": true, "selected": null}, {"id": "DEC-M02-01", "title": "啟用時來源更新", "question": "啟用鎖住來源時，來源更新的使用者結果？", "options": {"A": "立即回 Busy，本次不修改，由使用者明確重試", "B": "Defer，本次不修改；工程先補明確解除保留與後續操作流程"}, "recommended": "A", "actual_candidate": "現有 activation/source-fence 補正仍為提案；AF-OWNER-2 wire mapping 由工程處理，AF-OWNER-3 不確定結果不等自動重試。", "impact": "M02 F02–F03", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M02\\planning\\activation-source-fence-correction\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M01\\planning\\owner-confirmation-checklist-20261104\\checklist.json"], "requires_owner_reply": true, "selected": null}, {"id": "DEC-M03-01", "title": "預覽首版支援範圍", "question": "八維度各填「首版需要／明確排除／延後」；需要時填可見結果，不需指定 decoder SDK。", "options": {"A": "首版先保留目前 selection-only communication preview；其他媒體逐維延後", "B": "指定要先支援的維度及可見結果（工程再補精確格式／limits／fixtures）"}, "recommended": "A；若產品需要媒體預覽，改選 B 並列用途。", "actual_candidate": "八維度：文字、靜態影像、向量、動畫、音訊、未知/opaque素材、未解析素材/綁定、目前 selection-only communication preview。依賴圖示 PNG 不證明 imported-media decoder。", "impact": "M03 preview/media 支援範圍", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M03\\planning\\media-capability-options-20261104\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M01\\planning\\owner-confirmation-checklist-20261104\\checklist.json"], "requires_owner_reply": true, "selected": null}, {"id": "DEC-M04-01", "title": "儲存後保留與 ACK 的先後", "question": "逐項處置現有 G1–G4 候選，尤其 root 成功後才 ACK 的產品結果。", "options": {"A": "接受候選的保守順序：證據缺失維持 Held／不推斷已釋放；root 成功後才 ACK", "B": "指定要修改的 G 子項及預期可見結果"}, "recommended": "A；實際 receipt／root／ACK wire 與原生 provider 由工程補。", "actual_candidate": "G1 capture、G2 Held 證據、G3 錯誤觀察、G4 ACK 順序仍待精確採納，原有單檔 receipt 不等 semantic ACK。", "impact": "M04 F05、F10", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\save-retention-observation-proposal\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M01\\planning\\owner-confirmation-checklist-20261104\\checklist.json"], "requires_owner_reply": true, "selected": null}, {"id": "DEC-M05-01", "title": "提交結果不確定時的使用者處置", "question": "無法證明 retention/CAS 提交結果時，是否維持需人工核對？", "options": {"A": "維持需人工核對；不自動重試、ACK 或釋放", "B": "需要其他可見恢復流程（請描述）；工程先提安全與契約方案"}, "recommended": "A", "actual_candidate": "H1–H4 request/proof/response/reconciliation 是待採納精確提案；issuer/fence/inclusion 的真實證據由工程提供。", "impact": "M05 F06", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M05\\planning\\retention-receipt-mapping-proposal\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M01\\planning\\owner-confirmation-checklist-20261104\\checklist.json"], "requires_owner_reply": true, "selected": null}, {"id": "DEC-M07-01", "title": "Recovery ACK 協定方向", "question": "Recovery ACK 採哪個已列出的提案方向？", "options": {"A": "RA-O1：獨立 ack-recovery protocol／role／body／receipt 與 atomic owner mutation", "B": "RA-O2：正式版本化 formal/recovery discriminated union，工程補 migration/相容分析"}, "recommended": "A", "actual_candidate": "formal-save ACK 現有語意保留；新 recovery 協定尚未採納。ordinal 公式／collision／replay／restart 證據由工程補，illustrative /0 不能當已批准公式。", "impact": "M07 F11–F12及M04 ACK owner", "evidence": ["docs\\requirements-confirmation\\phase1-spec\\tasks\\M07\\planning\\recovery-ack-contract-correction\\index.html", "docs\\requirements-confirmation\\phase1-spec\\tasks\\M01\\planning\\owner-confirmation-checklist-20261104\\checklist.json"], "requires_owner_reply": true, "selected": null}], "engineering_not_owner_questions": [{"item": "GT-D3", "work": "既有目標不重問；核對 pins/toolchain/lock/build與原生環境證據，若需改目標提交差異。"}, {"item": "GT-D2", "work": "正式 identity 來源映射／合法化／衝突範例；示例值不得當正式身分。"}, {"item": "GT-D4", "work": "CSP、本機資源載入、UI schema、bundle 配置技術驗證；不將技術檢查丟給 Owner。"}, {"item": "M01 CR-D1/2/3", "work": "先補真實 lease／Ready issuer／完整發布形狀與 migration 對照，再提交需要 Owner 選擇的具體差異。"}, {"item": "M06 MH1–MH6／BDD19", "work": "現行 BDD19 完整恢復繼續有效，不要求再確認；工程補原子／補償 seam 可行性。只有提出 deferred retention 行為變更才請 Owner 選。"}, {"item": "M07 ordinal", "work": "工程先補精確公式與 collision/replay 範例，未完成前不要求 Owner 選字串0或未知公式。"}, {"item": "IO／跨模組", "work": "原 scope provider／manifest／hash／fixture／envelope 文件準備直接派工；Win11隔離機或外部存取若需Owner窗口另列供料，不當產品語意批准。"}], "already_adopted_not_reasked": ["M01-S2-D1–D7 ledger facts preserved", "M02-DX1–DX7", "M02 first target Windows11 x64/local desktop/Rust+Vanilla UI/Tauri2/has_ui=true", "既有切片採納與歷史證據保留；沒有逐項ledger不否定歷史採納"], "limits": ["建議不等採納；所有selected維持null", "回覆僅處置對應產品語意，不自動放行產品實作／build／native／Done／commit", "現行BDD19未變；改為deferred retention需BEHAVIOR_CHANGE與重新規劃"], "live_head": "5b709343a890503ebbe24a802e43cda5647df124", "historical_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "authority_count": 796, "authority_drift": [], "source_bindings": [{"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/candidate.json", "sha256": "7de0def1e9783dddcf05a9434c73d694b67beb9e30182a9706a5fbfe0125780b"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/input.json", "sha256": "ba244fa496d9de109b8445d49a68db8c71ee7a66959cc31c4d2b33c9eaf51540"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/toolchain-evidence.json", "sha256": "2f637d8e2a5c7c6e0ebea2ba6bdc1177cd73a2b7acc77a1b223a7189631fe838"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/program/src-tauri/Cargo.toml", "sha256": "885a561968812ec8f141177cb089b704b0bc344b417b331e6362b750cd6a5c40"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/program/src-tauri/tauri.conf.json", "sha256": "6370f13eb4763f0e0033543fcfa097010e77cb5efd331deccb625ebdd4e86f77"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/program/src-tauri/rust-toolchain.toml", "sha256": "5603e3c06800e871a37abb95f97b3ac063e66a9a4a0eb3efd432007c63b8abe9"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/program/src-tauri/src/main.rs", "sha256": "3a9db384b96aac1d91d4a72b216dccdc497a62b1894155dfb69aad0749cb74c0"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/ui-ux/index.html", "sha256": "a3f4214f8cd402aa24c336c430588840734e9b1e4fa54a21add86c60262b18d6"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-20261104/expected/ui-ux/ui-schema.json", "sha256": "007ab9171fa308cda4b36472552d32a7c2c4c8f4513c05730d551b8f2c752335"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/owner-confirmation-checklist-20261104/checklist.json", "sha256": "a5f7c4d9b7bc5234bdd3a32878b6115a5b87616c1d68bb83e7287782ec11ab9a"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/adoption.json", "sha256": "d42b47e895232ce2502b572fe30ad2e66d62d65832e706188e964f9e706eb3f4"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/module-spec.json", "sha256": "295b5d85780a3ad2602ae24a3f6e40bc62750994f5206119276950d4f588cdd7"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-correction-review-20261104/results.json", "sha256": "3ff3b45cb50a3346be0845fe3eb2db6b213f4b0d01d97af63744c6aa5418923f"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/activation-source-fence-correction/index.html", "sha256": "15027379f4ee8e75f02b546d94f09dcbb0b4fb528f9de2fb3993d5e39c635946"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/media-capability-options-20261104/index.html", "sha256": "36db7e7644ec9cfc2f9fab669eabc2af7f50ad34812d25a9a739030dcc09477f"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-retention-observation-proposal/index.html", "sha256": "439792cf441bbbec7bca4a68bfb8dbf8ccdd51ca98719bce8d973d4ce6e35235"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/retention-receipt-mapping-proposal/index.html", "sha256": "e55a71f6748911d3c2db3c8ff8c78d431965f89793997faeae587036b910cec2"}, {"path": "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/recovery-ack-contract-correction/index.html", "sha256": "5bd400ef7455c827057eb2f46ea9ea554616735773bbf9a7e046d23a73b45b1a"}], "generated_at": "2026-11-04T13:43:59.586340+08:00"}</script></html>

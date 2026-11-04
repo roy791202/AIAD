@@ -1,0 +1,97 @@
+[
+  {
+    "field": "request.plan_id, preview_digest, operation_id",
+    "source": "../generation-exact-design/module-spec.json#/lifecycle/confirm",
+    "body": "DTO plan_id+preview_digest+operation_id only. Revalidate sources/fences/S1 binding and base active raw digest. Bootstrap if absent then acquire active writer lease; exact observed bytes digest must equal captured base, sequence+1 checked. Allocate32hex generation ID with exclusive stage create, max32collision attempts. Stage/rendered bytes are the previewed bytes, not re-rendered mutable inputs.",
+    "body_sha256": "e56a5e47ef030da85e7334dc1d0b3ade9dfc35875e686ab26e84bbbfc9bbf6a5",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "owner_captured / owner_before_cas / owner_delivery",
+    "source": "../cx-revision-v3/shared-contract.json#/wire_types/Context",
+    "body": "Server-derived immutable WorkflowContext {project_uuid,document_uuid,session_id,owner_generation:U64,captured_revision:U64,workflow_id:UUID}; no transition operation_id in context. Runtime authority never comes from labels/DTO.",
+    "body_sha256": "097c3bf6b7b8a8b2f42a8bf9e86bf1cbe85061f515a7283eb46a59a870a1dc71",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "sources[Definition]",
+    "source": "../cx-revision-v3/shared-contract.json#/source_reservation",
+    "body": {
+      "application_trait": "SourceReadReservation: snapshot_id()->SourceSnapshotId; validate_held()->Result<SourceSnapshotId,SourceFenceError>; explicit release(self). Owns authenticated snapshot identity+held producer read capability; cannot be constructed from DTO. Drop releases handles only.",
+      "SourceSnapshotId": "{issuer:Definition|Design|Approval,project_uuid,owner_generation,revision_or_epoch,typed_digest}; exact equality, not timestamp.",
+      "native_trait": "CommittedReadPort.acquire_read(trusted_target_capability)->CommittedReadLease; lease.read_verified(max_bytes)->VerifiedCommittedBytes; lease owns OS shared lock compatible with existing FileCommit exclusive writer, normalized target+readonly journal validation. No create/repair/cleanup. Missing sidecar =>Unavailable.",
+      "producer_rules": "Definition/design owner read reservation blocks their mutation and exclusive file writer until generation terminal result; acquire definition\u2192approval HOST epoch\u2192design before active writer. Immutable SPEC Approved revisions remain pure; HOST epoch covers evidence validity changes, not a SPEC filesystem dependency. All producer mutation routes must honor reservation; incomplete coverage =>DependencyNotReady.",
+      "io_guard": "IO-owned crate-private CommittedReadGuard unforgeable outside adapter constructor. inspect_committed_locked(&CommittedReadGuard)->Result<CommittedReadInspection,CommitError>; validates guard-bound canonical target/terminal journal/current raw digest, no path argument replacement. Public FileCommitPort unchanged.",
+      "scope": "New committed_read.rs ports/adapter/native tests plus generation_sources.rs application provider adapters. Only proposed exact child files below; accepted IO implementation not re-approved automatically."
+    },
+    "body_sha256": "19316874dd68d07e3e8a9502e0384e3c73fd256905adc41284c897293a955441",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "sources[Approval], approved_refs[]",
+    "source": "../generation-exact-design/module-spec.json#/source_contracts/approval_port",
+    "body": "ApprovalSource.verify(definition_evidence, required_refs[]) -> ApprovalEvidence {sorted approved module/revision/content_hash refs, approval_digest,source_epoch}; every ref must resolve actual Approved immutable SPEC revision with matching raw content_hash. Digest sha256 of compact JSON [\"SGA-GENERATION-APPROVAL-v1\",sorted tuples]; lowercase sha256: prefix. Unknown/unapproved refs yield missing requirements for S1 SaveDefinitionOnly; integrity mismatch explicit error. Revalidate exact source epoch/content at confirm and activation.",
+    "body_sha256": "a5160a4244c5d5800b4670910d9d956958118c7c59ee4c93284dbfc07f993ed2",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "sources[Design], design_saved_proof",
+    "source": "../generation-exact-design/module-spec.json#/source_contracts/design_port",
+    "body": "DesignSource.capture_saved(context) -> DesignEvidence {project/document/session/generation,revision,format,semantic_profile,digest,canonical_payload,formal_save_proof}; revalidate(evidence) under owner fence. Initial source proposal requires current captured revision exactly covered by verified M04 formal Saved proof (including pending M05 transfer-before-ACK amendment if adopted); dirty/deferred/missing proof returns DesignSaveRequired. User chooses explicit save separately. Headless/blank UI generation may omit design only when definition explicitly authorizes empty design contract; never infer approval from absent doc.",
+    "body_sha256": "df454956e2174b32028fd98447698e186269d00109a9f2a555f0775c30274d67",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "native target_identity / seal directory_identity",
+    "source": "../cx-revision-v3/shared-contract.json#/source_reservation/native_trait",
+    "body": "CommittedReadPort.acquire_read(trusted_target_capability)->CommittedReadLease; lease.read_verified(max_bytes)->VerifiedCommittedBytes; lease owns OS shared lock compatible with existing FileCommit exclusive writer, normalized target+readonly journal validation. No create/repair/cleanup. Missing sidecar =>Unavailable.",
+    "body_sha256": "4c616373996fdf5adb33830d82d7b1595f8796598287baff1f5a88af607eaf29",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "projector.typed_profile",
+    "source": "../cx-revision-v3/shared-contract.json#/readiness_gates",
+    "body": [
+      "No adoption or architecture PASS from document revision",
+      "M02 template14resources+standalone full transitive lock golden required before renderer Skeleton acceptance",
+      "ESS typed entity/parent/edge/binding projector with exact fixtures required before affected clear/merge/install",
+      "native Windows11 alias/8.3/reparse/durability separately measured; environment NOT RUN remains",
+      "No physical GC/repair/time-based pin release/no blanket union envelope",
+      "RR document proposals need separate readonly reacceptance; no self-approval",
+      "M05 receipt schema and bounded read grant candidate adoption before Port/Skeleton",
+      "Per-command exact DTO/schema and phase fixtures compiled independently before valid RED"
+    ],
+    "body_sha256": "f20649b5c6b4dc772637d2c32c7ab6911979fce92abae9b72c35fab0a566f3bf",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "seal generation_id + manifest_digest",
+    "source": "../generation-exact-design/module-spec.json#/store_contract/seal_proof",
+    "body": "seal checks every output filename/length/hash, exact table/no extra/missing files, symlink/reparse/hardlink rejection and directory identity. Flush every file+manifest+durable no-replace directory publication. SealedGeneration only after verified success. Existing destination even empty never overwritten. Partial/unverifiable seal returns preserved stage/version paths and no activation.",
+    "body_sha256": "ab74756705a43e57a5eba90ee6312c59219cd6f10b7575f557335e81bfbf80c0",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "expected_active + cas.receipt",
+    "source": "../generation-exact-design/module-spec.json#/lifecycle/publish",
+    "body": "Write+verify owned stage, seal immutable dual tree; revalidate input fences and target identity before activation; replace_checked(base raw,exact active descriptor). Validate CommitReceipt target/previous/committed digest and nonempty transaction_id. Success GenerationActivated carries version+manifest+active raw proof, definition/design capture IDs. M01/M04 baselines never ACKed by M02.",
+    "body_sha256": "89f2bef1f2202fa2f47ce7fe9f5de1050d78bc71c9622edc708196b59c18224b",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  },
+  {
+    "field": "template immutable digest/golden14/transitive lock",
+    "source": "../cx-revision-v3/shared-contract.json#/readiness_gates",
+    "body": [
+      "No adoption or architecture PASS from document revision",
+      "M02 template14resources+standalone full transitive lock golden required before renderer Skeleton acceptance",
+      "ESS typed entity/parent/edge/binding projector with exact fixtures required before affected clear/merge/install",
+      "native Windows11 alias/8.3/reparse/durability separately measured; environment NOT RUN remains",
+      "No physical GC/repair/time-based pin release/no blanket union envelope",
+      "RR document proposals need separate readonly reacceptance; no self-approval",
+      "M05 receipt schema and bounded read grant candidate adoption before Port/Skeleton",
+      "Per-command exact DTO/schema and phase fixtures compiled independently before valid RED"
+    ],
+    "body_sha256": "f20649b5c6b4dc772637d2c32c7ab6911979fce92abae9b72c35fab0a566f3bf",
+    "comparison": "Source body resolved independently; prose mapping does not establish field consumption"
+  }
+]

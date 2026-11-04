@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "sgenaxis.generation-artifacts"
+    },
+    "version": {
+      "const": 1
+    },
+    "project_uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "generation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "definition_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
+          "description": "semantic validator also enforces <=18446744073709551615"
+        },
+        "definition_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "template_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "template_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "template_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "approval_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "definition_revision",
+        "definition_digest",
+        "target_id",
+        "template_id",
+        "template_version",
+        "template_digest",
+        "approval_digest"
+      ]
+    },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "relative_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*$",
+            "description": "semantic checks component<=64, count<=16, reject dot/dotdot/reserved/terminal-dot/casefold or prefix collisions"
+          },
+          "product": {
+            "enum": [
+              "program",
+              "ui_ux"
+            ]
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4194304
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "relative_path",
+          "product",
+          "size_bytes",
+          "digest"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "version",
+    "project_uuid",
+    "generation_id",
+    "binding",
+    "files"
+  ]
+}

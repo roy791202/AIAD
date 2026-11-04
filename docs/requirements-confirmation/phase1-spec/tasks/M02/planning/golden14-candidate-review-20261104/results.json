@@ -1,0 +1,252 @@
+{
+  "status": "CHANGES_REQUESTED_BOUNDED_CANDIDATE_TOOLING",
+  "reviewer": "/root/golden14_independent_review",
+  "author": "/root/golden14_candidate_author",
+  "checks": [
+    {
+      "name": "candidate_seal_before",
+      "pass": true
+    },
+    {
+      "name": "fourteen_paths",
+      "pass": true
+    },
+    {
+      "name": "null_choices",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/Cargo.toml",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/Cargo.toml",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/build.rs",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/build.rs",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/tauri.conf.json",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/tauri.conf.json",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/src/main.rs",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/src/main.rs",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/src/domain/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/src/domain/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/src/ports/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/src/ports/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "template:program/README.md",
+      "pass": true
+    },
+    {
+      "name": "expected:program/README.md",
+      "pass": true
+    },
+    {
+      "name": "template:ui-ux/index.html",
+      "pass": true
+    },
+    {
+      "name": "expected:ui-ux/index.html",
+      "pass": true
+    },
+    {
+      "name": "template:ui-ux/app.js",
+      "pass": true
+    },
+    {
+      "name": "expected:ui-ux/app.js",
+      "pass": true
+    },
+    {
+      "name": "template:ui-ux/styles.css",
+      "pass": true
+    },
+    {
+      "name": "expected:ui-ux/styles.css",
+      "pass": true
+    },
+    {
+      "name": "template:ui-ux/ui-schema.json",
+      "pass": true
+    },
+    {
+      "name": "expected:ui-ux/ui-schema.json",
+      "pass": true
+    },
+    {
+      "name": "template:ui-ux/README.md",
+      "pass": true
+    },
+    {
+      "name": "expected:ui-ux/README.md",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/Cargo.lock",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/Cargo.lock",
+      "pass": true
+    },
+    {
+      "name": "template:program/src-tauri/rust-toolchain.toml",
+      "pass": true
+    },
+    {
+      "name": "expected:program/src-tauri/rust-toolchain.toml",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/Cargo.toml",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/build.rs",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/tauri.conf.json",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/src/main.rs",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/src/domain/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/src/ports/mod.rs",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/README.md",
+      "pass": true
+    },
+    {
+      "name": "independent_render:ui-ux/index.html",
+      "pass": true
+    },
+    {
+      "name": "independent_render:ui-ux/app.js",
+      "pass": true
+    },
+    {
+      "name": "independent_render:ui-ux/styles.css",
+      "pass": true
+    },
+    {
+      "name": "independent_render:ui-ux/ui-schema.json",
+      "pass": true
+    },
+    {
+      "name": "independent_render:ui-ux/README.md",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/Cargo.lock",
+      "pass": true
+    },
+    {
+      "name": "independent_render:program/src-tauri/rust-toolchain.toml",
+      "pass": true
+    },
+    {
+      "name": "independent_locked_metadata",
+      "pass": true
+    },
+    {
+      "name": "own_root_full_lock",
+      "pass": true
+    },
+    {
+      "name": "unknown_token_rejected",
+      "pass": true
+    },
+    {
+      "name": "authority796",
+      "pass": true
+    },
+    {
+      "name": "candidate_seal_after",
+      "pass": true
+    }
+  ],
+  "findings": [
+    {
+      "id": "G14-R1",
+      "severity": "P2",
+      "scope": "candidate tooling only",
+      "finding": "No executable fail-closed renderer/checker consumes submitted input/templates and rejects drift. Author build.py regenerates all outputs from embedded constants, overwriting tampering; tamper assertions only prove hashes differ.",
+      "required_correction": "Add separate render/validate command consuming bound input.json and actual templates; validate source bindings and all expected outputs/lock hashes without rewriting candidate. Add rejection tests for input/template/output/lock edits and missing lock. Keep all proposals unadopted."
+    }
+  ],
+  "probes": [
+    {
+      "kind": "template",
+      "observation": "No read-only candidate validation command exists; build.py regenerates and overwrites submitted artifacts before hash checks. Hash inequality check is not rejection.",
+      "result": "GAP_CONFIRMED_BY_SOURCE",
+      "source": "build.py resources/fixture definitions, write loops, tamper checks"
+    },
+    {
+      "kind": "input",
+      "observation": "No read-only candidate validation command exists; build.py regenerates and overwrites submitted artifacts before hash checks. Hash inequality check is not rejection.",
+      "result": "GAP_CONFIRMED_BY_SOURCE",
+      "source": "build.py resources/fixture definitions, write loops, tamper checks"
+    },
+    {
+      "kind": "output",
+      "observation": "No read-only candidate validation command exists; build.py regenerates and overwrites submitted artifacts before hash checks. Hash inequality check is not rejection.",
+      "result": "GAP_CONFIRMED_BY_SOURCE",
+      "source": "build.py resources/fixture definitions, write loops, tamper checks"
+    },
+    {
+      "kind": "lock",
+      "observation": "No read-only candidate validation command exists; build.py regenerates and overwrites submitted artifacts before hash checks. Hash inequality check is not rejection.",
+      "result": "GAP_CONFIRMED_BY_SOURCE",
+      "source": "build.py resources/fixture definitions, write loops, tamper checks"
+    }
+  ],
+  "metadata": {
+    "exit": 0,
+    "stdout": "{\"packages\":[{\"name\":\"golden14-candidate\",\"version\":\"0.1.0\",\"id\":\"path+file:///D:/AIAD/docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-review-20261104/isolated/program/src-tauri#golden14-candidate@0.1.0\",\"license\":null,\"license_file\":null,\"description\":null,\"source\":null,\"dependencies\":[{\"name\":\"serde\",\"source\":\"registry+https://github.com/rust-lang/crates.io-index\",\"req\":\"=1.0.229\",\"kind\":null,\"rename\":null,\"optional\":false,\"uses_default_features\":true,\"features\":[\"derive\"],\"target\":null,\"registry\":null},{\"name\":\"serde_json\",\"source\":\"registry+https://github.com/rust-lang/crates.io-index\",\"req\":\"=1.0.154\",\"kind\":null,\"rename\":null,\"optional\":false,\"uses_default_features\":true,\"features\":[],\"target\":null,\"registry\":null},{\"name\":\"tauri\",\"source\":\"registry+https://github.com/rust-lang/crates.io-index\",\"req\":\"=2.12.5\",\"kind\":null,\"rename\":null,\"optional\":false,\"uses_default_features\":true,\"features\":[],\"target\":null,\"registry\":null},{\"name\":\"tauri-build\",\"source\":\"registry+https://github.com/rust-lang/crates.io-index\",\"req\":\"=2.7.4\",\"kind\":\"build\",\"rename\":null,\"optional\":false,\"uses_default_features\":true,\"features\":[],\"target\":null,\"registry\":null}],\"targets\":[{\"kind\":[\"bin\"],\"crate_types\":[\"bin\"],\"name\":\"golden14-candidate\",\"src_path\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\\\\src\\\\main.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":false,\"test\":true},{\"kind\":[\"custom-build\"],\"crate_types\":[\"bin\"],\"name\":\"build-script-build\",\"src_path\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\\\\build.rs\",\"edition\":\"2021\",\"doc\":false,\"doctest\":false,\"test\":false}],\"features\":{},\"manifest_path\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\\\\Cargo.toml\",\"metadata\":null,\"publish\":null,\"authors\":[],\"categories\":[],\"keywords\":[],\"readme\":null,\"repository\":null,\"homepage\":null,\"documentation\":null,\"edition\":\"2021\",\"links\":null,\"default_run\":null,\"rust_version\":null}],\"workspace_members\":[\"path+file:///D:/AIAD/docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-review-20261104/isolated/program/src-tauri#golden14-candidate@0.1.0\"],\"workspace_default_members\":[\"path+file:///D:/AIAD/docs/requirements-confirmation/phase1-spec/tasks/M02/planning/golden14-candidate-review-20261104/isolated/program/src-tauri#golden14-candidate@0.1.0\"],\"resolve\":null,\"target_directory\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\\\\target\",\"build_directory\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\\\\target\",\"version\":1,\"workspace_root\":\"D:\\\\AIAD\\\\docs\\\\requirements-confirmation\\\\phase1-spec\\\\tasks\\\\M02\\\\planning\\\\golden14-candidate-review-20261104\\\\isolated\\\\program\\\\src-tauri\",\"metadata\":null}\n",
+    "stderr": ""
+  },
+  "limits": [
+    "Content14 and standalone lock resolution verified",
+    "No product build/native/adoption",
+    "No historical PASS rerun"
+  ]
+}
