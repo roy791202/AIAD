@@ -1,0 +1,190 @@
+{
+  "module": "M04",
+  "status": "R2_CANONICAL_PROFILE_PROPOSED_FULL_PACKET_PENDING",
+  "at": "2026-11-01T09:08:57.255091+00:00",
+  "profiles": {
+    "EssXmlV1": {
+      "root": "eluslotScene; format=eluslot.ess; formatVersion=1; encoding=xml",
+      "sections": "Exactly one direct meta/work/architecture/design; preserve every section and child order, unknown members represented losslessly, not silently typed away. Missing/duplicate required section is Structure error.",
+      "representation": "Ordered element tree. Element={name:string,attributes:sorted name/value pairs,children:ordered Element|Text|Comment}. No namespaces/DOCTYPE/general entities/processing instructions except UTF8 XML declaration in this profile. Reject unsupported lexical features before partial candidate. Preserve comments in canonical payload; comments excluded semantic projection.",
+      "strings": "All XML attribute and text values remain strings after standard XML character/entity decoding; no generic bool/number conversion. Empty versus missing distinct. Only XML built-in entities/numeric character refs accepted. XML line-ending normalization follows parser; no other trim.",
+      "whitespace": "Ignore whitespace-only text for semantic projection only if parent has element children and every text child is whitespace-only. Mixed-content parent text retained exactly, including spaces/order. Preserve original decoded text in canonical payload.",
+      "semantic_exclusions": [
+        "/eluslotScene/meta/@savedAt",
+        "/eluslotScene/work/board/@active_run_id",
+        "/eluslotScene/design/meta/@updatedAt",
+        "/eluslotScene/design/selection"
+      ],
+      "semantic_encoding": "UTF8 compact JSON array [\"M04-EssXmlV1-semantic-v1\", semantic_tree]; recursively sorted attribute names by UTF8 bytes; children order preserved; comments/exact exclusions omitted; no numeric parse of XML strings."
+    },
+    "DesignJsonV1": {
+      "root": "sgenaxis.design formatVersion1 using separately adopted C1 codec",
+      "representation": "C1 validated complete JSON payload; no XML wrapper or eluslot.esui auto-conversion. Same C1 optional/numeric/unknown/duplicate/resource contract applies.",
+      "semantic_exclusions": [
+        "/selection",
+        "/meta/updatedAt",
+        "/product_pass (must already be false)"
+      ],
+      "semantic_encoding": "UTF8 compact JSON array [\"M04-DesignJsonV1-semantic-v1\", sorted semantic JSON]; C1 exact canonical numeric value, recursively sorted object keys by UTF8 bytes, array order retained."
+    }
+  },
+  "types": {
+    "DocumentFormat": [
+      "EssXmlV1",
+      "DesignJsonV1"
+    ],
+    "CodecInspection": {
+      "format": "DocumentFormat",
+      "canonical_payload": "full represented content incl preserved compatibility fields",
+      "semantic_digest": "sha256 semantic profile bytes, not raw source bytes",
+      "unsupported_features": "list of exact path/code",
+      "dependency_observation": "NotResolved|Resolved(asset refs/bindings/blocked capabilities from trusted validator)"
+    },
+    "CodecError": {
+      "InvalidEncoding": "byte offset",
+      "Syntax": "byte offset",
+      "UnsupportedFormat": "observed root/format",
+      "UnsupportedVersion": "observed version",
+      "ForbiddenFeature": "path + Doctype|Namespace|GeneralEntity|ProcessingInstruction",
+      "Structure": "path + MissingSection|DuplicateSection|InvalidRoot",
+      "ResourceLimit": "path + token",
+      "CodecRejected": "exact C1 error string",
+      "SemanticDigestMismatch": "expected/observed semantic digest",
+      "UnresolvedDependencies": "paths"
+    },
+    "authority": "Inspection is NOT DocumentContent mutation authority. Only trusted application validator may convert resolved inspection to existing S1 DocumentContent; never fill asset_refs=[] by default merely because codec did not resolve material semantics."
+  },
+  "contracts": [
+    "decode/inspect parse full source before replacing active state; no file/owner/Undo mutation",
+    "encode verifies canonical-payload format and recomputed semantic digest against supplied captured S1 content; mismatch is typed failure, not silently rebased digest",
+    "canonical_payload full represented document differs from raw source bytes; raw digest always hashes actual encoded output/IO receipt",
+    "Any change to semantic profile/exclusion list invalidates old semantic-baseline compatibility and requires explicit migration/replan; no hidden profile update",
+    "product_pass=true rejected wherever recognized format declares acceptance flag; no codec output becomes product PASS",
+    "Opaque unknown XML fields are preserved as data and mark derived UI projection unsupported/read-only when mapping unavailable; do not execute references or infer ownership",
+    "Cleared-document business policy is not invented inside generic serializer. Existing proposed cleared() placeholder must remain unsupported until exact section/content/asset semantics separately approved",
+    "Limits proposed16MiB input/output,depth64,100000 values/elements,1MiB decoded string; precise XML counting/error-order fixtures remain part of full R2 packet, not inherited from C1 approval automatically"
+  ],
+  "tests": [
+    {
+      "id": "M04-CP-01",
+      "given": "ESS includes work/architecture/design",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "all three subtrees remain represented",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-02",
+      "given": "XML attributes reordered",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "semantic digest equal, raw output hash allowed different",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-03",
+      "given": "XML attribute x=01 vs x=1",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "different semantic digest; no generic numeric coercion",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-04",
+      "given": "missing attribute vs empty attribute",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "distinct canonical content",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-05",
+      "given": "indentation-only whitespace",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "semantic equal per explicit element-only rule; payload preserves decoded text",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-06",
+      "given": "mixed text with spaces",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "text/order preserved, semantic sensitive",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-07",
+      "given": "comment only changes",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "payload differs, semantic equal",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-08",
+      "given": "savedAt/active_run/updatedAt/selection only change",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "exact listed exclusions only; no broad ignore by field name",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-09",
+      "given": "unknown attribute or child",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "full tree preserved, unsupported projection flagged, no execution",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-10",
+      "given": "DOCTYPE/entity/namespace",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "ForbiddenFeature, no external resolution",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-11",
+      "given": "Design JSON format passed as ESS",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "UnsupportedFormat, no conversion",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-12",
+      "given": "canonical content claims wrong semantic digest",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "SemanticDigestMismatch before encode/save",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-13",
+      "given": "unresolved material observation",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "inspection remains NotResolved; no fabricated S1 asset refs",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-CP-14",
+      "given": "clear requested without approved clear policy",
+      "when": "inspect/canonicalize/encode using proposed profile",
+      "then": "explicit unsupported contract gate; no source mutation",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "architecture": "format-specific pure guarded codec -> complete immutable inspection -> trusted dependency validator -> existing S1 DocumentContent; raw/semantic ownership separate; IO only in declared persistence port",
+  "candidate_implementation_scope": [
+    "new HOST document_codec.rs (candidate only)",
+    "HOST lib.rs module export",
+    "HOST Cargo.toml direct pinned roxmltree=0.20.0 dependency + workspace/standalone lock dependency edges if selected",
+    "new HOST tests/phase1_document_codec.rs"
+  ],
+  "dependency_note": "HOST currently has no direct roxmltree; do not assume transitive adapter dependency imports legal. Exact dependency/lock envelope must be adopted, no files changed now.",
+  "not_ready": [
+    "Exact XML resource counts/error-first fixtures and profile bytes examples",
+    "Trusted asset/binding validation mapping and unsupported read-only result",
+    "Precise clear operation semantics or explicit deferral in accepted envelope",
+    "Complete R2/SP/HG/RO/caller integration envelope",
+    "Proposed compatibility decision: M03 H2 currently proposes untagged semantic JSON while this M04 profile includes a profile tag. Reconcile one exact shared digest byte profile before either integration; neither pending packet is silently revised or approved"
+  ],
+  "verification": {
+    "source_unchanged": 796,
+    "product_tests": "NOT RUN",
+    "build": "NOT RUN",
+    "RED": "NOT RUN",
+    "native": "NOT RUN"
+  },
+  "next": "Complete profile fixtures/resource/error/asset contract and integrate into one S2 exact review packet; do not adopt profiles or create Skeleton."
+}

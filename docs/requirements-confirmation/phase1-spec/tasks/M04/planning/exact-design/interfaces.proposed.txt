@@ -1,0 +1,53 @@
+// PROPOSED signatures; not production code or approved Skeleton.
+// WORK owns canonical content bytes + validated semantic identity, refs, flags.
+pub struct DocumentContent { canonical_payload: Vec<u8>, semantic_digest: String,
+    asset_refs: Vec<AssetVersionRef>, bindings: Vec<BindingState>,
+    blocked_capabilities: Vec<String> }
+pub struct DocumentSession { /* session-scoped content, baselines, history */ }
+pub struct MutationPlan { /* single document, before/after, revision, asset pins */ }
+pub enum MutationKind { Edit, Clear, Merge }
+impl DocumentSession {
+    pub fn prepare(&self, expected: Revision, kind: MutationKind,
+        validated_after: DocumentContent) -> Result<MutationPlan, EditError>;
+    pub fn commit(&mut self, plan: MutationPlan) -> Result<CommitProjection, EditError>;
+    pub fn undo(&mut self, expected: Revision) -> Result<CommitProjection, EditError>;
+    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError>;
+    pub fn acknowledge_formal_save(&mut self, captured: Revision, digest: &str)
+        -> Result<SaveProjection, EditError>;
+    pub fn acknowledge_recovery_save(&mut self, captured: Revision, digest: &str)
+        -> Result<RecoveryProjection, EditError>;
+}
+// Trusted HOST codec validates structure and produces canonical payload;
+// UI-supplied digest / revisions / refs are never trusted without parse checking.
+// Do not reuse packet EssDecoderPort as a full-document serializer without tests.
+pub trait DocumentCodecPort: Send + Sync {
+    fn decode(&self, format: DocumentFormat, bytes: &[u8])
+        -> Result<DocumentContent, CodecError>;
+    fn encode(&self, content: &DocumentContent) -> Result<Vec<u8>, CodecError>;
+    fn cleared(&self, before: &DocumentContent) -> Result<DocumentContent, CodecError>;
+}
+// FileCommitPort detailed below; owns OS lock, exclusive creation and replace.
+
+// Shared cross-module output capability, proposed in PORTS, not new Repository.
+// May NOT be silently folded into FileSystemPort.write_atomic default behavior.
+pub trait FileCommitPort: Send + Sync {
+    fn create_directory_exclusive(&self, parent: &str, single_name: &str)
+        -> Result<String, CommitError>;
+    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;
+}
+pub trait FileWriteLease {
+    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;
+    fn replace_checked(&mut self, expected_digest: Option<&str>, bytes: &[u8])
+        -> Result<CommitReceipt, CommitError>;
+}
+// OS-backed lock remains live until lease Drop; crash releases OS lock.
+// Do NOT reclaim by a timestamp (board FileLock policy is not product guarantee).
+// expected None = require missing; Some(hash) = require same prior raw bytes.
+// replace_checked: stage/sync, preserve previous version, recheck under lock,
+// replace single formal file; restore previous bytes before returning ordinary Err.
+// If restoration itself fails: RecoveryRequired; retained versions + journal paths,
+// block more destructive operations, never claim unchanged or successful.
+// Post-commit notification/projection is not allowed to turn committed save into
+// a false "failed, unchanged" result. Uncertain state is distinctly classified.
+// Locks protect cooperating product writers; arbitrary external edits still need
+// digest recheck and observed conflict handling, not a universal filesystem CAS.

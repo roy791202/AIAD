@@ -1,0 +1,105 @@
+{
+  "id": "M04-SAVE-RETENTION-OBSERVATION",
+  "parent": "PD-P1-M04-PREP-01 Yellow",
+  "status": "PROPOSED_PENDING_OWNER",
+  "module": "M04",
+  "intent": "Bounded extension of trusted symbolic save proof observations; old independent review remains valid with its stated limits.",
+  "architecture": {
+    "hexagonal": "UI → M03 facade → M04 DocumentOwner → existing IO FileCommitPort / candidate M05 issuer evidence; adapters implement output ports",
+    "dependencies": "M04 → S1 captured semantic ACK; M05 owns pin/catalog state; M03 only projects authorized response",
+    "ownership": "M04 sole document owner; S1 content/history/formal/snapshot; M05 sole retention issuer",
+    "mutation": "Only existing S1 ACK can change formal baseline; document oracle mutates no product or pin state",
+    "transaction": "Capture and retain trusted evidence → file commit verification → consume M05 transfer observation → captured semantic ACK. No cross-file/catalog atomic transaction is claimed.",
+    "forbidden": [
+      "new M04 pin owner",
+      "registry",
+      "private persistence",
+      "new Port adoption",
+      "actual M05 provider",
+      "automatic release/retry/rollback"
+    ]
+  },
+  "choices": [
+    {
+      "id": "G1",
+      "old": "trusted capture/root_capture symbolic equality",
+      "new": "17 closed capture fields from M03 check_documents.py CAPTURE_KEYS; separate retained seal, file/root/ACK observations",
+      "owner": "M04+M03",
+      "status": "PROPOSED_PENDING_OWNER"
+    },
+    {
+      "id": "G2",
+      "old": "retained=true and Unverified pin_state",
+      "new": "HeldObserved only from authenticated M05 issuer receipt with current fence/full tuple; unavailable evidence NOT_PROVEN, never infer Released",
+      "owner": "M04+M05",
+      "status": "PROPOSED_PENDING_OWNER"
+    },
+    {
+      "id": "G3",
+      "old": "collapsed IO error model",
+      "new": "candidate internal observations Committed/PrecommitFailure/Uncertain; exact native InvalidPath/AlreadyExists/Busy/Conflict/Storage(stage,path,reason)/RecoveryRequired fields preserved by source, wire mapping unresolved",
+      "owner": "M04+M01+IO",
+      "status": "PROPOSED_PENDING_OWNER"
+    },
+    {
+      "id": "G4",
+      "old": "symbolic ACK ordering",
+      "new": "parse all observations before effects; seal/held → file outcome → exact four-field receipt → current delivery → root → ACK. Full native S1 equal-live conflict/noneditable/future checks remain required",
+      "owner": "M04+S1",
+      "status": "PROPOSED_PENDING_OWNER"
+    }
+  ],
+  "proof_domain": "trusted/fence booleans represent supplied verified lookup observations only, not authenticity proof. Missing issuer records or unavailable fence cannot manufacture authority. Successful transfer consumes issuer receipt; M04 does not transition M05 storage. Released observations are never a save transfer proof.",
+  "state": "Initial held receipt maps exact captured pin/version/root/context tuple. Precommit, mismatch, uncertainty, failed/unknown/deferred root retain HeldObserved with zero release. TransferredObserved is observational evidence, not local mutation. Raw file digest differs from semantic ACK digest; transaction id belongs post-file seal, never pre-file proof. Live R11 may remain dirty after captured R10 ACK; formal R11 prevents late R10 overwrite; snapshot unchanged.",
+  "ui_schema": "No new UI implementation: existing response projection shows Saved captured revision or pending/error; unauthorized/detached suppress delivery; no unsafe close/forced clean. Exact controls/labels require Owner choice.",
+  "bdd_categories": {
+    "B1": "Applicable: covered by bounded fixtures or native pending",
+    "B2": "Applicable: covered by bounded fixtures or native pending",
+    "B3": "Applicable: covered by bounded fixtures or native pending",
+    "B4": "Applicable: covered by bounded fixtures or native pending",
+    "B5": "Applicable: covered by bounded fixtures or native pending",
+    "B6": "Applicable: covered by bounded fixtures or native pending",
+    "B7": "Applicable: covered by bounded fixtures or native pending",
+    "B8": "Applicable: covered by bounded fixtures or native pending",
+    "B9": "Applicable: covered by bounded fixtures or native pending",
+    "B10": "Applicable: covered by bounded fixtures or native pending",
+    "B11": "Applicable: covered by bounded fixtures or native pending",
+    "B12": "Applicable: covered by bounded fixtures or native pending"
+  },
+  "acceptance": [
+    "20 new witnesses match candidate oracle",
+    "No automatic release on any witness",
+    "Held preserved for failures and illegal Released proof rejected",
+    "Frozen inputs and 796 authority files unchanged",
+    "Owner decisions remain pending; no implementation promotion"
+  ],
+  "pending": [
+    "Owner G1-G4 exact fields/errors/precedence approval",
+    "Independent document reviewer",
+    "approved architecture/Skeleton",
+    "compiled valid RED then implementation GREEN",
+    "native issuer/fence/isolation provider tests",
+    "full S1 validation and wire encoding",
+    "full Draft 2020-12 validator",
+    "build/package/install/native UI/product regression"
+  ],
+  "not_run": [
+    "independent review",
+    "native/UI/IPC",
+    "product tests",
+    "build/package/install",
+    "valid RED/GREEN",
+    "full Draft 2020-12"
+  ],
+  "module_complete": false,
+  "tasks": [
+    {
+      "id": "M04-RO-DOC-01",
+      "primary_module": "M04",
+      "allowed": "new save-retention-observation-proposal only",
+      "status": "PROPOSED_PENDING_OWNER",
+      "command": "python -B check_documents.py",
+      "regression": "frozen source/input hashes only, no product regression"
+    }
+  ]
+}

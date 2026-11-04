@@ -1,0 +1,416 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M04 Save handoff precision gap</title><style>body{font:16px system-ui;max-width:1080px;margin:36px auto;background:#101723;color:#e4ecf5}pre{white-space:pre-wrap;background:#1c2838;padding:18px}h1,h2{color:#ffd178}a{color:#9fd4ff}</style><h1>M04 保存回應交接精度缺口</h1><p>Yellow · PROPOSED_PENDING_OWNER · document/model only · NOT_READY_FOR_IMPLEMENTATION</p><p>M04 is sole DocumentOwner; M03 is facade. Verified file commit does not prove material retention or semantic ACK. Owner adoption remains pending.</p><h2>Architecture / ownership / transaction</h2><pre>{
+  &quot;hexagonal&quot;: &quot;UI → M03 facade → M04 sole DocumentOwner → existing FileCommitPort / proposed M05 retention boundary ← infrastructure adapters&quot;,
+  &quot;dependency&quot;: &quot;M04 orchestration → S1 semantic ACK; M05 retention owns material roots, not document content. M03 projects authorized response.&quot;,
+  &quot;transaction&quot;: &quot;Capture+encode+pin → IO replace_checked → four-field verification → M05 root result verification → ACK captured semantic → authorized response&quot;,
+  &quot;mutation&quot;: &quot;Only S1 formal ACK mutates formal baseline; never recovery ACK; no content/Undo mutation.&quot;,
+  &quot;retention&quot;: &quot;Keep actual captured versions, pin and issuer evidence on deferred/uncertain result; no automatic release, retry or inferred Held state.&quot;,
+  &quot;forbidden&quot;: [
+    &quot;second registry&quot;,
+    &quot;new private journal&quot;,
+    &quot;Port change&quot;,
+    &quot;invented native provider&quot;,
+    &quot;new document SSOT&quot;
+  ]
+}</pre><h2>Exact old → new gap</h2><pre>[
+  {
+    &quot;old&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M04/planning/cx-revision-v3/module-spec.json#/effective_spec/architecture/transaction&quot;,
+    &quot;new&quot;: &quot;this module-spec.json /architecture/transaction&quot;,
+    &quot;gap&quot;: &quot;Original M04 summary omits root-transfer outcome between verified receipt and ACK; do not adopt M03 proposal silently.&quot;
+  },
+  {
+    &quot;old&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-save-proof-contract/module-spec.json#/contracts&quot;,
+    &quot;new&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/command-contract.json /wire_choices and docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/response.schema.json&quot;,
+    &quot;gap&quot;: &quot;M04 outcome labels do not define M03 full envelope, decimal U64 strings, opaque proof_id, typed stage/reason or authorized delivery. M03 candidate is independently reviewed document-only, not adopted.&quot;
+  }
+]</pre><h2>Request and response mapping (pending owners)</h2><pre>{
+  &quot;request&quot;: {
+    &quot;M03_candidate&quot;: [
+      &quot;binding_ref&quot;,
+      &quot;expected_generation decimal U64 string&quot;,
+      &quot;expected_revision decimal U64 string&quot;,
+      &quot;request_id&quot;
+    ],
+    &quot;M04_missing&quot;: &quot;Exact resolver mapping binding_ref → unique owner/session/canonical target, captured material pair set and codec profile remains owner-gated; no UI supplied target/digest accepted.&quot;
+  },
+  &quot;outcomes&quot;: [
+    {
+      &quot;M04&quot;: &quot;CommitEvidenceMismatch&quot;,
+      &quot;M03_candidate&quot;: &quot;ok:false UnverifiedOutcome / CommitOutcomeUnknown / retry_allowed:false&quot;,
+      &quot;gate&quot;: &quot;G1,G3&quot;
+    },
+    {
+      &quot;M04&quot;: &quot;verified file, root deferred&quot;,
+      &quot;M03_candidate&quot;: &quot;ok:true CommittedAckDeferred / RootTransfer; pin_state Unverified; opaque proof_id&quot;,
+      &quot;gate&quot;: &quot;G1,G2&quot;
+    },
+    {
+      &quot;M04&quot;: &quot;root verified, ACK rejected&quot;,
+      &quot;M03_candidate&quot;: &quot;ok:true CommittedAckDeferred / SemanticAck / AckRejected&quot;,
+      &quot;gate&quot;: &quot;G1,G4&quot;
+    },
+    {
+      &quot;M04&quot;: &quot;SavedAcked&quot;,
+      &quot;M03_candidate&quot;: &quot;ok:true Saved with captured_revision/live_revision decimal strings, dirty, proof_id, replayed&quot;,
+      &quot;gate&quot;: &quot;G1&quot;
+    }
+  ],
+  &quot;not_equivalent&quot;: &quot;ok:true alone does not authorize UI clean/close. Root-deferred must not map to Saved; response delivery additionally requires same authorized binding. Raw receipt/error fields stay server-side; existing IO errors remain unmodified.&quot;
+}</pre><h2>Contracts / model premises</h2><pre>[
+  &quot;Capture is trusted immutable application evidence; caller cannot replace seal. Model does not prove isolation/authenticity.&quot;,
+  &quot;Post-file seal obtains actual transaction ID only after verified IO receipt.&quot;,
+  &quot;Root attestation is a supplied model premise, not a fabricated native M05 capability.&quot;,
+  &quot;Live content may advance. S1 rejects ACK older than formal baseline; snapshot baseline is independent.&quot;
+]</pre><h2>BDD → TDD document trace</h2><pre>[
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-1&quot;,
+    &quot;fixture&quot;: &quot;saved-newer-live&quot;,
+    &quot;test&quot;: &quot;check_documents.py::saved-newer-live&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-2&quot;,
+    &quot;fixture&quot;: &quot;receipt-target-mismatch&quot;,
+    &quot;test&quot;: &quot;check_documents.py::receipt-target-mismatch&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-3&quot;,
+    &quot;fixture&quot;: &quot;receipt-previous-mismatch&quot;,
+    &quot;test&quot;: &quot;check_documents.py::receipt-previous-mismatch&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-4&quot;,
+    &quot;fixture&quot;: &quot;receipt-raw-mismatch&quot;,
+    &quot;test&quot;: &quot;check_documents.py::receipt-raw-mismatch&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-5&quot;,
+    &quot;fixture&quot;: &quot;receipt-empty-transaction&quot;,
+    &quot;test&quot;: &quot;check_documents.py::receipt-empty-transaction&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-6&quot;,
+    &quot;fixture&quot;: &quot;file-verified-root-deferred&quot;,
+    &quot;test&quot;: &quot;check_documents.py::file-verified-root-deferred&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-7&quot;,
+    &quot;fixture&quot;: &quot;root-unbound&quot;,
+    &quot;test&quot;: &quot;check_documents.py::root-unbound&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-8&quot;,
+    &quot;fixture&quot;: &quot;late-ack-newer-baseline&quot;,
+    &quot;test&quot;: &quot;check_documents.py::late-ack-newer-baseline&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-9&quot;,
+    &quot;fixture&quot;: &quot;owner-replaced&quot;,
+    &quot;test&quot;: &quot;check_documents.py::owner-replaced&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-10&quot;,
+    &quot;fixture&quot;: &quot;io-publish-storage&quot;,
+    &quot;test&quot;: &quot;check_documents.py::io-publish-storage&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  },
+  {
+    &quot;BDD&quot;: &quot;M04-SRH-11&quot;,
+    &quot;fixture&quot;: &quot;io-busy&quot;,
+    &quot;test&quot;: &quot;check_documents.py::io-busy&quot;,
+    &quot;level&quot;: &quot;document model, not product TDD&quot;,
+    &quot;requirement&quot;: &quot;F05 captured save preserves ownership and baselines&quot;,
+    &quot;AC&quot;: &quot;exact outcome, no premature ACK, baseline preservation&quot;
+  }
+]</pre><h2>New positive and negative witnesses</h2><pre>{
+  &quot;status&quot;: &quot;PASS_BOUNDED_DOCUMENT_MODEL_ONLY&quot;,
+  &quot;head&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;historical_authority_head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+  &quot;authority_product_count&quot;: 796,
+  &quot;product_drift&quot;: [],
+  &quot;input_drift&quot;: [],
+  &quot;new_fixture_witnesses&quot;: 11,
+  &quot;new_counterexamples&quot;: 1,
+  &quot;old_suite_reruns&quot;: 0,
+  &quot;rows&quot;: [
+    {
+      &quot;id&quot;: &quot;saved-newer-live&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 1,
+        &quot;root_calls&quot;: 1,
+        &quot;formal_revision&quot;: 10,
+        &quot;formal_semantic&quot;: &quot;sem10&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;file_verified&quot;: true,
+        &quot;outcome&quot;: &quot;Saved&quot;,
+        &quot;dirty&quot;: true
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;receipt-target-mismatch&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;UnverifiedOutcome&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;receipt-previous-mismatch&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;UnverifiedOutcome&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;receipt-raw-mismatch&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;UnverifiedOutcome&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;receipt-empty-transaction&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;UnverifiedOutcome&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;file-verified-root-deferred&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 1,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;file_verified&quot;: true,
+        &quot;outcome&quot;: &quot;CommittedAckDeferred:RootTransfer&quot;,
+        &quot;pin_state&quot;: &quot;Unverified&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;root-unbound&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 1,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;file_verified&quot;: true,
+        &quot;outcome&quot;: &quot;CommittedAckDeferred:RootTransfer&quot;,
+        &quot;pin_state&quot;: &quot;Unverified&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;late-ack-newer-baseline&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 1,
+        &quot;root_calls&quot;: 1,
+        &quot;formal_revision&quot;: 11,
+        &quot;formal_semantic&quot;: &quot;sem11&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;file_verified&quot;: true,
+        &quot;outcome&quot;: &quot;CommittedAckDeferred:SemanticAck&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;owner-replaced&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: false,
+        &quot;file_verified&quot;: true,
+        &quot;outcome&quot;: &quot;CommittedAckDeferred:OwnerChanged&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;io-publish-storage&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;UnverifiedOutcome&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    },
+    {
+      &quot;id&quot;: &quot;io-busy&quot;,
+      &quot;result&quot;: {
+        &quot;ack_calls&quot;: 0,
+        &quot;root_calls&quot;: 0,
+        &quot;formal_revision&quot;: 9,
+        &quot;formal_semantic&quot;: &quot;sem9&quot;,
+        &quot;snapshot&quot;: &quot;snapshot8&quot;,
+        &quot;live_revision&quot;: 11,
+        &quot;retained&quot;: true,
+        &quot;unchanged_claim&quot;: false,
+        &quot;delivered&quot;: true,
+        &quot;outcome&quot;: &quot;SaveRejected&quot;
+      },
+      &quot;status&quot;: &quot;PASS_DOCUMENT_MODEL&quot;
+    }
+  ],
+  &quot;counterexample&quot;: {
+    &quot;input&quot;: &quot;file-verified-root-deferred&quot;,
+    &quot;unsafe_receipt_then_ack&quot;: {
+      &quot;outcome&quot;: &quot;Saved&quot;,
+      &quot;ack_calls&quot;: 1
+    },
+    &quot;required_candidate&quot;: {
+      &quot;ack_calls&quot;: 0,
+      &quot;root_calls&quot;: 1,
+      &quot;formal_revision&quot;: 9,
+      &quot;formal_semantic&quot;: &quot;sem9&quot;,
+      &quot;snapshot&quot;: &quot;snapshot8&quot;,
+      &quot;live_revision&quot;: 11,
+      &quot;retained&quot;: true,
+      &quot;unchanged_claim&quot;: false,
+      &quot;delivered&quot;: true,
+      &quot;file_verified&quot;: true,
+      &quot;outcome&quot;: &quot;CommittedAckDeferred:RootTransfer&quot;,
+      &quot;pin_state&quot;: &quot;Unverified&quot;
+    },
+    &quot;missing_mapping&quot;: &quot;Four-field IO receipt has no material root attestation; receipt-only shortcut cannot establish Saved.&quot;
+  },
+  &quot;exact_old_pointers&quot;: [
+    {
+      &quot;pointer&quot;: &quot;/effective_spec/architecture/transaction&quot;,
+      &quot;value&quot;: &quot;Open: resolve trusted selection → reserve target → acquire lease → read → guarded decode → complete material/binding resolution → revalidate generation → fresh session install. Edit/clear: capture → candidate → resolve → revalidate → single S1 commit. Save: capture → encode → reserve → replace_checked → verify receipt → ACK captured revision+semantic.&quot;
+    }
+  ],
+  &quot;not_run&quot;: [
+    &quot;independent review&quot;,
+    &quot;native UI/IPC&quot;,
+    &quot;product tests&quot;,
+    &quot;build/package/install&quot;,
+    &quot;valid RED/GREEN&quot;,
+    &quot;full Draft 2020-12 validation&quot;
+  ],
+  &quot;owner_gates&quot;: &quot;G1-G4 pending; no architecture adoption; parent remains Yellow&quot;,
+  &quot;next_ready_action&quot;: &quot;Independent bounded document review of new witnesses, then owners G1-G4 decide exact mappings. No production implementation before approved Skeleton and valid RED.&quot;
+}</pre><h2>Owner gates and next action</h2><pre>{
+  &quot;gates&quot;: [
+    {
+      &quot;id&quot;: &quot;G1&quot;,
+      &quot;owner&quot;: &quot;M04+M03&quot;,
+      &quot;decision&quot;: &quot;Adopt exact request capture identity and full closed response encoding; no local response DTO introduced.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;G2&quot;,
+      &quot;owner&quot;: &quot;M04+M05&quot;,
+      &quot;decision&quot;: &quot;Adopt issuer-bound root receipt/pin semantics and retention provider envelope; internal 17-field projection is not a public Port.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;G3&quot;,
+      &quot;owner&quot;: &quot;M04+M01+IO&quot;,
+      &quot;decision&quot;: &quot;Approve canonical target identity and requested/raw receipt mapping, exact stage outcomes and destructive-call gate.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;G4&quot;,
+      &quot;owner&quot;: &quot;M04+S1&quot;,
+      &quot;decision&quot;: &quot;Confirm captured ACK and newer-baseline rejection mapping before Skeleton/valid RED.&quot;
+    }
+  ],
+  &quot;next&quot;: &quot;Independent bounded document review of new witnesses, then owners G1-G4 decide exact mappings. No production implementation before approved Skeleton and valid RED.&quot;
+}</pre><h2>Pending automation / risks</h2><pre>[
+  &quot;Owner-approved native orchestration/DTO provider integration&quot;,
+  &quot;compiled valid RED then GREEN&quot;,
+  &quot;independent document review&quot;,
+  &quot;native UI/IPC, product tests, build/package/install&quot;,
+  &quot;full Draft 2020-12 validator&quot;
+]</pre><script type="application/json" id="module-spec">{"id": "M04-SAVE-RESPONSE-HANDOFF", "parent": "PD-P1-M04-PREP-01", "status": "PROPOSED_PENDING_OWNER_NOT_READY_FOR_IMPLEMENTATION", "primary_module": "M04", "sole_document_owner": "M04 DocumentOwner; S1 owns content/history/formal and snapshot baselines", "M03": "facade only; cannot create session registry or ACK independently", "operation": "design_document_save; unintegrated operation, not a native provider claim", "intent": "Reconcile M04 captured-save result with M03 caller response without losing file-commit/root-deferred distinctions.", "scope": "Only this new planning directory; no product, original packet, board, current-state, role, hook, commit or cleanup changes.", "architecture": {"hexagonal": "UI → M03 facade → M04 sole DocumentOwner → existing FileCommitPort / proposed M05 retention boundary ← infrastructure adapters", "dependency": "M04 orchestration → S1 semantic ACK; M05 retention owns material roots, not document content. M03 projects authorized response.", "transaction": "Capture+encode+pin → IO replace_checked → four-field verification → M05 root result verification → ACK captured semantic → authorized response", "mutation": "Only S1 formal ACK mutates formal baseline; never recovery ACK; no content/Undo mutation.", "retention": "Keep actual captured versions, pin and issuer evidence on deferred/uncertain result; no automatic release, retry or inferred Held state.", "forbidden": ["second registry", "new private journal", "Port change", "invented native provider", "new document SSOT"]}, "delta": [{"old": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/cx-revision-v3/module-spec.json#/effective_spec/architecture/transaction", "new": "this module-spec.json /architecture/transaction", "gap": "Original M04 summary omits root-transfer outcome between verified receipt and ACK; do not adopt M03 proposal silently."}, {"old": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-save-proof-contract/module-spec.json#/contracts", "new": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/command-contract.json /wire_choices and docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/response.schema.json", "gap": "M04 outcome labels do not define M03 full envelope, decimal U64 strings, opaque proof_id, typed stage/reason or authorized delivery. M03 candidate is independently reviewed document-only, not adopted."}], "owner_gates": [{"id": "G1", "owner": "M04+M03", "decision": "Adopt exact request capture identity and full closed response encoding; no local response DTO introduced."}, {"id": "G2", "owner": "M04+M05", "decision": "Adopt issuer-bound root receipt/pin semantics and retention provider envelope; internal 17-field projection is not a public Port."}, {"id": "G3", "owner": "M04+M01+IO", "decision": "Approve canonical target identity and requested/raw receipt mapping, exact stage outcomes and destructive-call gate."}, {"id": "G4", "owner": "M04+S1", "decision": "Confirm captured ACK and newer-baseline rejection mapping before Skeleton/valid RED."}], "premises": ["Capture is trusted immutable application evidence; caller cannot replace seal. Model does not prove isolation/authenticity.", "Post-file seal obtains actual transaction ID only after verified IO receipt.", "Root attestation is a supplied model premise, not a fabricated native M05 capability.", "Live content may advance. S1 rejects ACK older than formal baseline; snapshot baseline is independent."], "pending_automation": ["Owner-approved native orchestration/DTO provider integration", "compiled valid RED then GREEN", "independent document review", "native UI/IPC, product tests, build/package/install", "full Draft 2020-12 validator"], "next_ready_action": "Independent bounded document review of new witnesses, then owners G1-G4 decide exact mappings. No production implementation before approved Skeleton and valid RED.", "module_complete": false, "acceptance": ["All 11 new witnesses satisfy exact candidate classification and preserve snapshot/live content.", "Receipt mismatches invoke neither root transfer nor ACK.", "Verified file/root-deferred retains evidence and never returns Saved.", "Captured R10 may ACK while live R11 remains dirty; late R10 cannot replace formal R11.", "796 authority hashes and frozen input hashes remain unchanged.", "Full response field encoding and native provider mapping remain G1-G4 pending."], "tasks": [{"id": "M04-SRH-DOC-01", "primary_module": "M04", "status": "DOCUMENT_MODEL_CHECKED_PENDING_INDEPENDENT_REVIEW", "scope": "new save-response-handoff only", "tests": "python -B check_documents.py", "no_production": true}], "risks": ["The witness compares orchestration propositions, not executable production state or cryptographic issuer isolation.", "Symbolic root_capture equality assumes issuer-bound full capture verified; it does not implement the M03 17-field seal or M05 protocol.", "No response.schema.json is invented here. Exact M03 candidate schemas are pinned inputs and remain pending joint adoption."]}</script></html>

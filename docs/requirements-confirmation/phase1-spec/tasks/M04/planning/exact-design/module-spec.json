@@ -1,0 +1,1407 @@
+{
+  "module": "M04",
+  "date": "2026-11-01",
+  "status": "EXACT_DESIGN_PROPOSAL_FOR_REVIEW",
+  "direction_adoption": "D1-D7 ADOPTED",
+  "architecture_approval": "NOT GRANTED FOR EXACT DETAILS",
+  "design": {
+    "status": "EXACT_DESIGN_PROPOSAL_FOR_REVIEW",
+    "directions": "D1-D7 ADOPTED 2026-11-01; exact details not yet approved",
+    "new_dependencies": "WORK remains std-only + existing ports; HOST uses existing serde/serde_json; XML/security parsing may extend existing roxmltree=0.20.0 adapter, no new crate proposed. Existing uuid remains only trusted outer boundary. Windows-sys existing dependency may provide OS lock API; exact feature/API checked during shared adapter design.",
+    "shared_commit_port": "// Shared cross-module output capability, proposed in PORTS, not new Repository.\n// May NOT be silently folded into FileSystemPort.write_atomic default behavior.\npub trait FileCommitPort: Send + Sync {\n    fn create_directory_exclusive(&self, parent: &str, single_name: &str)\n        -> Result<String, CommitError>;\n    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;\n}\npub trait FileWriteLease {\n    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;\n    fn replace_checked(&mut self, expected_digest: Option<&str>, bytes: &[u8])\n        -> Result<CommitReceipt, CommitError>;\n}\n// OS-backed lock remains live until lease Drop; crash releases OS lock.\n// Do NOT reclaim by a timestamp (board FileLock policy is not product guarantee).\n// expected None = require missing; Some(hash) = require same prior raw bytes.\n// replace_checked: stage/sync, preserve previous version, recheck under lock,\n// replace single formal file; restore previous bytes before returning ordinary Err.\n// If restoration itself fails: RecoveryRequired; retained versions + journal paths,\n// block more destructive operations, never claim unchanged or successful.\n// Post-commit notification/projection is not allowed to turn committed save into\n// a false \"failed, unchanged\" result. Uncertain state is distinctly classified.\n// Locks protect cooperating product writers; arbitrary external edits still need\n// digest recheck and observed conflict handling, not a universal filesystem CAS.\n",
+    "error_model": [
+      [
+        "InvalidInput",
+        "欄位/path/內容結構不合法，mutation前拒絕"
+      ],
+      [
+        "UnsupportedSchema",
+        "拒未知版本，不覆寫或靜默丟欄位"
+      ],
+      [
+        "NotBound",
+        "未綁專案/session，不碰FS"
+      ],
+      [
+        "UnauthorizedCaller",
+        "視窗非該session writer，不碰內容"
+      ],
+      [
+        "ExistingTarget",
+        "新建目標已存在，原檔/目錄不動"
+      ],
+      [
+        "RevisionConflict",
+        "期望revision或磁碟digest不符，重新預覽"
+      ],
+      [
+        "Busy",
+        "交易/寫者持有中，不並行執行破壞性操作"
+      ],
+      [
+        "GenerationNotReady",
+        "可存草稿，列缺決策，不生成"
+      ],
+      [
+        "StorageFailure",
+        "普通可回復IO失敗；原有效內容保持"
+      ],
+      [
+        "PartialProjectCreated",
+        "只有新專案已建立部分產物，保留草稿並列殘留；不綁成成功"
+      ],
+      [
+        "RecoveryRequired",
+        "回復本身失敗或耐久不確定：保留版本與journal、停止破壞性操作，不聲稱原狀/PASS"
+      ],
+      [
+        "NoUndo",
+        "無歷史或session已關閉，不改狀態"
+      ]
+    ],
+    "authority": "UI → Tauri Command → DispatchHost → HOST usecase → WORK(domain) → Output Ports ← Adapters",
+    "no_global_state": "Draft/session/plan maps owned inside DispatchHost; UUID candidates from trusted boundary; no static manager/service singleton",
+    "generation_approval": "approvalRefs server-resolved evidence IDs, not UI checkbox authorization; finalizing definition does not generate or execute AI",
+    "module": "M04",
+    "responsibility": "權威文件內容/dirty/正式保存、單文件clear/merge/Undo與穩定capture；不實作BIN解析或快照排程",
+    "schema_path": "schema.json",
+    "domain_signatures": "// PROPOSED signatures; not production code or approved Skeleton.\n// WORK owns canonical content bytes + validated semantic identity, refs, flags.\npub struct DocumentContent { canonical_payload: Vec<u8>, semantic_digest: String,\n    asset_refs: Vec<AssetVersionRef>, bindings: Vec<BindingState>,\n    blocked_capabilities: Vec<String> }\npub struct DocumentSession { /* session-scoped content, baselines, history */ }\npub struct MutationPlan { /* single document, before/after, revision, asset pins */ }\npub enum MutationKind { Edit, Clear, Merge }\nimpl DocumentSession {\n    pub fn prepare(&self, expected: Revision, kind: MutationKind,\n        validated_after: DocumentContent) -> Result<MutationPlan, EditError>;\n    pub fn commit(&mut self, plan: MutationPlan) -> Result<CommitProjection, EditError>;\n    pub fn undo(&mut self, expected: Revision) -> Result<CommitProjection, EditError>;\n    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError>;\n    pub fn acknowledge_formal_save(&mut self, captured: Revision, digest: &str)\n        -> Result<SaveProjection, EditError>;\n    pub fn acknowledge_recovery_save(&mut self, captured: Revision, digest: &str)\n        -> Result<RecoveryProjection, EditError>;\n}\n// Trusted HOST codec validates structure and produces canonical payload;\n// UI-supplied digest / revisions / refs are never trusted without parse checking.\n// Do not reuse packet EssDecoderPort as a full-document serializer without tests.\npub trait DocumentCodecPort: Send + Sync {\n    fn decode(&self, format: DocumentFormat, bytes: &[u8])\n        -> Result<DocumentContent, CodecError>;\n    fn encode(&self, content: &DocumentContent) -> Result<Vec<u8>, CodecError>;\n    fn cleared(&self, before: &DocumentContent) -> Result<DocumentContent, CodecError>;\n}\n// FileCommitPort detailed below; owns OS lock, exclusive creation and replace.\n",
+    "commands": [
+      {
+        "name": "document_open",
+        "request_fields": "{project_uuid, reference: project-relative String}",
+        "response": "DocumentSessionDto {document_uuid, session_uuid, content_revision, content_projection, dirty, can_undo}",
+        "caller_rule": "main or editor window; read allowed, writer lease server-issued",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_submit_draft",
+        "request_fields": "{session_uuid, expected_revision, source_format, source_text}",
+        "response": "DocumentSessionDto; HOST parse/validate, WORK adopts canonical immutable content",
+        "caller_rule": "only host-bound writer webview; content_digest/asset pins not accepted as client authority",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_prepare_clear",
+        "request_fields": "{session_uuid, expected_revision}",
+        "response": "ClearPlanDto {plan_id, affected_sections, reference_changes, before_digest}",
+        "caller_rule": "writer only; no content mutation",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_confirm_clear",
+        "request_fields": "{plan_id, expected_revision, request_id}",
+        "response": "Applied {revision, undo_depth} | typed error",
+        "caller_rule": "one-use plan; stale rejected without mutation",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_save",
+        "request_fields": "{session_uuid, expected_revision, request_id, save_as_selection_id?:String}",
+        "response": "Saved {persisted_digest,captured_revision} | typed error",
+        "caller_rule": "native SaveAs grant; new target does not silently replace; old identity preserved until successful commit",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_undo",
+        "request_fields": "{session_uuid, expected_revision, request_id}",
+        "response": "DocumentSessionDto with new monotonic revision, restored content and refs",
+        "caller_rule": "writer; previous UI selection Undo remains separate",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_request_leave",
+        "request_fields": "{session_uuid, action: close|switch_project|exit}",
+        "response": "LeavePlan {id, dirty, choices: save|discard|cancel}",
+        "caller_rule": "server captures current revision; execution waits async result",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "document_confirm_leave",
+        "request_fields": "{leave_plan_id, choice: save|discard|cancel, request_id}",
+        "response": "Proceed|RemainEditing|Stale; save failure cannot proceed",
+        "caller_rule": "final leave token only after current version saved or explicit discard; another edit invalidates old plan",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      }
+    ],
+    "storage": {
+      "formal": "existing scene/default.ess XML v1 and design/main.sgendesign stay readable; no forced new ESS internal format",
+      "authority": "one physical document = one session authority. An ESS includes work/architecture/design as one composite physical doc. Embedded design is projection of that ESS; independently opened .sgendesign has separate session; no silent dual write/sync.",
+      "versions": "candidate immutable prior versions in .sgenaxis/document-versions/<documentUuid>/<rawDigest>; journal .sgenaxis/document-transactions/<requestUuid>.json; exact storage mechanics gated by shared commit adapter review",
+      "commit_point": "formal document atomic replace is the single-file publish point. Version/journal supports rollback/recovery; never make a hidden pointer authoritative while showing an old ESS as saved.",
+      "history": "WORK in-memory per-open-session history, not durable Undo; formal save never clears history implicitly. Close/reopen starts empty history.",
+      "baselines": "formal content digest and recovery content digest independent; raw-byte disk digest separately detects outside edits; revision increases even Undo; dirty compares semantic digest to formal baseline, not revision counters."
+    },
+    "canonicalization": {
+      "ESS": "HOST adapter parses supported v1 and maps to domain-owned canonical payload; preserve all unknown supported extension trees/attrs or refuse before mutation. Existing packet tree capture is read-only and may lose XML comment/source formatting; cannot use it as a lossless serializer without new contract tests.",
+      "semantic": "Exclude selection/focus/playback/viewport and volatile savedAt only at explicitly approved fields; never strip arbitrary user fields by name. Include actual nodes, relations, bindings, asset versions and restrictions.",
+      "hashing": "HOST trusted codec computes semantic hash of normalized payload; UI digest not trusted. Original raw bytes/hash kept for exact file rollback and external edit detection. WORK holds Vec<u8> immutable canonical payload and typed refs, not serde_json/OS types.",
+      "clear": "proposal ESS clear removes work tasks, architecture elements, design children/bindings/asset refs, retains format/identity and required root scaffold; standalone design clears only its document. Preview lists all sections; cannot clear project definition or other physical docs."
+    },
+    "states": [
+      "Editing",
+      "PreparedClear",
+      "Applying",
+      "Saving",
+      "RecoveryRequired",
+      "Closed"
+    ],
+    "transactions": [
+      [
+        "Mutation",
+        "validate server writer/session/revision → prepare immutable before/after + pins + reserved history → single content swap → publish one history; failures restore before and add no history"
+      ],
+      [
+        "Save",
+        "captureR+semantic digest → encode outside UI → acquire OS write lease → check old raw digest → stage/sync+retained old version → replace formal file → acknowledge only capturedR; R+1 remains dirty; no postcommit fallible metadata can fake rollback"
+      ],
+      [
+        "Undo",
+        "validate current expected revision/after digest → restore before content, refs, binding restrictions → increment revision, history to redo → release only new unreferenced assets; roots include retained snapshots/undo/transactions"
+      ],
+      [
+        "Leave",
+        "capture revision/action → choice; cancel remains; discard explicit; save waits success for exact leaving revision, new edit invalidates token; native exit follows same flow"
+      ]
+    ],
+    "asset_boundary": {
+      "M05": "required integration seam for pin/release; immutable content versions only; M04 cannot delete shared/pinned assets directly",
+      "M06": "supplies validated single-target merge plan; cross-document modification rejected",
+      "M07": "takes stable immutable captureR; publish success acknowledges R only; no scheduling/FS path work in M04"
+    },
+    "invariants": [
+      "selection EditSession unchanged",
+      "clear and one merge each exactly one content Undo entry",
+      "prepare/cancel/failed apply produce zero history",
+      "undo restores whole payload plus binding/restriction and necessary refs, not mouse or focus",
+      "stable capture blocked during prepare/apply/rollback; no mutable UI references handed to background writer",
+      "source BIN untouched; GC only owned newly-created bytes with zero refs across all roots"
+    ],
+    "ui": [
+      [
+        "dirty",
+        "正式保存/另存/未保存標記",
+        "成功才更新formal baseline"
+      ],
+      [
+        "leave",
+        "保存/不保存/取消",
+        "保存失敗仍編輯；重編輯不得用舊token退出"
+      ],
+      [
+        "clear",
+        "作用文件與區段/素材引用預覽",
+        "與M06單文件限制一致"
+      ],
+      [
+        "undo",
+        "操作名/可用性/一筆compound entry",
+        "selection Undo為另一既有責任"
+      ],
+      [
+        "recovery",
+        "expose captured revision + independent baseline",
+        "排程與最近歷史由M07，不能讓此slice假稱已完成復原"
+      ]
+    ],
+    "asset_retention_contract": {
+      "status": "PROPOSED_SHARED_CONTRACT; M05 implementation outside M04 envelope",
+      "signature": "trait AssetRetentionPort { fn reserve(&self, owner: PinOwner, versions: &[AssetVersionRef]) -> Result<PinSetId, AssetError>; fn replace(&self, owner: PinOwner, expected: PinSetId, versions: &[AssetVersionRef]) -> Result<PinSetId, AssetError>; fn release(&self, owner: PinOwner, expected: PinSetId) -> Result<(), AssetError>; }",
+      "ownership": "M05 owns registry; PinOwner=(projectUuid,documentUuid,sessionUuid,kind,operationId); kind Live|Undo|Capture|Transaction; immutable pin set ids are server-issued",
+      "release": "release only removes named owner roots; physical GC never performed by M04; unknown remaining roots are retained",
+      "failure": "reserve failure before mutation leaves content/history unchanged; later release failure retains excess pins and reports cleanup pending without invalidating committed content"
+    }
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "schema": {
+        "const": "eluslot.document-session-projection"
+      },
+      "schemaVersion": {
+        "const": 1
+      },
+      "projectUuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "documentUuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "sessionUuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "contentRevision": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "content": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "enum": [
+              "eluslot.ess.v1",
+              "sgenaxis.design.v1"
+            ]
+          },
+          "canonicalPayload": {
+            "type": "string"
+          },
+          "semanticDigest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "assetRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "assetId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "contentDigest": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "assetId",
+                "contentDigest"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "bindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "targetId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "enum": [
+                    "valid",
+                    "pending",
+                    "invalid"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "targetId",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "blockedCapabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "canonicalPayload",
+          "semanticDigest",
+          "assetRefs",
+          "bindings",
+          "blockedCapabilities"
+        ],
+        "additionalProperties": false
+      },
+      "formalBaselineDigest": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "snapshotBaselineDigest": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "snapshotCapturedRevision": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "dirty": {
+        "type": "boolean"
+      },
+      "canUndo": {
+        "type": "boolean"
+      },
+      "historyDepth": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "status": {
+        "enum": [
+          "editing",
+          "applying",
+          "saving",
+          "recovery_required",
+          "closed"
+        ]
+      }
+    },
+    "required": [
+      "schema",
+      "schemaVersion",
+      "projectUuid",
+      "documentUuid",
+      "sessionUuid",
+      "contentRevision",
+      "content",
+      "formalBaselineDigest",
+      "snapshotBaselineDigest",
+      "snapshotCapturedRevision",
+      "dirty",
+      "canUndo",
+      "historyDepth",
+      "status"
+    ],
+    "additionalProperties": false,
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Proposed Document Session projection; not persisted Undo"
+  },
+  "ipc_schema": {
+    "status": "PROPOSED_FOR_REVIEW",
+    "request_schemas": {
+      "document_open": {
+        "type": "object",
+        "properties": {
+          "project_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "project_uuid",
+          "reference"
+        ],
+        "additionalProperties": false
+      },
+      "document_submit_draft": {
+        "type": "object",
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "source_format": {
+            "enum": [
+              "eluslot.ess.v1",
+              "sgenaxis.design.v1"
+            ]
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "session_uuid",
+          "expected_revision",
+          "source_format",
+          "source_text"
+        ],
+        "additionalProperties": false
+      },
+      "document_prepare_clear": {
+        "type": "object",
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          }
+        },
+        "required": [
+          "session_uuid",
+          "expected_revision"
+        ],
+        "additionalProperties": false
+      },
+      "document_confirm_clear": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "plan_id",
+          "expected_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "document_save": {
+        "type": "object",
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "save_as_selection_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "session_uuid",
+          "expected_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "document_undo": {
+        "type": "object",
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "session_uuid",
+          "expected_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "document_request_leave": {
+        "type": "object",
+        "properties": {
+          "session_uuid": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "action": {
+            "enum": [
+              "close",
+              "switch_project",
+              "exit"
+            ]
+          }
+        },
+        "required": [
+          "session_uuid",
+          "action"
+        ],
+        "additionalProperties": false
+      },
+      "document_confirm_leave": {
+        "type": "object",
+        "properties": {
+          "leave_plan_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "choice": {
+            "enum": [
+              "save",
+              "discard",
+              "cancel"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "leave_plan_id",
+          "choice",
+          "request_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "business_validations": "OS path containment, nonempty trimmed Windows name/reserved names, source parsing, UUID binding, owner, revision and approvalRefs are checked at input/usecase, not merely JSON shape. Required integer revision is encoded as decimal string.",
+    "unknown_fields": "Every request denies unknown fields; no arbitrary root/digest/writer/approval authority accepted."
+  },
+  "envelope": {
+    "module": "M04",
+    "status": "EXACT_CANDIDATE_ENVELOPE_FOR_REVIEW",
+    "current_permission": "planning files + own board note only; no production/tests writes",
+    "slices": [
+      {
+        "id": "M04-S1",
+        "title": "純單文件內容/history/兩基準",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_document_history.rs"
+        ],
+        "dependencies": [],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_document_history",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "No FileSystemPort new methods, no selection EditSession changes; content immutable canonical bytes and typed refs.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S2",
+        "title": "codec、正式保存與故障保全",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/document_edit.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/document_codec.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_document_codec.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "IO-PREREQ"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-host --test phase1_document_save",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-adapters --test phase1_document_codec",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Full-document codec must preserve supported unknown fields or reject; existing packet decoder is not assumed to serialize losslessly.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S3",
+        "title": "文件生命週期/清空與native離開",
+        "existing_files": [
+          "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "apps/sgenaxis-desktop/ui/app.js",
+          "apps/sgenaxis-desktop/ui/index.html",
+          "apps/sgenaxis-desktop/ui/uidesign_recovery.js"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/ui/document-lifecycle.js"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/ui/document-lifecycle.test.cjs",
+          "apps/sgenaxis-desktop/src-tauri/tests/phase1_document_commands.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "M04-S2",
+          "M05-ASSET-RETENTION-CONTRACT"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "node --test ui/document-lifecycle.test.cjs",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+            "command": "cargo test --test phase1_document_commands",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Content clear must use full history; selection Undo stays separate; release UI-only checkpoint authority only at reviewed bridge.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S4",
+        "title": "M06合併與M07快照契約整合",
+        "existing_files": [],
+        "new_files": [],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_document_integrations.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "M04-S2",
+          "M05-ASSET-RETENTION-CONTRACT",
+          "M06-SINGLE-MERGE-CONTRACT",
+          "M07-CAPTURE-CONTRACT"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_document_integrations",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Only public M04 boundary tests; no permission to implement M05/M06/M07 in this task.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      }
+    ],
+    "shared_output_prerequisite": {
+      "id": "IO-PREREQ",
+      "status": "PROPOSED_CROSS_MODULE_PREREQUISITE_NOT_AUTHORIZED",
+      "files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs"
+      ],
+      "port_signatures": "See interfaces.proposed.txt in M01/M04",
+      "dependency_policy": "reuse existing windows-sys pinned dependency; adding features/dependencies requires exact review. No database/framework.",
+      "tests": "cargo test -p sgenaxis-adapters --test phase1_file_commit (TARGET_NOT_CREATED; NOT RUN)",
+      "release_gate": "Exclusive create, cooperating OS lock, old-byte restoration at all injected failure points, lock release on process death, stale raw digest, rollback failure blocks further mutations. Not provided by write_atomic."
+    },
+    "protected": [
+      "all files not enumerated",
+      "core/src/edit.rs selection semantics",
+      "existing tests not explicitly identified for contract migration",
+      "Git/runner/plugin flows",
+      "M05/M06/M07 implementation"
+    ],
+    "existing_source_hashes": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+        "sha256": "4d4b2b091ec14758b2de30f3f992679de89915915c0ad27d809ad5ccf8dc3504"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+        "sha256": "a966c10cace2207fd800224c42fb8128c4bd84aac0cdf85135e87ee2ae28646a"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+        "sha256": "eb76b016fce8767b67a306238377cf6647e0e23d9c30a1b89bc998a6328d1f5c"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+        "sha256": "6f39bf47aa3862ca14950531abbc760bb1678e0fda877bdfd9132c6b0e1e481d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+        "sha256": "c8324a2e43e3b17d4ff8bae6ab69adaae8a5378b2c1b6014ada3a8955d8ce884"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+        "sha256": "df14f842965d15bbbcffad3f66b048bd1f8a48cd4749ccfc4857fa216d1d9718"
+      }
+    ],
+    "contract_migration": null
+  },
+  "plan": {
+    "module": "M04",
+    "status": "EXACT_PLAN_NOT_EXECUTED",
+    "cases": [
+      {
+        "id": "TDD-M04-EX-01",
+        "bdd": "BDD-M04-EX-01",
+        "title": "清空一次Undo",
+        "given": "ESS含work/arch/design及關係引用",
+        "when": "確認清空後Undo一次",
+        "then": "還原整份文件語義及引用限制，單筆history",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#01",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-02",
+        "bdd": "BDD-M04-EX-02",
+        "title": "取消無歷史",
+        "given": "已有prepare plan但尚未apply",
+        "when": "取消",
+        "then": "內容、refs、兩基準與history不變",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#02",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-03",
+        "bdd": "BDD-M04-EX-03",
+        "title": "過期plan拒絕",
+        "given": "prepare後content revision改變",
+        "when": "確認舊plan",
+        "then": "拒絕且不加history不改內容",
+        "slice": "M04-S1",
+        "fault": "RevisionConflict",
+        "fixture": "fixtures.json#03",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-04",
+        "bdd": "BDD-M04-EX-04",
+        "title": "單文件範圍",
+        "given": "plan需要改另一實體文件",
+        "when": "prepare或commit",
+        "then": "拒絕並指出跨文件前置條件",
+        "slice": "M04-S1",
+        "fault": "InvalidInput",
+        "fixture": "fixtures.json#04",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-05",
+        "bdd": "BDD-M04-EX-05",
+        "title": "不包含暫態",
+        "given": "只有selection/focus/playback改變",
+        "when": "計算語義變更",
+        "then": "semantic digest及快照需求不變",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#05",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-06",
+        "bdd": "BDD-M04-EX-06",
+        "title": "Undo單調revision",
+        "given": "內容經apply再Undo回formal內容",
+        "when": "檢查狀態",
+        "then": "revision仍增加；dirty依內容可回false；snapshot基準不被formal重設",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#06",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-07",
+        "bdd": "BDD-M04-EX-07",
+        "title": "穩定capture",
+        "given": "clear/merge/rollback進行中",
+        "when": "要求capture",
+        "then": "Busy不交付中間狀態；完成後給immutable版本",
+        "slice": "M04-S1",
+        "fault": "Busy",
+        "fixture": "fixtures.json#07",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-08",
+        "bdd": "BDD-M04-EX-08",
+        "title": "兩個基準獨立",
+        "given": "formal=R0、snapshot=R1、current=R2",
+        "when": "正式保存R2成功",
+        "then": "只更新formal；snapshot仍R1",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#08",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-09",
+        "bdd": "BDD-M04-EX-09",
+        "title": "保存中再編輯",
+        "given": "R1在IO中且current已R2",
+        "when": "回報R1保存成功",
+        "then": "formal基準只R1，R2仍dirty，不吞新內容",
+        "slice": "M04-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#09",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-10",
+        "bdd": "BDD-M04-EX-10",
+        "title": "普通IO故障保全",
+        "given": "有原有效文件與新內容",
+        "when": "stage/sync/replace任一可回復失敗",
+        "then": "原檔bytes完整，current dirty與history保留",
+        "slice": "M04-S2",
+        "fault": "StorageFailure",
+        "fixture": "fixtures.json#10",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-11",
+        "bdd": "BDD-M04-EX-11",
+        "title": "rollback本身失敗",
+        "given": "replace或驗證失敗且restore又失敗",
+        "when": "處理結果",
+        "then": "RecoveryRequired保留原版本/journal並阻擋破壞性後續；不聲稱未改或成功",
+        "slice": "M04-S2",
+        "fault": "RecoveryRequired",
+        "fixture": "fixtures.json#11",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-12",
+        "bdd": "BDD-M04-EX-12",
+        "title": "外部版本衝突",
+        "given": "正式raw bytes已被其他writer修改",
+        "when": "保存舊版本",
+        "then": "lease重查digest後拒絕，不覆寫",
+        "slice": "M04-S2",
+        "fault": "RevisionConflict",
+        "fixture": "fixtures.json#12",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-13",
+        "bdd": "BDD-M04-EX-13",
+        "title": "格式與擴充欄位",
+        "given": "ESS/設計有批准的擴充欄位與素材引用",
+        "when": "HOST codec保存重開",
+        "then": "保留語義；未知unsupported schema拒絕不丟欄位",
+        "slice": "M04-S2",
+        "fault": "UnsupportedSchema",
+        "fixture": "fixtures.json#13",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-14",
+        "bdd": "BDD-M04-EX-14",
+        "title": "離開三選擇",
+        "given": "有dirty且close/switch/exit待執行",
+        "when": "分別選保存/不保存/取消",
+        "then": "只有保存成功或明確discard才離開；取消或失敗留原處",
+        "slice": "M04-S3",
+        "fault": "StorageFailure",
+        "fixture": "fixtures.json#14",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-15",
+        "bdd": "BDD-M04-EX-15",
+        "title": "第二視窗不能寫",
+        "given": "同文件有owner editor與viewer",
+        "when": "viewer提交或使用舊session token",
+        "then": "拒絕且不得更新權威內容",
+        "slice": "M04-S3",
+        "fault": "UnauthorizedCaller",
+        "fixture": "fixtures.json#15",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-16",
+        "bdd": "BDD-M04-EX-16",
+        "title": "共享素材不刪",
+        "given": "Undo後活文件不引用但保留快照仍pin該asset",
+        "when": "評估釋放本次素材",
+        "then": "只移除live引用；bytes保留且other docs不變",
+        "slice": "M04-S4",
+        "fault": "none",
+        "fixture": "fixtures.json#16",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-17",
+        "bdd": "BDD-M04-EX-17",
+        "title": "待綁定完整回復",
+        "given": "成功merge包含pending binding與blocked capability",
+        "when": "Undo一次",
+        "then": "兩種狀態回before且來源BIN不變",
+        "slice": "M04-S4",
+        "fault": "none",
+        "fixture": "fixtures.json#17",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M04-EX-18",
+        "bdd": "BDD-M04-EX-18",
+        "title": "重新開啟不延續Undo",
+        "given": "文件保存關閉再開",
+        "when": "查詢Undo",
+        "then": "空history；復原開啟仍dirty但不帶舊session Undo",
+        "slice": "M04-S3",
+        "fault": "NoUndo",
+        "fixture": "fixtures.json#18",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      }
+    ],
+    "commands_by_slice": [
+      {
+        "id": "M04-S1",
+        "title": "純單文件內容/history/兩基準",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_document_history.rs"
+        ],
+        "dependencies": [],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_document_history",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "No FileSystemPort new methods, no selection EditSession changes; content immutable canonical bytes and typed refs.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S2",
+        "title": "codec、正式保存與故障保全",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/document_edit.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/document_codec.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_document_codec.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "IO-PREREQ"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-host --test phase1_document_save",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-adapters --test phase1_document_codec",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Full-document codec must preserve supported unknown fields or reject; existing packet decoder is not assumed to serialize losslessly.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S3",
+        "title": "文件生命週期/清空與native離開",
+        "existing_files": [
+          "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "apps/sgenaxis-desktop/ui/app.js",
+          "apps/sgenaxis-desktop/ui/index.html",
+          "apps/sgenaxis-desktop/ui/uidesign_recovery.js"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/ui/document-lifecycle.js"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/ui/document-lifecycle.test.cjs",
+          "apps/sgenaxis-desktop/src-tauri/tests/phase1_document_commands.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "M04-S2",
+          "M05-ASSET-RETENTION-CONTRACT"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "node --test ui/document-lifecycle.test.cjs",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+            "command": "cargo test --test phase1_document_commands",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Content clear must use full history; selection Undo stays separate; release UI-only checkpoint authority only at reviewed bridge.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M04-S4",
+        "title": "M06合併與M07快照契約整合",
+        "existing_files": [],
+        "new_files": [],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_document_integrations.rs"
+        ],
+        "dependencies": [
+          "M04-S1",
+          "M04-S2",
+          "M05-ASSET-RETENTION-CONTRACT",
+          "M06-SINGLE-MERGE-CONTRACT",
+          "M07-CAPTURE-CONTRACT"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_document_integrations",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Only public M04 boundary tests; no permission to implement M05/M06/M07 in this task.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      }
+    ],
+    "B1_B12": [
+      {
+        "category": "B1",
+        "name": "成功",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-01",
+          "TDD-M04-EX-06",
+          "TDD-M04-EX-08",
+          "TDD-M04-EX-09",
+          "TDD-M04-EX-13",
+          "TDD-M04-EX-14"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B2",
+        "name": "邊界",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-18",
+          "TDD-M04-EX-03"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B3",
+        "name": "非法",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-03",
+          "TDD-M04-EX-04",
+          "TDD-M04-EX-13",
+          "TDD-M04-EX-15"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B4",
+        "name": "依賴失敗",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-10",
+          "TDD-M04-EX-12"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B5",
+        "name": "部分失敗",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-10",
+          "TDD-M04-EX-11"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B6",
+        "name": "一致性",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-06",
+          "TDD-M04-EX-08",
+          "TDD-M04-EX-09",
+          "TDD-M04-EX-16"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B7",
+        "name": "交易",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-02",
+          "TDD-M04-EX-03",
+          "TDD-M04-EX-10",
+          "TDD-M04-EX-11"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B8",
+        "name": "生命週期",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-15",
+          "TDD-M04-EX-18"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B9",
+        "name": "回復",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-01",
+          "TDD-M04-EX-10",
+          "TDD-M04-EX-11",
+          "TDD-M04-EX-17"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B10",
+        "name": "跨模組",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-04",
+          "TDD-M04-EX-16",
+          "TDD-M04-EX-17"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B11",
+        "name": "相容",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-13"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B12",
+        "name": "回歸",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M04-EX-02",
+          "TDD-M04-EX-08",
+          "TDD-M04-EX-12",
+          "TDD-M04-EX-14"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      }
+    ],
+    "levels": {
+      "L0": "pure WORK models",
+      "L1": "HOST usecase controlled ports",
+      "L2": "module input command contract",
+      "L3": "real FS/OS lease/codec",
+      "L4": "asset/history/capture interactions",
+      "L5": "M08 native Windows11 x64"
+    },
+    "product_tests": "NOT RUN",
+    "pending_automation": [
+      "actual Rust target creation after architecture approval",
+      "step/fixture adapter binding",
+      "real Windows OS-lock and rollback failure harness",
+      "native UI leave/close interception",
+      "independent architecture and test review"
+    ]
+  },
+  "failure_matrix": [
+    {
+      "stage": "decode/validate",
+      "allowed_effects": "唯讀；尚未發出mutation",
+      "on_failure": "InvalidInput/UnsupportedSchema拒絕，current/original/history不變",
+      "evidence_needed": "malformed與未知欄位/版本fixtures"
+    },
+    {
+      "stage": "acquire/create",
+      "allowed_effects": "OS lease或專屬新目錄",
+      "on_failure": "ExistingTarget/Busy拒絕；新建不得刪既有目標",
+      "evidence_needed": "檔案/空目錄/非空目錄、多writer原始bytes"
+    },
+    {
+      "stage": "prepare",
+      "allowed_effects": "本次owned temp/不可變版本/pins",
+      "on_failure": "StorageFailure保留舊檔及session；新專案Partial列殘留",
+      "evidence_needed": "stage/pin/sync每點注入失敗"
+    },
+    {
+      "stage": "publish",
+      "allowed_effects": "單正式檔替換或一次domain swap",
+      "on_failure": "回復before後才回普通failure；undo不入帳",
+      "evidence_needed": "replace前後失敗及canonical/full byte對比"
+    },
+    {
+      "stage": "restore itself",
+      "allowed_effects": "保留原有效版本/transaction紀錄",
+      "on_failure": "RecoveryRequired且封鎖破壞性後續，不能宣稱原狀或成功",
+      "evidence_needed": "restore失敗、不清理唯一preimage"
+    },
+    {
+      "stage": "postcommit projection",
+      "allowed_effects": "提交已成立；畫面/通知是projection",
+      "on_failure": "不把render錯誤轉成「未寫入」；顯示已提交版本/待更新UI",
+      "evidence_needed": "成功commit後render失敗與重讀"
+    },
+    {
+      "stage": "late completion",
+      "allowed_effects": "僅ack捕獲revision/session",
+      "on_failure": "不能清掉R+1或別session的dirty；已關閉session不寫新project",
+      "evidence_needed": "save中編輯、switch、close生命週期"
+    }
+  ],
+  "traceability": [
+    [
+      "REQ-02/07",
+      "BDD-07,08",
+      "EX-08,09,10,12,13,14,15,18"
+    ],
+    [
+      "REQ-12/15/16",
+      "BDD-15,19,20,21,31",
+      "EX-01,02,03,04,06,11,16,17"
+    ],
+    [
+      "REQ-19/20/21",
+      "BDD-24,26,27",
+      "EX-05,07,08,09；60秒timer不在M04實作"
+    ]
+  ],
+  "review": {
+    "status": "EXACT_DETAILS_REVIEW_REQUIRED",
+    "directions_adopted": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7"
+    ],
+    "proposals_to_review": [
+      "Project definition path/schema v1 and persistent UUID alias migration; Save Draft creates an owned folder explicitly",
+      "WORK immutable canonical content authority and one writer per physical file; ESS embedded design vs standalone design sessions remain distinct",
+      "Shared FileCommitPort/lease and fail/RecoveryRequired contract; cannot use board lock stale reclamation for product safety",
+      "M04 history/pins/capture and exact clear scope, including ESS nested sections",
+      "7 slice envelopes, new test targets, and explicit supersession of legacy file-deletion test expectation"
+    ],
+    "approved_next_step_if_adopted": "Only approved Skeleton and compile-valid RED preparation within named slice; production implementation needs valid RED and separate authorized envelope.",
+    "current_next_step": "Owner review exact proposals as one package; no product changes this turn"
+  },
+  "verification": "document checks only; product tests/native/build NOT RUN"
+}

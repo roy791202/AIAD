@@ -1,0 +1,170 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "eluslot.document-session-projection"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "projectUuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "documentUuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sessionUuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "contentRevision": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "enum": [
+            "eluslot.ess.v1",
+            "sgenaxis.design.v1"
+          ]
+        },
+        "canonicalPayload": {
+          "type": "string"
+        },
+        "semanticDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "assetRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "assetId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "contentDigest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "assetId",
+              "contentDigest"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "targetId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state": {
+                "enum": [
+                  "valid",
+                  "pending",
+                  "invalid"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "targetId",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "blockedCapabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "canonicalPayload",
+        "semanticDigest",
+        "assetRefs",
+        "bindings",
+        "blockedCapabilities"
+      ],
+      "additionalProperties": false
+    },
+    "formalBaselineDigest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "snapshotBaselineDigest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "snapshotCapturedRevision": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "dirty": {
+      "type": "boolean"
+    },
+    "canUndo": {
+      "type": "boolean"
+    },
+    "historyDepth": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "editing",
+        "applying",
+        "saving",
+        "recovery_required",
+        "closed"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "schemaVersion",
+    "projectUuid",
+    "documentUuid",
+    "sessionUuid",
+    "contentRevision",
+    "content",
+    "formalBaselineDigest",
+    "snapshotBaselineDigest",
+    "snapshotCapturedRevision",
+    "dirty",
+    "canUndo",
+    "historyDepth",
+    "status"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Proposed Document Session projection; not persisted Undo"
+}

@@ -1,0 +1,179 @@
+{
+  "status": "PROPOSED_TEST_DATA_ONLY",
+  "module": "M04",
+  "roots": [
+    "${TEMP_ROOT}/A",
+    "${TEMP_ROOT}/B"
+  ],
+  "identity": {
+    "projectA": "11111111-1111-4111-8111-111111111111",
+    "docA": "22222222-2222-4222-8222-222222222222",
+    "sessionA": "33333333-3333-4333-8333-333333333333"
+  },
+  "versions": {
+    "formal": "R0",
+    "snapshot": "R1",
+    "current": "R2",
+    "raw_original": "ORIGINAL-BYTES",
+    "semantic_before": "BEFORE-CANONICAL",
+    "semantic_after": "AFTER-CANONICAL"
+  },
+  "assets": {
+    "shared@v1": {
+      "bytes": "SHARED-V1",
+      "roots": [
+        "other-doc",
+        "undo",
+        "snapshot"
+      ]
+    },
+    "new@v1": {
+      "bytes": "NEW-V1",
+      "roots": [
+        "transaction"
+      ]
+    }
+  },
+  "cases": {
+    "01": {
+      "given": "ESS含work/arch/design及關係引用",
+      "when": "確認清空後Undo一次",
+      "expected": "還原整份文件語義及引用限制，單筆history",
+      "fault": "none"
+    },
+    "02": {
+      "given": "已有prepare plan但尚未apply",
+      "when": "取消",
+      "expected": "內容、refs、兩基準與history不變",
+      "fault": "none"
+    },
+    "03": {
+      "given": "prepare後content revision改變",
+      "when": "確認舊plan",
+      "expected": "拒絕且不加history不改內容",
+      "fault": "RevisionConflict"
+    },
+    "04": {
+      "given": "plan需要改另一實體文件",
+      "when": "prepare或commit",
+      "expected": "拒絕並指出跨文件前置條件",
+      "fault": "InvalidInput"
+    },
+    "05": {
+      "given": "只有selection/focus/playback改變",
+      "when": "計算語義變更",
+      "expected": "semantic digest及快照需求不變",
+      "fault": "none"
+    },
+    "06": {
+      "given": "內容經apply再Undo回formal內容",
+      "when": "檢查狀態",
+      "expected": "revision仍增加；dirty依內容可回false；snapshot基準不被formal重設",
+      "fault": "none"
+    },
+    "07": {
+      "given": "clear/merge/rollback進行中",
+      "when": "要求capture",
+      "expected": "Busy不交付中間狀態；完成後給immutable版本",
+      "fault": "Busy"
+    },
+    "08": {
+      "given": "formal=R0、snapshot=R1、current=R2",
+      "when": "正式保存R2成功",
+      "expected": "只更新formal；snapshot仍R1",
+      "fault": "none"
+    },
+    "09": {
+      "given": "R1在IO中且current已R2",
+      "when": "回報R1保存成功",
+      "expected": "formal基準只R1，R2仍dirty，不吞新內容",
+      "fault": "none"
+    },
+    "10": {
+      "given": "有原有效文件與新內容",
+      "when": "stage/sync/replace任一可回復失敗",
+      "expected": "原檔bytes完整，current dirty與history保留",
+      "fault": "StorageFailure"
+    },
+    "11": {
+      "given": "replace或驗證失敗且restore又失敗",
+      "when": "處理結果",
+      "expected": "RecoveryRequired保留原版本/journal並阻擋破壞性後續；不聲稱未改或成功",
+      "fault": "RecoveryRequired"
+    },
+    "12": {
+      "given": "正式raw bytes已被其他writer修改",
+      "when": "保存舊版本",
+      "expected": "lease重查digest後拒絕，不覆寫",
+      "fault": "RevisionConflict"
+    },
+    "13": {
+      "given": "ESS/設計有批准的擴充欄位與素材引用",
+      "when": "HOST codec保存重開",
+      "expected": "保留語義；未知unsupported schema拒絕不丟欄位",
+      "fault": "UnsupportedSchema"
+    },
+    "14": {
+      "given": "有dirty且close/switch/exit待執行",
+      "when": "分別選保存/不保存/取消",
+      "expected": "只有保存成功或明確discard才離開；取消或失敗留原處",
+      "fault": "StorageFailure"
+    },
+    "15": {
+      "given": "同文件有owner editor與viewer",
+      "when": "viewer提交或使用舊session token",
+      "expected": "拒絕且不得更新權威內容",
+      "fault": "UnauthorizedCaller"
+    },
+    "16": {
+      "given": "Undo後活文件不引用但保留快照仍pin該asset",
+      "when": "評估釋放本次素材",
+      "expected": "只移除live引用；bytes保留且other docs不變",
+      "fault": "none"
+    },
+    "17": {
+      "given": "成功merge包含pending binding與blocked capability",
+      "when": "Undo一次",
+      "expected": "兩種狀態回before且來源BIN不變",
+      "fault": "none"
+    },
+    "18": {
+      "given": "文件保存關閉再開",
+      "when": "查詢Undo",
+      "expected": "空history；復原開啟仍dirty但不帶舊session Undo",
+      "fault": "NoUndo"
+    }
+  },
+  "fault_points": [
+    "validate",
+    "exclusive-create",
+    "lock",
+    "read",
+    "prepare-assets",
+    "stage",
+    "sync",
+    "replace",
+    "restore",
+    "history-publish",
+    "late-completion"
+  ],
+  "safety": "never use user root or real board; sample payloads are fixture labels, not real file hashes",
+  "boundary_rows": {
+    "history_depth": [
+      0,
+      1,
+      2
+    ],
+    "content_revisions": [
+      "0",
+      "1",
+      "18446744073709551615"
+    ],
+    "save_interleave": [
+      "captureR1",
+      "editR2",
+      "ackR1"
+    ],
+    "notes": "dirty compares semantic digest; byte digest reserved for disk conflicts; stable capture cannot observe apply/rollback intermediate state"
+  }
+}
