@@ -1,0 +1,79 @@
+# PD-M4-CI-MATRIX-01 — multi-OS matrix placeholders (windows / macos / linux).
+# Stub only: does NOT require a paid macOS runner.
+# Missing / disabled runners → status NOT RUN (never forge PASS).
+# Local equivalent + matrix table: docs/CI-OS-MATRIX.md
+# Cross-ref PD-CI-01 gate: docs/CI-PR-GATE.md · python scripts/pd_ci_pr_gate.py
+
+name: OS matrix stub
+
+on:
+  workflow_dispatch:
+  # Optional: uncomment when matrix should run on every PR (still free GH-hosted only).
+  # pull_request:
+
+jobs:
+  # --- linux (ubuntu-latest, free GH-hosted) ---
+  matrix-linux:
+    name: "linux (ubuntu-latest)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest (PD-CI-01 subset)
+        run: pip install "pytest==9.1.1"
+
+      - name: OS matrix stub (linux) + PD-CI-01 gate
+        run: python scripts/pd_ci_os_matrix_stub.py --ci --os linux
+
+  # --- windows (windows-latest, free GH-hosted) ---
+  matrix-windows:
+    name: "windows (windows-latest)"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest (PD-CI-01 subset)
+        run: pip install "pytest==9.1.1"
+
+      - name: OS matrix stub (windows) + PD-CI-01 gate
+        run: python scripts/pd_ci_os_matrix_stub.py --ci --os windows
+
+  # --- macos placeholder (NO paid mac runner) ---
+  # Default: runs on ubuntu and records macos cell as NOT RUN.
+  # To exercise free GH-hosted macos-latest later, set repo variable
+  # ENABLE_MACOS_MATRIX=true (still not a paid/dedicated runner).
+  matrix-macos:
+    name: "macos (placeholder / NOT RUN unless enabled)"
+    runs-on: ${{ vars.ENABLE_MACOS_MATRIX == 'true' && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest (only when mac runner enabled)
+        if: ${{ vars.ENABLE_MACOS_MATRIX == 'true' }}
+        run: pip install "pytest==9.1.1"
+
+      - name: OS matrix stub (macos)
+        env:
+          PD_MATRIX_MACOS_ENABLED: ${{ vars.ENABLE_MACOS_MATRIX }}
+        run: python scripts/pd_ci_os_matrix_stub.py --ci --os macos
