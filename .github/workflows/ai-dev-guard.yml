@@ -16,6 +16,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Board / Task / BDD / spec / version checks
         shell: pwsh
         env:
@@ -31,23 +34,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Tauri Linux deps
-        if: ${{ hashFiles('src-tauri/Cargo.toml') != '' }}
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+        if: ${{ hashFiles('apps/sgenaxis-desktop/src-tauri/Cargo.toml') != '' }}
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - uses: dtolnay/rust-toolchain@stable
         if: ${{ hashFiles('**/Cargo.toml') != '' }}
       - name: cargo test
         if: ${{ hashFiles('**/Cargo.toml') != '' }}
         shell: bash
+        working-directory: apps/sgenaxis-desktop
         run: |
-          if [ -f src-tauri/Cargo.toml ]; then cd src-tauri; fi
-          cargo test --locked --all-targets
+          cargo test --workspace --locked --all-targets
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
       - uses: actions/setup-node@v4
-        if: ${{ hashFiles('package.json') != '' }}
+        if: ${{ hashFiles('apps/sgenaxis-desktop/package.json') != '' }}
         with:
           node-version: 20
       - name: npm test
-        if: ${{ hashFiles('package.json') != '' }}
+        if: ${{ hashFiles('apps/sgenaxis-desktop/package.json') != '' }}
         shell: bash
+        working-directory: apps/sgenaxis-desktop
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm test --if-present
+          node --test ui/*test.cjs

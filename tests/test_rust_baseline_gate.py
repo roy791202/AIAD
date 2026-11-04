@@ -5,7 +5,7 @@ import subprocess
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / 'reports/rust-improvements/baseline-tests/acceptance.json'
+FIXTURE = ROOT / 'tests/fixtures/rust-baseline/acceptance.json'
 
 class RustBaselineGate(unittest.TestCase):
     def test_cargo_artifacts_hidden_sources_and_locks_visible(self):

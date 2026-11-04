@@ -44,14 +44,10 @@ $feat = @($changed | Where-Object { $_ -match '\.feature$' })
 if ($feat.Count -and 'spec-change' -notin $labels) { Note ("修改了 BDD 情境（" + ($feat -join ', ') + "），需要核准者加上 spec-change 標籤，並經 CODEOWNERS 審查") }
 $prot = @($changed | Where-Object { $_ -match '^(\.ai-hooks/|\.githooks/|\.github/workflows/|\.cursor/hooks\.json$|\.claude/settings)' })
 if ($prot.Count -and 'guard-change' -notin $labels) { Note ("修改了強制機制檔案（" + ($prot -join ', ') + "），需要 guard-change 標籤與 CODEOWNERS 審查") }
-# 4) 不可新增略過的測試
+# 4) 不可新增略過的測試；共用詞法檢查不把引號中的審查證據當可執行程式。
 if ($base) {
-  $cur = ''
-  foreach ($l in ((G @('diff', '-U0', '--no-color', "$base...HEAD")) -split "`n")) {
-    if ($l -match '^\+\+\+ b/(.+)$') { $cur = $Matches[1]; continue }
-    if ($cur -match '\.(md|mdc|txt|html?|rst|adoc)$') { continue }   # 文件裡的範例文字不算測試
-    if ($l -match '^\+' -and $l -notmatch '^\+\+\+' -and $l.Substring(1) -match '#\[ignore\]|\b(it|test|describe)\.(skip|only)\s*\(|\b(xit|xdescribe|fit|fdescribe)\s*\(') { Note "${cur}：新增了被略過或只跑部分的測試：$($l.Substring(1).Trim())" }
-  }
+  $disableOutput = & python scripts/check_added_test_disables.py --base $base 2>&1
+  if ($LASTEXITCODE -ne 0) { Note ("測試停用檢查失敗：" + ($disableOutput -join ' ')) }
 }
 # 5) 版本與 CHANGELOG
 $verFiles = @($changed | Where-Object { $_ -match '(^|/)(Cargo\.toml|package\.json|tauri\.conf\.json)$' })

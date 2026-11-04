@@ -34,9 +34,14 @@ if ($Mode -eq 'commit-msg') {
     if ($l -notmatch '^\+' -or $l -match '^\+\+\+') { continue }
     if ($cur -match '\.(md|mdc|txt|html?|rst|adoc)$') { continue }   # 文件裡的範例文字不算測試
     $code = $l.Substring(1)
-    if ($code -match '#\[ignore\]|\b(it|test|describe)\.(skip|only)\s*\(|\b(xit|xdescribe|fit|fdescribe)\s*\(|\.skip\(\s*["'']') { $errs.Add("${cur}：新增了被略過或只跑部分的測試：$($code.Trim())") }
     if ($cur -match '\.rs$' -and $cur -notmatch '(^|/)(tests|benches)/|_test\.rs$' -and $code -match '\.(unwrap|expect)\s*\(' -and $code -notmatch '^\s*//') { $warns.Add("${cur}：新增 unwrap()/expect()（若在 #[cfg(test)] 內可忽略）：$($code.Trim())") }
     if (++$n -gt 20000) { break }
+  }
+  $python = Get-Command python -ErrorAction SilentlyContinue
+  if (-not $python) { $errs.Add('找不到 Python，無法檢查測試停用，拒絕提交') }
+  else {
+    $disableOutput = & $python.Source (Join-Path (G @('rev-parse', '--show-toplevel')) 'scripts/check_added_test_disables.py') 2>&1
+    if ($LASTEXITCODE -ne 0) { $errs.Add("測試停用檢查失敗：$($disableOutput -join ' ') ") }
   }
   # 版本同步：Cargo.toml / package.json / tauri.conf.json
   if ($files | Where-Object { $_ -match '(^|/)(Cargo\.toml|package\.json|tauri\.conf\.json)$' }) {

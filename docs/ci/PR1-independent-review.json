@@ -1,0 +1,132 @@
+{
+  "reviewer": "/root/pr1_final_review",
+  "developer_identities": [
+    "/root",
+    "/root/pr1_packaging_fixture",
+    "/root/pr1_guard_review"
+  ],
+  "reviewed_at": "2026-11-04T10:18:15.987749+00:00",
+  "base_sha": "8cdaa931f89bfb5896d11442fdaade4ca6ca737f",
+  "status": "PASS_SCOPED_REPAIR_REVIEW",
+  "source_sha256": "f946ad119fa5322fb65cd33a395cf9ad5569938e96aba3fe88afa5e33f5024dc",
+  "tests": [
+    {
+      "command": "py -3.12 -m pytest tests/test_added_test_disables.py -q",
+      "result": "PASS",
+      "passed": 58
+    },
+    {
+      "command": "disabled_lines Rust raw-string adversarial case",
+      "result": "PASS",
+      "input": "const S: &str = r#\"\"\"#; #[ignore] fn test_x() {} // \"",
+      "actual": [
+        1
+      ],
+      "expected": "line 1 must be rejected"
+    },
+    {
+      "command": "Independent original raw-string, object/string/template/regex division, property-keyword and Mocha alias adversarial cases",
+      "result": "PASS",
+      "details": "Actual test disables are rejected; quoted anti-disable evidence remains accepted."
+    },
+    {
+      "command": "py -3.12 scripts/check_added_test_disables.py --base origin/main",
+      "result": "EXPECTED BLOCK",
+      "exit_code": 1,
+      "findings": [
+        "tests/test_pd_rel_03_verify_install.py:136",
+        "tests/test_pd_smoke_01.py:153",
+        "tests/test_pd_wire_smoke_01.py:96",
+        "tests/test_pd_wire_smoke_01.py:143",
+        "tests/test_pd_wire_smoke_01.py:158",
+        "tools/board/test_rel_ui_smoke.py:206"
+      ]
+    },
+    {
+      "command": "Independent chained receiver and multiline chained .skip probes for Python and JavaScript",
+      "result": "PASS",
+      "details": "factory().skip rejected at line 1; newline .skip rejected at line 2"
+    }
+  ],
+  "findings": [],
+  "confirmed": {
+    "original_336_items_semantically_identical": true,
+    "board_root_change": "updatedAt only",
+    "role_configuration_unchanged": true,
+    "baseline_fixture_bytes_identical": true,
+    "workflow_repairs_preserve_task_bdd_label_gates": true,
+    "packaging_uses_isolated_real_artifacts": true
+  },
+  "label_endorsement": {
+    "spec-change": "ENDORSED for scoped S-CI-PR1 engineering BDD, not product semantic changes",
+    "guard-change": "ENDORSED for reviewed shared lexical guard and CI repair, preserving role/Task/BDD/label gates"
+  },
+  "limits": [
+    "Scope is repair delta against 8cdaa931, not an independent acceptance of every prior product change in PR1",
+    "Remote CI and main merge not approved; all-target product failure must remain visible",
+    "Five originally untracked tests have no recoverable historical source snapshot in backup registry; reviewed retained observed assertions and fixture-only changes, not a claim of historical byte equivalence",
+    "Local package fixture uses a real existing EXE and actual MSI build; fresh source-build provenance is a separate remote CI condition",
+    "No installation, DCC, Live target, release or product-semantic acceptance"
+  ],
+  "resolved_findings": [
+    "Rust raw-string masking corrected",
+    "Inline Rust ignore attributes rejected",
+    "Nested JavaScript template interpolation preserves executable bodies",
+    "Multiline match lines all checked against staged additions",
+    "Closing-object-brace and literal division cases corrected",
+    "Property-keyword division distinguished from regex literals",
+    "Generic executable JavaScript skip/only aliases retained",
+    "Unsupported legacy binary diff decoding excluded; supported invalid UTF8 remains failclosed",
+    "Original localhook chained-receiver generic skip detection retained"
+  ],
+  "merge_status": "BLOCKED",
+  "product_conflict": {
+    "status": "SPEC_CONFLICT",
+    "test": "new_project_choices_are_explicit_and_do_not_touch_host_binding",
+    "observed": "Result::unwrap on Err WizardRequired",
+    "evidence": "reports/commit-batches-20261104/repair-tauri-alltargets.txt",
+    "test_summary": "170 passed; 1 failed; 0 ignored",
+    "required": "Owner product semantic decision; do not change assertion or host behavior under CI repair scope"
+  },
+  "scope_decision": "Approve frozen scoped CI/fixture/five-test repair commit and normal push for continued PR review after independent 58-test rerun; this is not full PR acceptance or merge approval.",
+  "merge_blockers": [
+    {
+      "status": "SPEC_CONFLICT / REPLAN_REQUIRED",
+      "test": "new_project_choices_are_explicit_and_do_not_touch_host_binding",
+      "observed": "unchanged integration assertion expects successful direct create; implementation returns WizardRequired",
+      "evidence": "reports/commit-batches-20261104/repair-tauri-alltargets.txt",
+      "summary": "170 passed / 1 failed",
+      "action": "Owner-approved product contract reconciliation required; retain implementation and assertion meanwhile"
+    },
+    {
+      "status": "GUARD_BLOCKED",
+      "issue": "Full PR includes executable test disables beyond the five repair test files",
+      "evidence": "Independently ran full-base scanner: six executable disables reported, exit 1; exact locations in tests array.",
+      "action": "Do not mask, waive or silently repair outside the authorized five-test slice"
+    },
+    {
+      "status": "REMOTE_CI_PENDING",
+      "issue": "No final sealed-head remote checks Green evidence yet"
+    }
+  ],
+  "file_sha256": {
+    ".gitattributes": "83e4655edb1eaf978abebfb614464316c487f691e4940049786593d5d71046c7",
+    ".githooks/check.ps1": "6d7ec8521d9d37078dfbd06c67c79b2686a316295a0566824511d650c74ad310",
+    ".github/ai-dev-guard/guard.ps1": "1933192bd46d9d350516b3e29a8cba70a2a8520ada1e6a427967b57a50bc365d",
+    ".github/workflows/ai-dev-guard.yml": "3cad9ba9088fc018dc331d930b7df33320f9812a050768448677cdc38c40fbf5",
+    ".github/workflows/rust-gate.yml": "c898b122969bcd16d7ab2ba041c3cc7b18ec4c78c56eea6d1a5c3a5a0526c57f",
+    "scripts/check_added_test_disables.py": "f946ad119fa5322fb65cd33a395cf9ad5569938e96aba3fe88afa5e33f5024dc",
+    "scripts/prepare_packaging_test_fixture.py": "a80bdafc8c13c837bfad230cb40eb31bb85a1575ad7e83f2e02ecb9a444b6172",
+    "tests/test_added_test_disables.py": "dfc0d9b1746cd5c7189b301a1b05481fe074f25565d70c0f1b7832667a4965b2",
+    "tests/test_rust_baseline_gate.py": "27f7674adcd49dc33eb8816013e6a2d665d1e419814c6e931ecc0037eed5c2b8",
+    "tests/test_dispatcher.py": "35470c2bcd6f932fa73875b3db11cea14650744afca6540ceab117a61094de94",
+    "tests/test_pd_live_cli_smoke_01.py": "816ca260adebcfea0a0a80a7459e7e81ee0dd3e7b53b977171c5b84cc6ffe0f8",
+    "tests/test_pd_m2_e2e_loop_01.py": "657aae147e2d1fe185a1d47f45235dfce897e1f435114cf5deb52715e8b33015",
+    "tests/test_pd_mcp_live_smoke_01.py": "ee3fb4dc78bacade2c1e06fd19215d3e084465398296b1bdf468c09a535beb6d",
+    "tests/test_pd_rel_02_wix.py": "d8062c6c01cf68361c4c2f5c99d1ab4712b823a57b8b203e4352b5e215d4020f",
+    "tests/test_pd_release_rec_01.py": "b85523500c29903b425341544615de89ea507bfa852993fb99cb8cc5cc46db14",
+    "tests/fixtures/rust-baseline/acceptance.json": "5c6b71a86969033e90d61faf9afe7d1370b6de1e535712259b232fa8211ef548",
+    "docs/bdd/S-CI-PR1.feature": "fdccba3fd27834120e90315265426357e4c5da414ecfb34fc34034ac629df03b",
+    "docs/board.json": "16dee260bcf5ec966f894ba7f4897930e38413b14664732b157d1a124bf92bb0"
+  }
+}
