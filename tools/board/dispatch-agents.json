@@ -1,0 +1,52 @@
+{
+  "schema": "hb-board-dispatch/1",
+  "_doc": "VGenAxIs BOARD-DISPATCH-01 agent command lines. Port 18789; SSOT is docs/PROJECT-BOARD.html #board-snapshot. Never 8788. Card text never goes on the command line.",
+  "timeout_minutes": 60,
+  "report_grace_seconds": 120,
+  "max_cards_default": 5,
+  "max_cards_limit": 50,
+  "max_lanes": 3,
+  "fast_fail_seconds": 60,
+  "fast_fail_limit": 3,
+  "skip_kinds": ["note", "epic", "milestone", "release", "decision"],
+  "agents": [
+    {
+      "id": "claude",
+      "label": "Claude Code",
+      "command": ["claude", "-p", "--permission-mode", "acceptEdits", "--settings", "{repo}\\tools\\board\\claude-dispatch-settings.json", "--output-format", "text"],
+      "prompt_via": "stdin",
+      "auth_error_patterns": ["Not logged in", "Please run /login", "Invalid API key", "authentication_error", "OAuth token has expired"],
+      "limit_error_patterns": ["hit your session limit", "hit your usage limit", "usage limit reached", "rate_limit_error", "overloaded_error"],
+      "login_hint": "Claude Code 未登入:在另一個 PowerShell 執行 claude,輸入 /login 完成授權後 /exit,再按「啟動」。"
+    },
+    {
+      "id": "cursor-agent",
+      "label": "cursor-agent",
+      "command": ["cursor-agent", "-p", "--trust", "--workspace", "{repo}", "--output-format", "text", "{prompt_pointer}"],
+      "prompt_via": "arg",
+      "auth_error_patterns": ["Authentication required", "Not authenticated", "not logged in", "cursor-agent login", "agent login"],
+      "limit_error_patterns": ["usage limit", "rate limit", "quota exceeded"],
+      "login_hint": "cursor-agent 未登入:在 PowerShell 執行 cursor-agent login 完成授權,再按「啟動」。"
+    },
+    {
+      "id": "codex",
+      "label": "Codex CLI",
+      "command": ["codex", "exec", "--sandbox", "workspace-write", "--cd", "{repo}", "--color", "never", "-"],
+      "prompt_via": "stdin",
+      "auth_error_patterns": ["Not logged in", "codex login", "401 Unauthorized", "Missing OpenAI API key"],
+      "limit_error_patterns": ["usage limit", "rate limit", "insufficient_quota", "429 Too Many Requests"],
+      "login_hint": "Codex CLI 未登入:在 PowerShell 執行 codex login 完成授權,再按「啟動」。"
+    },
+    {
+      "id": "antigravity",
+      "label": "Antigravity",
+      "detached": true,
+      "command": ["%LOCALAPPDATA%\\Programs\\Antigravity IDE\\bin\\antigravity-ide.cmd", "chat", "--mode", "agent", "--new-window", "--add-file", "{prompt_file}", "{prompt_pointer}"],
+      "prompt_via": "arg",
+      "timeout_minutes": 60,
+      "auth_error_patterns": [],
+      "limit_error_patterns": [],
+      "login_hint": "Antigravity 以視窗模式執行:每張卡開一個新的 Antigravity IDE 視窗,只靠 board.py report 回報或逾時結束;終端指令可能要在 IDE 內按允許。"
+    }
+  ]
+}

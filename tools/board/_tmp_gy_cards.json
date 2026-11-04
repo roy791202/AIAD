@@ -1,0 +1,562 @@
+[
+  {
+    "id": "PD-RUST-EMBEDDED-AGENT-PLAN-01",
+    "ref": "PD-RUST-EMBEDDED-AGENT-PLAN-01",
+    "title": "規劃｜EluSlot 內嵌 Agent 的模式可行性",
+    "kind": "planning",
+    "zone": "gray",
+    "bdd": "Interactive Agent sessions hosted inside EluSlot preserve project binding, permission prompts, cancellation and evidence gates.",
+    "tdd": "NOT RUN; approve architecture/contracts/UI schema before executable RED and implementation.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: embedded-agent-workbench\nOwner direction REQ-AGENT-HOST-01. Terminal PTY vs native chat panel options in reports/rust-improvements/embedded-agents/module.html. Codex App Server / Claude Code programmatic integration documented. Current ProcessPort lacks interactive stdin/resize. No direct VS Code extension embedding assumption. Production blocked pending approved session ports/lifecycle/auth design.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: embedded-agent-workbench\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 只讀比較PTY/native panel，列既有ProcessPort缺stdin/resize及各host真實能力、session ownership/UI schema草案；交EMBEDDED-AGENT-DEC-01，不先新增production Port。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。"
+  },
+  {
+    "id": "PD-RUST-XML-PACKET-DEC-01",
+    "ref": "PD-RUST-XML-PACKET-DEC-01",
+    "title": "Approve XML packet architecture and canonical-source policy",
+    "kind": "decision",
+    "zone": "gray",
+    "bdd": "Rebuild current formal Rust from reviewed inputs without generated outputs; packet proposals preserve existing product semantics.",
+    "tdd": "Tests defined before configuration changes; actual behavioral RED then GREEN and independent review. Packet implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: engineering-packet\nPending decisions: product document authority (.ess versus split files), module identity selection, source/hash binding, missing behavior semantics, approved output boundary. Owner request authorizes preparation, not unknown schemas or ports. No production packet implementation until concrete architecture/skeleton approval.\nNo self-green, source scope escape, commit, push, live Agent, or release.\n[2026-10-25T23:37:47+08:00] Concrete recommended A now reviewable: only explicitly selected integrated .ess bytes, moduleId identity distinct slotId, exact source-hash provenance; no source writeback/schema migration, no automatic hints->approved behavior, unresolved UI subset or missing approval returns NOT_READY. UI context selection, resource limits and publication semantics remain in proposal; initial in-memory projection minimizes side effects. Owner architecture approval required by workflow gates before skeleton/TDD implementation.\n[2026-10-25T23:42:40+08:00] OWNER APPROVED A: explicitly selected .ess-only read-only packet, moduleId/task, source hash, missing UI ownership or approvals -> NOT_READY. No split inputs, source writes, model execution, schema migration or acceptance bypass. Concrete skeleton may now be created within A."
+  },
+  {
+    "id": "PD-RUST-UI-BEHAVIOR-LOOP-01",
+    "ref": "PD-RUST-UI-BEHAVIOR-LOOP-01",
+    "title": "功能｜第一個可保存的 UI 互動閉環",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Module observable behavior and failure paths must be specified before implementation.",
+    "tdd": "NOT RUN; backlog only. Requires approved architecture/contract/BDD/skeleton and intended RED.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: ui-behavior\nDependencies: PD-RUST-DOCUMENT-CONTRACT-01\nSelect button opens settings example; UI schema/events/command/state/preview/roundtrip BDD and failure tests; new runtime behavior needs architecture approval.\nScope not ready for production. No self-green, broad rewrite, commit or push.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: ui-behavior\nDependencies: PD-RUST-DOCUMENT-DEC-01, PD-RUST-UI-OWNERSHIP-DEC-01, PD-RUST-UI-OWNERSHIP-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 先選按鈕開啟設定最小例：UI schema→event→command→state→preview→save/load；新行為先核准。正常/disabled/empty/error/重載可觀察互動與歸屬均可追溯。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。"
+  },
+  {
+    "id": "PD-RUST-AGENT-LOOP-01",
+    "ref": "PD-RUST-AGENT-LOOP-01",
+    "title": "整合｜第一個 Agent 派工到證據驗收閉環",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Module observable behavior and failure paths must be specified before implementation.",
+    "tdd": "NOT RUN; backlog only. Requires approved architecture/contract/BDD/skeleton and intended RED.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution\nDependencies: PD-RUST-XML-PACKET-IMPL-01; PD-RUST-DISPATCH-MODES-DEC-01\nOwner selects initial Claude Code or Codex and supported mode; bind input/permission/cancel/report/evidence. Provider completion never auto-accepts.\nScope not ready for production. No self-green, broad rewrite, commit or push.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution\nDependencies: PD-RUST-XML-READINESS-01, PD-RUST-DISPATCH-MODES-DEC-01, PD-RUST-REPORT-INGRESS-IMPL-01, PD-RUST-CLI-ENTRY-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: Owner先選Claude Code或Codex與單一入口，整合packet/permissions/run/cancel/report/EVID；過期缺核准拒絕、Provider成功不等於產品驗收，不一次擴張所有providers。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。"
+  },
+  {
+    "id": "PD-RUST-AGENT-ENTRYPOINTS-01",
+    "ref": "PD-RUST-AGENT-ENTRYPOINTS-01",
+    "title": "後續｜其他 Agent providers 與入口整合",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Module observable behavior and failure paths must be specified before implementation.",
+    "tdd": "NOT RUN; backlog only. Requires approved architecture/contract/BDD/skeleton and intended RED.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-integration\nDependencies: PD-RUST-AGENT-LOOP-01; PD-RUST-EMBEDDED-AGENT-PLAN-01\nCapability-specific Claude Code/Codex, inbound MCP and embedded Web UI, same task/run/report contracts; implementation not authorized before architecture gates.\nScope not ready for production. No self-green, broad rewrite, commit or push.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-integration\nDependencies: PD-RUST-AGENT-LOOP-01\nIntent / Allowed Scope / Acceptance Criteria: 沿用第一閉環契約，由CLI-ENTRY/INBOUND-MCP/CLAUDE及CODEX-COMPAT/內嵌各卡落實；各能力有版本/範圍/相容報告/未支援狀態，不重複建立SSOT。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。"
+  },
+  {
+    "id": "PD-RUST-GUARD-IMPL-01",
+    "ref": "PD-RUST-GUARD-IMPL-01",
+    "title": "修正｜實作派工強制經核准骨架與 Guard",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 依核准入口與權限綁定實作，保留真正一般執行相容；未核准／過期／錯配必須在執行副作用前拒絕，合法流程可執行且不繞過Ports。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: execution-guard\nDependencies: PD-RUST-GUARD-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 依核准入口與權限綁定實作，保留真正一般執行相容；未核准／過期／錯配必須在執行副作用前拒絕，合法流程可執行且不繞過Ports。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 02（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-GUARD-TDD-01",
+    "ref": "PD-RUST-GUARD-TDD-01",
+    "title": "驗證｜Guard 繞過、過期與權限綁定",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 先定義並證明有效RED，再驗證所有入口、版本綁定、失敗狀態不變與一般執行相容；focused/module/adjacent regression及獨立架構審查、HTML。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: execution-guard\nDependencies: PD-RUST-GUARD-DEC-01, PD-RUST-GUARD-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 先定義並證明有效RED，再驗證所有入口、版本綁定、失敗狀態不變與一般執行相容；focused/module/adjacent regression及獨立架構審查、HTML。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 03（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-FS-DEC-01",
+    "ref": "PD-RUST-FS-DEC-01",
+    "title": "決策｜並發寫入、覆寫與資料保留契約",
+    "kind": "decision",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 定義唯一暫存檔所有權、Windows replacement、並發勝出、commit失敗舊檔保留及清理責任；區分原子替換、CAS與斷電耐久。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: filesystem-persistence\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 定義唯一暫存檔所有權、Windows replacement、並發勝出、commit失敗舊檔保留及清理責任；區分原子替換、CAS與斷電耐久。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 04（以dependency及Owner Gate為準）\n待決策事項:\n- [ ] 是否採完整payload最後提交勝出，排除CAS/斷電耐久？建議每次create_new唯一sibling temp、只清理自己檔案，Windows overwrite實測。影響FS-IMPL/TDD-01。\n[2026-10-26T00:36:51+08:00] OWNER APPROVED: 核准最小方案，接續RED與實作。既有FileSystemPort不變；獨占唯一sibling temp、最後成功提交勝出且完整payload、commit前失敗保留舊檔、僅清自己temp；無CAS/斷電耐久。具體封包 continuous/filesystem-persistence/module.html。"
+  },
+  {
+    "id": "PD-RUST-PROC-DEC-01",
+    "ref": "PD-RUST-PROC-DEC-01",
+    "title": "決策｜程序退出、串流 EOF 與取消生命週期",
+    "kind": "decision",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 定義child exit與stdout/stderr Open/EOF/Error、drain deadline、buffer上限/overflow、後代程序取消及不完整輸出結果；核准ports/ownership。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: process-lifecycle\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 定義child exit與stdout/stderr Open/EOF/Error、drain deadline、buffer上限/overflow、後代程序取消及不完整輸出結果；核准ports/ownership。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 07（以dependency及Owner Gate為準）\n待決策事項:\n- [ ] 等待上限、timeout結果、buffer及取消範圍為何？建議保留try_wait退出意義，獨立雙串流完成才發布一次terminal；不擅定數值。影響PROC-IMPL/TDD-01。\n[2026-10-26T00:39:27+08:00] OWNER APPROVED minimal stream completion: Open/EOF/Error for stdout/stderr; preserve try_wait/buffering/direct-child cancellation; fixed2000ms post-exit deadline checked nextpoll, not extended by data; bothEOF -> Exited, timeout/readerror preserve output then existingFailed; cancel same drain. No new Manager/dependency."
+  },
+  {
+    "id": "PD-RUST-UI-OWNERSHIP-IMPL-01",
+    "ref": "PD-RUST-UI-OWNERSHIP-IMPL-01",
+    "title": "功能｜UI 節點歸屬與參照完整性",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 依核准來源契約建立/讀取mapping，不複製無關design；缺失/重複/跨檔衝突可讀拒絕，save/load與module BDD/TDD具追溯；變更儲存語意先核准。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: ui-design-binding\nDependencies: PD-RUST-DOCUMENT-DEC-01, PD-RUST-UI-OWNERSHIP-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 依核准來源契約建立/讀取mapping，不複製無關design；缺失/重複/跨檔衝突可讀拒絕，save/load與module BDD/TDD具追溯；變更儲存語意先核准。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 12（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-XML-READINESS-01",
+    "ref": "PD-RUST-XML-READINESS-01",
+    "title": "規劃／功能｜工程封包正式核准、Guard 與 Evidence 綁定",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 設計來源hash、task/module、SPEC revision、BDD/AC、Skeleton、有效RED與GUARD/EVID消費邊界；新READY語意需獨立核准，現有A固定NOT_READY不可偷偷更改。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: engineering-packet\nDependencies: PD-RUST-XML-PACKET-IMPL-01, PD-RUST-GUARD-DEC-01, PD-RUST-UI-OWNERSHIP-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 設計來源hash、task/module、SPEC revision、BDD/AC、Skeleton、有效RED與GUARD/EVID消費邊界；新READY語意需獨立核准，現有A固定NOT_READY不可偷偷更改。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 13（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-MCP-TRANSPORT-IMPL-01",
+    "ref": "PD-RUST-MCP-TRANSPORT-IMPL-01",
+    "title": "功能｜既有 McpClientPort 的真實傳輸 adapter",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 實作核准transport與明確production composition；initialize/toolcall/failure/disconnect可測；不得回落Fake成功，未可用持續NOT RUN，無secret投影、不改Domain依賴。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: mcp-transport\nDependencies: PD-RUST-MCP-TRANSPORT-DEC-01, PD-RUST-PROC-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 實作核准transport與明確production composition；initialize/toolcall/failure/disconnect可測；不得回落Fake成功，未可用持續NOT RUN，無secret投影、不改Domain依賴。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 15（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-MCP-TRANSPORT-SMOKE-01",
+    "ref": "PD-RUST-MCP-TRANSPORT-SMOKE-01",
+    "title": "驗證｜真實 MCP 呼叫與失敗證據",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 只對核准目標測成功/invalidtool/拒絕/timeout/cancel/disconnect，提供request/result/terminal與版本；未配置NOT RUN，Fake/靜態頁不可替代Live，不自動產品驗收。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: mcp-transport\nDependencies: PD-RUST-MCP-TRANSPORT-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 只對核准目標測成功/invalidtool/拒絕/timeout/cancel/disconnect，提供request/result/terminal與版本；未配置NOT RUN，Fake/靜態頁不可替代Live，不自動產品驗收。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 16（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-REPORT-INGRESS-IMPL-01",
+    "ref": "PD-RUST-REPORT-INGRESS-IMPL-01",
+    "title": "功能｜CLI／API／MCP 共用領工與回報入口",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 先鎖claim/lease/run/ReportRun/evidence契約，各adapter共用application；重複回報可識別/冪等、錯task/run/過期lease拒絕、並發claim明確，provider完成不自動綠燈。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: task-reporting\nDependencies: PD-RUST-REPORT-INGRESS-PLAN-01, PD-RUST-DISPATCH-MODES-DEC-01, PD-RUST-GUARD-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 先鎖claim/lease/run/ReportRun/evidence契約，各adapter共用application；重複回報可識別/冪等、錯task/run/過期lease拒絕、並發claim明確，provider完成不自動綠燈。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 17（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-CLI-ENTRY-IMPL-01",
+    "ref": "PD-RUST-CLI-ENTRY-IMPL-01",
+    "title": "功能｜Agent 的 CLI 查工、領工與回報",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 暴露核准use cases，明確input/output/exitcode；正常/空輸入/錯誤/重複/權限/取消具BDD/TDD，與回報契約一致，不新增任意shell入口或secret輸出。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-cli\nDependencies: PD-RUST-REPORT-INGRESS-IMPL-01, PD-RUST-DISPATCH-MODES-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 暴露核准use cases，明確input/output/exitcode；正常/空輸入/錯誤/重複/權限/取消具BDD/TDD，與回報契約一致，不新增任意shell入口或secret輸出。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 18（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-INBOUND-MCP-IMPL-01",
+    "ref": "PD-RUST-INBOUND-MCP-IMPL-01",
+    "title": "功能｜Agent 連入 EluSlot 的 MCP 工具",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 先read-only query，再依核准權限claim/report；工具schema/auth/ownership明確，只經input ports；與本產品呼叫外部MCP分開，結果語意與CLI一致。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-inbound-mcp\nDependencies: PD-RUST-REPORT-INGRESS-IMPL-01, PD-RUST-DISPATCH-MODES-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 先read-only query，再依核准權限claim/report；工具schema/auth/ownership明確，只經input ports；與本產品呼叫外部MCP分開，結果語意與CLI一致。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 19（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-CLAUDE-COMPAT-01",
+    "ref": "PD-RUST-CLAUDE-COMPAT-01",
+    "title": "驗證｜Claude Code 領工、執行與回報相容性",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 以明確Claude Code版本與選定模式實測領工/執行/取消/錯誤/回報/EVID trace，記錄runtime與版本；未驗證能力NOT RUN，不假定所有Agent視窗支援同UI。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-compatibility\nDependencies: PD-RUST-AGENT-LOOP-01, PD-RUST-CLI-ENTRY-IMPL-01, PD-RUST-INBOUND-MCP-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 以明確Claude Code版本與選定模式實測領工/執行/取消/錯誤/回報/EVID trace，記錄runtime與版本；未驗證能力NOT RUN，不假定所有Agent視窗支援同UI。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 20（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-CODEX-COMPAT-01",
+    "ref": "PD-RUST-CODEX-COMPAT-01",
+    "title": "驗證｜Codex 領工、執行與回報相容性",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 以明確Codex版本與實際host驗證相同契約，記錄權限/取消/錯誤/回報與證據；另一Agent通過不代表Codex相容。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-compatibility\nDependencies: PD-RUST-AGENT-LOOP-01, PD-RUST-CLI-ENTRY-IMPL-01, PD-RUST-INBOUND-MCP-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 以明確Codex版本與實際host驗證相同契約，記錄權限/取消/錯誤/回報與證據；另一Agent通過不代表Codex相容。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 21（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-EMBEDDED-AGENT-IMPL-01",
+    "ref": "PD-RUST-EMBEDDED-AGENT-IMPL-01",
+    "title": "功能｜EluSlot 內嵌 Claude Code／Codex 工作階段",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 依核准session ports/UI schema做最小互動，先單provider；啟動/輸入/events/resize適用時/cancel/close/reopen/error/secret具BDD/TDD，無孤兒session或未核准執行。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: embedded-agent-workbench\nDependencies: PD-RUST-EMBEDDED-AGENT-DEC-01, PD-RUST-PROC-DEC-01, PD-RUST-REPORT-INGRESS-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 依核准session ports/UI schema做最小互動，先單provider；啟動/輸入/events/resize適用時/cancel/close/reopen/error/secret具BDD/TDD，無孤兒session或未核准執行。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 23（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-AGENT-HOSTED-UI-01",
+    "ref": "PD-RUST-AGENT-HOSTED-UI-01",
+    "title": "規劃／功能｜像 Figma 在 Agent 視窗顯示產品面板",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 各host獨立確認嵌UI/sandbox/auth/capabilities/toolresponse，先read-only任務報告；記錄host/version與渲染證據，不支援有替代入口，寫入另核准、不自行部署/tunnel。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-hosted-ui\nDependencies: PD-RUST-DISPATCH-MODES-DEC-01, PD-RUST-INBOUND-MCP-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 各host獨立確認嵌UI/sandbox/auth/capabilities/toolresponse，先read-only任務報告；記錄host/version與渲染證據，不支援有替代入口，寫入另核准、不自行部署/tunnel。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 24（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-MODULE-HTML-01",
+    "ref": "PD-RUST-MODULE-HTML-01",
+    "title": "規劃／功能｜由權威工程資料生成統一模組 HTML",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 對齊現有XML/SPEC/GUARD/EVID設計ModuleSpec投影與BDD↔TDD/task/result/sourcehash；HTML含兩張圖、contracts/tests/scope/evidence/risk，可偵測stale，不新增競爭SSOT。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: module-engineering-projection\nDependencies: PD-RUST-DOCUMENT-CONTRACT-01, PD-RUST-XML-PACKET-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 對齊現有XML/SPEC/GUARD/EVID設計ModuleSpec投影與BDD↔TDD/task/result/sourcehash；HTML含兩張圖、contracts/tests/scope/evidence/risk，可偵測stale，不新增競爭SSOT。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 25（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-SYSTEM-REGRESSION-01",
+    "ref": "PD-RUST-SYSTEM-REGRESSION-01",
+    "title": "整合驗證｜設計檔→封包→派工→回報→驗收",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 父卡只擁有跨模組行為，子模組保有契約/BDD/TDD；驗證失敗/取消/過期/重啟一致性與完整來源-version-task-run-evidence追溯，不自動產品綠燈。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: cross-module-integration\nDependencies: PD-RUST-XML-READINESS-01, PD-RUST-UI-BEHAVIOR-LOOP-01, PD-RUST-AGENT-LOOP-01, PD-RUST-REPORT-INGRESS-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 父卡只擁有跨模組行為，子模組保有契約/BDD/TDD；驗證失敗/取消/過期/重啟一致性與完整來源-version-task-run-evidence追溯，不自動產品綠燈。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 26（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-NATIVE-UI-VERIFY-01",
+    "ref": "PD-RUST-NATIVE-UI-VERIFY-01",
+    "title": "驗證｜正式 Tauri UI／IPC 與保存載入流程",
+    "kind": "task",
+    "zone": "gray",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 正式Rust/Tauri實機UI、IPC、錯誤、save/load與狀態同步；正常/邊界/無效/失敗/重開具證據，靜態8770及library測試不算UI完成。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: desktop-ui-integration\nDependencies: PD-RUST-UI-BEHAVIOR-LOOP-01, PD-RUST-SYSTEM-REGRESSION-01\nIntent / Allowed Scope / Acceptance Criteria: 正式Rust/Tauri實機UI、IPC、錯誤、save/load與狀態同步；正常/邊界/無效/失敗/重開具證據，靜態8770及library測試不算UI完成。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 27（以dependency及Owner Gate為準）"
+  },
+  {
+    "id": "PD-RUST-PROC-INTEGRATION-DEC-01",
+    "ref": "PD-RUST-PROC-INTEGRATION-DEC-01",
+    "title": "決策｜程序收尾必要的 HOST／UI 最小整合",
+    "kind": "decision",
+    "zone": "gray",
+    "bdd": "Given 程序尚在running或收尾，When poll回空batch或使用者請求cancel，Then UI不提前宣告terminal，HOST不吞tail chunks，實際terminal才結束及釋放lease。",
+    "tdd": "Requires owner scope approval then frozen skeleton/independentRED. Test emptybatch continuation, cancelack retainingpoll/runId, taildelivery, actualterminal state; preserve existingfailure/noncancelbehavior.",
+    "note": "Parent: PD-RUST-PROC-IMPL-01\nPrimary Module: process-run-integration\nApproved core: Open/EOF/Error,2000ms post-exit drain,unchanged buffer/directchild scope.\nREPLAN_REQUIRED: existing UIbreaks on emptybatch,cancel stops generation+finishes immediately; HOSTcancel consumes onepoll chunks.\n待決策事項:\n- [ ] 核准必要scope：既有HOSTcancel body不消費chunks只回BoardView acknowledgment；既有UI兩函式保持poll/runId，取消顯示request/draining，實際terminal才finish；public StreamCompletion補既有lib re-export1行。共7既有production檔，無新DTO/Manager/dependency，不重寫其他UIWIP。\nEvidence reports/rust-improvements/continuous/process-lifecycle/replan-required.md and module.html.\nProduction blocked pending this concrete integration approval; original coredecision approval remains valid. No commit/push.\n[2026-10-26T00:44:20+08:00] OWNER APPROVED: 核准這個必要的最小整合。HOSTcancel acknowledgment/no chunk consume；UI empty-poll continuation + cancel requested/draining + realterminalonly finish；enum re-export1line；exact7 existing production files, other UI WIP protected."
+  },
+  {
+    "id": "PD-RUST-IMPROVE-20261025",
+    "ref": "PD-RUST-IMPROVE-20261025",
+    "title": "Rust 正式工作檔改善與獨立驗證",
+    "kind": "epic",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "acket architecture remains proposed. No green/commit/push/release.\n2026-10-26 MCP NOT RUN slice cards created; architecture yellow, dependent TDD/implementation/review gray until gates. Other decisions unchanged.\n\n[PLAN-20261026-ALL]\n2026-10-26完整預計工作已先登錄，本次不啟動工作。\n順序：MCP NOT RUN驗收；Guard／並發寫檔／程序收尾各自決策→RED→實作→獨立驗證；文件與UI歸屬／互動；封包正式核准綁定；共用CLI/API/MCP回報與首個Agent閉環；Claude Code/Codex相容及兩種內嵌；模組HTML與系統/原生UI驗證。\n新卡與補齊卡：PD-RUST-GUARD-DEC-01, PD-RUST-GUARD-IMPL-01, PD-RUST-GUARD-TDD-01, PD-RUST-FS-DEC-01, PD-RUST-FS-IMPL-01, PD-RUST-FS-TDD-01, PD-RUST-PROC-DEC-01, PD-RUST-PROC-IMPL-01, PD-RUST-PROC-TDD-01, PD-RUST-DOCUMENT-DEC-01, PD-RUST-UI-OWNERSHIP-DEC-01, PD-RUST-UI-OWNERSHIP-IMPL-01, PD-RUST-XML-READINESS-01, PD-RUST-MCP-TRANSPORT-DEC-01, PD-RUST-MCP-TRANSPORT-IMPL-01, PD-RUST-MCP-TRANSPORT-SMOKE-01, PD-RUST-REPORT-INGRESS-IMPL-01, PD-RUST-CLI-ENTRY-IMPL-01, PD-RUST-INBOUND-MCP-IMPL-01, PD-RUST-CLAUDE-COMPAT-01, PD-RUST-CODEX-COMPAT-01, PD-RUST-EMBEDDED-AGENT-DEC-01, PD-RUST-EMBEDDED-AGENT-IMPL-01, PD-RUST-AGENT-HOSTED-UI-01, PD-RUST-MODULE-HTML-01, PD-RUST-SYSTEM-REGRESSION-01, PD-RUST-NATIVE-UI-VERIFY-01, PD-RUST-WIP-AUDIT-01, PD-RUST-MCP-NOTRUN-ACCEPT-01, PD-RUST-DOCUMENT-CONTRACT-01, PD-RUST-UI-BEHAVIOR-LOOP-01, PD-RUST-AGENT-LOOP-01, PD-RUST-AGENT-ENTRYPOINTS-01, PD-RUST-EMBEDDED-AGENT-PLAN-01, PD-RUST-REPORT-INGRESS-PLAN-01, PD-RUST-DISPATCH-MODES-DEC-01\n決策紅燈／新待辦灰燈／既有成果待驗收黃燈；計畫登錄不代表架構核准、啟動派工、commit/push/release或自改綠。\n[2026-10-26T00:33:14+08:00] Owner authorized continuous subagent execution with KISS/YAGNI. Coordination PD-RUST-CONTINUOUS-01; three planning children registered before dispatch. Existing approved slices may proceed; red architecture/contract decisions require concrete owner confirmation. No automatic green/commit/push.\n【Owner硬性偏好：不做過度設計】最小可驗證切片；沿用既有Port/API；除非測試與已核准行為要求，不新增Manager/Service/Repository/trait/框架/依賴；不為未來provider預留抽象；不順手搬資料夾或重寫；每片列實際來源檔數、公開型別與依賴成本；獨立RED/GREEN/回歸/架構審查不可省。跨骨架即REPLAN_REQUIRED，未核准決策維持red；完成證據只READY_FOR_GREEN yellow，不自改驗收/commit/push。"
+  },
+  {
+    "id": "PD-RUST-PATH-SAFE-01",
+    "ref": "PD-RUST-PATH-SAFE-01",
+    "title": "HOST：阻擋 Windows 磁碟前綴路徑逃逸",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: HOST\nUser authorized parallel execution 2026-10-25.\nAllowed: uidesign_doc.rs, scene_doc.rs, reports/rust-improvements/path-safety/. Preserve API and project-scoped contract. Prove behavioral RED before minimal fix.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T22:59:33+08:00] READY_FOR_GREEN yellow (agent report). HOST 74 unit + 3 integration PASS. reports/rust-improvements/path-safety/module.html . Junction/symlink containment NOT RUN; independent review pending.\n[2026-10-25T23:00:16+08:00] TDD_PASS yellow, owner acceptance pending. Independent HOST 74 unit + 3 integration PASS; Tauri full 74/74 PASS. reports/rust-improvements/independent-review/PD-RUST-PATH-SAFE-01-TDD-REVIEW.md . Junction/symlink containment NOT RUN. Historical RED is implementer-recorded, not independently replayed."
+  },
+  {
+    "id": "PD-RUST-REPORT-ISO-01",
+    "ref": "PD-RUST-REPORT-ISO-01",
+    "title": "REPORT：隔離並行報告輸出",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: REPORT\nUser authorized parallel execution 2026-10-25.\nAllowed: src-tauri/src/pd_report_call.rs, reports/rust-improvements/report-isolation/. Preserve DTO and report semantics. Reproduce shared-output collision before fix.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T22:59:33+08:00] READY_FOR_GREEN yellow (agent report). Behavioral RED proven; 3 focused tests PASS. reports/rust-improvements/report-isolation/module.html . Independent full suite review pending.\n[2026-10-25T23:00:16+08:00] TDD_PASS yellow, owner acceptance pending. Independent Tauri full 74/74 PASS and exact concurrency test 1/1 PASS. reports/rust-improvements/independent-review/PD-RUST-REPORT-ISO-01-TDD-REVIEW.md . Explicit same out_dir behavior unchanged; historical RED not independently replayed."
+  },
+  {
+    "id": "PD-RUST-EXEC-PLAN-01",
+    "ref": "PD-RUST-EXEC-PLAN-01",
+    "title": "EXEC：Guard/MCP 實作邊界重規劃",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: EXEC\nUser authorized parallel execution 2026-10-25.\nAnalysis only. Allowed: reports/rust-improvements/exec-envelope/. No production changes. Deliver architecture views, contracts, BDD and test plan.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T22:59:33+08:00] Planning packet delivered, production NOT RUN. reports/rust-improvements/exec-envelope/exec-dispatch.html . Owner approval pending PD-RUST-EXEC-DEC-01.\n[2026-10-25T23:00:16+08:00] Planning packet delivered, production NOT RUN. reports/rust-improvements/exec-envelope/exec-dispatch.html . Owner approval pending PD-RUST-EXEC-DEC-01."
+  },
+  {
+    "id": "PD-RUST-ADAPTER-PLAN-01",
+    "ref": "PD-RUST-ADAPTER-PLAN-01",
+    "title": "ADAPTERS：輸出生命週期與原子寫檔規劃",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: ADAPTERS\nUser authorized parallel execution 2026-10-25.\nAnalysis only in reports/rust-improvements/exec-envelope/. No std_process.rs/std_fs.rs edits; identify lifecycle and transaction decisions.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T22:59:33+08:00] Planning packets delivered: process-adapter.html and filesystem-adapter.html in reports/rust-improvements/exec-envelope/. Existing ProcessPort allows lossy UTF-8; Unicode preservation is a contract clarification requiring approval, not proven violation. Production NOT RUN.\n[2026-10-25T23:00:16+08:00] Planning packets delivered: process-adapter.html and filesystem-adapter.html in reports/rust-improvements/exec-envelope/. Existing ProcessPort allows lossy UTF-8; Unicode preservation is a contract clarification requiring approval, not proven violation. Production NOT RUN."
+  },
+  {
+    "id": "PD-RUST-TDD-GATE-01",
+    "ref": "PD-RUST-TDD-GATE-01",
+    "title": "獨立 TDD Gate：Rust 改善批次",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: verification\nUser authorized parallel execution 2026-10-25.\nRead-only independent tests after implementation handoff. Review two fixes and planning packets. Never alter production/tests or promote board green.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T22:59:33+08:00] Independent gate dispatched, read-only source/tests; owns reports/rust-improvements/independent-review/. No authority to promote green.\n[2026-10-25T23:00:16+08:00] Independent gate TDD_PASS yellow. HOST 74+3, Tauri 74/74, concurrency exact 1/1 PASS. Two independent reviews and module.html delivered. No Port/API/ownership changes or weakened assertions found. Rust source currently untracked, so review uses actual content, not committed diff. No green transition."
+  },
+  {
+    "id": "PD-RUST-GIT-HYGIENE-01",
+    "ref": "PD-RUST-GIT-HYGIENE-01",
+    "title": "正式 Rust 原始碼版本管理與 target 忽略範圍",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given approved existing module boundaries, when this slice executes, then evidence matches observable behavior and failures remain explicit.",
+    "tdd": "Behavioral RED -> focused GREEN -> module regression -> independent review. Planning-only tasks: implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: repository\nUser authorized parallel execution 2026-10-25.\nFollow-up only; no git add/commit/push authorized by this batch. Confirm desired tracked files and generated-output exclusion.\nAC: preserve contracts, no weakened assertions, report evidence and risks in module HTML. No commit/push/release; no self-green. Protected: all files outside declared scope. Dependencies: independent gate after fix reports.\nPreview: http://127.0.0.1:8770/index.html?v=treeactions is static HTTP, not Tauri IPC.\n本批已建卡: PD-RUST-IMPROVE-20261025, PD-RUST-PATH-SAFE-01, PD-RUST-REPORT-ISO-01, PD-RUST-EXEC-PLAN-01, PD-RUST-ADAPTER-PLAN-01, PD-RUST-EXEC-DEC-01, PD-RUST-TDD-GATE-01, PD-RUST-GIT-HYGIENE-01\n[2026-10-25T23:02:41+08:00] Dispatched repository hygiene audit; allowed reports/rust-improvements/git-hygiene/ only. Inspect tracking/ignore/build reproducibility; no git add/commit/push or source/config edits.\n[2026-10-25T23:04:52+08:00] Audit delivered: reports/rust-improvements/git-hygiene/module.html; 198 untracked formal Rust files, workspace target not ignored, CI excludes cargo, MSRV unverified. Exact ignore proposal and hashed inventory delivered. No config/index/source changes. Yellow; build/compatibility NOT RUN for this audit.\n[2026-10-26T00:30:24+08:00] 現況核對：已依Owner授權分兩筆提交 a3cdc3b Rust baseline、31babe8 .ess packet；保留其他WIP，未push；後續盤點見PD-RUST-WIP-AUDIT-01。"
+  },
+  {
+    "id": "PD-RUST-ARCH-REVIEW-01",
+    "ref": "PD-RUST-ARCH-REVIEW-01",
+    "title": "Independent architecture decision-packet review",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given the proposed EXEC/Adapter packets, when independently reviewed, then unresolved choices and implementation boundaries are explicit.",
+    "tdd": "Validate source references, embedded ModuleSpec and testability; production tests NOT RUN for planning-only task.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: architecture-review\nAllowed: reports/rust-improvements/architecture-review/ only. Existing exec-envelope reports and Rust source read-only. AC: concise owner decision matrix; no invented approvals; no production/board edits, commit, push, or green. Dependency: PD-RUST-EXEC-DEC-01 remains red for production.\n[2026-10-25T23:04:52+08:00] Independent review delivered: reports/rust-improvements/architecture-review/module.html. Embedded JSON parsed; 12 source hash snapshots. Four concrete decisions; no invented approval or behavioral RED. Yellow planning review."
+  },
+  {
+    "id": "PD-RUST-DISPATCH-MODES-PLAN-01",
+    "ref": "PD-RUST-DISPATCH-MODES-PLAN-01",
+    "title": "Dispatch modes: CLI launch and Agent-connected MCP",
+    "kind": "planning",
+    "zone": "yellow",
+    "bdd": "CLI and inbound Agent requests share one authoritative task/run state; submitted reports do not self-approve acceptance.",
+    "tdd": "Planning only. Executable RED and live integration NOT RUN. Validate specification traceability first.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: dispatch\nArchitecture-only. Allowed reports/rust-improvements/dispatch-modes/. Define inbound vs outbound MCP and Agent-hosted product registration; diagrams A1-A14. No production changes.\nNo board writes by child agents; no production, commit, push or self-green.\n[2026-10-25T23:12:40+08:00] Proposal delivered: reports/rust-improvements/dispatch-modes/module.html. Two dispatch authority modes: product CLI launch and Agent inbound MCP. Transport and hosting separate axes. User clarified Agent-hosted means Figma-like embedded Web UI in Agent window, feasibility unknown. Official OpenAI MCP Apps/conversation-panel support verified; current Codex/account/native Tauri embedding NOT VERIFIED. No production approval inferred.\n[2026-10-25T23:13:34+08:00] Owner added REQ-AGENT-CLAUDE-01: Claude Code required for CLI and inbound MCP query/claim/report. Shared ReportRun and evidence gates. UI capability dependent, current host NOT VERIFIED; real compatibility NOT RUN. Official sources recorded in module HTML. Requirement inclusion is confirmed; detailed architecture remains proposed.\n[2026-10-25T23:13:50+08:00] Owner added REQ-AGENT-CLAUDE-01: Claude Code required for CLI and inbound MCP query/claim/report. Shared ReportRun and evidence gates. UI capability dependent, current host NOT VERIFIED; real compatibility NOT RUN. Official sources recorded in module HTML. Requirement inclusion is confirmed; detailed architecture remains proposed."
+  },
+  {
+    "id": "PD-RUST-REPORT-INGRESS-PLAN-01",
+    "ref": "PD-RUST-REPORT-INGRESS-PLAN-01",
+    "title": "規劃｜API／CLI／MCP 統一領工與回報契約",
+    "kind": "planning",
+    "zone": "yellow",
+    "bdd": "CLI and inbound Agent requests share one authoritative task/run state; submitted reports do not self-approve acceptance.",
+    "tdd": "Planning only. Executable RED and live integration NOT RUN. Validate specification traceability first.",
+    "note": "port envelope, identity, idempotency, lease, stale run and evidence gates, observable BDD, fixtures and step stubs. No production changes.\nNo board writes by child agents; no production, commit, push or self-green.\n[2026-10-25T23:12:40+08:00] Proposal delivered: reports/rust-improvements/report-ingress/module.html. Common ReportRun input port across HTTP API/local command/MCP; 14 BDD scenarios, fixture JSON, pending Rust step stubs and AC matrix. No automatic done->green; platform login does not grant local approval. Executable RED/GREEN NOT RUN.\n[2026-10-25T23:13:34+08:00] Owner added REQ-AGENT-CLAUDE-01: Claude Code required for CLI and inbound MCP query/claim/report. Shared ReportRun and evidence gates. UI capability dependent, current host NOT VERIFIED; real compatibility NOT RUN. Official sources recorded in module HTML. Requirement inclusion is confirmed; detailed architecture remains proposed.\n[2026-10-25T23:13:50+08:00] Owner added REQ-AGENT-CLAUDE-01: Claude Code required for CLI and inbound MCP query/claim/report. Shared ReportRun and evidence gates. UI capability dependent, current host NOT VERIFIED; real compatibility NOT RUN. Official sources recorded in module HTML. Requirement inclusion is confirmed; detailed architecture remains proposed.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: task-reporting\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 補齊claim/run/report/evidence並發、重複、過期、auth/error模型與transaction/ownership；共享application use cases，各入口成功失敗一致，架構/BDD/Skeleton核准後實作。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。"
+  },
+  {
+    "id": "PD-RUST-BASELINE-TEST-01",
+    "ref": "PD-RUST-BASELINE-TEST-01",
+    "title": "Build reproducibility: acceptance and RED tests",
+    "kind": "verification",
+    "zone": "yellow",
+    "bdd": "Rebuild current formal Rust from reviewed inputs without generated outputs; packet proposals preserve existing product semantics.",
+    "tdd": "Tests defined before configuration changes; actual behavioral RED then GREEN and independent review. Packet implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: build-baseline\nOwn tests/test_rust_baseline_gate.py and reports/rust-improvements/baseline-tests/. Define build gate tests against desired Windows Rust workflow and ignore behavior. Preserve existing tests; source/config read-only. Independent gate after implementation.\nNo self-green, source scope escape, commit, push, live Agent, or release.\n[2026-10-25T23:35:12+08:00] Independent RED complete: 2 intended failures; report baseline-tests/red.txt. Await minimal CI/ignore implementation then independent GREEN.\n[2026-10-25T23:37:47+08:00] Independent TDD_PASS yellow; actual RED then GREEN retained in baseline-tests/. No weakened assertions. Review baseline workflow + target/source/lock visibility and 0 source hash mismatches. Remote/clean baseline not claimed."
+  },
+  {
+    "id": "PD-RUST-BASELINE-CI-01",
+    "ref": "PD-RUST-BASELINE-CI-01",
+    "title": "Formal Rust build and CI baseline",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Rebuild current formal Rust from reviewed inputs without generated outputs; packet proposals preserve existing product semantics.",
+    "tdd": "Tests defined before configuration changes; actual behavioral RED then GREEN and independent review. Packet implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: build-baseline\nAllowed .github/workflows/rust-gate.yml, apps/sgenaxis-desktop/.gitignore, docs/RUST-BASELINE.md, reports/rust-improvements/baseline/. Existing CI stays unchanged. Wait valid RED, implement Windows workspace, EXEC all-feature and independent Tauri tests using locked dependencies; collect source hashes. No commit/push/staging/MSRV promise.\nNo self-green, source scope escape, commit, push, live Agent, or release.\n[2026-10-25T23:35:12+08:00] Independent RED verified: missing Rust workflow and workspace target not ignored. Tests stable. Implementation allowed only within registered configuration/docs/report scope; existing test intent locked.\n[2026-10-25T23:37:47+08:00] READY_FOR_GREEN yellow; independent TDD_PASS. New Windows Rust workflow and nested target ignore; docs/RUST-BASELINE.md and baseline source manifest256 files/two effective locks. Focused2/2; actual workspace262, EXEC56, Tauri74 PASS locked/offline. Independent manifest0 mismatches. Original Python regression80 PASS. Remote CI/clean checkout NOT RUN; no staging/commit/push. Owner acceptance pending.\n[2026-10-26T00:30:24+08:00] 現況核對：已於2026-10-26提交 a3cdc3b；隔離baseline Workspace262/EXEC56/Tauri74 PASS；不含遠端CI、UI或release證據。"
+  },
+  {
+    "id": "PD-RUST-XML-PACKET-ARCH-01",
+    "ref": "PD-RUST-XML-PACKET-ARCH-01",
+    "title": "XML to Module Engineering Packet architecture",
+    "kind": "planning",
+    "zone": "yellow",
+    "bdd": "Rebuild current formal Rust from reviewed inputs without generated outputs; packet proposals preserve existing product semantics.",
+    "tdd": "Tests defined before configuration changes; actual behavioral RED then GREEN and independent review. Packet implementation NOT RUN.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: engineering-packet\nAllowed reports/rust-improvements/xml-packet/ only. Existing product XML/JSON codecs and fixtures read-only. A1-A14, contracts/BDD/AC, public skeleton proposals and dependency-ordered task plan. No parser/port/schema production changes.\nNo self-green, source scope escape, commit, push, live Agent, or release.\n[2026-10-25T23:37:47+08:00] Architecture proposal delivered in reports/rust-improvements/xml-packet/module.html, A1-A14/two diagrams/contracts/BDD/AC/proposed skeleton. Existing .ess and split formats preserved. Recommended first slice A integrated .ess-only explicit moduleId/task read-only projection, missing scope/approval NOT_READY. No production implementation or RED."
+  },
+  {
+    "id": "PD-RUST-DOCUMENT-CONTRACT-01",
+    "ref": "PD-RUST-DOCUMENT-CONTRACT-01",
+    "title": "規劃｜現有產品文件版本、身分與參照契約",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Module observable behavior and failure paths must be specified before implementation.",
+    "tdd": "NOT RUN; backlog only. Requires approved architecture/contract/BDD/skeleton and intended RED.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: product-documents\nDependencies: PD-RUST-BASELINE-CI-01; PD-RUST-XML-PACKET-ARCH-01\nConfirm current XML/JSON ownership and version semantics; preservation and invalid reference tests before approved implementation.\nScope not ready for production. No self-green, broad rewrite, commit or push.\n\n[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: product-documents\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 只讀盤點codec/fixtures與既有format/version/unknown fields/ID/reference/roundtrip/失敗保留，現況與新政策分開，候選政策交DOCUMENT-DEC-01；架構圖、module BDD/TDD策略可審查。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n[2026-10-26T00:38:01+08:00] Owner continuous delegation: read-only current codec/fixture contract audit now dispatched. No schema migration/source edits; canonical ownership decisions remain red.\nRead-only audit delivered continuous/product-documents/module.html:14 source/test/fixture hashes; actual permissivefrontend vs strictpacket, scalar/unknown-field preservation and splitload/save partial-update risks identified statically. Behavior/nativeUI NOT RUN; no source/fixture changes. DOCUMENTDEC remains red before new semantics."
+  },
+  {
+    "id": "PD-RUST-XML-PACKET-IMPL-01",
+    "ref": "PD-RUST-XML-PACKET-IMPL-01",
+    "title": "Module Engineering Packet from explicit product source",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Module observable behavior and failure paths must be specified before implementation.",
+    "tdd": "NOT RUN; backlog only. Requires approved architecture/contract/BDD/skeleton and intended RED.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: engineering-packet\nDependencies: PD-RUST-XML-PACKET-DEC-01; PD-RUST-DOCUMENT-CONTRACT-01\nBlocked until packet architecture, contracts, skeleton and intended RED approved. Read-only extraction; no independent authoritative spec.\nScope not ready for production. No self-green, broad rewrite, commit or push.\n[2026-10-25T23:42:40+08:00] A architecture authorized. State SKELETON then independent TDD_RED; production function bodies remain blocked until intended RED.\n[2026-10-25T23:47:13+08:00] READY_FOR_AI_IMPLEMENTATION for approved A only. Locked approved-a-contract.md and public skeleton, workspace/Tauri skeleton checks PASS. Independent tests compile;12 intended stub failures in xml-packet-tests/red.txt. Allowed bodies/private helpers in SPEC packet, ESS decoder adapter, HOST module_packet; optional HOST example CLI/docs/report. Tests and public skeleton protected.\n2026-10-25 final independent gate: original12 RED verified before implementation; focused15 PASS; workspace277 PASS; EXEC allfeatures56 PASS; isolated Tauri74 PASS. CDATA regression RED -> GREEN; independent architecture review no open findings. READY_FOR_GREEN yellow, owner acceptance pending. Read-only .ess A only; packet NOT_READY. No UI/IPC/Agent/publication/commit/push. Evidence reports/rust-improvements/xml-packet-tests/module.html and xml-packet-review/module.html.\n[2026-10-26T00:30:24+08:00] 現況核對：已提交31babe8；隔離checkout修正LF/CRLF fixture後 focused15/Workspace277/EXEC56/Tauri74 PASS；A固定NOT_READY、不改產品原檔。"
+  },
+  {
+    "id": "PD-RUST-XML-PACKET-RED-01",
+    "ref": "PD-RUST-XML-PACKET-RED-01",
+    "title": "A slice: independent .ess packet specification and RED tests",
+    "kind": "verification",
+    "zone": "yellow",
+    "bdd": "Explicit .ess source yields module-scoped derived packet without source mutation; missing authoritative implementation data stays NOT_READY.",
+    "tdd": "Build skeleton then valid behavioral RED before fill. Test intent locked; independent review and regression required.",
+    "note": "Parent: PD-RUST-XML-PACKET-IMPL-01\nOwn new tests in sgenaxis-host/tests/module_packet.rs plus reports/rust-improvements/xml-packet-tests/. Wait locked Skeleton first. Define source-read/no-write, identity, graph/reference, provenance/freshness and fail-closed tests.\nNo commit/push/self-green/live Agent or non-A expansion.\n[2026-10-25T23:47:13+08:00] TDD_RED confirmed:12 tests built then failed for intended NOT_IMPLEMENTED/empty hash stubs; positive product-shaped fixture new, existing sample unchanged. Tests frozen for implementation; independent GREEN/regressions follow.\n2026-10-25 final independent gate: original12 RED verified before implementation; focused15 PASS; workspace277 PASS; EXEC allfeatures56 PASS; isolated Tauri74 PASS. CDATA regression RED -> GREEN; independent architecture review no open findings. READY_FOR_GREEN yellow, owner acceptance pending. Read-only .ess A only; packet NOT_READY. No UI/IPC/Agent/publication/commit/push. Evidence reports/rust-improvements/xml-packet-tests/module.html and xml-packet-review/module.html."
+  },
+  {
+    "id": "PD-RUST-XML-PACKET-SKELETON-01",
+    "ref": "PD-RUST-XML-PACKET-SKELETON-01",
+    "title": "Materialize approved A packet skeleton",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Explicit .ess source yields module-scoped derived packet without source mutation; missing authoritative implementation data stays NOT_READY.",
+    "tdd": "Build skeleton then valid behavioral RED before fill. Test intent locked; independent review and regression required.",
+    "note": "Parent: PD-RUST-XML-PACKET-IMPL-01\nPrimary module engineering-packet. Declared integration scope SPEC domain DTO/rules; ESS codec output adapter; HOST existing FS port orchestration and example CLI. No UI/Tauri IPC/new crate. Skeleton-only until independent RED. Existing module APIs protected.\nNo commit/push/self-green/live Agent or non-A expansion.\n[2026-10-25T23:47:13+08:00] Locked skeleton built in workspace and independent Tauri. Dependencies point adapters/host->SPEC; roxmltree only in adapters, SHA pure in SPEC. No new crate or product-source schema. No business implementation before RED.\n2026-10-25 final independent gate: original12 RED verified before implementation; focused15 PASS; workspace277 PASS; EXEC allfeatures56 PASS; isolated Tauri74 PASS. CDATA regression RED -> GREEN; independent architecture review no open findings. READY_FOR_GREEN yellow, owner acceptance pending. Read-only .ess A only; packet NOT_READY. No UI/IPC/Agent/publication/commit/push. Evidence reports/rust-improvements/xml-packet-tests/module.html and xml-packet-review/module.html."
+  },
+  {
+    "id": "PD-RUST-MCP-NOTRUN-ARCH-01",
+    "ref": "PD-RUST-MCP-NOTRUN-ARCH-01",
+    "title": "MCP unavailable: locked architecture and contract",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "MCP unavailable never reports real Live success; DryRun remains simulated.",
+    "tdd": "Behavioral RED -> GREEN; module regressions; independent review.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution / MCP host composition\nOwner 2026-10-26: 派工執行, selecting recommended unavailable NOT RUN slice.\nArchitecture only; allowed reports/rust-improvements/mcp-notrun/. Validate existing ports/signatures, input Err(String) NOT RUN, no real transport, no lease/run/event/evidence success on unavailable. Produce A1-A14, two diagrams, contract, BDD, test plan, AC. Source read-only.\nProtected: other modules, UI WIP, filesystem/process/Guard semantics. No commit/push/network/board self-green.\nLocked bounded architecture and C1-C8/AC01-09 ready: reports/rust-improvements/mcp-notrun/architecture.md, existing ports and public signatures unchanged. Independent RED pending.\n2026-10-26 FINAL INDEPENDENT GATE: intended RED5 verified, focused5 PASS, Tauri79 PASS, Workspace277 PASS, EXEC default52/allfeatures56 PASS; architecture reviewed-scope PASS no open findings. READY_FOR_GREEN yellow / owner acceptance pending. Production default Stub, static NOT RUN, no endpoint credentials, no accepted run/lease/Core/FLOW/evidence success on rejection. Source only dispatch.rs plus new private tests. No real transport/UI/IPC/commit/push. Reports: reports/rust-improvements/mcp-notrun/module.html and mcp-notrun-tests/module.html, mcp-notrun-review/module.html."
+  },
+  {
+    "id": "PD-RUST-MCP-NOTRUN-TDD-01",
+    "ref": "PD-RUST-MCP-NOTRUN-TDD-01",
+    "title": "MCP unavailable: independent RED and regression",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "MCP unavailable never reports real Live success; DryRun remains simulated.",
+    "tdd": "Behavioral RED -> GREEN; module regressions; independent review.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution / MCP host composition\nOwner 2026-10-26: 派工執行, selecting recommended unavailable NOT RUN slice.\nTests only after architecture gate; independent intended RED before production; default no fake Live, DryRun preserved, explicit test fake injection, invalid endpoints, no state/lease/evidence publication, secret-free NOT RUN. Final focused/workspace/EXEC/Tauri; no assertion weakening.\nProtected: other modules, UI WIP, filesystem/process/Guard semantics. No commit/push/network/board self-green.\nArchitecture gate satisfied for owner-authorized MCP unavailable slice; independent RED author dispatched. Production not yet allowed.\nValid independent RED: test build PASS; 5 tests fail because default returns simulated Live success or raw endpoint credentials leak. Tests frozen; logs reports/rust-improvements/mcp-notrun-tests/{build,red}.txt.\n2026-10-26 FINAL INDEPENDENT GATE: intended RED5 verified, focused5 PASS, Tauri79 PASS, Workspace277 PASS, EXEC default52/allfeatures56 PASS; architecture reviewed-scope PASS no open findings. READY_FOR_GREEN yellow / owner acceptance pending. Production default Stub, static NOT RUN, no endpoint credentials, no accepted run/lease/Core/FLOW/evidence success on rejection. Source only dispatch.rs plus new private tests. No real transport/UI/IPC/commit/push. Reports: reports/rust-improvements/mcp-notrun/module.html and mcp-notrun-tests/module.html, mcp-notrun-review/module.html."
+  },
+  {
+    "id": "PD-RUST-MCP-NOTRUN-IMPL-01",
+    "ref": "PD-RUST-MCP-NOTRUN-IMPL-01",
+    "title": "MCP unavailable: production composition and NOT RUN",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "MCP unavailable never reports real Live success; DryRun remains simulated.",
+    "tdd": "Behavioral RED -> GREEN; module regressions; independent review.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution / MCP host composition\nOwner 2026-10-26: 派工執行, selecting recommended unavailable NOT RUN slice.\nProduction bodies only after locked architecture and verified RED. Existing McpClientPort/StubMcpClient; default host must not use FakeMcpClient. Existing Err(String) NOT RUN mapping, no new DTO/public API/transport/schema. Preserve DryRun and explicit simulation tests. No unrelated refactors.\nProtected: other modules, UI WIP, filesystem/process/Guard semantics. No commit/push/network/board self-green.\nREADY_FOR_AI_IMPLEMENTATION: locked existing skeleton + independent5 intended RED. Allowed production dispatch.rs imports/new composition/target diagnostic/EXEC error mapping only. No interface or state-policy change.\nImplementation frozen5 GREEN; production stable within locked dispatch.rs body/import/comment scope. Independent regression/review underway.\n2026-10-26 FINAL INDEPENDENT GATE: intended RED5 verified, focused5 PASS, Tauri79 PASS, Workspace277 PASS, EXEC default52/allfeatures56 PASS; architecture reviewed-scope PASS no open findings. READY_FOR_GREEN yellow / owner acceptance pending. Production default Stub, static NOT RUN, no endpoint credentials, no accepted run/lease/Core/FLOW/evidence success on rejection. Source only dispatch.rs plus new private tests. No real transport/UI/IPC/commit/push. Reports: reports/rust-improvements/mcp-notrun/module.html and mcp-notrun-tests/module.html, mcp-notrun-review/module.html.\n[2026-10-26T00:30:24+08:00] 現況核對：已完成尚未提交；focused5/Tauri79/Workspace277/EXEC52及56 PASS、review無未結案缺陷；驗收與commit決策見PD-RUST-MCP-NOTRUN-ACCEPT-01，未push。"
+  },
+  {
+    "id": "PD-RUST-MCP-NOTRUN-REVIEW-01",
+    "ref": "PD-RUST-MCP-NOTRUN-REVIEW-01",
+    "title": "MCP unavailable: independent conformance review",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "MCP unavailable never reports real Live success; DryRun remains simulated.",
+    "tdd": "Behavioral RED -> GREEN; module regressions; independent review.",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: agent-execution / MCP host composition\nOwner 2026-10-26: 派工執行, selecting recommended unavailable NOT RUN slice.\nRead-only source review after stable GREEN. Verify no production fake/client dial, pre-success failure, unchanged boundary and explicit simulation tests. reports/rust-improvements/mcp-notrun-review/ only.\nProtected: other modules, UI WIP, filesystem/process/Guard semantics. No commit/push/network/board self-green.\nStable source ready; independent architecture conformance audit dispatched. No tests or production edits permitted.\n2026-10-26 FINAL INDEPENDENT GATE: intended RED5 verified, focused5 PASS, Tauri79 PASS, Workspace277 PASS, EXEC default52/allfeatures56 PASS; architecture reviewed-scope PASS no open findings. READY_FOR_GREEN yellow / owner acceptance pending. Production default Stub, static NOT RUN, no endpoint credentials, no accepted run/lease/Core/FLOW/evidence success on rejection. Source only dispatch.rs plus new private tests. No real transport/UI/IPC/commit/push. Reports: reports/rust-improvements/mcp-notrun/module.html and mcp-notrun-tests/module.html, mcp-notrun-review/module.html."
+  },
+  {
+    "id": "PD-RUST-FS-IMPL-01",
+    "ref": "PD-RUST-FS-IMPL-01",
+    "title": "修正｜同程序並發存檔的暫存檔碰撞",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 限定StdFileSystem adapter及核准私有seam，保留FileSystemPort簽名；並發不共用暫存檔，最終完整A或B，commit前失敗保留舊檔、不刪同儕temp。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: filesystem-persistence\nDependencies: PD-RUST-FS-DEC-01\nIntent / Allowed Scope / Acceptance Criteria: 限定StdFileSystem adapter及核准私有seam，保留FileSystemPort簽名；並發不共用暫存檔，最終完整A或B，commit前失敗保留舊檔、不刪同儕temp。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 05（以dependency及Owner Gate為準）\n[2026-10-26T00:36:51+08:00] Owner approved bounded architecture; Skeleton-only/test seam first. NO production behavior implementation until independent intended RED. Allowed std_fs.rs private helper + one private test module only, Ports/HOST/manifests protected.\n[2026-10-26T00:39:27+08:00] READY_FOR_AI_IMPLEMENTATION: owner-approved architecture + frozen private skeleton compilePASS + independent13 RED. Fill bodies only; tests/private signatures locked.\nFS independent FINAL: frozen13/13GREEN, workspace290,EXEC56,Tauri79 PASS; parent conformance PASS, no open finding. Same FileSystemPort, 0newdeps/traits/Manager; Windowslocal/noCAS/crashdurability. READY_FOR_GREEN yellow ownerpending; no commit/push. Evidence continuous/filesystem-persistence-tests/ and filesystem-persistence-review/."
+  },
+  {
+    "id": "PD-RUST-FS-TDD-01",
+    "ref": "PD-RUST-FS-TDD-01",
+    "title": "驗證｜並發原子寫入與 Windows 失敗保留",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then barrier/failure injection測prepare/commit/cleanup及既有檔覆寫；有效RED→GREEN與Windows真實檔案驗證，不靠sleep、不宣稱斷電或未測平台保證。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: filesystem-persistence\nDependencies: PD-RUST-FS-DEC-01, PD-RUST-FS-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: barrier/failure injection測prepare/commit/cleanup及既有檔覆寫；有效RED→GREEN與Windows真實檔案驗證，不靠sleep、不宣稱斷電或未測平台保證。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 06（以dependency及Owner Gate為準）\n[2026-10-26T00:36:51+08:00] Independent test author dispatched; wait frozen private skeleton then compile/intended RED. Preserve test intent through GREEN and regressions.\n[2026-10-26T00:39:27+08:00] Independent valid RED:13 compile,4 PASS/9 behavioral FAIL. No timeout/fixture/environment failure. Frozen tests and evidence continuous/filesystem-persistence-tests/build.txt,red.txt.\nFS independent FINAL: frozen13/13GREEN, workspace290,EXEC56,Tauri79 PASS; parent conformance PASS, no open finding. Same FileSystemPort, 0newdeps/traits/Manager; Windowslocal/noCAS/crashdurability. READY_FOR_GREEN yellow ownerpending; no commit/push. Evidence continuous/filesystem-persistence-tests/ and filesystem-persistence-review/."
+  },
+  {
+    "id": "PD-RUST-PROC-IMPL-01",
+    "ref": "PD-RUST-PROC-IMPL-01",
+    "title": "修正｜程序退出後完整收尾 stdout／stderr",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 依核准ProcessPort/adapter/EXEC骨架，尾端輸出不遺漏；exit/EOF先後、read error、timeout/cancel皆明確，terminal只發布一次；不改既有child退出意義。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "ner-approved envelope; queued after FS independent gate to keep shared adapter tests attributable. Then Skeleton→independentRED→implementation, no speculative features.\nREPLAN_REQUIRED before Skeleton: current UI exits on empty polls and immediatecancel; HOSTcancel consumes tail in a singlepoll. Approved4-file core envelope insufficient. No processsource changed; minimal integration extension prepared by planner, owner scope confirmation required.\n[2026-10-26T00:44:20+08:00] FS independentgate passed. Owner integration replan approved. Skeleton-only/independentRED now dispatched; no final behavior before validRED. Same2s/EOF/error/cancel policy, no newframework/deps.\nAssigned Agent: /root/continuous_process. Frozen skeleton complete; workspace/Tauri checkPASS, finalbehavior intentionallyold until independentRED. Source7files boundary locked; UI onlypoll/cancel functions. Currentstage SKELETON_PENDING_RED.\nREADY_FOR_AI_IMPLEMENTATION: owner core+integrationA approval, frozen compilable skeleton and independentRust/HOST/UI intendedRED confirmed. Fillapprovedbodies only; no testchanges/clockport/DTO/newframework. CurrentFIXED2s/drain/cancel/EOF semantics andUItwofunctions locked.\nIndependentreviewPROC-R1: outputreaderror+waiterror canbypassFailed; newsinglecase compile+intendedRED savedexec-r1-red.txt. Minimalcontrolflowfixreleased; existingothercontracts locked.\nFinal PROCgate: scriptedEXEC11,adapter5,HOST2,UI4 PASS; workspace295 priorR1 (R1feature-onlycase), EXEC all67/Tauri81 finalR1PASS. P1combinedread/waiterror independentRED→minimalfix→GREEN; reviewclosedPASS. Scope7files, no new framework/dep. READY_FOR_GREEN yellow, no commit/push.\n[2026-10-26T01:01:12.030946+08:00] Final independent regression PASS workspace295, EXEC allfeatures67, Tauri81, originalUI4. PROC-R1 read+wait simultaneous error fixed after intended RED, independently reviewed CLOSED. Seven approved production files, no new dependencies/Manager. Native IPC/real Agent NOT RUN. READY_FOR_GREEN yellow."
+  },
+  {
+    "id": "PD-RUST-PROC-TDD-01",
+    "ref": "PD-RUST-PROC-TDD-01",
+    "title": "驗證｜尾端輸出、EOF、逾時與取消",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 正常/大量/邊界、雙串流、exit先於EOF、繼承pipe、read error、重複cancel、現有UTF8契約；可控端口與真實子程序、EXEC/HOST/Tauri回歸與模組HTML。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "ependencies: PD-RUST-PROC-DEC-01, PD-RUST-PROC-IMPL-01\nIntent / Allowed Scope / Acceptance Criteria: 正常/大量/邊界、雙串流、exit先於EOF、繼承pipe、read error、重複cancel、現有UTF8契約；可控端口與真實子程序、EXEC/HOST/Tauri回歸與模組HTML。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 09（以dependency及Owner Gate為準）\n[2026-10-26T00:44:20+08:00] FS independentgate passed. Owner integration replan approved. Skeleton-only/independentRED now dispatched; no final behavior before validRED. Same2s/EOF/error/cancel policy, no newframework/deps.\nAssigned Agent: /root/continuous_guard. Independent scriptedclock/realprocesshelper/browseractualUI mockedIPC tests in progress; compiler/fixture/timeout not counted asRED. Existing tests compatibility changes must preserveapprovedbehaviorintent.\nIndependent intendedRED verified: EXEC10=2PASS/8behaviorFAIL, adapter3behaviorFAIL, HOST2behaviorFAIL; actualindex/app.js renderedUI3observableassertFAIL withscreenshots/DOM. Extra browserwaittimeout is NOT validRED and explicitlyclassified. Tests/harness FROZEN; private skeleton and7files publicenvelope locked.\nFinal PROCgate: scriptedEXEC11,adapter5,HOST2,UI4 PASS; workspace295 priorR1 (R1feature-onlycase), EXEC all67/Tauri81 finalR1PASS. P1combinedread/waiterror independentRED→minimalfix→GREEN; reviewclosedPASS. Scope7files, no new framework/dep. READY_FOR_GREEN yellow, no commit/push.\n[2026-10-26T01:01:12.030946+08:00] Final independent PASS workspace295/EXEC67/Tauri81, UI4 plus separate microcard1. All original assertions preserved; report continuous/process-tests/module.html includes RED history and exact final logs. Yellow owner pending."
+  },
+  {
+    "id": "PD-RUST-WIP-AUDIT-01",
+    "ref": "PD-RUST-WIP-AUDIT-01",
+    "title": "盤點｜既有 UI／文件 WIP 歸屬與後續切片",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 已核准模組契約及受控輸入，When 執行本卡，Then 只讀盤點保留的UI/docs/fixture變更，列path/intent/module/owner/commit候選/獨立驗證缺口；不全部commit或順便修正，提交另授權。",
+    "tdd": "NOT RUN（待辦）。先定義正常/邊界/無效/依賴失敗/partial failure/state/transaction/lifecycle/回歸；有效RED須可編譯且因目標行為缺失失敗；獨立驗證與HTML追溯，不弱化斷言。",
+    "note": "[PLAN-20261026-ALL]\nParent: PD-RUST-IMPROVE-20261025\nPrimary Module: repository-hygiene\nDependencies: 需求與架構 Gate\nIntent / Allowed Scope / Acceptance Criteria: 只讀盤點保留的UI/docs/fixture變更，列path/intent/module/owner/commit候選/獨立驗證缺口；不全部commit或順便修正，提交另授權。\nImplementation State: PLANNING_ONLY / NOT_READY_FOR_IMPLEMENTATION；本次只登錄計畫，不代表架構核准。\nWorkflow: Architecture + 兩張圖 → Contract/Invariants → UI Schema適用時 → Module BDD → Skeleton → independent intended RED → bounded implementation → focused/module/adjacent regression → architecture review → unified Module HTML → Owner驗收。\nProtected: 未核准schema/API/Ports/ownership/transaction/BDD、其他模組及無關WIP。\n本次不啟動lane/Agent，不改production，不自動commit/push/release或綠燈。\n排序: 28（以dependency及Owner Gate為準）\nCurrent execution scope overrides earlier registration-only note: owner now authorized continuous delegation; this card remains read-only inventory, no source writes or staging.\n[2026-10-26T00:36:51+08:00] Read-only inventory delivered reports/rust-improvements/continuous/repository-hygiene/module.html + embedded ModuleSpec. MCP verified source/test kept separate from existing UI/docs/board/other WIP. No stage/commit/source mutation; owner scope confirmation pending."
+  },
+  {
+    "id": "PD-RUST-CONTINUOUS-01",
+    "ref": "PD-RUST-CONTINUOUS-01",
+    "title": "持續派工｜最小切片、獨立驗證與看板回報",
+    "kind": "epic",
+    "zone": "yellow",
+    "bdd": "Given 既有功能與明確模組責任，When 收斂最小可驗證方案，Then 不新增不必要抽象、不修改未核准架構，失敗與待決策均清楚。",
+    "tdd": "Planning only: production NOT RUN；先定義module contracts/BDD/AC/Test skeleton，Owner Gate後獨立RED才實作。",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: coordination\nDecision reference: coordination\nOwner 2026-10-26：不做過度設計，派子代理持續完成。\nAllowed: reports/rust-improvements/continuous/coordination/ only; source read-only. Coordination may update board through snapshot_safe.\nDeliver: A1-A14/two diagrams, locked minimal option, contracts/BDD/tests/AC/task envelope + source evidence + module HTML. Reuse approved existing ports; no speculative extensibility.\nForbidden: production edits, new public APIs/ports/schema/concurrency/lifecycle/approval authority, test weakening, board self-green, commit/push/live connection.\nProduction Gate: referenced red decision remains pending; proposal is not owner approval.\n[2026-10-26T00:38:01+08:00] FS minimal scheme explicitly owner-approved; private skeleton/TDD underway. Guard authority gap documented, process narrow decision asked, read-only document contract audit queued. All future scopes remain bounded; no automatic commit/push.\nFS complete independent13/290/56/79 PASS, owneryellow; Guard sourceauthoritygap remainsred; document/WIP read-only reportsdelivered; processcore+integration ownrapproved, skeleton compiled and independentRED inprogress. No ongoing lane/tunnel/liveAgent/commit/push.\n【Owner硬性偏好：不做過度設計】最小可驗證切片；沿用既有Port/API；除非測試與已核准行為要求，不新增Manager/Service/Repository/trait/框架/依賴；不為未來provider預留抽象；不順手搬資料夾或重寫；每片列實際來源檔數、公開型別與依賴成本；獨立RED/GREEN/回歸/架構審查不可省。跨骨架即REPLAN_REQUIRED，未核准決策維持red；完成證據只READY_FOR_GREEN yellow，不自改驗收/commit/push。\n[2026-10-26T01:01:12.030946+08:00] Authorized FS + process lifecycle/integration + separate duplicate-Assign minimal slice completed through independent gates. Final workspace295 / EXEC allfeatures67 / Tauri81 / renderedChromeUI5 PASS. READY_FOR_GREEN yellow, owner acceptance pending. Eight red decisions retained; no liveAgent/nativeIPC/buildpackage/commit/push."
+  },
+  {
+    "id": "PD-RUST-GUARD-PLAN-02",
+    "ref": "PD-RUST-GUARD-PLAN-02",
+    "title": "規劃｜Guard 最小核准來源方案與鎖定封包",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 既有功能與明確模組責任，When 收斂最小可驗證方案，Then 不新增不必要抽象、不修改未核准架構，失敗與待決策均清楚。",
+    "tdd": "Planning only: production NOT RUN；先定義module contracts/BDD/AC/Test skeleton，Owner Gate後獨立RED才實作。",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: execution-guard\nDecision reference: PD-RUST-GUARD-DEC-01\nOwner 2026-10-26：不做過度設計，派子代理持續完成。\nAllowed: reports/rust-improvements/continuous/execution-guard/ only; source read-only. Coordination may update board through snapshot_safe.\nDeliver: A1-A14/two diagrams, locked minimal option, contracts/BDD/tests/AC/task envelope + source evidence + module HTML. Reuse approved existing ports; no speculative extensibility.\nForbidden: production edits, new public APIs/ports/schema/concurrency/lifecycle/approval authority, test weakening, board self-green, commit/push/live connection.\nProduction Gate: referenced red decision remains pending; proposal is not owner approval.\n[2026-10-26T00:36:51+08:00] ARCHITECTURE_GAP confirmed: existing caller DTO approval is not trusted authority; minimal candidate/owner question documented continuous/execution-guard/architecture-gap.md. Production NOT RUN; referenced decision remains red."
+  },
+  {
+    "id": "PD-RUST-FS-PLAN-02",
+    "ref": "PD-RUST-FS-PLAN-02",
+    "title": "規劃｜並發寫檔最小方案與鎖定封包",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 既有功能與明確模組責任，When 收斂最小可驗證方案，Then 不新增不必要抽象、不修改未核准架構，失敗與待決策均清楚。",
+    "tdd": "Planning only: production NOT RUN；先定義module contracts/BDD/AC/Test skeleton，Owner Gate後獨立RED才實作。",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: filesystem-persistence\nDecision reference: PD-RUST-FS-DEC-01\nOwner 2026-10-26：不做過度設計，派子代理持續完成。\nAllowed: reports/rust-improvements/continuous/filesystem-persistence/ only; source read-only. Coordination may update board through snapshot_safe.\nDeliver: A1-A14/two diagrams, locked minimal option, contracts/BDD/tests/AC/task envelope + source evidence + module HTML. Reuse approved existing ports; no speculative extensibility.\nForbidden: production edits, new public APIs/ports/schema/concurrency/lifecycle/approval authority, test weakening, board self-green, commit/push/live connection.\nProduction Gate: referenced red decision remains pending; proposal is not owner approval.\nFS independent FINAL: frozen13/13GREEN, workspace290,EXEC56,Tauri79 PASS; parent conformance PASS, no open finding. Same FileSystemPort, 0newdeps/traits/Manager; Windowslocal/noCAS/crashdurability. READY_FOR_GREEN yellow ownerpending; no commit/push. Evidence continuous/filesystem-persistence-tests/ and filesystem-persistence-review/."
+  },
+  {
+    "id": "PD-RUST-PROC-PLAN-02",
+    "ref": "PD-RUST-PROC-PLAN-02",
+    "title": "規劃｜程序輸出收尾最小方案與鎖定封包",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given 既有功能與明確模組責任，When 收斂最小可驗證方案，Then 不新增不必要抽象、不修改未核准架構，失敗與待決策均清楚。",
+    "tdd": "Planning only: production NOT RUN；先定義module contracts/BDD/AC/Test skeleton，Owner Gate後獨立RED才實作。",
+    "note": "Parent: PD-RUST-IMPROVE-20261025\nPrimary Module: process-lifecycle\nDecision reference: PD-RUST-PROC-DEC-01\nOwner 2026-10-26：不做過度設計，派子代理持續完成。\nAllowed: reports/rust-improvements/continuous/process-lifecycle/ only; source read-only. Coordination may update board through snapshot_safe.\nDeliver: A1-A14/two diagrams, locked minimal option, contracts/BDD/tests/AC/task envelope + source evidence + module HTML. Reuse approved existing ports; no speculative extensibility.\nForbidden: production edits, new public APIs/ports/schema/concurrency/lifecycle/approval authority, test weakening, board self-green, commit/push/live connection.\nProduction Gate: referenced red decision remains pending; proposal is not owner approval.\n[2026-10-26T00:38:01+08:00] Minimal package delivered continuous/process-lifecycle/module.html. Proposed stream states+2000ms post-exit drain; same buffer/direct-child scope; no new framework. Await owner answer; process implementation queued after FS slice to avoid shared adapter test interference."
+  },
+  {
+    "id": "PD-RUST-PROC-REVIEW-01",
+    "ref": "PD-RUST-PROC-REVIEW-01",
+    "title": "獨立審查｜程序收尾與最小 HOST／UI 整合",
+    "kind": "verification",
+    "zone": "yellow",
+    "bdd": "程序與UI僅在真實terminal後完成；取消不丟失尾端輸出；Empty batch不是失敗；固定deadline不延長。",
+    "tdd": "Read-only review after source stable GREEN；核對新舊測試意圖、跨模組所有權、無超範圍UI/WIP變更；實際測試由獨立TDD代理負責。",
+    "note": "Parent: PD-RUST-PROC-IMPL-01\nPrimary Module: process-run-integration\nAllowed: reports/rust-improvements/continuous/process-review/ only. Sources/tests read-only.\nOwner approved core+integrationA, exact7productionfiles; no DTO/framework/newdependency. Read locked packet; finalaudit after parent READY, no transientstub findings.\nScope:try_wait meaning, per-stream completion, fixed2000ms from first observedexit, tails-beforeterminal/once, cancelidempotence/requestack, HOSTno swallowed chunks, UIemptybatchcontinue and realterminalonlyfinish.\nNo green/production/test/index/board/commit/push/network. Minimal code/KISS/YAGNI mandatory.\nAssigned Agent: /root/continuous_fs. Read-only conformance review waits stableGREEN; no transient skeleton findings.\nFinal PROCgate: scriptedEXEC11,adapter5,HOST2,UI4 PASS; workspace295 priorR1 (R1feature-onlycase), EXEC all67/Tauri81 finalR1PASS. P1combinedread/waiterror independentRED→minimalfix→GREEN; reviewclosedPASS. Scope7files, no new framework/dep. READY_FOR_GREEN yellow, no commit/push.\n[2026-10-26T01:01:12.030946+08:00] Final conformance PASS; PROC-R1 CLOSED. Existing wait-only error, unbounded buffers/direct-child scope retained as explicit limits. No open approved-slice finding; owner acceptance yellow."
+  },
+  {
+    "id": "PD-RUST-UI-ACTIVE-RUN-01",
+    "ref": "PD-RUST-UI-ACTIVE-RUN-01",
+    "title": "小修正｜執行中重複派工不停止原輪詢",
+    "kind": "task",
+    "zone": "yellow",
+    "bdd": "Given active/draining run, when Assign pressed again, then no second start invocation, currentrunId/generation and poll continue; tail once then realterminal; newstart allowed afterward.",
+    "tdd": "Independent renderedUI newcaseRED→minimal guard→allUI5GREEN; no regexproof, testassertions unchanged.",
+    "note": "Parent: PD-RUST-CONTINUOUS-01\nPrimary Module: run-ui\nOwner continuous minimal bugfix authorization; existing one-in-flight contract unchanged.\nAllowed cmdStartDryRun body only +newbrowsercase/report; otherUIWIP protected.\nNo new architecture/port/DTO/state/dependency; this separate slice is not silently included in PROCtwofunctionscope.\nDependencies: PROC-R1 fix andstable independentgate first.\nExact envelope reports/rust-improvements/continuous/ui-active-run/module.html.\nExisting signature is Skeleton; needs validnewRED before addingearlyguard. No commit/push/self-green.\nValid independentRED now proved by actualrenderedUI separate5thharness: pendingcancel secondAssign triggersHostBusy/failed and oldpollstops. No timeoutRED. CurrentPROCgate closed; READY_FOR_AI_IMPLEMENTATION minimalearlyactiveRunIdguard in existingcmdStartDryRun only. No newstate/publiccontract; snapshotpre-ui-active-run.js protectsallotherbytes. Testassertionsfrozen; no commit/push.\n[2026-10-26T01:01:12.030946+08:00] Independent intended RED then minimal 5-line guard in cmdStartDryRun only. Independent actualChrome fifth gate PASS including original run tail once/terminal and subsequent run102 start/poll/tail/terminal. OriginalUI4 PASS. Postterminal assertions are added coverage, not claimed historical RED. Raw outsidefunction bytes identical; no new state/deps/contract. READY_FOR_GREEN yellow pending owner review."
+  }
+]
