@@ -18,7 +18,10 @@ const ALLOWED_EXT: &[&str] = &[
 ];
 
 fn assert_scene_rel(rel: &str) -> Result<(), HostError> {
-    let rel = rel.trim().trim_start_matches(['/', '\\']).replace('\\', "/");
+    let rel = rel
+        .trim()
+        .trim_start_matches(['/', '\\'])
+        .replace('\\', "/");
     if rel.is_empty() {
         return Err(HostError::Settings("scene relative path empty".into()));
     }
@@ -28,9 +31,7 @@ fn assert_scene_rel(rel: &str) -> Result<(), HostError> {
         ));
     }
     if rel.contains("..") {
-        return Err(HostError::Settings(
-            "scene path must not contain ..".into(),
-        ));
+        return Err(HostError::Settings("scene path must not contain ..".into()));
     }
     let lower = rel.to_ascii_lowercase();
     if !ALLOWED_EXT.iter().any(|ext| lower.ends_with(ext)) {
@@ -48,7 +49,9 @@ pub fn normalize_scene_rel(rel: Option<&str>, default_rel: &str) -> Result<Strin
         .filter(|s| !s.is_empty())
         .unwrap_or(default_rel);
     if raw.starts_with(['/', '\\']) {
-        return Err(HostError::Settings("scene path must be project-relative".into()));
+        return Err(HostError::Settings(
+            "scene path must be project-relative".into(),
+        ));
     }
     let norm = raw.replace('\\', "/");
     assert_scene_rel(&norm)?;
@@ -66,9 +69,8 @@ pub fn save_scene_text(
     if let Some(parent) = std::path::Path::new(&path).parent() {
         let parent_s = parent.to_string_lossy();
         if !parent_s.is_empty() {
-            fs.create_dir_all(&parent_s).map_err(|e| {
-                HostError::Settings(format!("mkdir for scene save: {e}"))
-            })?;
+            fs.create_dir_all(&parent_s)
+                .map_err(|e| HostError::Settings(format!("mkdir for scene save: {e}")))?;
         }
     }
     fs.write_atomic(&path, text.as_bytes())
@@ -132,10 +134,26 @@ mod tests {
         let fs = FakeFileSystem::new();
         let root = "C:/work/project";
         let original = save_scene_text(&fs, root, DEFAULT_SGS_REL, "original").unwrap();
-        for rel in ["scene/C:/outside.ess", "scene/C:outside.ess", "/scene/outside.ess", r"\scene\outside.ess", "scene/../outside.ess", "scene/main.ess:stream.ess"] {
-            assert!(save_scene_text(&fs, root, rel, "replacement").is_err(), "accepted {rel:?}");
-            assert!(load_scene_text(&fs, root, rel).is_err(), "read accepted {rel:?}");
-            assert!(scene_file_exists(&fs, root, rel).is_err(), "exists accepted {rel:?}");
+        for rel in [
+            "scene/C:/outside.ess",
+            "scene/C:outside.ess",
+            "/scene/outside.ess",
+            r"\scene\outside.ess",
+            "scene/../outside.ess",
+            "scene/main.ess:stream.ess",
+        ] {
+            assert!(
+                save_scene_text(&fs, root, rel, "replacement").is_err(),
+                "accepted {rel:?}"
+            );
+            assert!(
+                load_scene_text(&fs, root, rel).is_err(),
+                "read accepted {rel:?}"
+            );
+            assert!(
+                scene_file_exists(&fs, root, rel).is_err(),
+                "exists accepted {rel:?}"
+            );
             assert_eq!(fs.read_to_string(&original).unwrap(), "original");
         }
     }

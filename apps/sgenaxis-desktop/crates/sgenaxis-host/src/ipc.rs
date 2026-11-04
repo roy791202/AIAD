@@ -7,10 +7,18 @@ use crate::error::HostError;
 /// Anything not in this enum is rejected. Shell／spawn／eval are never registered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AllowedIpcCommand {
+    /// DOC-ENTRY-01: explicit adoption via the bound WORK project only.
+    ProjectDocumentAdopt,
+    ProjectDocumentPrepare,
     /// Read [`crate::lifecycle::LifecyclePhase`].
     HostGetPhase,
     /// Read persisted [`crate::settings::HostSettings`].
     HostGetSettings,
+    HostProjectPreferencesLoad,
+    HostProjectPreferencesSave,
+    HostProjectPreferencesPresets,
+    HostProjectPreferencesPickImport,
+    HostCreateProjectWithPreferences,
     /// Update＋persist host settings (validated).
     HostSetSettings,
     /// PD-SET-01: update＋persist CLI／MCP agent settings (draft or activate).
@@ -34,6 +42,10 @@ pub enum AllowedIpcCommand {
     GitWriteCommit,
     /// PD-GIT-WRITE-UI-01: approval-gated push via GitWritePort (no force).
     GitWritePush,
+    /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
+    GitIndexCommitPreview,
+    /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
+    GitIndexCommitConfirm,
     /// PD-DEPLOY-CMD-01: read-only deploy／packaging status.
     DeployStatus,
     /// PD-DEPLOY-CMD-01: read-only deploy check (no elevated `/qn`).
@@ -44,6 +56,8 @@ pub enum AllowedIpcCommand {
     PortsStatus,
     /// PD-GUARD-CMD-01: start_implementation gate (approval + RED).
     GuardCheckStart,
+    /// GC01/GC05: prepare one implementation candidate with native owner confirmation.
+    OwnerClassifyGuardTask,
     /// PD-GUARD-CMD-01: pre-change／write path gate.
     GuardCheckChanges,
     /// PD-GUARD-CMD-01: GUARD pass then EXEC DryRun start.
@@ -60,14 +74,27 @@ pub enum AllowedIpcCommand {
     SceneSave,
     /// Project-scoped scene text load under `scene/`.
     SceneLoad,
+    /// PD-ELU-IMPORT-ARCH-01: read-only Rust syntax preview under the bound project root.
+    ImportPreview,
 }
 
 impl AllowedIpcCommand {
     /// Stable invoke name (snake_case) used by `invoke(...)`.
     pub fn name(self) -> &'static str {
         match self {
+            AllowedIpcCommand::ProjectDocumentAdopt => "project_document_adopt",
+            AllowedIpcCommand::ProjectDocumentPrepare => "project_document_prepare",
             AllowedIpcCommand::HostGetPhase => "host_get_phase",
             AllowedIpcCommand::HostGetSettings => "host_get_settings",
+            AllowedIpcCommand::HostProjectPreferencesLoad => "host_project_preferences_load",
+            AllowedIpcCommand::HostProjectPreferencesSave => "host_project_preferences_save",
+            AllowedIpcCommand::HostProjectPreferencesPresets => "host_project_preferences_presets",
+            AllowedIpcCommand::HostProjectPreferencesPickImport => {
+                "host_project_preferences_pick_import"
+            }
+            AllowedIpcCommand::HostCreateProjectWithPreferences => {
+                "host_create_project_with_preferences"
+            }
             AllowedIpcCommand::HostSetSettings => "host_set_settings",
             AllowedIpcCommand::HostSetAgentSettings => "host_set_agent_settings",
             AllowedIpcCommand::HostPickProjectDirectory => "host_pick_project_directory",
@@ -79,11 +106,14 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWorkbenchDiff => "git_workbench_diff",
             AllowedIpcCommand::GitWriteCommit => "git_write_commit",
             AllowedIpcCommand::GitWritePush => "git_write_push",
+            AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
+            AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
             AllowedIpcCommand::DeployCheck => "deploy_check",
             AllowedIpcCommand::ListArtifacts => "list_artifacts",
             AllowedIpcCommand::PortsStatus => "ports_status",
             AllowedIpcCommand::GuardCheckStart => "guard_check_start",
+            AllowedIpcCommand::OwnerClassifyGuardTask => "owner_classify_guard_task",
             AllowedIpcCommand::GuardCheckChanges => "guard_check_changes",
             AllowedIpcCommand::StartImplementation => "start_implementation",
             AllowedIpcCommand::UidesignSaveDesign => "uidesign_save_design",
@@ -92,13 +122,21 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::UidesignAskAgent => "uidesign_ask_agent",
             AllowedIpcCommand::SceneSave => "scene_save",
             AllowedIpcCommand::SceneLoad => "scene_load",
+            AllowedIpcCommand::ImportPreview => "import_preview",
         }
     }
 
     pub fn all() -> &'static [AllowedIpcCommand] {
         &[
+            AllowedIpcCommand::ProjectDocumentAdopt,
+            AllowedIpcCommand::ProjectDocumentPrepare,
             AllowedIpcCommand::HostGetPhase,
             AllowedIpcCommand::HostGetSettings,
+            AllowedIpcCommand::HostProjectPreferencesLoad,
+            AllowedIpcCommand::HostProjectPreferencesSave,
+            AllowedIpcCommand::HostProjectPreferencesPresets,
+            AllowedIpcCommand::HostProjectPreferencesPickImport,
+            AllowedIpcCommand::HostCreateProjectWithPreferences,
             AllowedIpcCommand::HostSetSettings,
             AllowedIpcCommand::HostSetAgentSettings,
             AllowedIpcCommand::HostPickProjectDirectory,
@@ -110,11 +148,14 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWorkbenchDiff,
             AllowedIpcCommand::GitWriteCommit,
             AllowedIpcCommand::GitWritePush,
+            AllowedIpcCommand::GitIndexCommitPreview,
+            AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
             AllowedIpcCommand::DeployCheck,
             AllowedIpcCommand::ListArtifacts,
             AllowedIpcCommand::PortsStatus,
             AllowedIpcCommand::GuardCheckStart,
+            AllowedIpcCommand::OwnerClassifyGuardTask,
             AllowedIpcCommand::GuardCheckChanges,
             AllowedIpcCommand::StartImplementation,
             AllowedIpcCommand::UidesignSaveDesign,
@@ -123,6 +164,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::UidesignAskAgent,
             AllowedIpcCommand::SceneSave,
             AllowedIpcCommand::SceneLoad,
+            AllowedIpcCommand::ImportPreview,
         ]
     }
 
@@ -209,6 +251,8 @@ mod tests {
         assert!(is_allowed("git_workbench_diff"));
         assert!(is_allowed("git_write_commit"));
         assert!(is_allowed("git_write_push"));
+        assert!(is_allowed("git_index_commit_preview"));
+        assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));
         assert!(is_allowed("deploy_check"));
         assert!(is_allowed("list_artifacts"));
@@ -264,5 +308,17 @@ mod tests {
             authorize("host_get_phase").unwrap(),
             AllowedIpcCommand::HostGetPhase
         );
+        assert_eq!(
+            authorize("import_preview").unwrap(),
+            AllowedIpcCommand::ImportPreview
+        );
+        assert_eq!(
+            authorize("owner_classify_guard_task").unwrap(),
+            AllowedIpcCommand::OwnerClassifyGuardTask
+        );
+        assert_eq!(authorize("git_index_commit_preview").unwrap(), AllowedIpcCommand::GitIndexCommitPreview);
+        assert_eq!(authorize("git_index_commit_confirm").unwrap(), AllowedIpcCommand::GitIndexCommitConfirm);
+        assert!(authorize("import_apply").is_err());
+        assert!(authorize("shell_execute").is_err());
     }
 }

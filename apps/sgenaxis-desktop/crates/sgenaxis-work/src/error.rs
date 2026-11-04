@@ -27,6 +27,16 @@ pub enum WorkError {
         expected: String,
         got: String,
     },
+    /// A packet-bound start reservation currently occupies the global run slot.
+    RunBindingReserved { project_id: String },
+    /// An ambiguous start outcome retains the run slot pending reconciliation.
+    RunBindingUnresolved { project_id: String },
+    /// Reservation token does not identify the current reservation without mutation.
+    ReservationTokenMismatch,
+    /// Reservation sequence exhausted; identifiers are never reused or wrapped.
+    ReservationSequenceExhausted,
+    /// Requested reservation transition does not match the current state.
+    ReservationStateMismatch,
     /// Port / store failure (wrapped message).
     Port(String),
 }
@@ -54,6 +64,11 @@ impl fmt::Display for WorkError {
                 f,
                 "WORK lease mismatch on {field} (expected={expected}, got={got})"
             ),
+            WorkError::RunBindingReserved { project_id } => write!(f, "run binding reserved for {project_id}; conflicting starts and root rebinds are blocked"),
+            WorkError::RunBindingUnresolved { project_id } => write!(f, "run binding outcome unresolved for {project_id}; reconcile before another start or root rebind"),
+            WorkError::ReservationTokenMismatch => write!(f, "run binding reservation token mismatch"),
+            WorkError::ReservationSequenceExhausted => write!(f, "run binding reservation sequence exhausted"),
+            WorkError::ReservationStateMismatch => write!(f, "run binding reservation transition does not match current state"),
             WorkError::Port(s) => write!(f, "port: {s}"),
         }
     }

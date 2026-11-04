@@ -15,6 +15,8 @@
 mod error;
 mod model;
 pub mod packet;
+pub mod identity_preview;
+pub mod project_preferences;
 mod projection;
 mod store;
 

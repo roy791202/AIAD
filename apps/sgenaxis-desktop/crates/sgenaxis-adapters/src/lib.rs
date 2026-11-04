@@ -10,13 +10,19 @@
 //! Core (`sgenaxis-core`) must **not** depend on this crate. Host / use-cases
 //! compose Ports at the boundary; see [`compose`] and [`git_summary`].
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 
 pub mod compose;
 pub mod fake;
 pub mod ess_codec;
 pub mod git_summary;
 pub mod git_write;
+
+// IO-PREREQ Skeleton only; Windows adapter is not connected to HOST or UI.
+#[cfg(all(windows, feature = "std-adapters"))]
+pub mod file_commit;
+#[cfg(all(windows, feature = "std-adapters"))]
+pub use file_commit::StdFileCommit;
 
 #[cfg(feature = "std-adapters")]
 pub mod cli_probe;
@@ -28,6 +34,8 @@ pub mod std_fs;
 pub mod std_git;
 #[cfg(feature = "std-adapters")]
 pub mod std_git_write;
+#[cfg(feature = "std-adapters")]
+pub mod std_git_index_commit;
 #[cfg(feature = "std-adapters")]
 pub mod std_path;
 #[cfg(feature = "std-adapters")]
@@ -56,6 +64,8 @@ pub use std_git::StdGit;
 #[cfg(feature = "std-adapters")]
 pub use std_git_write::StdGitWrite;
 #[cfg(feature = "std-adapters")]
+pub use std_git_index_commit::StdGitIndexCommit;
+#[cfg(feature = "std-adapters")]
 pub use std_path::StdPath;
 #[cfg(feature = "std-adapters")]
 pub use std_process::StdProcess;
@@ -68,3 +78,7 @@ mod tests_swap;
 mod tests_git;
 #[cfg(test)]
 mod tests_git02;
+
+// EA-A0 approved fixture adapter skeleton; no native composition yet.
+#[cfg(any(windows, test))]
+pub mod conpty_fixture;

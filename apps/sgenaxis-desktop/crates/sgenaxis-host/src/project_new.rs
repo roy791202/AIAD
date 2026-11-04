@@ -81,27 +81,15 @@ pub fn join_new_project_path(parent: &str, name: &str) -> Result<String, HostErr
     normalize_new_project_path(&joined)
 }
 
-/// Create (or ensure) a project directory through [`FileSystemPort`].
+/// Deprecated direct creator: validate syntax, then require the six-step wizard.
 ///
-/// If `path` already exists as a **file** (e.g. Save-dialog residue), removes it
-/// via [`FileSystemPort::remove_file`] then [`FileSystemPort::create_dir_all`].
+/// No filesystem methods are invoked and existing files are never removed.
 ///
-/// Returns the normalized absolute／local path string suitable for
-/// `HostSettings.project_root`. Does **not** mutate settings.
-pub fn create_new_project_root(
-    fs: &dyn FileSystemPort,
-    raw: &str,
-) -> Result<String, HostError> {
-    let path = normalize_new_project_path(raw)?;
-    if fs.is_file(&path).unwrap_or(false) {
-        fs.remove_file(&path).map_err(|e| {
-            HostError::Settings(format!("無法移除殘留檔「{path}」以便建立目錄：{e}"))
-        })?;
-    }
-    fs.create_dir_all(&path).map_err(|e| {
-        HostError::Settings(format!("無法建立專案目錄「{path}」：{e}"))
-    })?;
-    Ok(path)
+/// The retained signature is a compatibility boundary; S3 migrates the UI entry.
+pub fn create_new_project_root(fs: &dyn FileSystemPort, raw: &str) -> Result<String, HostError> {
+    let _ = fs;
+    normalize_new_project_path(raw)?;
+    Err(HostError::Settings("WIZARD_REQUIRED: create through the six-step project wizard".into()))
 }
 
 /// Create under `parent`/`name` (PD-BUG-FILE-NEW-01).
@@ -140,11 +128,8 @@ mod tests {
 
     #[test]
     fn create_via_fake_fs() {
-        let fs = FakeFileSystem::new();
-        let path = create_new_project_root(&fs, "/work/new-proj").unwrap();
-        assert_eq!(path, "/work/new-proj");
-        assert!(fs.exists("/work/new-proj").unwrap());
-        assert_eq!(fs.mkdir_count(), 1);
+        // Owner-approved S2 migration; original archived in exact-design/legacy-history.
+        let fs=FakeFileSystem::new();let result=create_new_project_root(&fs,"/work/new-proj");assert!(matches!(result,Err(HostError::Settings(ref m)) if m.starts_with("WIZARD_REQUIRED:")));assert!(!fs.exists("/work/new-proj").unwrap());assert_eq!(fs.mkdir_count(),0);assert_eq!(fs.write_count(),0);
     }
 
     #[test]
@@ -157,11 +142,8 @@ mod tests {
 
     #[test]
     fn create_under_parent_name() {
-        let fs = FakeFileSystem::new();
-        let path = create_new_project_under(&fs, "/work", "MyProj").unwrap();
-        let norm = path.replace('\\', "/");
-        assert_eq!(norm, "/work/MyProj");
-        assert!(fs.exists(&path).unwrap());
+        // Owner-approved S2 migration; original archived in exact-design/legacy-history.
+        let fs=FakeFileSystem::new();let result=create_new_project_under(&fs,"/work","MyProj");assert!(matches!(result,Err(HostError::Settings(ref m)) if m.starts_with("WIZARD_REQUIRED:")));assert!(!fs.exists("/work/MyProj").unwrap());assert_eq!(fs.mkdir_count(),0);assert_eq!(fs.write_count(),0);
     }
 
     #[test]
@@ -178,12 +160,7 @@ mod tests {
 
     #[test]
     fn create_replaces_existing_file_residue() {
-        let fs = FakeFileSystem::new();
-        fs.write_atomic("/work/NewProject", b"").unwrap();
-        assert!(fs.is_file("/work/NewProject").unwrap());
-        let path = create_new_project_root(&fs, "/work/NewProject").unwrap();
-        assert_eq!(path, "/work/NewProject");
-        assert!(!fs.is_file("/work/NewProject").unwrap());
-        assert!(fs.exists("/work/NewProject").unwrap());
+        // Owner-approved S2 migration; original archived in exact-design/legacy-history.
+        let fs=FakeFileSystem::new();fs.seed("/work/NewProject",b"original");let result=create_new_project_root(&fs,"/work/NewProject");assert!(matches!(result,Err(HostError::Settings(ref m)) if m.starts_with("WIZARD_REQUIRED:")));assert_eq!(fs.read("/work/NewProject").unwrap(),b"original");assert!(fs.is_file("/work/NewProject").unwrap());assert_eq!(fs.mkdir_count(),0);assert_eq!(fs.write_count(),0);
     }
 }

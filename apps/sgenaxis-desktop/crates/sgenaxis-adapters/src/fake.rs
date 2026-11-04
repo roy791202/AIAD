@@ -312,6 +312,8 @@ impl ProcessPort for FakeProcess {
         Ok(ProcessOutput {
             stdout: std::mem::take(&mut entry.stdout),
             stderr: std::mem::take(&mut entry.stderr),
+            stdout_completion: if entry.exit.is_some() { sgenaxis_ports::StreamCompletion::Eof } else { Default::default() },
+            stderr_completion: if entry.exit.is_some() { sgenaxis_ports::StreamCompletion::Eof } else { Default::default() },
         })
     }
 }

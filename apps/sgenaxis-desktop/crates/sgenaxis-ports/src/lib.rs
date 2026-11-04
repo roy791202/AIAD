@@ -11,7 +11,10 @@
 mod deploy;
 mod error;
 mod fs;
+pub mod file_commit;
 mod git;
+mod git_index_commit;
+mod interactive;
 mod path;
 mod process;
 
@@ -22,9 +25,18 @@ pub use deploy::{
 };
 pub use error::PortError;
 pub use fs::FileSystemPort;
+pub use file_commit::{CommitError, CommitReceipt, CommitStage, FileCommitPort, FileWriteLease};
 pub use git::{
     GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval,
     GitWritePort,
 };
+pub use git_index_commit::{
+    GitIndexCommitPort, GitOperationState, IndexCommitError, IndexCommitFacts,
+    IndexCommitFingerprint, IndexCommitObservation,
+};
+pub use interactive::{
+    Cleanup, InteractiveError, InteractiveErrorKind, InteractiveFixturePort, InteractiveId,
+    InteractiveObservation, InteractiveSize, ReadState,
+};
 pub use path::PathPort;
-pub use process::{ProcessId, ProcessOutput, ProcessPort};
+pub use process::{ProcessId, ProcessOutput, ProcessPort, StreamCompletion};

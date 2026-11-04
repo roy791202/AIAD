@@ -1,8 +1,9 @@
 //! CliAgentAdapter — Provider A (CLI) via ProcessPort; DryRun first, live under approval.
 
 use std::collections::VecDeque;
+use std::time::{Duration, Instant};
 
-use sgenaxis_ports::{ProcessId, ProcessPort};
+use sgenaxis_ports::{ProcessId, ProcessPort, StreamCompletion};
 
 use crate::error::ExecError;
 use crate::events::{AgentChunk, ExitClassification, OutputStream};
@@ -18,6 +19,9 @@ enum RunPhase {
     Live {
         process_id: ProcessId,
         finished: bool,
+        observed_exit: Option<i32>,
+        exit_observed_at: Option<Instant>,
+        cancel_requested: bool,
     },
 }
 
@@ -165,6 +169,9 @@ impl CliAgentAdapter {
             phase: RunPhase::Live {
                 process_id,
                 finished: false,
+                observed_exit: None,
+                exit_observed_at: None,
+                cancel_requested: false,
             },
             queue,
             tool,
@@ -189,7 +196,7 @@ impl CliAgentAdapter {
         process_id: ProcessId,
         run_id: RunId,
         queue: &mut VecDeque<AgentChunk>,
-    ) -> Result<(), ExecError> {
+    ) -> Result<(StreamCompletion, StreamCompletion), ExecError> {
         let out = process
             .try_read(process_id)
             .map_err(|e| ExecError::Process(e.to_string()))?;
@@ -207,13 +214,16 @@ impl CliAgentAdapter {
                 text: out.stderr,
             });
         }
-        Ok(())
+        Ok((out.stdout_completion, out.stderr_completion))
     }
 
-    fn poll_live_if_needed(process: &mut dyn ProcessPort, run: &mut ActiveRun) -> Result<(), ExecError> {
+    fn poll_live_if_needed(process: &mut dyn ProcessPort, run: &mut ActiveRun, now: Instant) -> Result<(), ExecError> {
         let RunPhase::Live {
             process_id,
             finished,
+            observed_exit,
+            exit_observed_at,
+            cancel_requested,
         } = &mut run.phase
         else {
             return Ok(());
@@ -224,25 +234,85 @@ impl CliAgentAdapter {
 
         let pid = *process_id;
         let run_id = run.run_id;
-        Self::drain_process_output(process, pid, run_id, &mut run.queue)?;
-
-        match process
-            .try_wait(pid)
-            .map_err(|e| ExecError::Process(e.to_string()))?
-        {
-            None => Ok(()),
-            Some(code) => {
-                // Final drain after exit so late pipe bytes become Chunks before Exited.
-                Self::drain_process_output(process, pid, run_id, &mut run.queue)?;
-                *finished = true;
-                run.queue.push_back(AgentChunk::Exited {
-                    run_id,
-                    classification: ExitClassification::from_exit_code(code),
-                    exit_code: Some(code),
-                });
-                Ok(())
+        let output = Self::drain_process_output(process, pid, run_id, &mut run.queue);
+        let mut read_error = None;
+        let (stdout, stderr) = match output {
+            Ok(states) => states,
+            Err(e) => {
+                read_error = Some(e.to_string());
+                (StreamCompletion::Open, StreamCompletion::Open)
+            }
+        };
+        for (name, state) in [("stdout", &stdout), ("stderr", &stderr)] {
+            if let StreamCompletion::Error(message) = state {
+                read_error = Some(format!("{name}: {message}"));
+                break;
             }
         }
+        if observed_exit.is_none() {
+            match process.try_wait(pid) {
+                Ok(Some(code)) => {
+                    *observed_exit = Some(code);
+                    *exit_observed_at = Some(now);
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    if let Some(message) = read_error.as_mut() {
+                        message.push_str(&format!("; exit observation failed: {e}"));
+                    } else {
+                        return Err(ExecError::Process(e.to_string()));
+                    }
+                }
+            }
+        }
+        let terminal = if let Some(message) = read_error {
+            let mut message = format!("PROCESS_OUTPUT_READ_FAILED: {message}");
+            if observed_exit.is_none() && !*cancel_requested {
+                *cancel_requested = true;
+                if let Err(e) = process.cancel(pid) {
+                    message.push_str(&format!("; direct-child cancel failed: {e}"));
+                }
+            }
+            Some(AgentChunk::Failed { run_id, message })
+        } else if let Some(code) = *observed_exit {
+            if stdout == StreamCompletion::Eof && stderr == StreamCompletion::Eof {
+                Some(AgentChunk::Exited {
+                    run_id,
+                    classification: if *cancel_requested { ExitClassification::Cancelled } else { ExitClassification::from_exit_code(code) },
+                    exit_code: Some(if *cancel_requested { -1 } else { code }),
+                })
+            } else if exit_observed_at.map(|at| now.saturating_duration_since(at) >= Duration::from_millis(2000)).unwrap_or(false) {
+                let mut open = Vec::new();
+                if stdout != StreamCompletion::Eof { open.push("stdout"); }
+                if stderr != StreamCompletion::Eof { open.push("stderr"); }
+                Some(AgentChunk::Failed {
+                    run_id,
+                    message: format!("PROCESS_OUTPUT_INCOMPLETE: 2000 ms after child exit {code}; open streams: {}", open.join(", ")),
+                })
+            } else { None }
+        } else { None };
+        if let Some(event) = terminal {
+            *finished = true;
+            run.queue.push_back(event);
+        }
+        Ok(())
+    }
+
+    /// Private deterministic-time seam; public polling uses the monotonic clock.
+    fn poll_chunks_at(&mut self, run: RunId, now: Instant) -> Result<Vec<AgentChunk>, ExecError> {
+        {
+            let Some(active) = &self.active else {
+                return Err(ExecError::RunNotFound(format!("{}", run.0)));
+            };
+            if active.run_id != run {
+                return Err(ExecError::RunNotFound(format!("{}", run.0)));
+            }
+        }
+        let Self { process, active, .. } = self;
+        let active = active.as_mut()
+            .ok_or_else(|| ExecError::RunNotFound(format!("{}", run.0)))?;
+        Self::poll_live_if_needed(process.as_mut(), active, now)?;
+        Ok(active.queue.drain(..).collect())
     }
 }
 
@@ -284,27 +354,7 @@ impl AgentPort for CliAgentAdapter {
     }
 
     fn poll_chunks(&mut self, run: RunId) -> Result<Vec<AgentChunk>, ExecError> {
-        {
-            let Some(active) = &self.active else {
-                return Err(ExecError::RunNotFound(format!("{}", run.0)));
-            };
-            if active.run_id != run {
-                return Err(ExecError::RunNotFound(format!("{}", run.0)));
-            }
-        }
-
-        let Self { process, active, .. } = self;
-        let active = active
-            .as_mut()
-            .ok_or_else(|| ExecError::RunNotFound(format!("{}", run.0)))?;
-
-        Self::poll_live_if_needed(process.as_mut(), active)?;
-
-        let mut out = Vec::new();
-        while let Some(ev) = active.queue.pop_front() {
-            out.push(ev);
-        }
-        Ok(out)
+        self.poll_chunks_at(run, Instant::now())
     }
 
     fn cancel(&mut self, run: RunId) -> Result<(), ExecError> {
@@ -332,8 +382,11 @@ impl AgentPort for CliAgentAdapter {
                 RunPhase::Live {
                     process_id,
                     finished,
+                    observed_exit,
+                    cancel_requested,
+                    ..
                 } => {
-                    if *finished {
+                    if *finished || observed_exit.is_some() || *cancel_requested {
                         None
                     } else {
                         Some(*process_id)
@@ -347,14 +400,9 @@ impl AgentPort for CliAgentAdapter {
                 .cancel(pid)
                 .map_err(|e| ExecError::Process(e.to_string()))?;
             if let Some(active) = self.active.as_mut() {
-                if let RunPhase::Live { finished, .. } = &mut active.phase {
-                    *finished = true;
+                if let RunPhase::Live { cancel_requested, .. } = &mut active.phase {
+                    *cancel_requested = true;
                 }
-                active.queue.push_back(AgentChunk::Exited {
-                    run_id: run,
-                    classification: ExitClassification::Cancelled,
-                    exit_code: Some(-1),
-                });
             }
         }
         Ok(())
@@ -705,3 +753,7 @@ mod tests {
         assert!(matches!(all.last(), Some(AgentChunk::Exited { .. })));
     }
 }
+
+#[cfg(test)]
+#[path = "process_lifecycle_tests.rs"]
+mod process_lifecycle_tests;

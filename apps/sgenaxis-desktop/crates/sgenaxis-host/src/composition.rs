@@ -12,9 +12,7 @@ use crate::deploy::{
 };
 use crate::error::HostError;
 use crate::lifecycle::{AppLifecycle, LifecyclePhase};
-use crate::ports_view::{
-    project_ports_status, PortAdapterLabels, PortsStatusView,
-};
+use crate::ports_view::{project_ports_status, PortAdapterLabels, PortsStatusView};
 use crate::settings::{HostSettings, SettingsStore, HOST_SETTINGS_FILE};
 
 /// App name used for config／cache path resolution.
@@ -62,8 +60,7 @@ impl CompositionRoot {
     pub fn boot_std() -> Result<Self, HostError> {
         let ports = BoxedPorts::std_with_approving_git_write();
         let cwd = default_workspace_root();
-        let root = find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd)
-            .unwrap_or(cwd);
+        let root = find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd).unwrap_or(cwd);
         let deploy = sgenaxis_adapters::boxed_deploy_std(root);
         Self::boot_with_ports_deploy_labels(
             ports,
@@ -81,8 +78,8 @@ impl CompositionRoot {
         #[cfg(feature = "std-adapters")]
         {
             let cwd = default_workspace_root();
-            let root = find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd)
-                .unwrap_or(cwd);
+            let root =
+                find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd).unwrap_or(cwd);
             let deploy = sgenaxis_adapters::boxed_deploy_std(root);
             return Self::boot_with_ports_deploy_labels(
                 ports,
@@ -150,8 +147,7 @@ impl CompositionRoot {
                 "settings mutation requires Ready phase".into(),
             ));
         }
-        self.settings
-            .update_and_save(self.ports.fs.as_ref(), next)
+        self.settings.update_and_save(self.ports.fs.as_ref(), next)
     }
 
     /// Graceful close: Ready → ShuttingDown → Stopped.
@@ -240,8 +236,7 @@ mod tests {
 
         // Simulate new process: same fake FS still holds bytes if we reuse ports —
         // here reload via SettingsStore on the same FS handle.
-        let reloaded =
-            SettingsStore::load_or_default(root.fs(), path).expect("reload");
+        let reloaded = SettingsStore::load_or_default(root.fs(), path).expect("reload");
         assert_eq!(reloaded.settings().ui_theme, "light");
     }
 
@@ -276,8 +271,10 @@ mod tests {
         let v = root.ports_status();
         assert_eq!(v.status, "ok");
         assert_eq!(v.entry_count, 6);
-        assert!(v.entries.iter().any(|e| e.port == "FileSystemPort"
-            && e.adapter == "FakeFileSystem"));
+        assert!(v
+            .entries
+            .iter()
+            .any(|e| e.port == "FileSystemPort" && e.adapter == "FakeFileSystem"));
         assert!(v
             .entries
             .iter()

@@ -10,8 +10,7 @@ use crate::error::HostError;
 pub const DESIGN_FORMAT: &str = "sgenaxis.design";
 pub const DESIGN_FORMAT_VERSION: u32 = 1;
 pub const DEFAULT_REL_PATH: &str = "design/main.sgendesign";
-pub const PREVIEW_BANNER: &str =
-    "SGenAxis Design Preview · 溝通用 · 非產品／非正式 PASS";
+pub const PREVIEW_BANNER: &str = "SGenAxis Design Preview · 溝通用 · 非產品／非正式 PASS";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DesignMeta {
@@ -122,9 +121,8 @@ impl DesignDoc {
 }
 
 pub fn parse_design_json(raw: &str) -> Result<DesignDoc, HostError> {
-    let doc: DesignDoc = serde_json::from_str(raw).map_err(|e| {
-        HostError::Settings(format!(".sgendesign JSON parse error: {e}"))
-    })?;
+    let doc: DesignDoc = serde_json::from_str(raw)
+        .map_err(|e| HostError::Settings(format!(".sgendesign JSON parse error: {e}")))?;
     doc.validate()?;
     Ok(doc)
 }
@@ -186,9 +184,8 @@ pub fn save_design_file(
     if let Some(parent) = std::path::Path::new(&path).parent() {
         let parent_s = parent.to_string_lossy();
         if !parent_s.is_empty() {
-            fs.create_dir_all(&parent_s).map_err(|e| {
-                HostError::Settings(format!("mkdir for design save: {e}"))
-            })?;
+            fs.create_dir_all(&parent_s)
+                .map_err(|e| HostError::Settings(format!("mkdir for design save: {e}")))?;
         }
     }
     fs.write_atomic(&path, json.as_bytes())
@@ -352,20 +349,15 @@ pub fn build_preview_file(
             }
         })
         .collect::<String>();
-    let safe = if safe.is_empty() {
-        "main".into()
-    } else {
-        safe
-    };
+    let safe = if safe.is_empty() { "main".into() } else { safe };
     let rel = format!("design/build/{safe}.preview.html");
     let path = join_project_rel(project_root, &rel)?;
     let html = build_preview_html(doc)?;
     if let Some(parent) = std::path::Path::new(&path).parent() {
         let parent_s = parent.to_string_lossy();
         if !parent_s.is_empty() {
-            fs.create_dir_all(&parent_s).map_err(|e| {
-                HostError::Settings(format!("mkdir preview: {e}"))
-            })?;
+            fs.create_dir_all(&parent_s)
+                .map_err(|e| HostError::Settings(format!("mkdir preview: {e}")))?;
         }
     }
     fs.write_atomic(&path, html.as_bytes())
@@ -413,11 +405,23 @@ mod tests {
 
     #[test]
     fn project_paths_reject_drive_prefixes_and_absolute_paths() {
-        for rel in ["scene/C:/outside.ess", "scene/C:outside.ess", "C:/outside.ess", "/outside.ess", r"\\server\share\outside.ess", "design/main.sgendesign:stream"] {
-            assert!(join_project_rel("C:/work/project", rel).is_err(), "accepted {rel:?}");
+        for rel in [
+            "scene/C:/outside.ess",
+            "scene/C:outside.ess",
+            "C:/outside.ess",
+            "/outside.ess",
+            r"\\server\share\outside.ess",
+            "design/main.sgendesign:stream",
+        ] {
+            assert!(
+                join_project_rel("C:/work/project", rel).is_err(),
+                "accepted {rel:?}"
+            );
         }
         let normal = join_project_rel("C:/work/project", "design/nested/main.sgendesign").unwrap();
-        assert!(normal.replace('\\', "/").ends_with("/design/nested/main.sgendesign"));
+        assert!(normal
+            .replace('\\', "/")
+            .ends_with("/design/nested/main.sgendesign"));
     }
 
     #[test]
@@ -432,8 +436,8 @@ mod tests {
 
     #[test]
     fn rejects_wrong_format() {
-        let err = parse_design_json(r#"{"format":"qt.ui","formatVersion":1,"nodes":[]}"#)
-            .unwrap_err();
+        let err =
+            parse_design_json(r#"{"format":"qt.ui","formatVersion":1,"nodes":[]}"#).unwrap_err();
         assert!(err.to_string().contains("sgenaxis.design"), "{err}");
     }
 

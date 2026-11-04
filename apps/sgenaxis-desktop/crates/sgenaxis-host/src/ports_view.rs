@@ -203,11 +203,7 @@ mod tests {
     #[test]
     fn approving_write_flag_reflected() {
         let v = project_ports_status(Some(&PortAdapterLabels::FAKE_APPROVING_WRITE), true);
-        let gw = v
-            .entries
-            .iter()
-            .find(|e| e.port == "GitWritePort")
-            .unwrap();
+        let gw = v.entries.iter().find(|e| e.port == "GitWritePort").unwrap();
         assert_eq!(gw.status, "approving");
         assert_eq!(gw.adapter, "FakeGitWrite");
     }

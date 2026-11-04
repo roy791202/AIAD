@@ -23,11 +23,15 @@ pub mod deploy;
 pub mod error;
 pub mod git_board_sync;
 pub mod guard_cmd;
+pub mod identity_preview;
 pub mod ipc;
 pub mod lifecycle;
 pub mod module_packet;
+pub mod packet_admission;
 pub mod ports_view;
+pub mod project_manifest;
 pub mod project_new;
+pub mod project_preferences;
 pub mod scene_doc;
 pub mod settings;
 pub mod uidesign_doc;
@@ -57,6 +61,9 @@ pub use project_new::{
     create_new_project_root, create_new_project_under, join_new_project_path,
     normalize_new_project_path, normalize_project_folder_name,
 };
+pub use project_manifest::{
+    adopt_project_document, DocumentAdoptionOutcome, ProjectManifestStoreError,
+};
 pub use scene_doc::{
     load_scene_text, normalize_scene_rel, save_scene_text, scene_file_exists, DEFAULT_SG_REL,
     DEFAULT_SGML_REL, DEFAULT_SGS_REL, DEFAULT_SGUI_REL, SCENE_DIR,
@@ -71,3 +78,6 @@ pub use settings::{
 };
 // Live CLI probe types re-exported from exec (PD-LIVE-TARGET-01 consumers).
 pub use sgenaxis_exec::{LiveTargetProbeResult, LIVE_TARGET_STATUS_NOT_RUN, LIVE_TARGET_STATUS_PASS};
+
+/// M01-S2 local definition persistence boundary.
+pub mod project_definition;

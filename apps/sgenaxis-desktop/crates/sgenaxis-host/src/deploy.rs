@@ -209,7 +209,11 @@ fn path_matches_convention(abs_or_rel: &str, convention: &str) -> bool {
 }
 
 /// Walk up from `start` looking for WiX packaging root or desktop app marker.
-pub fn find_workspace_root(fs: &dyn FileSystemPort, path: &dyn PathPort, start: &str) -> Option<String> {
+pub fn find_workspace_root(
+    fs: &dyn FileSystemPort,
+    path: &dyn PathPort,
+    start: &str,
+) -> Option<String> {
     let mut cur = start.to_string();
     for _ in 0..12 {
         let marker = path.join(&cur, &["packaging", "windows", "wix", "SGenAxis.wxs"]);
@@ -275,11 +279,10 @@ mod tests {
         assert_eq!(c.status, "warn");
         assert!(!c.needs_manual_elevated);
 
-        fake
-            .set_last_artifact_path(Some(
-                r"D:\AIAD\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi".into(),
-            ))
-            .unwrap();
+        fake.set_last_artifact_path(Some(
+            r"D:\AIAD\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi".into(),
+        ))
+        .unwrap();
         let c2 = check_view(&fake, DeployPlatform::Windows).unwrap();
         assert!(c2.ok);
         assert!(c2.needs_manual_elevated);

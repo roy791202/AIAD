@@ -1,6 +1,7 @@
 //! WORK use cases: register, rebind, lease, select (view-only).
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::error::WorkError;
 use crate::id::ProjectId;
@@ -8,6 +9,7 @@ use crate::lease::ExecutionLease;
 use crate::probe::PathProbePort;
 use crate::project::{Project, RegisterOutcome};
 use crate::projection::WorkspaceProjection;
+use crate::run_binding_reservation::RunBindingReservation;
 use crate::store::WorkspaceStorePort;
 
 /// Application service owning project registry + execution leases.
@@ -17,8 +19,27 @@ use crate::store::WorkspaceStorePort;
 pub struct WorkspaceService<P, S> {
     probe: P,
     store: S,
-    leases: BTreeMap<String, ExecutionLease>,
+    leases: BTreeMap<String, RunBindingState>,
+    reservation_identity: Arc<()>,
+    next_reservation_id: u64,
     selected: Option<ProjectId>,
+}
+
+#[derive(Debug, Clone)]
+enum RunBindingState {
+    Active(ExecutionLease),
+    Reserved(ReservationEntry),
+    Unresolved(ReservationEntry),
+}
+
+#[derive(Debug, Clone)]
+struct ReservationEntry {
+    id: u64,
+    expected_root: String,
+    work_item_id: String,
+    worktree_fingerprint: String,
+    approved_spec_revision: String,
+    module_id: String,
 }
 
 impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
@@ -27,12 +48,21 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
             probe,
             store,
             leases: BTreeMap::new(),
+            reservation_identity: Arc::new(()),
+            next_reservation_id: 0,
             selected: None,
         }
     }
 
     /// Register a project root. Failure leaves the store unchanged (no partial).
     pub fn register(&mut self, path: &str) -> Result<RegisterOutcome, WorkError> {
+        if let Some((
+            existing_id,
+            state @ (RunBindingState::Reserved(_) | RunBindingState::Unresolved(_)),
+        )) = self.leases.iter().next()
+        {
+            return Err(Self::state_conflict(existing_id, state));
+        }
         let probed = self.probe_usable(path)?;
         if let Some(existing_id) = self.store.find_by_canonical(&probed.canonical)? {
             let project = self
@@ -56,12 +86,15 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
         project_id: &ProjectId,
         new_path: &str,
     ) -> Result<Project, WorkError> {
-        if let Some(lease) = self.leases.get(project_id.as_str()) {
-            return Err(WorkError::LeaseActive {
-                project_id: lease.project_id.as_str().to_string(),
-                run_id: lease.run_id.clone(),
-                bound_root: lease.bound_root.clone(),
-            });
+        if let Some((
+            existing_id,
+            state @ (RunBindingState::Reserved(_) | RunBindingState::Unresolved(_)),
+        )) = self.leases.iter().next()
+        {
+            return Err(Self::state_conflict(existing_id, state));
+        }
+        if let Some(state) = self.leases.get(project_id.as_str()) {
+            return Err(Self::state_conflict(project_id.as_str(), state));
         }
         if self.store.get(project_id)?.is_none() {
             return Err(WorkError::UnknownProject(project_id.to_string()));
@@ -87,12 +120,8 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
             .get(project_id)?
             .ok_or_else(|| WorkError::UnknownProject(project_id.to_string()))?;
         // PD-EXEC-SINGLE-01: at most one active lease globally (not only per-project).
-        if let Some(existing) = self.leases.values().next() {
-            return Err(WorkError::LeaseActive {
-                project_id: existing.project_id.as_str().to_string(),
-                run_id: existing.run_id.clone(),
-                bound_root: existing.bound_root.clone(),
-            });
+        if let Some((existing_id, existing)) = self.leases.iter().next() {
+            return Err(Self::state_conflict(existing_id, existing));
         }
         let work_item_id = work_item_id.into();
         let worktree_fingerprint = worktree_fingerprint.into();
@@ -117,8 +146,10 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
             work_item_id,
             worktree_fingerprint,
         };
-        self.leases
-            .insert(project_id.as_str().to_string(), lease.clone());
+        self.leases.insert(
+            project_id.as_str().to_string(),
+            RunBindingState::Active(lease.clone()),
+        );
         Ok(lease)
     }
 
@@ -131,12 +162,19 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
         work_item_id: impl Into<String>,
         worktree_fingerprint: impl Into<String>,
     ) -> Result<ExecutionLease, WorkError> {
+        if let Some((
+            existing_id,
+            state @ (RunBindingState::Reserved(_) | RunBindingState::Unresolved(_)),
+        )) = self.leases.iter().next()
+        {
+            return Err(Self::state_conflict(existing_id, state));
+        }
         let project = self.ensure_project_for_root(project_root)?;
         let run_id = run_id.into();
         let work_item_id = work_item_id.into();
         let worktree_fingerprint = worktree_fingerprint.into();
 
-        if let Some(existing) = self.leases.get(project.id.as_str()) {
+        if let Some(RunBindingState::Active(existing)) = self.leases.get(project.id.as_str()) {
             self.assert_lease_matches(
                 existing,
                 &project.root,
@@ -146,12 +184,7 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
             return Ok(existing.clone());
         }
 
-        self.acquire_lease(
-            &project.id,
-            run_id,
-            work_item_id,
-            worktree_fingerprint,
-        )
+        self.acquire_lease(&project.id, run_id, work_item_id, worktree_fingerprint)
     }
 
     /// Register／reuse project and verify any active lease matches the binding
@@ -166,14 +199,16 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
         work_item_id: &str,
         worktree_fingerprint: &str,
     ) -> Result<crate::project::Project, WorkError> {
+        if let Some((
+            existing_id,
+            state @ (RunBindingState::Reserved(_) | RunBindingState::Unresolved(_)),
+        )) = self.leases.iter().next()
+        {
+            return Err(Self::state_conflict(existing_id, state));
+        }
         let project = self.ensure_project_for_root(project_root)?;
-        if let Some(existing) = self.leases.get(project.id.as_str()) {
-            self.assert_lease_matches(
-                existing,
-                &project.root,
-                work_item_id,
-                worktree_fingerprint,
-            )?;
+        if let Some(RunBindingState::Active(existing)) = self.leases.get(project.id.as_str()) {
+            self.assert_lease_matches(existing, &project.root, work_item_id, worktree_fingerprint)?;
             return Err(WorkError::LeaseActive {
                 project_id: existing.project_id.as_str().to_string(),
                 run_id: existing.run_id.clone(),
@@ -181,6 +216,173 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
             });
         }
         Ok(project)
+    }
+
+    /// Reserve the existing WORK global run slot after HOST's final evidence
+    /// recheck and before EXEC is called. This declaration is intentionally
+    /// additive; packet facts must be verified by HOST, not supplied as UI authority.
+    pub fn reserve_run_binding(
+        &mut self,
+        project_id: &ProjectId,
+        expected_root: &str,
+        work_item_id: &str,
+        worktree_fingerprint: &str,
+        approved_spec_revision: &str,
+        module_id: &str,
+    ) -> Result<RunBindingReservation, WorkError> {
+        let project = self
+            .store
+            .get(project_id)?
+            .ok_or_else(|| WorkError::UnknownProject(project_id.to_string()))?;
+        let fields = [
+            ("work_item_id", work_item_id),
+            ("worktree_fingerprint", worktree_fingerprint),
+            ("approved_spec_revision", approved_spec_revision),
+            ("module_id", module_id),
+        ];
+        for (field, value) in fields {
+            if value.trim().is_empty() {
+                return Err(WorkError::LeaseMismatch {
+                    field: field.into(),
+                    expected: "(non-empty)".into(),
+                    got: value.into(),
+                });
+            }
+        }
+        if normalize_root(expected_root) != normalize_root(&project.root) {
+            return Err(WorkError::LeaseMismatch {
+                field: "project_root".into(),
+                expected: project.root,
+                got: expected_root.into(),
+            });
+        }
+        if let Some((existing_id, state)) = self.leases.iter().next() {
+            return Err(Self::state_conflict(existing_id, state));
+        }
+        let id = self
+            .next_reservation_id
+            .checked_add(1)
+            .ok_or(WorkError::ReservationSequenceExhausted)?;
+        self.next_reservation_id = id;
+        self.leases.insert(
+            project_id.as_str().to_string(),
+            RunBindingState::Reserved(ReservationEntry {
+                id,
+                expected_root: project.root,
+                work_item_id: work_item_id.into(),
+                worktree_fingerprint: worktree_fingerprint.into(),
+                approved_spec_revision: approved_spec_revision.into(),
+                module_id: module_id.into(),
+            }),
+        );
+        Ok(RunBindingReservation {
+            id,
+            project_id: project_id.as_str().to_string(),
+            service_identity: self.reservation_identity.clone(),
+        })
+    }
+
+    /// Commit only the matching service-owned reservation to the returned RunId.
+    pub fn commit_run_reservation(
+        &mut self,
+        reservation: &RunBindingReservation,
+        run_id: impl Into<String>,
+    ) -> Result<ExecutionLease, WorkError> {
+        if !reservation.belongs_to(&self.reservation_identity) {
+            return Err(WorkError::ReservationTokenMismatch);
+        }
+        let entry = match self.leases.get(&reservation.project_id) {
+            Some(RunBindingState::Reserved(entry)) if entry.id == reservation.id => entry.clone(),
+            Some(RunBindingState::Unresolved(entry)) if entry.id == reservation.id => {
+                return Err(WorkError::ReservationStateMismatch)
+            }
+            _ => return Err(WorkError::ReservationTokenMismatch),
+        };
+        if entry.approved_spec_revision.trim().is_empty() || entry.module_id.trim().is_empty() {
+            return Err(WorkError::ReservationStateMismatch);
+        }
+        let run_id = run_id.into();
+        if run_id.trim().is_empty() {
+            return Err(WorkError::LeaseMismatch {
+                field: "run_id".into(),
+                expected: "(non-empty)".into(),
+                got: run_id,
+            });
+        }
+        let project_id = ProjectId::new(reservation.project_id.clone());
+        let lease = ExecutionLease {
+            project_id,
+            run_id,
+            bound_root: entry.expected_root,
+            work_item_id: entry.work_item_id,
+            worktree_fingerprint: entry.worktree_fingerprint,
+        };
+        self.leases.insert(
+            reservation.project_id.clone(),
+            RunBindingState::Active(lease.clone()),
+        );
+        Ok(lease)
+    }
+
+    /// Release after EXEC returned an error whose contract explicitly guarantees
+    /// that no Run was created. Ambiguous outcomes must use `mark_run_reservation_unresolved`.
+    pub fn release_run_reservation_after_no_run(
+        &mut self,
+        reservation: &RunBindingReservation,
+    ) -> Result<(), WorkError> {
+        if !reservation.belongs_to(&self.reservation_identity) {
+            return Err(WorkError::ReservationTokenMismatch);
+        }
+        match self.leases.get(&reservation.project_id) {
+            Some(RunBindingState::Reserved(entry)) if entry.id == reservation.id => {
+                self.leases.remove(&reservation.project_id);
+                Ok(())
+            }
+            Some(RunBindingState::Unresolved(entry)) if entry.id == reservation.id => {
+                Err(WorkError::ReservationStateMismatch)
+            }
+            _ => Err(WorkError::ReservationTokenMismatch),
+        }
+    }
+
+    /// Retain the global slot when EXEC's outcome is ambiguous.
+    pub fn mark_run_reservation_unresolved(
+        &mut self,
+        reservation: &RunBindingReservation,
+    ) -> Result<(), WorkError> {
+        if !reservation.belongs_to(&self.reservation_identity) {
+            return Err(WorkError::ReservationTokenMismatch);
+        }
+        match self.leases.get(&reservation.project_id) {
+            Some(RunBindingState::Reserved(entry)) if entry.id == reservation.id => {
+                let entry = entry.clone();
+                self.leases.insert(
+                    reservation.project_id.clone(),
+                    RunBindingState::Unresolved(entry),
+                );
+                Ok(())
+            }
+            Some(RunBindingState::Unresolved(entry)) if entry.id == reservation.id => {
+                Err(WorkError::ReservationStateMismatch)
+            }
+            _ => Err(WorkError::ReservationTokenMismatch),
+        }
+    }
+
+    fn state_conflict(project_id: &str, state: &RunBindingState) -> WorkError {
+        match state {
+            RunBindingState::Active(lease) => WorkError::LeaseActive {
+                project_id: lease.project_id.as_str().to_string(),
+                run_id: lease.run_id.clone(),
+                bound_root: lease.bound_root.clone(),
+            },
+            RunBindingState::Reserved(_) => WorkError::RunBindingReserved {
+                project_id: project_id.to_string(),
+            },
+            RunBindingState::Unresolved(_) => WorkError::RunBindingUnresolved {
+                project_id: project_id.to_string(),
+            },
+        }
     }
 
     fn ensure_project_for_root(
@@ -227,12 +429,22 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
 
     /// Release lease by project id when a Run exits (idempotent).
     pub fn release_lease_for_project_id(&mut self, project_id: &str) {
-        self.leases.remove(project_id);
+        if matches!(
+            self.leases.get(project_id),
+            Some(RunBindingState::Active(_))
+        ) {
+            self.leases.remove(project_id);
+        }
     }
 
     /// Release execution lease so rebind may proceed.
     pub fn release_lease(&mut self, project_id: &ProjectId) -> Result<(), WorkError> {
-        if self.leases.remove(project_id.as_str()).is_none() {
+        if matches!(
+            self.leases.get(project_id.as_str()),
+            Some(RunBindingState::Active(_))
+        ) {
+            self.leases.remove(project_id.as_str());
+        } else {
             // Idempotent: no lease is fine.
         }
         Ok(())
@@ -250,7 +462,14 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
 
     pub fn projection(&self) -> Result<WorkspaceProjection, WorkError> {
         let projects = self.store.list()?;
-        let leases: Vec<ExecutionLease> = self.leases.values().cloned().collect();
+        let leases: Vec<ExecutionLease> = self
+            .leases
+            .values()
+            .filter_map(|state| match state {
+                RunBindingState::Active(lease) => Some(lease.clone()),
+                RunBindingState::Reserved(_) | RunBindingState::Unresolved(_) => None,
+            })
+            .collect();
         Ok(WorkspaceProjection::from_state(
             self.selected.as_ref(),
             &projects,
@@ -267,10 +486,7 @@ impl<P: PathProbePort, S: WorkspaceStorePort> WorkspaceService<P, S> {
         Ok(self.store.get(id)?)
     }
 
-    fn probe_usable(
-        &self,
-        path: &str,
-    ) -> Result<crate::probe::PathProbeResult, WorkError> {
+    fn probe_usable(&self, path: &str) -> Result<crate::probe::PathProbeResult, WorkError> {
         let probed = self.probe.probe(path)?;
         if !probed.exists {
             return Err(WorkError::PathNotFound(path.into()));
@@ -382,9 +598,7 @@ mod tests {
             RegisterOutcome::Created(p) => p,
             RegisterOutcome::Existing(p) => p,
         };
-        let lease = ws
-            .acquire_lease(&a.id, "run-1", "WI-1", "fp-1")
-            .unwrap();
+        let lease = ws.acquire_lease(&a.id, "run-1", "WI-1", "fp-1").unwrap();
         assert_eq!(lease.bound_root, "/fake/A");
         assert_eq!(lease.work_item_id, "WI-1");
         assert_eq!(lease.worktree_fingerprint, "fp-1");
@@ -419,8 +633,7 @@ mod tests {
             RegisterOutcome::Created(p) => p,
             RegisterOutcome::Existing(p) => p,
         };
-        ws.acquire_lease(&a.id, "run-A", "WI-A", "fp-A")
-            .unwrap();
+        ws.acquire_lease(&a.id, "run-A", "WI-A", "fp-A").unwrap();
 
         let before_lease_root = ws
             .projection()
@@ -502,8 +715,7 @@ mod tests {
             RegisterOutcome::Created(p) => p,
             RegisterOutcome::Existing(p) => p,
         };
-        ws.acquire_lease(&a.id, "run-A", "WI-A", "fp-A")
-            .unwrap();
+        ws.acquire_lease(&a.id, "run-A", "WI-A", "fp-A").unwrap();
         let err = ws
             .acquire_lease(&b.id, "run-B", "WI-B", "fp-B")
             .expect_err("second lease");
@@ -516,20 +728,14 @@ mod tests {
 
         let proj = ws.projection().unwrap();
         assert_eq!(proj.active_leases.len(), 1);
-        assert_eq!(
-            proj.active_run().map(|l| l.run_id.as_str()),
-            Some("run-A")
-        );
+        assert_eq!(proj.active_run().map(|l| l.run_id.as_str()), Some("run-A"));
 
         ws.release_lease(&a.id).unwrap();
         ws.acquire_lease(&b.id, "run-B", "WI-B", "fp-B")
             .expect("after release");
         let proj = ws.projection().unwrap();
         assert_eq!(proj.active_leases.len(), 1);
-        assert_eq!(
-            proj.active_run().map(|l| l.run_id.as_str()),
-            Some("run-B")
-        );
+        assert_eq!(proj.active_run().map(|l| l.run_id.as_str()), Some("run-B"));
     }
 
     /// BDD-PD-EXEC-BIND-01: bind_run freezes root＋work item＋fingerprint; mismatch rejected.

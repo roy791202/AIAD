@@ -80,9 +80,7 @@ impl HostSettings {
         match self.ui_theme.as_str() {
             "system" | "light" | "dark" => {}
             other => {
-                return Err(HostError::Settings(format!(
-                    "invalid ui_theme: {other}"
-                )));
+                return Err(HostError::Settings(format!("invalid ui_theme: {other}")));
             }
         }
         if self.locale.trim().is_empty() {
@@ -212,7 +210,10 @@ impl SettingsStore {
     }
 
     /// Load from disk／fake FS, or create defaults if missing.
-    pub fn load_or_default(fs: &dyn FileSystemPort, path: impl Into<String>) -> Result<Self, HostError> {
+    pub fn load_or_default(
+        fs: &dyn FileSystemPort,
+        path: impl Into<String>,
+    ) -> Result<Self, HostError> {
         let path = path.into();
         if !fs.exists(&path)? {
             let store = Self {
@@ -223,8 +224,8 @@ impl SettingsStore {
             return Ok(store);
         }
         let raw = fs.read_to_string(&path)?;
-        let settings: HostSettings = serde_json::from_str(&raw)
-            .map_err(|e| HostError::Settings(format!("parse: {e}")))?;
+        let settings: HostSettings =
+            serde_json::from_str(&raw).map_err(|e| HostError::Settings(format!("parse: {e}")))?;
         settings.validate_with_fs(fs)?;
         Ok(Self { path, settings })
     }
@@ -356,12 +357,12 @@ mod tests {
         store.update_and_save(&fs, next).unwrap();
 
         let reloaded = SettingsStore::load_or_default(&fs, path).unwrap();
-        assert_eq!(reloaded.settings().agent.cli.claude.path, "/tools/claude.exe");
-        assert_eq!(reloaded.settings().agent.mcp.server_name, "local-x");
         assert_eq!(
-            reloaded.settings().agent.mcp.approved_tools,
-            vec!["a", "b"]
+            reloaded.settings().agent.cli.claude.path,
+            "/tools/claude.exe"
         );
+        assert_eq!(reloaded.settings().agent.mcp.server_name, "local-x");
+        assert_eq!(reloaded.settings().agent.mcp.approved_tools, vec!["a", "b"]);
         assert_eq!(
             reloaded.settings().agent.mcp.secret_token.as_deref(),
             Some("host-secret")

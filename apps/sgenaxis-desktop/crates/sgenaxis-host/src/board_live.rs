@@ -80,8 +80,8 @@ pub fn extract_snapshot_json(text: &str) -> Result<&str, HostError> {
 
 /// Parse snapshot JSON (already extracted) into [`BoardSnapshot`].
 pub fn parse_board_snapshot(json: &str) -> Result<BoardSnapshot, HostError> {
-    let file: SnapshotFile = serde_json::from_str(json)
-        .map_err(|e| HostError::Board(format!("parse snapshot: {e}")))?;
+    let file: SnapshotFile =
+        serde_json::from_str(json).map_err(|e| HostError::Board(format!("parse snapshot: {e}")))?;
     let tasks = file
         .tasks
         .into_iter()

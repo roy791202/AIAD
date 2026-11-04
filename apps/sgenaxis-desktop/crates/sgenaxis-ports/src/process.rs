@@ -6,11 +6,22 @@ use crate::PortError;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcessId(pub u64);
 
+/// Independent observation of one captured process output stream.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum StreamCompletion {
+    #[default]
+    Open,
+    Eof,
+    Error(String),
+}
+
 /// Non-blocking drain of stdout／stderr text (lossy UTF-8 from adapter is OK).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProcessOutput {
     pub stdout: String,
     pub stderr: String,
+    pub stdout_completion: StreamCompletion,
+    pub stderr_completion: StreamCompletion,
 }
 
 impl ProcessOutput {

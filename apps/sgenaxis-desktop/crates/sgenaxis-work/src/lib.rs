@@ -15,17 +15,33 @@
 mod error;
 mod id;
 mod lease;
+mod manifest;
 mod probe;
 mod project;
 mod projection;
+mod run_binding_reservation;
 mod service;
 mod store;
+
+// Phase 1 S1: data/ownership Skeletons only; behavior deliberately remains RED.
+pub mod document_edit;
+pub mod asset_reference;
+pub mod generation_plan;
+pub mod project_definition;
+pub mod recovery_state;
 
 pub use error::WorkError;
 pub use id::ProjectId;
 pub use lease::ExecutionLease;
+pub use manifest::{
+    document_kind_from_str, normalize_project_reference, validate_document_id,
+    validate_revision_id, DocumentAdoptionPlan, ProjectDocumentKind, ProjectDocumentRecord,
+    ProjectManifest, ProjectManifestError, PROJECT_MANIFEST_RELATIVE_PATH,
+    PROJECT_MANIFEST_SCHEMA, PROJECT_MANIFEST_VERSION,
+};
 pub use probe::{FakePathProbe, PathProbePort, PathProbeResult};
 pub use project::{Project, RegisterOutcome};
 pub use projection::{LeaseSummary, ProjectSummary, WorkspaceProjection};
+pub use run_binding_reservation::RunBindingReservation;
 pub use service::WorkspaceService;
 pub use store::{FakeWorkspaceStore, WorkspaceStorePort};

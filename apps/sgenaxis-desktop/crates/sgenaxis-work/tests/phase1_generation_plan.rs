@@ -1,0 +1,770 @@
+//! M02-T01..T10 public policy contracts. Raw fixtures never invoke target code.
+//! No should_panic/ignore: the current Skeleton must fail at its missing body,
+//! while a later implementation must satisfy the actual assertions below.
+use sgenaxis_work::generation_plan::*;
+use sgenaxis_work::project_definition::*;
+use std::collections::BTreeMap;
+
+fn digest(c: char) -> String {
+    format!("sha256:{}", c.to_string().repeat(64))
+}
+
+#[test]
+fn fixture_complete_definition_satisfies_existing_m01_preconditions() {
+    let (d, t, c) = fixtures();
+    assert_eq!(validate_definition(&d.draft), Ok(()));
+    assert!(missing_generation_requirements(&d).is_empty());
+    assert_eq!(d.project_uuid.as_str(), c.binding.project_uuid);
+    assert_eq!(d.definition_revision, c.binding.definition_revision);
+    assert_eq!(d.draft.template.as_ref(), Some(&t.template_ref));
+    assert_eq!(c.binding.template_ref, t.template_ref);
+    assert_eq!(d.approval_refs, c.verified_approval_refs);
+    assert!(c.required_approvals_satisfied);
+}
+
+#[test]
+fn fixture_boundary_vectors_have_the_declared_lengths_and_products() {
+    let path = |last| {
+        [
+            "a".repeat(59),
+            "b".repeat(59),
+            "c".repeat(59),
+            "d".repeat(last),
+        ]
+        .join("/")
+    };
+    assert_eq!(path(59).len(), 239);
+    assert_eq!(path(60).len(), 240);
+    assert_eq!(path(61).len(), 241);
+    assert_eq!(vec!["a"; 16].join("/").split('/').count(), 16);
+    assert_eq!(vec!["a"; 17].join("/").split('/').count(), 17);
+    for n in [2, 128, 129] {
+        let artifacts = sized_artifacts(n);
+        assert_eq!(artifacts.len(), n);
+        assert!(artifacts
+            .iter()
+            .any(|a| a.product == ArtifactProduct::Program));
+        assert!(artifacts.iter().any(|a| a.product == ArtifactProduct::UiUx));
+    }
+}
+
+fn fixtures() -> (
+    ProjectDefinition,
+    GenerationTemplateContract,
+    GenerationPolicyContext,
+) {
+    let reference = TemplateReference {
+        id: "local-tauri-vanilla".into(),
+        version: "1.0.0".into(),
+        source_digest: digest('a'),
+    };
+    let target_id = "22222222-2222-4222-8222-222222222222".to_string();
+    let definition = ProjectDefinition {
+        project_uuid: PersistentProjectId::candidate("11111111-1111-4111-8111-111111111111"),
+        definition_revision: DefinitionRevision(1),
+        draft: DefinitionDraft {
+            name: "Local Author".into(),
+            purpose: "A confirmed local project".into(),
+            last_saved_step: WizardStep::Preview,
+            delivery_targets: vec![DeliveryTarget {
+                id: target_id.clone(),
+                form: FieldState::Confirmed("desktop".into()),
+                platform: FieldState::Confirmed("windows-x64".into()),
+                host: FieldState::Unresolved,
+                host_version: FieldState::Unresolved,
+                language: FieldState::Confirmed("rust".into()),
+                framework: FieldState::Confirmed("tauri2+vanilla".into()),
+                toolchain: vec!["rust".into()],
+                has_ui: Some(true),
+            }],
+            topology: FieldState::Confirmed("hexagonal".into()),
+            requirements: vec![DefinitionRequirement {
+                id: "REQ-1".into(),
+                intent: "Local editing".into(),
+                acceptance: vec!["Definition can be saved".into()],
+                state: RequirementState::Confirmed,
+            }],
+            preference_source: PreferenceSource::Skip,
+            template: Some(reference.clone()),
+            open_decisions: vec![],
+            extensions: BTreeMap::new(),
+        },
+        mode: DefinitionMode::Defined,
+        approval_refs: vec!["SPEC-1@1".into()],
+        legacy_root_keys: vec![],
+    };
+    let template = GenerationTemplateContract {
+        template_ref: reference.clone(),
+        target: TargetCapability {
+            form: "desktop".into(),
+            platform: "windows-x64".into(),
+            language: "rust".into(),
+            framework: "tauri2+vanilla".into(),
+            has_ui: true,
+        },
+        artifacts: vec![
+            ArtifactIntent {
+                relative_path: "program/main.rs".into(),
+                product: ArtifactProduct::Program,
+                template_key: "program/main.rs.tmpl".into(),
+            },
+            ArtifactIntent {
+                relative_path: "ui-ux/index.html".into(),
+                product: ArtifactProduct::UiUx,
+                template_key: "ui-ux/index.html.tmpl".into(),
+            },
+        ],
+    };
+    let context = GenerationPolicyContext {
+        binding: GenerationBinding {
+            project_uuid: definition.project_uuid.as_str().into(),
+            definition_revision: definition.definition_revision,
+            definition_digest: digest('b'),
+            target_id,
+            template_ref: reference,
+            approval_digest: digest('c'),
+            base_activation_digest: None,
+        },
+        verified_approval_refs: definition.approval_refs.clone(),
+        required_approvals_satisfied: true,
+    };
+    (definition, template, context)
+}
+
+fn prepared(
+    d: &ProjectDefinition,
+    t: &GenerationTemplateContract,
+    c: &GenerationPolicyContext,
+) -> GenerationPlan {
+    match prepare_generation(d, t, c).expect("valid complete inputs must prepare") {
+        GenerationDecision::Prepared { plan } => plan,
+        other => panic!("expected dual skeleton plan, got {other:?}"),
+    }
+}
+
+fn missing(
+    d: &ProjectDefinition,
+    t: &GenerationTemplateContract,
+    c: &GenerationPolicyContext,
+) -> Vec<String> {
+    match prepare_generation(d, t, c).expect("incomplete decisions are valid save-only data") {
+        GenerationDecision::SaveDefinitionOnly { missing } => {
+            assert!(!missing.is_empty(), "must explain absent decisions");
+            assert!(
+                missing.windows(2).all(|p| p[0] < p[1]),
+                "sorted and deduplicated"
+            );
+            missing
+        }
+        other => panic!("missing decisions must not prepare: {other:?}"),
+    }
+}
+
+/// Literal expected FieldPaths are supplied by each contract case, never
+/// recomputed from the target policy or inferred by a second implementation.
+fn assert_missing_causes(actual: &[String], expected: &[&str]) {
+    let expected: Vec<String> = expected.iter().map(|s| (*s).into()).collect();
+    assert_eq!(actual, expected, "report the actual missing decisions only");
+}
+
+#[test]
+fn oracle_missing_causes_rejects_wrong_cause_even_if_sorted_unique() {
+    let wrong = vec!["topology".to_string()];
+    for expected in [
+        "requirements[0].state",
+        "requirements[0].intent",
+        "requirements[0].acceptance",
+        "deliveryTargets[0].toolchain",
+        "deliveryTargets[0].hasUi",
+        "approvalRefs",
+    ] {
+        let rejected = std::panic::catch_unwind(|| assert_missing_causes(&wrong, &[expected]));
+        assert!(rejected.is_err(), "wrong cause must fail for {expected}");
+    }
+}
+
+#[test]
+fn oracle_missing_causes_rejects_extra_duplicate_or_omitted_causes() {
+    for wrong in [
+        vec!["approvalRefs".into(), "topology".into()],
+        vec!["approvalRefs".into(), "approvalRefs".into()],
+        vec![],
+    ] {
+        let rejected =
+            std::panic::catch_unwind(|| assert_missing_causes(&wrong, &["approvalRefs"]));
+        assert!(rejected.is_err(), "incorrect cause set must fail");
+    }
+}
+
+#[test]
+fn m02_t01_complete_definition_yields_both_intents_without_mutation() {
+    let (d, t, c) = fixtures();
+    let before = (d.clone(), t.clone(), c.clone());
+    let plan = prepared(&d, &t, &c);
+    assert_eq!(plan.binding, c.binding);
+    assert_eq!(plan.artifact_intents, t.artifacts);
+    assert!(plan
+        .artifact_intents
+        .iter()
+        .any(|a| a.product == ArtifactProduct::Program));
+    assert!(plan
+        .artifact_intents
+        .iter()
+        .any(|a| a.product == ArtifactProduct::UiUx));
+    assert_eq!((d, t, c), before);
+}
+
+macro_rules! save_only {
+    ($name:ident,$change:expr,$expected:expr) => {
+        #[test]
+        fn $name() {
+            let (mut d, t, mut c) = fixtures();
+            ($change)(&mut d, &mut c);
+            let before = (d.clone(), t.clone(), c.clone());
+            let fields = missing(&d, &t, &c);
+            assert_missing_causes(&fields, $expected);
+            assert_eq!((d, t, c), before);
+        }
+    };
+}
+save_only!(
+    m02_t02_missing_topology,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.topology =
+        FieldState::Unresolved,
+    &["topology"]
+);
+save_only!(
+    m02_t02_tentative_requirement,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].state =
+        RequirementState::Tentative,
+    &["requirements[0].state"]
+);
+save_only!(
+    m02_t02_unresolved_requirement,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].state =
+        RequirementState::Unresolved,
+    &["requirements[0].state"]
+);
+save_only!(
+    m02_t02_empty_requirement_intent,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].intent =
+        " ".into(),
+    &["requirements[0].intent"]
+);
+save_only!(
+    m02_t02_missing_acceptance,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0]
+        .acceptance
+        .clear(),
+    &["requirements[0].acceptance"]
+);
+save_only!(
+    m02_t02_open_decision,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.open_decisions =
+        vec!["topology".into(), "topology".into()],
+    &["topology"]
+);
+save_only!(
+    m02_t02_missing_toolchain,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.delivery_targets[0]
+        .toolchain
+        .clear(),
+    &["deliveryTargets[0].toolchain"]
+);
+save_only!(
+    m02_t02_unresolved_ui,
+    |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.delivery_targets[0]
+        .has_ui = None,
+    &["deliveryTargets[0].hasUi"]
+);
+save_only!(
+    m02_t03_unverified_approval_is_not_authority,
+    |_d: &mut ProjectDefinition, c: &mut GenerationPolicyContext| {
+        c.required_approvals_satisfied = false;
+        c.verified_approval_refs.clear();
+    },
+    &["approvalRefs"]
+);
+
+#[test]
+fn m02_t02_missing_projection_includes_topology_and_is_sorted_unique() {
+    let (mut d, t, mut c) = fixtures();
+    d.draft.topology = FieldState::Unresolved;
+    d.draft.open_decisions = vec!["topology".into(), "topology".into()];
+    c.required_approvals_satisfied = false;
+    let fields = missing(&d, &t, &c);
+    assert!(fields.iter().any(|s| s == "topology"));
+    assert_missing_causes(&fields, &["approvalRefs", "topology"]);
+}
+
+#[test]
+fn m02_f2_unsafe_path_precedes_missing_approval() {
+    let (d, mut t, mut c) = fixtures();
+    t.artifacts[0].relative_path = "../escape.rs".into();
+    c.required_approvals_satisfied = false;
+    c.verified_approval_refs.clear();
+    let before = (d.clone(), t.clone(), c.clone());
+    match prepare_generation(&d, &t, &c) {
+        Err(GenerationPlanError::InvalidArtifactPath { path, reason }) => {
+            assert_eq!(path, "../escape.rs");
+            assert!(!reason.is_empty());
+        }
+        other => panic!("unsafe structure precedes save-only approval outcome: {other:?}"),
+    }
+    assert_eq!((d, t, c), before);
+}
+
+#[test]
+fn m02_f2_invalid_identity_precedes_missing_topology() {
+    let (mut d, t, mut c) = fixtures();
+    d.project_uuid = PersistentProjectId::candidate("invalid");
+    c.binding.project_uuid = "invalid".into();
+    d.draft.topology = FieldState::Unresolved;
+    let before = (d.clone(), t.clone(), c.clone());
+    match prepare_generation(&d, &t, &c) {
+        Err(GenerationPlanError::InvalidInput { field, reason }) => {
+            assert_eq!(field, "projectUuid");
+            assert!(!reason.is_empty());
+        }
+        other => panic!("invalid identity precedes save-only topology outcome: {other:?}"),
+    }
+    assert_eq!((d, t, c), before);
+}
+
+#[test]
+fn m02_f2_duplicate_target_precedes_unresolved_requirement() {
+    let (mut d, t, c) = fixtures();
+    d.draft
+        .delivery_targets
+        .push(d.draft.delivery_targets[0].clone());
+    d.draft.requirements[0].state = RequirementState::Unresolved;
+    let before = (d.clone(), t.clone(), c.clone());
+    match prepare_generation(&d, &t, &c) {
+        Err(GenerationPlanError::InvalidInput { field, reason }) => {
+            assert_eq!(field, "deliveryTargets[1].id");
+            assert!(!reason.is_empty());
+        }
+        other => panic!("duplicate target precedes save-only requirement outcome: {other:?}"),
+    }
+    assert_eq!((d, t, c), before);
+}
+
+macro_rules! reject {
+    ($name:ident,$change:expr,$pattern:pat) => {
+        #[test]
+        fn $name() {
+            let (mut d, mut t, mut c) = fixtures();
+            ($change)(&mut d, &mut t, &mut c);
+            let before = (d.clone(), t.clone(), c.clone());
+            let result = prepare_generation(&d, &t, &c);
+            assert!(
+                matches!(result, Err($pattern)),
+                "typed rejection required, got {result:?}"
+            );
+            assert_eq!((d, t, c), before);
+        }
+    };
+}
+reject!(
+    m02_t04_template_id_mismatch,
+    |_: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| t.template_ref.id = "other".into(),
+    GenerationPlanError::TemplateMismatch { .. }
+);
+reject!(
+    m02_t04_template_version_mismatch,
+    |_: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| t.template_ref.version = "2.0.0".into(),
+    GenerationPlanError::TemplateMismatch { .. }
+);
+reject!(
+    m02_t04_template_digest_mismatch,
+    |_: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| t.template_ref.source_digest = digest('d'),
+    GenerationPlanError::TemplateMismatch { .. }
+);
+reject!(
+    m02_t04_context_template_mismatch,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.template_ref.id = "other".into(),
+    GenerationPlanError::TemplateMismatch { .. }
+);
+reject!(
+    m02_t04_unknown_target_identity,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.target_id =
+        "33333333-3333-4333-8333-333333333333".into(),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t03_verified_approval_identity_mismatch,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.verified_approval_refs = vec!["OTHER@1".into()],
+    GenerationPlanError::ApprovalMismatch { .. }
+);
+reject!(
+    m02_t05_unsupported_platform,
+    |d: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| {
+        d.draft.delivery_targets[0].platform = FieldState::Confirmed("linux-x64".into());
+        t.target.platform = "linux-x64".into();
+    },
+    GenerationPlanError::UnsupportedTarget { .. }
+);
+reject!(
+    m02_t05_no_ui_does_not_silently_drop_ui_product,
+    |d: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| {
+        d.draft.delivery_targets[0].has_ui = Some(false);
+        t.target.has_ui = false;
+    },
+    GenerationPlanError::UnsupportedTarget { .. }
+);
+reject!(
+    m02_t05_unsupported_framework,
+    |d: &mut ProjectDefinition,
+     t: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| {
+        d.draft.delivery_targets[0].framework = FieldState::Confirmed("qt".into());
+        t.target.framework = "qt".into();
+    },
+    GenerationPlanError::UnsupportedTarget { .. }
+);
+reject!(
+    m02_t09_invalid_project_uuid,
+    |d: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| {
+        d.project_uuid = PersistentProjectId::candidate("bad");
+        c.binding.project_uuid = "bad".into();
+    },
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t09_project_identity_mismatch,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.project_uuid =
+        "33333333-3333-4333-8333-333333333333".into(),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t09_definition_revision_mismatch,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.definition_revision = DefinitionRevision(2),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t09_duplicate_target_id,
+    |d: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| d
+        .draft
+        .delivery_targets
+        .push(d.draft.delivery_targets[0].clone()),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t09_duplicate_requirement_id,
+    |d: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     _: &mut GenerationPolicyContext| d
+        .draft
+        .requirements
+        .push(d.draft.requirements[0].clone()),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t08_invalid_definition_digest,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.definition_digest = "sha256:Z".into(),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t08_invalid_approval_digest,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.approval_digest = "".into(),
+    GenerationPlanError::InvalidInput { .. }
+);
+reject!(
+    m02_t08_invalid_base_digest,
+    |_: &mut ProjectDefinition,
+     _: &mut GenerationTemplateContract,
+     c: &mut GenerationPolicyContext| c.binding.base_activation_digest = Some("bad".into()),
+    GenerationPlanError::InvalidInput { .. }
+);
+
+macro_rules! invalid_path {
+    ($name:ident,$path:expr) => {
+        #[test]
+        fn $name() {
+            let (d, mut t, c) = fixtures();
+            t.artifacts[0].relative_path = $path.to_string();
+            let path = t.artifacts[0].relative_path.clone();
+            match prepare_generation(&d, &t, &c) {
+                Err(GenerationPlanError::InvalidArtifactPath {
+                    path: actual,
+                    reason,
+                }) => {
+                    assert_eq!(actual, path);
+                    assert!(!reason.is_empty());
+                }
+                other => panic!("invalid artifact path must report path and reason: {other:?}"),
+            }
+        }
+    };
+}
+invalid_path!(m02_t06_path_empty, "");
+invalid_path!(m02_t06_path_parent, "../escape.rs");
+invalid_path!(m02_t06_path_absolute, "/escape.rs");
+invalid_path!(m02_t06_path_backslash, "program\\main.rs");
+invalid_path!(m02_t06_path_drive, "C:/escape.rs");
+invalid_path!(m02_t06_path_reserved_name, "program/CON.txt");
+invalid_path!(m02_t06_path_trailing_dot, "program/name.");
+invalid_path!(m02_t06_path_empty_component, "program//main.rs");
+invalid_path!(m02_t06_path_current_component, "program/./main.rs");
+invalid_path!(m02_t06_path_nul, "program/a\0.rs");
+invalid_path!(m02_t06_path_unicode, "program/\u{6a94}.rs");
+invalid_path!(
+    m02_t08_path_component_65,
+    format!("program/{}", "a".repeat(65))
+);
+invalid_path!(
+    m02_t08_path_241_bytes,
+    [
+        "a".repeat(59),
+        "b".repeat(59),
+        "c".repeat(59),
+        "d".repeat(61)
+    ]
+    .join("/")
+);
+invalid_path!(m02_t08_path_17_components, vec!["a"; 17].join("/"));
+
+#[test]
+fn m02_t06_casefold_collision_rejected() {
+    let (d, mut t, c) = fixtures();
+    let mut other = t.artifacts[0].clone();
+    other.relative_path = "PROGRAM/MAIN.RS".into();
+    t.artifacts.push(other);
+    assert!(matches!(
+        prepare_generation(&d, &t, &c),
+        Err(GenerationPlanError::DuplicateArtifact { .. })
+    ));
+}
+#[test]
+fn m02_t06_file_directory_prefix_collision_rejected() {
+    let (d, mut t, c) = fixtures();
+    let mut other = t.artifacts[0].clone();
+    other.relative_path = "program/main.rs/child".into();
+    t.artifacts.push(other);
+    assert!(matches!(
+        prepare_generation(&d, &t, &c),
+        Err(GenerationPlanError::DuplicateArtifact { .. }
+            | GenerationPlanError::InvalidArtifactPath { .. })
+    ));
+}
+
+#[test]
+fn m02_t06_prefix_collision_with_intervening_sibling_is_rejected() {
+    let (d, mut t, c) = fixtures();
+    let mut sibling = t.artifacts[0].clone();
+    sibling.relative_path = "program/main.rs.extra".into();
+    let mut child = t.artifacts[0].clone();
+    child.relative_path = "program/main.rs/child".into();
+    t.artifacts.extend([sibling, child]);
+    assert!(matches!(
+        prepare_generation(&d, &t, &c),
+        Err(GenerationPlanError::DuplicateArtifact { .. }
+            | GenerationPlanError::InvalidArtifactPath { .. })
+    ));
+}
+
+macro_rules! valid_path {
+    ($name:ident,$path:expr) => {
+        #[test]
+        fn $name() {
+            let (d, mut t, c) = fixtures();
+            t.artifacts[0].relative_path = $path.to_string();
+            let path = t.artifacts[0].relative_path.clone();
+            assert!(prepared(&d, &t, &c)
+                .artifact_intents
+                .iter()
+                .any(|a| a.relative_path == path));
+        }
+    };
+}
+valid_path!(m02_t08_path_one_byte, "a");
+valid_path!(
+    m02_t08_path_239_bytes,
+    [
+        "a".repeat(59),
+        "b".repeat(59),
+        "c".repeat(59),
+        "d".repeat(59)
+    ]
+    .join("/")
+);
+valid_path!(
+    m02_t08_path_240_bytes,
+    [
+        "a".repeat(59),
+        "b".repeat(59),
+        "c".repeat(59),
+        "d".repeat(60)
+    ]
+    .join("/")
+);
+valid_path!(
+    m02_t08_path_component_64,
+    format!("program/{}", "a".repeat(64))
+);
+valid_path!(m02_t08_path_16_components, vec!["a"; 16].join("/"));
+
+fn sized_artifacts(n: usize) -> Vec<ArtifactIntent> {
+    (0..n)
+        .map(|i| ArtifactIntent {
+            relative_path: format!("product/f{i}"),
+            product: if i == 0 {
+                ArtifactProduct::Program
+            } else {
+                ArtifactProduct::UiUx
+            },
+            template_key: format!("product/f{i}.tmpl"),
+        })
+        .collect()
+}
+macro_rules! invalid_count {
+    ($name:ident,$n:expr) => {
+        #[test]
+        fn $name() {
+            let (d, mut t, c) = fixtures();
+            t.artifacts = sized_artifacts($n);
+            assert!(matches!(
+                prepare_generation(&d, &t, &c),
+                Err(GenerationPlanError::InvalidInput { .. })
+            ));
+        }
+    };
+}
+invalid_count!(m02_t08_artifacts_zero, 0);
+invalid_count!(m02_t08_artifacts_one_lacks_ui, 1);
+invalid_count!(m02_t08_artifacts_129, 129);
+#[test]
+fn m02_t08_artifacts_128_accepted() {
+    let (d, mut t, c) = fixtures();
+    t.artifacts = sized_artifacts(128);
+    assert_eq!(prepared(&d, &t, &c).artifact_intents.len(), 128);
+}
+#[test]
+fn m02_t08_only_ui_product_rejected() {
+    let (d, mut t, c) = fixtures();
+    for a in &mut t.artifacts {
+        a.product = ArtifactProduct::UiUx;
+    }
+    assert!(matches!(
+        prepare_generation(&d, &t, &c),
+        Err(GenerationPlanError::InvalidInput { .. })
+    ));
+}
+
+macro_rules! stale {
+    ($name:ident,$field:expr,$change:expr) => {
+        #[test]
+        fn $name() {
+            let (_, t, c) = fixtures();
+            let plan = GenerationPlan {
+                binding: c.binding.clone(),
+                artifact_intents: t.artifacts,
+            };
+            let mut current = c.binding;
+            ($change)(&mut current);
+            assert_eq!(
+                validate_plan_binding(&plan, &current),
+                Err(GenerationPlanError::StaleBinding {
+                    field: $field.into()
+                })
+            );
+        }
+    };
+}
+stale!(
+    m02_t07_stale_project,
+    "project_uuid",
+    |b: &mut GenerationBinding| b.project_uuid = "33333333-3333-4333-8333-333333333333".into()
+);
+stale!(
+    m02_t07_stale_revision,
+    "definition_revision",
+    |b: &mut GenerationBinding| b.definition_revision = DefinitionRevision(2)
+);
+stale!(
+    m02_t07_stale_definition_digest,
+    "definition_digest",
+    |b: &mut GenerationBinding| b.definition_digest = digest('d')
+);
+stale!(
+    m02_t07_stale_target,
+    "target_id",
+    |b: &mut GenerationBinding| b.target_id = "33333333-3333-4333-8333-333333333333".into()
+);
+stale!(
+    m02_t07_stale_template_id,
+    "template_ref.id",
+    |b: &mut GenerationBinding| b.template_ref.id = "other".into()
+);
+stale!(
+    m02_t07_stale_template_version,
+    "template_ref.version",
+    |b: &mut GenerationBinding| b.template_ref.version = "2.0.0".into()
+);
+stale!(
+    m02_t07_stale_template_digest,
+    "template_ref.source_digest",
+    |b: &mut GenerationBinding| b.template_ref.source_digest = digest('d')
+);
+stale!(
+    m02_t07_stale_approval,
+    "approval_digest",
+    |b: &mut GenerationBinding| b.approval_digest = digest('d')
+);
+stale!(
+    m02_t07_stale_base,
+    "base_activation_digest",
+    |b: &mut GenerationBinding| b.base_activation_digest = Some(digest('d'))
+);
+
+#[test]
+fn m02_t07_same_binding_is_valid() {
+    let (_, t, c) = fixtures();
+    let plan = GenerationPlan {
+        binding: c.binding.clone(),
+        artifact_intents: t.artifacts,
+    };
+    assert_eq!(validate_plan_binding(&plan, &c.binding), Ok(()));
+}
+#[test]
+fn m02_t10_repeated_preparation_is_deterministic_and_sorted() {
+    let (d, mut t, c) = fixtures();
+    t.artifacts.reverse();
+    let before = (d.clone(), t.clone(), c.clone());
+    let one = prepared(&d, &t, &c);
+    let two = prepared(&d, &t, &c);
+    assert_eq!(one, two);
+    assert!(one
+        .artifact_intents
+        .windows(2)
+        .all(|a| a[0].relative_path < a[1].relative_path));
+    assert_eq!((d, t, c), before);
+}

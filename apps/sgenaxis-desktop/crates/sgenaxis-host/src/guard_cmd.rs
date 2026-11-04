@@ -9,8 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 use sgenaxis_guard::{
-    check_changes, check_implementation_request, check_start_implementation, Envelope, GuardDecision,
-    RedEvidence, RedKind,
+    check_changes, check_implementation_request, check_start_implementation, Envelope,
+    GuardDecision, RedEvidence, RedKind,
 };
 
 /// IPC／command view of a GUARD decision.

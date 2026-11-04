@@ -117,9 +117,7 @@ fn map_git(err: PortError) -> SyncFailKind {
 fn map_board(err: HostError) -> SyncFailKind {
     match err {
         HostError::Board(m) => SyncFailKind::Board(m),
-        HostError::Port(PortError::PermissionDenied(m))
-            if m.contains("PD-GIT-BOARD-SYNC-01") =>
-        {
+        HostError::Port(PortError::PermissionDenied(m)) if m.contains("PD-GIT-BOARD-SYNC-01") => {
             SyncFailKind::WriteDetected(m)
         }
         HostError::Port(e) => SyncFailKind::Board(format!("port: {e}")),
@@ -128,7 +126,8 @@ fn map_board(err: HostError) -> SyncFailKind {
 }
 
 fn board_bytes(fs: &dyn FileSystemPort, path: &str) -> Result<Vec<u8>, SyncFailKind> {
-    fs.read(path).map_err(|e| SyncFailKind::Board(format!("fingerprint: {e}")))
+    fs.read(path)
+        .map_err(|e| SyncFailKind::Board(format!("fingerprint: {e}")))
 }
 
 fn git_baseline(

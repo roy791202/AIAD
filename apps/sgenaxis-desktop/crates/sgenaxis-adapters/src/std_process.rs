@@ -11,13 +11,19 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use sgenaxis_ports::{PortError, ProcessId, ProcessOutput, ProcessPort};
+use sgenaxis_ports::{PortError, ProcessId, ProcessOutput, ProcessPort, StreamCompletion};
+
+#[derive(Default)]
+struct PipeCapture {
+    bytes: Vec<u8>,
+    completion: StreamCompletion,
+}
 
 struct TrackedChild {
     child: Option<Child>,
     exit_code: Option<i32>,
-    stdout: Arc<Mutex<Vec<u8>>>,
-    stderr: Arc<Mutex<Vec<u8>>>,
+    stdout: Arc<Mutex<PipeCapture>>,
+    stderr: Arc<Mutex<PipeCapture>>,
 }
 
 /// Real process launcher implementing [`ProcessPort`].
@@ -41,32 +47,45 @@ impl StdProcess {
     }
 }
 
-fn spawn_pipe_reader(mut pipe: impl Read + Send + 'static, buf: Arc<Mutex<Vec<u8>>>) {
+fn spawn_pipe_reader(mut pipe: impl Read + Send + 'static, buf: Arc<Mutex<PipeCapture>>) {
     thread::spawn(move || {
         let mut tmp = [0u8; 4096];
         loop {
             match pipe.read(&mut tmp) {
-                Ok(0) => break,
+                Ok(0) => {
+                    if let Ok(mut g) = buf.lock() {
+                        g.completion = StreamCompletion::Eof;
+                    }
+                    break;
+                }
                 Ok(n) => {
                     if let Ok(mut g) = buf.lock() {
-                        g.extend_from_slice(&tmp[..n]);
+                        g.bytes.extend_from_slice(&tmp[..n]);
                     }
                 }
-                Err(_) => break,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(e) => {
+                    if let Ok(mut g) = buf.lock() {
+                        g.completion = StreamCompletion::Error(e.to_string());
+                    }
+                    break;
+                }
             }
         }
     });
 }
 
-fn take_utf8(buf: &Arc<Mutex<Vec<u8>>>) -> String {
-    let Ok(mut g) = buf.lock() else {
-        return String::new();
-    };
-    if g.is_empty() {
-        return String::new();
+fn drain_capture(g: &mut PipeCapture) -> (String, StreamCompletion) {
+    let bytes = std::mem::take(&mut g.bytes);
+    (String::from_utf8_lossy(&bytes).into_owned(), g.completion.clone())
+}
+
+#[cfg(test)]
+fn take_utf8(buf: &Arc<Mutex<PipeCapture>>) -> (String, StreamCompletion) {
+    match buf.lock() {
+        Ok(mut g) => drain_capture(&mut g),
+        Err(_) => (String::new(), StreamCompletion::Error("output capture mutex poisoned".into())),
     }
-    let bytes = std::mem::take(&mut *g);
-    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 impl ProcessPort for StdProcess {
@@ -88,8 +107,8 @@ impl ProcessPort for StdProcess {
             .spawn()
             .map_err(|e| PortError::Process(format!("{program}: {e}")))?;
 
-        let stdout_buf = Arc::new(Mutex::new(Vec::new()));
-        let stderr_buf = Arc::new(Mutex::new(Vec::new()));
+        let stdout_buf = Arc::new(Mutex::new(PipeCapture::default()));
+        let stderr_buf = Arc::new(Mutex::new(PipeCapture::default()));
         if let Some(out) = child.stdout.take() {
             spawn_pipe_reader(out, Arc::clone(&stdout_buf));
         }
@@ -155,10 +174,13 @@ impl ProcessPort for StdProcess {
             .children
             .get(&id.0)
             .ok_or_else(|| PortError::NotFound(format!("process {}", id.0)))?;
-        Ok(ProcessOutput {
-            stdout: take_utf8(&tracked.stdout),
-            stderr: take_utf8(&tracked.stderr),
-        })
+        let mut out = tracked.stdout.lock()
+            .map_err(|_| PortError::Process("stdout capture mutex poisoned".into()))?;
+        let mut err = tracked.stderr.lock()
+            .map_err(|_| PortError::Process("stderr capture mutex poisoned".into()))?;
+        let (stdout, stdout_completion) = drain_capture(&mut out);
+        let (stderr, stderr_completion) = drain_capture(&mut err);
+        Ok(ProcessOutput { stdout, stderr, stdout_completion, stderr_completion })
     }
 }
 
@@ -217,3 +239,7 @@ mod tests {
         assert_eq!(proc.try_wait(id).expect("after cancel"), Some(-1));
     }
 }
+
+#[cfg(test)]
+#[path = "process_lifecycle_tests.rs"]
+mod process_lifecycle_tests;
