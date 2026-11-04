@@ -56,6 +56,11 @@ description = "PD-GUARD-CMD-01 start_implementation gate"
 commands.allow = ["guard_check_start"]
 
 [[permission]]
+identifier = "allow-owner-classify-guard-task"
+description = "GC01/GC05 owner task candidate classification with native confirmation"
+commands.allow = ["owner_classify_guard_task"]
+
+[[permission]]
 identifier = "allow-guard-check-changes"
 description = "PD-GUARD-CMD-01 pre-write path gate"
 commands.allow = ["guard_check_changes"]
@@ -115,10 +120,22 @@ identifier = "allow-scene-load"
 description = "Project-scoped scene_load under scene/"
 commands.allow = ["scene_load"]
 
+[[permission]]
+identifier = "allow-project-document-adopt"
+description = "DOC-ENTRY-01 explicit bound-project adoption; handler restricts main/local caller"
+commands.allow = ["project_document_adopt"]
+
+[[permission]]
+identifier = "allow-project-document-prepare"
+description = "DOC-UI-02 explicit bound-project registration; main/local handler only"
+commands.allow = ["project_document_prepare"]
+
 [[set]]
 identifier = "dispatch-default"
 description = "PD-CMD-01 + PD-BOARD-LIVE-01 + PD-EVID-UI-01 + PD-REPORT-UI-01 + PD-GUARD-CMD-01 + PD-REMAIN-LISTEN-UI-01 + PD-UIDESIGNER-*"
 permissions = [
+  "allow-project-document-prepare",
+  "allow-project-document-adopt",
   "allow-list-commands",
   "allow-get-board",
   "allow-load-local-board",
@@ -143,3 +160,8 @@ permissions = [
   "allow-scene-save",
   "allow-scene-load",
 ]
+
+[[set]]
+identifier = "guard-owner-default"
+description = "GC01/GC05 native owner candidate confirmation (main window only)"
+permissions = ["allow-owner-classify-guard-task"]

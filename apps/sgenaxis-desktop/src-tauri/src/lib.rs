@@ -24,9 +24,14 @@
 //! (controlled docs/ui-design/index.html only; ≠ product evidence / not formal acceptance PASS).
 
 mod commands;
+mod code_import;
 mod dispatch;
 mod dto;
+mod document_identity;
+mod git_index_commit;
 mod pd_report_call;
+#[cfg(test)]
+mod mcp_stdio;
 
 /// Pure Property + Dirty + Evaluation core (no OS).
 pub use sgenaxis_core as core;
@@ -71,6 +76,7 @@ pub fn run() {
             commands::set_task_zone,
             commands::start_run,
             commands::guard_check_start,
+            commands::owner_classify_guard_task,
             commands::guard_check_changes,
             commands::start_implementation,
             commands::poll_chunks,
@@ -95,6 +101,13 @@ pub fn run() {
             commands::project_pd_report,
             commands::host_get_phase,
             commands::host_get_settings,
+            commands::project_document_adopt,
+            commands::project_document_prepare,
+            commands::host_project_preferences_load,
+            commands::host_project_preferences_save,
+            commands::host_project_preferences_presets,
+            commands::host_project_preferences_pick_import,
+            commands::host_create_project_with_preferences,
             commands::host_set_settings,
             commands::host_set_agent_settings,
             commands::host_pick_project_directory,
@@ -104,6 +117,8 @@ pub fn run() {
             commands::host_request_shutdown,
             commands::git_workbench_summary,
             commands::git_workbench_diff,
+            commands::git_index_commit_preview,
+            commands::git_index_commit_confirm,
             commands::git_write_commit,
             commands::git_write_push,
             commands::deploy_status,
@@ -118,6 +133,7 @@ pub fn run() {
             commands::uidesign_ask_agent,
             commands::scene_save,
             commands::scene_load,
+            commands::import_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SGenAxis");

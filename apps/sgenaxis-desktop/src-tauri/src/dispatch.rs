@@ -15,9 +15,10 @@
 //! this module without WebView／IPC. UI never calls adapters directly.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::time::Duration;
 
-use sgenaxis_adapters::{FakeProcess, StdProcess};
+use sgenaxis_adapters::{FakeProcess, StdFileSystem, StdGitIndexCommit, StdProcess};
 use sgenaxis_core::{
     EditError, EditSession, Engine, FlowError, FlowEvent, PropertyId, TaskFlow, Zone,
 };
@@ -28,28 +29,30 @@ use sgenaxis_evid::{
 };
 use sgenaxis_exec::{
     is_mcp_endpoint_activatable, require_run_binding, AgentChunk, AgentPort, AgentProvider,
-    AgentRouter, CliAgentAdapter, CliAgentSettings, ExitClassification, FakeMcpClient,
-    McpAgentAdapter, McpAgentSettings, OutputStream, RunId, StartRunRequest,
+    AgentRouter, CliAgentAdapter, CliAgentSettings, ExecError, ExitClassification,
+    McpAgentAdapter, McpAgentSettings, OutputStream, RunId, StartRunRequest, StubMcpClient,
 };
-use sgenaxis_ports::ProcessPort;
+use sgenaxis_ports::{
+    Cleanup, GitIndexCommitPort, InteractiveError, InteractiveFixturePort, InteractiveId,
+    InteractiveObservation, FileSystemPort, InteractiveSize, PortError, ProcessPort, ReadState,
+};
 use sgenaxis_host::{
     authorize_exec_start, authorize_write_paths, check_changes_view, check_start_view,
     GuardDecisionView, GuardExecPass, GuardPacketDto,
 };
 use sgenaxis_listen::{EventBridge, ListenProjection, SourceEvent};
-use sgenaxis_spec::{
-    ApprovalStatus, Contract, EvidenceValidity, SpecError, SpecStore,
-};
+use sgenaxis_spec::{ApprovalStatus, Contract, EvidenceValidity, SpecError, SpecStore};
 use sgenaxis_work::{FakePathProbe, FakeWorkspaceStore, WorkspaceService};
 
 use crate::dto::{
-    ArchEdgeDto, ArchModuleDto, ArchProjectionDto, BatchWorkTagsArgs, BoardView, ChunkDto,
+    ArchEdgeDto, ArchModuleDto, ArchProjectionDto, BatchWorkTagsArgs, BoardView, CandidateDraft, ChunkDto,
     CommandDescriptor, EditProjectionDto, EvidenceSummaryDto, EvidenceSummaryLineDto,
     ListenProjectionDto, PollResult, ProviderDto, SpecApproveArgs, SpecContractDto,
     SpecEvidenceRefDto, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
     SpecRevisionSummaryDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs,
     StartRunResult, TaskView, UpsertTaskArgs, ZoneDto, ZoneTitles,
 };
+use crate::git_index_commit::IndexCommitCoordinator;
 
 /// Sample ModuleSpec fixture (same bytes as sgenaxis-spec unit tests).
 const SAMPLE_MODULE_SPEC: &str =
@@ -61,6 +64,16 @@ pub struct DispatchHost {
     exec: AgentRouter,
     /// WORK registry + execution leases (PD-EXEC-BIND-01／PD-WORK-01).
     work: WorkspaceService<FakePathProbe, FakeWorkspaceStore>,
+    /// GUARD F-A exact-byte input reads, owned by the application host.
+    #[allow(dead_code)]
+    guard_input_fs: Box<dyn FileSystemPort>,
+    /// GUARD R-A owns a separate ProcessPort; it never borrows EXEC's active child.
+    #[allow(dead_code)]
+    guard_red_process: Box<dyn ProcessPort>,
+    /// Retains exact child ownership when cancellation/drain remains unresolved.
+    #[allow(dead_code)]
+    guard_capture_process: Option<GuardCaptureProcessSlot>,
+    guard_next_capture_id: u64,
     /// Work item bound to the in-flight run (for zone projection updates).
     active_work_item: Option<String>,
     /// Project id holding the active Run lease (released on exit).
@@ -91,6 +104,15 @@ pub struct DispatchHost {
     listen_proj: ListenProjection,
     /// PD-REMAIN-EDIT-01: domain selection／history (board task ids as universe).
     edit: EditSession,
+    /// GUARD-S1 private session authority ownership (pure policy; no native／ACL proof).
+    #[allow(dead_code)]
+    guard_authority: GuardSessionState,
+    /// Candidate records and task intent are private to this DispatchHost session.
+    guard_candidates: BTreeMap<u64, GuardCandidateRecord>,
+    guard_next_candidate: u64,
+    guard_intents: BTreeMap<String, GuardHostIntent>,
+    /// HOST-owned one-use staged-Index preview / confirm coordinator (A1 only).
+    git_index_commit: Arc<IndexCommitCoordinator>,
 }
 
 impl Default for DispatchHost {
@@ -99,14 +121,181 @@ impl Default for DispatchHost {
     }
 }
 
+/// Host-local session seed for opaque u64 Guard references. The monotonic
+/// per-host counter is checked; no process-global authority counter is used.
+fn guard_session_nonce() -> u64 {
+    // Candidate refs cross Tauri's JSON boundary into JavaScript Number. Keep
+    // them in its exact integer range. UUID entropy seeds each HOST-local
+    // sequence; mapping to the safe range means collisions assume 53 bits and
+    // are not a global uniqueness guarantee.
+    let bytes = uuid::Uuid::new_v4();
+    let mixed = u64::from_be_bytes(bytes.as_bytes()[..8].try_into().expect("UUID prefix is 8 bytes"));
+    (mixed % (GUARD_JS_SAFE_INTEGER_MAX - 1)) + 1
+}
+
+const GUARD_JS_SAFE_INTEGER_MAX: u64 = (1u64 << 53) - 1;
+
 impl DispatchHost {
-    /// Compose Fake Process + Fake MCP Live seam (`real-mcp`).
+    /// DOC-UI-02: explicit registry preparation, separate from manifest adoption.
+    pub(crate) fn project_document_prepare(
+        &mut self, fs: &dyn FileSystemPort, bound_root: &str,
+        args: &crate::dto::DocumentPrepareArgs, label: &str, local: bool,
+    ) -> Result<crate::dto::DocumentPrepareResultDto, crate::dto::DocumentPrepareErrorDto> {
+        use crate::dto::{DocumentPrepareErrorDto as E, DocumentPrepareResultDto};
+        if guard_require_main_local(label, local).is_err() { return Err(E::UnauthorizedCaller); }
+        if bound_root.trim().is_empty() { return Err(E::ProjectNotBound); }
+        if args.expected_project_root != bound_root { return Err(E::ProjectChanged); }
+        if self.active_run_id.is_some() || self.active_lease_project.is_some() || self.guard_capture_process.is_some() {
+            return Err(E::Busy);
+        }
+        let projection = self.work.projection().map_err(|e| E::WorkspaceRejected { reason: format!("{e:?}") })?;
+        if !projection.active_leases.is_empty() { return Err(E::Busy); }
+        // FakePathProbe provides WORK identity machinery, not filesystem proof.
+        if !fs.exists(bound_root).unwrap_or(false) || fs.is_file(bound_root).unwrap_or(true) {
+            return Err(E::RootUnavailable);
+        }
+        let outcome = self.work.register(bound_root).map_err(|e| E::WorkspaceRejected { reason: format!("{e:?}") })?;
+        let project = match outcome {
+            sgenaxis_work::RegisterOutcome::Created(p) | sgenaxis_work::RegisterOutcome::Existing(p) => p,
+        };
+        // WORK selected-view may change. HostSettings, leases and Run roots do not.
+        Ok(DocumentPrepareResultDto { project_id: project.id.to_string(), project_root: bound_root.into() })
+    }
+
+    /// Same lexical key as WORK probe::normalize_light/case_fold_key. This does
+    /// not resolve filesystem aliases, dot segments, symlinks or junctions.
+    fn document_root_key(root: &str) -> String {
+        let mut key = root.replace('\\', "/");
+        while key.ends_with('/') && key.len() > 1 { key.pop(); }
+        key.to_lowercase()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn document_test_projection(&self) -> (usize, Option<String>) {
+        (self.work.store_len().unwrap(), self.work.projection().unwrap().selected_project_id)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn document_test_busy(&mut self, kind: &str, root: &str) {
+        match kind {
+            "run" => self.active_run_id = Some(77),
+            "lease_flag" => self.active_lease_project = Some("fixture".into()),
+            "capture" => self.guard_capture_process = Some(GuardCaptureProcessSlot {
+                candidate_ref: 0, process_id: sgenaxis_ports::ProcessId(0), stage: GuardCaptureStage::BuildOnly }),
+            "active_lease" | "reserved" | "unresolved" => {
+                let id = sgenaxis_work::ProjectId::new(self.document_test_register(root));
+                if kind == "active_lease" {
+                    self.work.acquire_lease(&id, "fixture-run", "fixture-work", "fixture-fp").unwrap();
+                } else {
+                    let reservation = self.work.reserve_run_binding(&id, root, "fixture-work", "fixture-fp", "fixture-spec", "fixture-module").unwrap();
+                    if kind == "unresolved" { self.work.mark_run_reservation_unresolved(&reservation).unwrap(); }
+                }
+            }
+            _ => panic!("unknown fixture busy state"),
+        }
+    }
+
+    /// DOC-ENTRY-01: resolve only an already registered WORK project matching
+    /// the trusted HostSettings binding. Caller root/UUID fields do not exist.
+    pub(crate) fn project_document_adopt(
+        &mut self,
+        fs: &dyn FileSystemPort,
+        bound_root: &str,
+        args: &crate::dto::DocumentAdoptArgs,
+        candidate: &str,
+        caller_label: &str,
+        trusted_local: bool,
+    ) -> Result<crate::dto::DocumentAdoptResultDto, crate::dto::DocumentAdoptErrorDto> {
+        use crate::dto::{DocumentAdoptErrorDto as E, DocumentAdoptResultDto};
+        if guard_require_main_local(caller_label, trusted_local).is_err() {
+            return Err(E::UnauthorizedCaller);
+        }
+        if bound_root.trim().is_empty() || args.expected_project_id.trim().is_empty() {
+            return Err(E::ProjectNotBound);
+        }
+        let project = self.work.get_project(&sgenaxis_work::ProjectId::new(&args.expected_project_id))
+            .map_err(|_| E::ProjectNotBound)?.ok_or(E::ProjectNotBound)?;
+        if Self::document_root_key(&project.root) != Self::document_root_key(bound_root) {
+            return Err(E::ProjectMismatch);
+        }
+        use sgenaxis_host::{DocumentAdoptionOutcome, ProjectManifestStoreError as H};
+        let outcome = sgenaxis_host::adopt_project_document(fs, &project, &args.reference, candidate)
+            .map_err(|error| match error {
+                H::InvalidProjectRoot => E::InvalidProjectRoot,
+                H::InvalidReference => E::InvalidReference,
+                H::UnsupportedKind => E::UnsupportedKind,
+                H::MalformedManifest => E::MalformedManifest,
+                H::UnsupportedSchema => E::UnsupportedSchema,
+                H::InvalidManifestRecord => E::InvalidManifestRecord,
+                H::InvalidDocumentId => E::InvalidDocumentId,
+                H::DocumentIdConflict => E::DocumentIdConflict,
+                H::ManifestChanged => E::ManifestChanged,
+                H::RevisionConflict => E::RevisionConflict,
+                H::ReferenceConflict => E::ReferenceConflict,
+                H::SourceRead(e) => E::SourceRead(e.to_string()),
+                H::ManifestRead(e) => E::ManifestRead(e.to_string()),
+                H::CreateDirectory(e) => E::CreateDirectory(e.to_string()),
+                H::Write(e) => E::Write(e.to_string()),
+                H::DurabilityUnverified => E::DurabilityUnverified,
+            })?;
+        let (status, record) = match outcome {
+            DocumentAdoptionOutcome::Adopted(record) => ("Adopted", record),
+            DocumentAdoptionOutcome::AlreadyAdopted(record) => ("AlreadyAdopted", record),
+        };
+        Ok(DocumentAdoptResultDto { outcome: status.into(), document_id: record.document_id,
+            kind: record.kind.as_str().into(), reference: record.reference, revision_id: record.revision_id })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn document_test_register(&mut self, root: &str) -> String {
+        match self.work.register(root).unwrap() {
+            sgenaxis_work::RegisterOutcome::Created(p) | sgenaxis_work::RegisterOutcome::Existing(p) => p.id.to_string(),
+        }
+    }
+
+    pub fn project_policy_load(fs: &dyn FileSystemPort, bound: &str, expected: &str) -> Result<serde_json::Value, String> {
+        if bound.trim().is_empty() || bound != expected {return Err("PROJECT_CHANGED_OR_UNBOUND".into());}
+        let view=sgenaxis_host::project_preferences::load_project_preferences(fs,bound).map_err(|e|format!("{e:?}"))?;
+        Ok(match view {Some(v)=>serde_json::json!({"configured":true,"projectRoot":v.project_root,"digest":v.digest,"preferences":v.preferences}),None=>serde_json::json!({"configured":false,"projectRoot":bound,"digest":null,"preferences":null})})
+    }
+    pub fn project_policy_save(fs: &dyn FileSystemPort, bound: &str, expected: &str, digest: Option<&str>, draft: &[u8]) -> Result<serde_json::Value, String> {
+        if bound.trim().is_empty() || bound != expected {return Err("PROJECT_CHANGED_OR_UNBOUND".into());}
+        let draft=sgenaxis_spec::project_preferences::parse_project_preferences(draft).map_err(|e|format!("{e:?}"))?;
+        let v=sgenaxis_host::project_preferences::save_project_preferences(fs,bound,digest,&draft).map_err(|e|format!("{e:?}"))?;
+        Ok(serde_json::json!({"configured":true,"projectRoot":v.project_root,"digest":v.digest,"preferences":v.preferences}))
+    }
+    pub fn project_policy_create(fs: &dyn FileSystemPort, parent: &str, name: &str, preset: Option<&str>, imported: Option<&str>) -> Result<serde_json::Value, String> {
+        use sgenaxis_host::project_preferences::{CreationOutcome,PreferenceChoice};
+        if preset.is_some()&&imported.is_some(){return Err("CHOOSE_PRESET_OR_IMPORT".into());}
+        let root=sgenaxis_host::join_new_project_path(parent,name).map_err(|e|e.to_string())?;
+        let choice=match(preset,imported){(Some(id),None)=>PreferenceChoice::Preset(id),(None,Some(text))=>PreferenceChoice::Imported(text.as_bytes()),_=>PreferenceChoice::Skip};
+        match sgenaxis_host::project_preferences::create_project_with_preferences(fs,&root,choice).map_err(|e|format!("{e:?}"))? {
+            CreationOutcome::Created{project_root,..}=>Ok(serde_json::json!({"status":"ok","path":project_root})),
+            CreationOutcome::DirectoryCreatedPreferencesFailed{project_root,error}=>Ok(serde_json::json!({"status":"error","path":project_root,"message":format!("目錄已建立，偏好未完成：{error:?}；目前專案未切換。") })),
+        }
+    }
+    pub fn project_policy_presets() -> Result<serde_json::Value,String> {
+        let mut result=serde_json::Map::new();
+        for id in ["conservative","balanced","throughput"] {result.insert(id.into(),serde_json::to_value(sgenaxis_spec::project_preferences::preset(id).map_err(|e|format!("{e:?}"))?).map_err(|e|e.to_string())?);}
+        Ok(serde_json::Value::Object(result))
+    }
+    pub fn project_policy_import(fs: &dyn FileSystemPort,path:&str) -> Result<serde_json::Value,String> {
+        let bytes=fs.read(path).map_err(|e|e.to_string())?;
+        sgenaxis_spec::project_preferences::parse_project_preferences(&bytes).map_err(|e|format!("{e:?}"))?;
+        let text=String::from_utf8(bytes).map_err(|e|e.to_string())?;
+        Ok(serde_json::json!({"status":"ok","json":text}))
+    }
+    /// Compose Fake Process + unavailable MCP transport.
     /// DryRun never dials OS; Live CLI needs [`Self::wire_cli_live`] (StdProcess／test ProcessPort).
-    /// Live MCP uses in-process [`FakeMcpClient`] (no OS socket／cloud) after settings apply.
+    /// Live MCP remains unavailable with [`StubMcpClient`], including with `real-mcp` enabled.
     pub fn new() -> Self {
+        Self::with_git_index_port(Arc::new(StdGitIndexCommit::new()))
+    }
+
+    pub(crate) fn with_git_index_port(port: Arc<dyn GitIndexCommitPort>) -> Self {
         let exec = AgentRouter::new(
             CliAgentAdapter::with_defaults(Box::new(FakeProcess::new())),
-            McpAgentAdapter::with_defaults(Box::new(FakeMcpClient::default())),
+            McpAgentAdapter::with_defaults(Box::new(StubMcpClient)),
         );
         let probe = FakePathProbe::new();
         probe.accept_any_path();
@@ -114,6 +303,10 @@ impl DispatchHost {
             engine: Engine::new(),
             exec,
             work: WorkspaceService::new(probe, FakeWorkspaceStore::new()),
+            guard_input_fs: Box::new(StdFileSystem::new()),
+            guard_red_process: Box::new(StdProcess::new()),
+            guard_capture_process: None,
+            guard_next_capture_id: 0,
             active_work_item: None,
             active_lease_project: None,
             active_run_id: None,
@@ -129,7 +322,16 @@ impl DispatchHost {
             listen: EventBridge::new(Duration::from_millis(50)),
             listen_proj: ListenProjection::new(),
             edit: EditSession::new(),
+            guard_authority: GuardSessionState { boot: guard_session_nonce(), ..GuardSessionState::default() },
+            guard_candidates: BTreeMap::new(),
+            guard_next_candidate: guard_session_nonce(),
+            guard_intents: BTreeMap::new(),
+            git_index_commit: Arc::new(IndexCommitCoordinator::new(port)),
         }
+    }
+
+    pub(crate) fn git_index_commit_coordinator(&self) -> Arc<IndexCommitCoordinator> {
+        Arc::clone(&self.git_index_commit)
     }
 
     /// Keep EditSession universe aligned with Core board task ids.
@@ -494,10 +696,11 @@ impl DispatchHost {
                 ProviderDto::Mcp => {
                     let endpoint = self.exec.mcp().settings().endpoint.clone();
                     if endpoint.trim().is_empty() || !is_mcp_endpoint_activatable(&endpoint) {
-                        return Err(format!(
-                            "NOT RUN: no activatable MCP Live target (endpoint={endpoint:?}); \
+                        return Err(
+                            "NOT RUN: no activatable MCP Live target; \
                              禁 :8788／:8787；空／未設目標不可 Live；秘密不進投影"
-                        ));
+                                .into(),
+                        );
                     }
                 }
             }
@@ -541,7 +744,14 @@ impl DispatchHost {
             .preflight_run_binding(&project_root, &work_item_id, &worktree_fingerprint)
             .map_err(|e| e.to_string())?;
 
-        let run_id = self.exec.start_run(req).map_err(|e| e.to_string())?;
+        let run_id = self.exec.start_run(req).map_err(|e| {
+            if provider == AgentProvider::Mcp && matches!(e, ExecError::RealMcpDisabled) {
+                "NOT RUN: real MCP transport unavailable; use explicit DryRun for simulation"
+                    .to_string()
+            } else {
+                e.to_string()
+            }
+        })?;
 
         let lease = self
             .work
@@ -668,8 +878,8 @@ impl DispatchHost {
         self.exec
             .cancel(RunId(run_id))
             .map_err(|e| e.to_string())?;
-        // Drain so Cancelled classification applies, lease releases, Busy clears.
-        let _ = self.poll_chunks(run_id)?;
+        // Acknowledge only. The existing poll path delivers final output and
+        // reconciles the WORK lease after an actual terminal event.
         Ok(self.board_view())
     }
 
@@ -1466,8 +1676,1846 @@ fn chunk_to_dto(c: AgentChunk) -> ChunkDto {
     }
 }
 
+// ─── GUARD-S1 PRIVATE POLICY (PD-RUST-GUARD-POLICY-IMPLEMENT-01) ─────────────
+// Private HOST authority ownership; pure policy bodies only (GC／GB).
+// Does not prove real native／ACL／FS／capture／EXEC. Not a second Manager.
+
+/// Host-resolved task intent (never deserialized from caller authority fields).
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardHostIntent {
+    Unknown,
+    Generic,
+    Implementation,
+}
+
+/// Private authority errors for formal RED assertions.
+/// `NotReady` is a skeleton stub marker only — not a shipping IPC contract.
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardAuthorityError {
+    NotReady,
+    AuthorityDenied,
+    IntentUnknown,
+    RequiresApproval,
+    MissingRecord,
+    Stale(&'static str),
+    Revoked,
+    Consumed,
+    RedUnqualified,
+    InvalidManifest,
+    NativeDeclined,
+}
+
+/// Binding snapshot fields owned by HOST (GC04).
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardSnapshot {
+    pub task: String,
+    pub module: String,
+    pub project: String,
+    pub root: String,
+    pub input_fp: String,
+    pub architecture: String,
+    pub bdd: String,
+    pub skeleton: String,
+    pub envelope: String,
+    pub red_id: String,
+    pub test_manifest: String,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardApprovalStatus {
+    Approved,
+    Consumed,
+    Revoked,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub(crate) struct GuardApproval {
+    pub session: u64,
+    pub id: u64,
+    pub binding: GuardSnapshot,
+    pub status: GuardApprovalStatus,
+}
+
+/// Machine capture facts produced by HOST adapters — never caller JSON.
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub(crate) struct GuardCaptureFacts {
+    pub host_owned: bool,
+    pub build_ok: bool,
+    pub case_id: String,
+    pub expected_case_id: String,
+    pub case_executed: bool,
+    pub case_ignored: bool,
+    pub case_failed: bool,
+    pub exit_code: i32,
+    pub dual_eof: bool,
+    pub stream_error: bool,
+    pub same_snapshot: bool,
+    pub owner_qualifies: bool,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardManifestEntry {
+    pub relative_path: String,
+    pub sha256: String,
+}
+
+/// Private native observation from Rust-controlled rfd — must not become invoke DTO.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GuardNativeObservation {
+    Yes,
+    No,
+    Cancel,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub(crate) struct GuardPending {
+    pub nonce: u64,
+    pub binding: GuardSnapshot,
+    pub revoked: bool,
+}
+
+/// Private session authority record owned by [`DispatchHost`].
+#[allow(dead_code)]
+#[derive(Clone, Debug, Default)]
+pub(crate) struct GuardSessionState {
+    pub boot: u64,
+    pub approval: Option<GuardApproval>,
+    pub pending: Option<GuardPending>,
+}
+
+#[derive(Clone, Debug)]
+struct GuardCandidateRecord {
+    task_id: String,
+    draft: Option<CandidateDraft>,
+    binding: GuardSnapshot,
+    confirmed: bool,
+    capture_attempted: bool,
+    mechanical_capture: Option<GuardMechanicalCapture>,
+    pending_qualification: Option<GuardPendingQualification>,
+    qualified_red: Option<GuardQualifiedRed>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardRedQualificationPrompt {
+    pub candidate_ref: u64,
+    pub producer_id: u64,
+    pub bdd_id: String,
+    pub test_id: String,
+    pub artifact_sha256: String,
+    pub observed_case_line: String,
+    pub failure_summary_line: String,
+    pub bdd_text: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct GuardPendingQualification {
+    producer_id: u64,
+    binding: GuardSnapshot,
+    artifact_sha256: String,
+    test_id: String,
+    bdd_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardQualifiedRed {
+    pub id: u64,
+    pub binding: GuardSnapshot,
+    pub producer_id: u64,
+    pub test_id: String,
+    pub bdd_id: String,
+    pub artifact_sha256: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GuardCaptureStage {
+    BuildOnly,
+    ExactTest,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct GuardCaptureProcessSlot {
+    candidate_ref: u64,
+    process_id: sgenaxis_ports::ProcessId,
+    stage: GuardCaptureStage,
+}
+
+/// HOST-produced mechanical facts only; a separate native owner action must
+/// still attest that the observed case failure matches the approved BDD.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct GuardMechanicalCapture {
+    pub producer_id: u64,
+    pub artifact_path: String,
+    pub artifact_sha256: String,
+    /// Exact Cargo JSON record selecting this executable; retained privately
+    /// so later qualification can inspect the precise producer evidence.
+    selected_artifact_record: String,
+    pub target: String,
+    pub test_id: String,
+    pub build_exit_code: i32,
+    pub test_exit_code: i32,
+    pub dual_eof: bool,
+    pub inputs_unchanged: bool,
+    pub input_fingerprint: String,
+    pub input_artifact_fingerprints: BTreeMap<String, String>,
+    /// Raw exact-case diagnostics stay private in HOST memory; never serialize
+    /// or project these fields through EVID/IPC/UI.
+    observed_case_line: Option<String>,
+    failure_summary_line: Option<String>,
+    raw_test_stdout: String,
+    raw_test_stderr: String,
+    build_stdout_sha256: String,
+    build_stderr_sha256: String,
+}
+
+impl std::fmt::Debug for GuardMechanicalCapture {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("GuardMechanicalCapture")
+            .field("producer_id", &self.producer_id)
+            .field("artifact_path", &self.artifact_path)
+            .field("artifact_sha256", &self.artifact_sha256)
+            .field("selected_artifact_record", &"<private Cargo record>")
+            .field("target", &self.target)
+            .field("test_id", &self.test_id)
+            .field("build_exit_code", &self.build_exit_code)
+            .field("test_exit_code", &self.test_exit_code)
+            .field("dual_eof", &self.dual_eof)
+            .field("inputs_unchanged", &self.inputs_unchanged)
+            .field("input_fingerprint", &self.input_fingerprint)
+            .field("input_artifact_fingerprints", &self.input_artifact_fingerprints)
+            .field("build_stdout_sha256", &self.build_stdout_sha256)
+            .field("build_stderr_sha256", &self.build_stderr_sha256)
+            .finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardCaptureError {
+    ConsentDeclined,
+    MissingCandidate,
+    CandidateNotConfirmed,
+    CleanupPending,
+    TimedOut,
+    ProcessStart,
+    ProcessObservation,
+    BuildFailed,
+    ArtifactMissing,
+    ArtifactAmbiguous,
+    ArtifactUnreadable,
+    ArtifactChanged,
+    TargetMismatch,
+    CaseNotObserved,
+    StreamIncomplete,
+    InputStale,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardCandidateError {
+    NotReady,
+    InvalidCandidate,
+    UnknownTask,
+    ProjectNotFound,
+    ProjectReadFailure,
+    Snapshot(GuardSnapshotProducerError),
+    Authority(GuardAuthorityError),
+    Capture(GuardCaptureError),
+}
+
+impl DispatchHost {
+    /// Prepare a HOST-owned generic-intent candidate without reading project
+    /// files. A native Yes records intent only; it does not create approval.
+    pub(crate) fn guard_prepare_generic_classification(
+        &mut self,
+        task_id: &str,
+    ) -> Result<u64, GuardCandidateError> {
+        if task_id.trim().is_empty() || !self.engine.task_ids().iter().any(|id| id == task_id) {
+            return Err(GuardCandidateError::UnknownTask);
+        }
+        if self.guard_authority.pending.is_some()
+            || self.guard_next_candidate >= GUARD_JS_SAFE_INTEGER_MAX
+        {
+            return Err(GuardCandidateError::InvalidCandidate);
+        }
+
+        let candidate_ref = self.guard_next_candidate.checked_add(1)
+            .filter(|reference| *reference <= GUARD_JS_SAFE_INTEGER_MAX)
+            .ok_or(GuardCandidateError::InvalidCandidate)?;
+        self.guard_next_candidate = candidate_ref;
+        let binding = GuardSnapshot {
+            task: task_id.to_owned(),
+            module: String::new(),
+            project: String::new(),
+            root: String::new(),
+            input_fp: String::new(),
+            architecture: String::new(),
+            bdd: String::new(),
+            skeleton: String::new(),
+            envelope: String::new(),
+            red_id: String::new(),
+            test_manifest: String::new(),
+        };
+        self.guard_authority.pending = Some(GuardPending {
+            nonce: candidate_ref,
+            binding: binding.clone(),
+            revoked: false,
+        });
+        self.guard_candidates.insert(candidate_ref, GuardCandidateRecord {
+            task_id: task_id.to_owned(),
+            draft: None,
+            binding,
+            confirmed: false,
+            capture_attempted: false,
+            mechanical_capture: None,
+            pending_qualification: None,
+            qualified_red: None,
+        });
+        Ok(candidate_ref)
+    }
+
+    /// Prepare an implementation candidate from HOST-owned project state.
+    /// Native confirmation is a separate callback and never supplied by DTO.
+    pub(crate) fn guard_prepare_candidate(
+        &mut self,
+        task_id: &str,
+        draft: &CandidateDraft,
+    ) -> Result<u64, GuardCandidateError> {
+        if task_id.trim().is_empty() || !self.engine.task_ids().iter().any(|id| id == task_id) {
+            return Err(GuardCandidateError::UnknownTask);
+        }
+        if self.guard_authority.pending.is_some()
+            || self.guard_next_candidate >= GUARD_JS_SAFE_INTEGER_MAX
+            || draft.module_id.trim().is_empty()
+            || draft.project_id.trim().is_empty()
+            || draft.manifest_revision.trim().is_empty()
+            || draft.module_id != draft.envelope.primary_module
+            || draft.envelope.allowed_patterns.is_empty()
+            || draft.envelope.allowed_patterns.iter().any(|p| p.trim().is_empty())
+            || draft.red_job.program.trim().is_empty()
+            || !std::path::Path::new(&draft.red_job.program).is_absolute()
+            || draft.red_job.build_argv.is_empty()
+            || draft.red_job.build_argv.iter().any(|arg| arg.is_empty() || arg.contains('\0'))
+            || draft.red_job.cwd_ref.trim().is_empty()
+            || draft.red_job.test_target.trim().is_empty()
+            || draft.red_job.test_id.trim().is_empty()
+            || draft.red_job.bdd_id.trim().is_empty()
+            || draft.red_job.timeout_ms != 120_000
+        {
+            return Err(GuardCandidateError::InvalidCandidate);
+        }
+        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let project = self.work.get_project(&project_id)
+            .map_err(|_| GuardCandidateError::ProjectReadFailure)?
+            .ok_or(GuardCandidateError::ProjectNotFound)?;
+        if !guard_capture_cwd_is_within_root(&draft.red_job.cwd_ref, &project.root) {
+            return Err(GuardCandidateError::InvalidCandidate);
+        }
+        let manifest = GuardInputManifest {
+            revision: draft.manifest_revision.clone(),
+            inputs: draft.input_paths.clone(),
+            architecture: draft.architecture_paths.clone(),
+            bdd: draft.bdd_paths.clone(),
+            skeleton: draft.skeleton_paths.clone(),
+            tests: draft.test_paths.clone(),
+        };
+        let snapshot = guard_current_byte_snapshot(self.guard_input_fs.as_ref(), &project.root, &manifest)
+            .map_err(GuardCandidateError::Snapshot)?;
+        let envelope_bytes = serde_json::to_vec(&draft.envelope)
+            .map_err(|_| GuardCandidateError::InvalidCandidate)?;
+        let candidate_ref = self.guard_next_candidate.checked_add(1)
+            .filter(|reference| *reference <= GUARD_JS_SAFE_INTEGER_MAX)
+            .ok_or(GuardCandidateError::InvalidCandidate)?;
+        self.guard_next_candidate = candidate_ref;
+        let binding = GuardSnapshot {
+            task: task_id.into(),
+            module: draft.module_id.clone(),
+            project: draft.project_id.clone(),
+            root: project.root,
+            input_fp: snapshot.manifest_fingerprint,
+            architecture: snapshot.artifact_digests.get("architecture").cloned().unwrap_or_default(),
+            bdd: snapshot.artifact_digests.get("bdd").cloned().unwrap_or_default(),
+            skeleton: snapshot.artifact_digests.get("skeleton").cloned().unwrap_or_default(),
+            envelope: sgenaxis_spec::packet::source_sha256(&envelope_bytes),
+            red_id: String::new(),
+            test_manifest: snapshot.artifact_digests.get("tests").cloned().unwrap_or_default(),
+        };
+        self.guard_authority.pending = Some(GuardPending {
+            nonce: candidate_ref,
+            binding: binding.clone(),
+            revoked: false,
+        });
+        self.guard_candidates.insert(candidate_ref, GuardCandidateRecord {
+            task_id: task_id.into(),
+            draft: Some(draft.clone()),
+            binding,
+            confirmed: false,
+            capture_attempted: false,
+            mechanical_capture: None,
+            pending_qualification: None,
+            qualified_red: None,
+        });
+        Ok(candidate_ref)
+    }
+
+    /// Re-read the exact source declaration after the native callback before commit.
+    pub(crate) fn guard_complete_candidate_confirmation(
+        &mut self,
+        candidate_ref: u64,
+        observation: GuardNativeObservation,
+    ) -> Result<(), GuardCandidateError> {
+        let candidate = self.guard_candidates.get(&candidate_ref)
+            .cloned()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord))?;
+        let pending = self.guard_authority.pending.as_ref()
+            .filter(|pending| pending.nonce == candidate_ref)
+            .cloned()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord))?;
+        if pending.revoked {
+            self.guard_authority.pending = None;
+            self.guard_candidates.remove(&candidate_ref);
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::Revoked));
+        }
+
+        // A native denial is final for this one-shot candidate. Do not let an
+        // unrelated source read failure strand the pending nonce.
+        if matches!(observation, GuardNativeObservation::No | GuardNativeObservation::Cancel) {
+            self.guard_authority.pending = None;
+            self.guard_candidates.remove(&candidate_ref);
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::NativeDeclined));
+        }
+
+        // The task projection can change while the native dialog is open.
+        // Revalidate the HOST-owned task for every affirmative intent before
+        // committing either a generic classification or implementation intent.
+        if !self.engine.task_ids().iter().any(|id| id == &candidate.task_id) {
+            self.guard_authority.pending = None;
+            self.guard_candidates.remove(&candidate_ref);
+            return Err(GuardCandidateError::UnknownTask);
+        }
+
+        let Some(draft) = candidate.draft.as_ref() else {
+            self.guard_authority.pending = None;
+            if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+                record.confirmed = true;
+            }
+            self.guard_intents.insert(candidate.task_id, GuardHostIntent::Generic);
+            return Ok(());
+        };
+
+        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let manifest = GuardInputManifest {
+            revision: draft.manifest_revision.clone(),
+            inputs: draft.input_paths.clone(),
+            architecture: draft.architecture_paths.clone(),
+            bdd: draft.bdd_paths.clone(),
+            skeleton: draft.skeleton_paths.clone(),
+            tests: draft.test_paths.clone(),
+        };
+        let recheck = (|| {
+            let current = self.guard_project_input_snapshot(&project_id, &manifest)
+                .map_err(|error| match error {
+                GuardProjectSnapshotError::NotReady => GuardCandidateError::NotReady,
+                GuardProjectSnapshotError::ProjectNotFound => GuardCandidateError::ProjectNotFound,
+                GuardProjectSnapshotError::ProjectReadFailure(_) => GuardCandidateError::ProjectReadFailure,
+                GuardProjectSnapshotError::Snapshot(error) => GuardCandidateError::Snapshot(error),
+                })?;
+            let project = self.work.get_project(&project_id)
+                .map_err(|_| GuardCandidateError::ProjectReadFailure)?
+                .ok_or(GuardCandidateError::ProjectNotFound)?;
+            let mut current_binding = candidate.binding.clone();
+            current_binding.root = project.root;
+            current_binding.input_fp = current.manifest_fingerprint;
+            current_binding.architecture = current.artifact_digests.get("architecture").cloned().unwrap_or_default();
+            current_binding.bdd = current.artifact_digests.get("bdd").cloned().unwrap_or_default();
+            current_binding.skeleton = current.artifact_digests.get("skeleton").cloned().unwrap_or_default();
+            current_binding.test_manifest = current.artifact_digests.get("tests").cloned().unwrap_or_default();
+            Ok::<GuardSnapshot, GuardCandidateError>(current_binding)
+        })();
+        let current_binding = match recheck {
+            Ok(binding) => binding,
+            Err(error) => {
+                // Affirmative confirmation with unavailable evidence fails
+                // closed and consumes this exact one-shot pending record.
+                self.guard_authority.pending = None;
+                self.guard_candidates.remove(&candidate_ref);
+                return Err(error);
+            }
+        };
+        if let Some(field) = guard_binding_stale_field(&pending.binding, &current_binding) {
+            self.guard_authority.pending = None;
+            self.guard_candidates.remove(&candidate_ref);
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::Stale(field)));
+        }
+
+        self.guard_authority.pending = None;
+        if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+            record.confirmed = true;
+        }
+        self.guard_intents.insert(candidate.task_id, GuardHostIntent::Implementation);
+        Ok(())
+    }
+
+    /// Collect a bounded build-only and exact-case mechanical capture after a
+    /// Rust-controlled native side-effect confirmation. It cannot approve RED.
+    pub(crate) fn guard_capture_red(
+        &mut self,
+        candidate_ref: u64,
+        consent: GuardNativeObservation,
+    ) -> Result<GuardMechanicalCapture, GuardCandidateError> {
+        self.guard_capture_red_at(candidate_ref, consent, std::time::Instant::now)
+    }
+
+    /// Snapshot the exact mechanically captured RED and declared BDD text for
+    /// a separate native semantic-qualification prompt.
+    pub(crate) fn guard_prepare_red_qualification(
+        &mut self,
+        candidate_ref: u64,
+    ) -> Result<GuardRedQualificationPrompt, GuardCandidateError> {
+        let candidate = self.guard_candidates.get(&candidate_ref)
+            .cloned()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord))?;
+        let draft = candidate.draft.as_ref()
+            .ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
+        if !candidate.confirmed
+            || self.guard_intents.get(&candidate.task_id) != Some(&GuardHostIntent::Implementation)
+            || !self.engine.task_ids().iter().any(|id| id == &candidate.task_id)
+        {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::CandidateNotConfirmed));
+        }
+        let capture = candidate.mechanical_capture.as_ref()
+            .ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
+        if capture.build_exit_code != 0
+            || capture.test_exit_code == 0
+            || !capture.dual_eof
+            || !capture.inputs_unchanged
+            || capture.observed_case_line.as_deref() != Some(format!("test {} ... FAILED", capture.test_id).as_str())
+            || capture.failure_summary_line.as_deref().map_or(true, str::is_empty)
+            || capture.selected_artifact_record.is_empty()
+            || capture.target != draft.red_job.test_target
+            || capture.test_id != draft.red_job.test_id
+            || capture.input_fingerprint != candidate.binding.input_fp
+            || capture.input_artifact_fingerprints.get("architecture") != Some(&candidate.binding.architecture)
+            || capture.input_artifact_fingerprints.get("bdd") != Some(&candidate.binding.bdd)
+            || capture.input_artifact_fingerprints.get("skeleton") != Some(&candidate.binding.skeleton)
+            || capture.input_artifact_fingerprints.get("envelope") != Some(&candidate.binding.envelope)
+            || capture.input_artifact_fingerprints.get("tests") != Some(&candidate.binding.test_manifest)
+        {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        }
+        if candidate.pending_qualification.is_some() {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        }
+
+        let current_before = self.guard_qualification_current_binding(&candidate)?;
+        if let Some(field) = guard_binding_stale_field(&candidate.binding, &current_before) {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::Stale(field)));
+        }
+        let artifact_bytes = self.guard_input_fs.read(&capture.artifact_path)
+            .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable))?;
+        if sgenaxis_spec::packet::source_sha256(&artifact_bytes) != capture.artifact_sha256 {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
+        }
+        let mut bdd_text = String::new();
+        for path in &draft.bdd_paths {
+            let root = candidate.binding.root.trim_end_matches(|character| character == '/' || character == '\\');
+            let full_path = format!("{root}/{path}");
+            let bytes = self.guard_input_fs.read(&full_path)
+                .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::InputStale))?;
+            let text = String::from_utf8(bytes)
+                .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::InputStale))?;
+            if !bdd_text.is_empty() { bdd_text.push_str("\n\n"); }
+            bdd_text.push_str(&format!("# {path}\n{text}"));
+        }
+        let current_after = self.guard_qualification_current_binding(&candidate)?;
+        if let Some(field) = guard_binding_stale_field(&candidate.binding, &current_after) {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::Stale(field)));
+        }
+        let artifact_after_prompt_read = self.guard_input_fs.read(&capture.artifact_path)
+            .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable))?;
+        if sgenaxis_spec::packet::source_sha256(&artifact_after_prompt_read) != capture.artifact_sha256 {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
+        }
+
+        let prompt = GuardRedQualificationPrompt {
+            candidate_ref,
+            producer_id: capture.producer_id,
+            bdd_id: draft.red_job.bdd_id.clone(),
+            test_id: capture.test_id.clone(),
+            artifact_sha256: capture.artifact_sha256.clone(),
+            observed_case_line: capture.observed_case_line.clone().unwrap_or_default(),
+            failure_summary_line: capture.failure_summary_line.clone().unwrap_or_default(),
+            bdd_text,
+        };
+        let pending = GuardPendingQualification {
+            producer_id: capture.producer_id,
+            binding: candidate.binding.clone(),
+            artifact_sha256: capture.artifact_sha256.clone(),
+            test_id: capture.test_id.clone(),
+            bdd_id: draft.red_job.bdd_id.clone(),
+        };
+        if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+            record.pending_qualification = Some(pending);
+            record.qualified_red = None;
+        }
+        Ok(prompt)
+    }
+
+    /// Complete one native qualification callback bound to the exact producer
+    /// capture shown to the owner. This records qualification only, not approval.
+    pub(crate) fn guard_complete_red_qualification(
+        &mut self,
+        candidate_ref: u64,
+        producer_id: u64,
+        observation: GuardNativeObservation,
+    ) -> Result<GuardQualifiedRed, GuardCandidateError> {
+        let candidate = self.guard_candidates.get(&candidate_ref)
+            .cloned()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord))?;
+        let pending = candidate.pending_qualification.as_ref()
+            .filter(|pending| pending.producer_id == producer_id)
+            .cloned()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified))?;
+        if matches!(observation, GuardNativeObservation::No | GuardNativeObservation::Cancel) {
+            if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+                record.pending_qualification = None;
+                record.qualified_red = None;
+            }
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::NativeDeclined));
+        }
+        let Some(draft) = candidate.draft.as_ref() else {
+            self.guard_clear_pending_qualification(candidate_ref);
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        };
+        let Some(capture) = candidate.mechanical_capture.as_ref() else {
+            self.guard_clear_pending_qualification(candidate_ref);
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        };
+        if !candidate.confirmed
+            || self.guard_intents.get(&candidate.task_id) != Some(&GuardHostIntent::Implementation)
+            || !self.engine.task_ids().iter().any(|id| id == &candidate.task_id)
+            || capture.producer_id != producer_id
+            || capture.artifact_sha256 != pending.artifact_sha256
+            || capture.test_id != pending.test_id
+            || draft.red_job.bdd_id != pending.bdd_id
+            || candidate.binding != pending.binding
+        {
+            if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+                record.pending_qualification = None;
+                record.qualified_red = None;
+            }
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        }
+        let current = match self.guard_qualification_current_binding(&candidate) {
+            Ok(current) => current,
+            Err(error) => {
+                self.guard_clear_pending_qualification(candidate_ref);
+                return Err(error);
+            }
+        };
+        if let Some(field) = guard_binding_stale_field(&pending.binding, &current) {
+            if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+                record.pending_qualification = None;
+                record.qualified_red = None;
+            }
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::Stale(field)));
+        }
+        let artifact_bytes = match self.guard_input_fs.read(&capture.artifact_path) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                self.guard_clear_pending_qualification(candidate_ref);
+                return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable));
+            }
+        };
+        if sgenaxis_spec::packet::source_sha256(&artifact_bytes) != pending.artifact_sha256 {
+            if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+                record.pending_qualification = None;
+                record.qualified_red = None;
+            }
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
+        }
+        let mut binding = current;
+        binding.red_id = producer_id.to_string();
+        let qualified = GuardQualifiedRed {
+            id: producer_id,
+            binding,
+            producer_id,
+            test_id: capture.test_id.clone(),
+            bdd_id: draft.red_job.bdd_id.clone(),
+            artifact_sha256: capture.artifact_sha256.clone(),
+        };
+        let Some(record) = self.guard_candidates.get_mut(&candidate_ref) else {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord));
+        };
+        record.pending_qualification = None;
+        record.qualified_red = Some(qualified.clone());
+        Ok(qualified)
+    }
+
+    /// Return the current private qualification record to the separately
+    /// authorized final-approval path; never expose mechanical/raw diagnostics.
+    pub(crate) fn guard_qualified_red_for_approval(
+        &self,
+        candidate_ref: u64,
+    ) -> Result<GuardQualifiedRed, GuardCandidateError> {
+        let candidate = self.guard_candidates.get(&candidate_ref)
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::MissingRecord))?;
+        let qualified = candidate.qualified_red.as_ref()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified))?;
+        let capture = candidate.mechanical_capture.as_ref()
+            .ok_or(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified))?;
+        let mut unqualified_binding = qualified.binding.clone();
+        unqualified_binding.red_id.clear();
+        if !candidate.confirmed
+            || self.guard_intents.get(&candidate.task_id) != Some(&GuardHostIntent::Implementation)
+            || !self.engine.task_ids().iter().any(|id| id == &candidate.task_id)
+            || capture.producer_id != qualified.producer_id
+            || capture.artifact_sha256 != qualified.artifact_sha256
+            || capture.test_id != qualified.test_id
+            || unqualified_binding != candidate.binding
+            || qualified.id != qualified.producer_id
+        {
+            return Err(GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified));
+        }
+        Ok(qualified.clone())
+    }
+
+    fn guard_clear_pending_qualification(&mut self, candidate_ref: u64) {
+        if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+            record.pending_qualification = None;
+            record.qualified_red = None;
+        }
+    }
+
+    /// Deterministic monotonic-clock seam for production-bound ProcessPort tests.
+    fn guard_capture_red_at<F>(
+        &mut self,
+        candidate_ref: u64,
+        consent: GuardNativeObservation,
+        mut now: F,
+    ) -> Result<GuardMechanicalCapture, GuardCandidateError>
+    where
+        F: FnMut() -> std::time::Instant,
+    {
+        if self.guard_capture_process.is_some() {
+            self.guard_capture_drain_pending_once();
+            return Err(GuardCandidateError::Capture(GuardCaptureError::CleanupPending));
+        }
+        if consent != GuardNativeObservation::Yes {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ConsentDeclined));
+        }
+        let Some(candidate) = self.guard_candidates.get(&candidate_ref).cloned() else {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate));
+        };
+        let Some(draft) = candidate.draft.clone() else {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate));
+        };
+        if !candidate.confirmed
+            || self.guard_intents.get(&candidate.task_id) != Some(&GuardHostIntent::Implementation)
+        {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::CandidateNotConfirmed));
+        }
+        if !self.engine.task_ids().iter().any(|task_id| task_id == &candidate.task_id) {
+            return Err(GuardCandidateError::UnknownTask);
+        }
+        if !guard_capture_draft_is_safe(&draft, &candidate.binding.root) {
+            return Err(GuardCandidateError::InvalidCandidate);
+        }
+        let started = now();
+        let deadline = started + std::time::Duration::from_millis(120_000);
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let before = self.guard_capture_current_binding(&candidate, deadline, &mut now)?;
+        if guard_binding_stale_field(&candidate.binding, &before).is_some() {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::InputStale));
+        }
+
+        // One explicit native Yes starts one bounded capture attempt. We never
+        // retry a process within this request; a later explicit request needs
+        // a fresh prompt and may only begin after any retained process drains.
+        if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+            record.capture_attempted = true;
+            record.mechanical_capture = None;
+            record.pending_qualification = None;
+            record.qualified_red = None;
+        }
+        let producer_id = self.guard_next_capture_id.checked_add(1)
+            .ok_or(GuardCandidateError::Capture(GuardCaptureError::ProcessObservation))?;
+        self.guard_next_capture_id = producer_id;
+        let build_args = draft.red_job.build_argv.iter().map(String::as_str).collect::<Vec<_>>();
+        let build = self.guard_run_capture_process(
+            candidate_ref,
+            GuardCaptureStage::BuildOnly,
+            &draft.red_job.program,
+            &build_args,
+            Some(&draft.red_job.cwd_ref),
+            deadline,
+            &mut now,
+        )?;
+        if build.exit_code != 0 {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::BuildFailed));
+        }
+
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let selected_artifact = guard_capture_select_artifact(
+            &build.stdout,
+            &draft.red_job.test_target,
+            &candidate.binding.root,
+            deadline,
+            &mut now,
+        )?;
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let artifact_before = self.guard_input_fs.read(&selected_artifact.path)
+            .map_err(|error| GuardCandidateError::Capture(match error {
+                PortError::NotFound(_) => GuardCaptureError::ArtifactMissing,
+                _ => GuardCaptureError::ArtifactUnreadable,
+            }))?;
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let artifact_sha256 = sgenaxis_spec::packet::source_sha256(&artifact_before);
+        let exact_args = ["--exact", draft.red_job.test_id.as_str(), "--nocapture"];
+        let test = self.guard_run_capture_process(
+            candidate_ref,
+            GuardCaptureStage::ExactTest,
+            &selected_artifact.path,
+            &exact_args,
+            Some(&draft.red_job.cwd_ref),
+            deadline,
+            &mut now,
+        )?;
+        let observed_failure = if test.exit_code != 0 {
+            guard_capture_exact_case_failure(&test.stdout, &draft.red_job.test_id, deadline, &mut now)
+                .map_err(GuardCandidateError::Capture)?
+        } else {
+            None
+        };
+        let Some(observed_failure) = observed_failure else {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::CaseNotObserved));
+        };
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let artifact_after = self.guard_input_fs.read(&selected_artifact.path)
+            .map_err(|error| GuardCandidateError::Capture(match error {
+                PortError::NotFound(_) => GuardCaptureError::ArtifactMissing,
+                _ => GuardCaptureError::ArtifactUnreadable,
+            }))?;
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        if sgenaxis_spec::packet::source_sha256(&artifact_after) != artifact_sha256 {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
+        }
+        let after = self.guard_capture_current_binding(&candidate, deadline, &mut now)?;
+        if guard_binding_stale_field(&candidate.binding, &after).is_some()
+            || !self.engine.task_ids().iter().any(|task_id| task_id == &candidate.task_id)
+        {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::InputStale));
+        }
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+
+        let capture = GuardMechanicalCapture {
+            producer_id,
+            artifact_path: selected_artifact.path,
+            artifact_sha256,
+            selected_artifact_record: selected_artifact.json_record,
+            target: draft.red_job.test_target,
+            test_id: draft.red_job.test_id,
+            build_exit_code: build.exit_code,
+            test_exit_code: test.exit_code,
+            dual_eof: build.dual_eof && test.dual_eof,
+            inputs_unchanged: true,
+            input_fingerprint: candidate.binding.input_fp.clone(),
+            input_artifact_fingerprints: BTreeMap::from([
+                ("architecture".to_owned(), candidate.binding.architecture.clone()),
+                ("bdd".to_owned(), candidate.binding.bdd.clone()),
+                ("skeleton".to_owned(), candidate.binding.skeleton.clone()),
+                ("envelope".to_owned(), candidate.binding.envelope.clone()),
+                ("tests".to_owned(), candidate.binding.test_manifest.clone()),
+            ]),
+            observed_case_line: Some(observed_failure.case_line),
+            failure_summary_line: Some(observed_failure.summary_line),
+            raw_test_stdout: test.stdout,
+            raw_test_stderr: test.stderr,
+            build_stdout_sha256: sgenaxis_spec::packet::source_sha256(build.stdout.as_bytes()),
+            build_stderr_sha256: sgenaxis_spec::packet::source_sha256(build.stderr.as_bytes()),
+        };
+        if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
+            record.mechanical_capture = Some(capture.clone());
+        }
+        Ok(capture)
+    }
+
+    fn guard_capture_current_binding(
+        &self,
+        candidate: &GuardCandidateRecord,
+        deadline: std::time::Instant,
+        now: &mut impl FnMut() -> std::time::Instant,
+    ) -> Result<GuardSnapshot, GuardCandidateError> {
+        let draft = candidate.draft.as_ref().ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
+        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let manifest = GuardInputManifest {
+            revision: draft.manifest_revision.clone(),
+            inputs: draft.input_paths.clone(),
+            architecture: draft.architecture_paths.clone(),
+            bdd: draft.bdd_paths.clone(),
+            skeleton: draft.skeleton_paths.clone(),
+            tests: draft.test_paths.clone(),
+        };
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let project = self.work.get_project(&project_id)
+            .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::InputStale))?
+            .ok_or(GuardCandidateError::Capture(GuardCaptureError::InputStale))?;
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let current = guard_current_byte_snapshot_with_checkpoint(
+            self.guard_input_fs.as_ref(),
+            &project.root,
+            &manifest,
+            || if now() >= deadline { Err(GuardSnapshotProducerError::TimedOut) } else { Ok(()) },
+        ).map_err(|error| match error {
+            GuardSnapshotProducerError::TimedOut => GuardCandidateError::Capture(GuardCaptureError::TimedOut),
+            _ => GuardCandidateError::Capture(GuardCaptureError::InputStale),
+        })?;
+        let mut binding = candidate.binding.clone();
+        binding.root = project.root;
+        binding.input_fp = current.manifest_fingerprint;
+        binding.architecture = current.artifact_digests.get("architecture").cloned().unwrap_or_default();
+        binding.bdd = current.artifact_digests.get("bdd").cloned().unwrap_or_default();
+        binding.skeleton = current.artifact_digests.get("skeleton").cloned().unwrap_or_default();
+        binding.test_manifest = current.artifact_digests.get("tests").cloned().unwrap_or_default();
+        Ok(binding)
+    }
+
+    fn guard_qualification_current_binding(
+        &self,
+        candidate: &GuardCandidateRecord,
+    ) -> Result<GuardSnapshot, GuardCandidateError> {
+        let draft = candidate.draft.as_ref()
+            .ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
+        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let manifest = GuardInputManifest {
+            revision: draft.manifest_revision.clone(),
+            inputs: draft.input_paths.clone(),
+            architecture: draft.architecture_paths.clone(),
+            bdd: draft.bdd_paths.clone(),
+            skeleton: draft.skeleton_paths.clone(),
+            tests: draft.test_paths.clone(),
+        };
+        let current = self.guard_project_input_snapshot(&project_id, &manifest)
+            .map_err(|error| match error {
+                GuardProjectSnapshotError::NotReady => GuardCandidateError::NotReady,
+                GuardProjectSnapshotError::ProjectNotFound => GuardCandidateError::ProjectNotFound,
+                GuardProjectSnapshotError::ProjectReadFailure(_) => GuardCandidateError::ProjectReadFailure,
+                GuardProjectSnapshotError::Snapshot(error) => GuardCandidateError::Snapshot(error),
+            })?;
+        let project = self.work.get_project(&project_id)
+            .map_err(|_| GuardCandidateError::ProjectReadFailure)?
+            .ok_or(GuardCandidateError::ProjectNotFound)?;
+        let mut binding = candidate.binding.clone();
+        binding.root = project.root;
+        binding.input_fp = current.manifest_fingerprint;
+        binding.architecture = current.artifact_digests.get("architecture").cloned().unwrap_or_default();
+        binding.bdd = current.artifact_digests.get("bdd").cloned().unwrap_or_default();
+        binding.skeleton = current.artifact_digests.get("skeleton").cloned().unwrap_or_default();
+        binding.test_manifest = current.artifact_digests.get("tests").cloned().unwrap_or_default();
+        Ok(binding)
+    }
+
+    fn guard_capture_drain_pending_once(&mut self) {
+        let Some(slot) = self.guard_capture_process.clone() else { return; };
+        let exited = self.guard_red_process.try_wait(slot.process_id).ok().flatten().is_some();
+        let output = self.guard_red_process.try_read(slot.process_id).ok();
+        if exited && output.as_ref().is_some_and(|output| {
+            guard_capture_stream_terminal(&output.stdout_completion)
+                && guard_capture_stream_terminal(&output.stderr_completion)
+        }) {
+            self.guard_capture_process = None;
+        }
+    }
+
+    fn guard_run_capture_process<F>(
+        &mut self,
+        candidate_ref: u64,
+        stage: GuardCaptureStage,
+        program: &str,
+        args: &[&str],
+        cwd: Option<&str>,
+        deadline: std::time::Instant,
+        now: &mut F,
+    ) -> Result<GuardCaptureProcessResult, GuardCandidateError>
+    where
+        F: FnMut() -> std::time::Instant,
+    {
+        if self.guard_capture_process.is_some() {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::CleanupPending));
+        }
+        if now() >= deadline {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+        }
+        let process_id = self.guard_red_process.start(program, args, cwd)
+            .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::ProcessStart))?;
+        self.guard_capture_process = Some(GuardCaptureProcessSlot { candidate_ref, process_id, stage });
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        let mut stdout_completion = sgenaxis_ports::StreamCompletion::Open;
+        let mut stderr_completion = sgenaxis_ports::StreamCompletion::Open;
+        let mut exit_code = None;
+        let mut drain_deadline = None;
+
+        loop {
+            let current = now();
+            if current >= deadline {
+                self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+            }
+
+            match self.guard_red_process.try_wait(process_id) {
+                Ok(Some(code)) => {
+                    if exit_code.is_none() {
+                        exit_code = Some(code);
+                        drain_deadline = Some(current + std::time::Duration::from_secs(2));
+                    }
+                }
+                Ok(None) => {}
+                Err(_) => {
+                    self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                    return Err(GuardCandidateError::Capture(GuardCaptureError::ProcessObservation));
+                }
+            }
+            if now() >= deadline {
+                self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+            }
+
+            let output = match self.guard_red_process.try_read(process_id) {
+                Ok(output) => output,
+                Err(_) => {
+                    self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                    return Err(GuardCandidateError::Capture(GuardCaptureError::ProcessObservation));
+                }
+            };
+            stdout.push_str(&output.stdout);
+            stderr.push_str(&output.stderr);
+            stdout_completion = output.stdout_completion;
+            stderr_completion = output.stderr_completion;
+            if now() >= deadline {
+                self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
+            }
+
+            if matches!(stdout_completion, sgenaxis_ports::StreamCompletion::Error(_))
+                || matches!(stderr_completion, sgenaxis_ports::StreamCompletion::Error(_))
+            {
+                self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
+                return Err(GuardCandidateError::Capture(GuardCaptureError::ProcessObservation));
+            }
+            if let Some(code) = exit_code {
+                if stdout_completion == sgenaxis_ports::StreamCompletion::Eof
+                    && stderr_completion == sgenaxis_ports::StreamCompletion::Eof
+                {
+                    self.guard_capture_process = None;
+                    return Ok(GuardCaptureProcessResult { exit_code: code, stdout, stderr, dual_eof: true });
+                }
+                if now() >= drain_deadline.unwrap_or(deadline) {
+                    // The child has exited, but its streams are still owned
+                    // and unresolved. Keep the slot for a later explicit drain.
+                    return Err(GuardCandidateError::Capture(GuardCaptureError::StreamIncomplete));
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    fn guard_cancel_capture_process(
+        &mut self,
+        process_id: sgenaxis_ports::ProcessId,
+        known_exit: Option<i32>,
+        stdout_completion: &sgenaxis_ports::StreamCompletion,
+        stderr_completion: &sgenaxis_ports::StreamCompletion,
+    ) {
+        if known_exit.is_none() {
+            let _ = self.guard_red_process.cancel(process_id);
+        }
+        let exit = known_exit.or_else(|| self.guard_red_process.try_wait(process_id).ok().flatten());
+        let output = self.guard_red_process.try_read(process_id).ok();
+        let stdout_done = output.as_ref().map(|output| guard_capture_stream_terminal(&output.stdout_completion))
+            .unwrap_or_else(|| guard_capture_stream_terminal(stdout_completion));
+        let stderr_done = output.as_ref().map(|output| guard_capture_stream_terminal(&output.stderr_completion))
+            .unwrap_or_else(|| guard_capture_stream_terminal(stderr_completion));
+        if exit.is_some() && stdout_done && stderr_done {
+            self.guard_capture_process = None;
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct GuardCaptureProcessResult {
+    exit_code: i32,
+    stdout: String,
+    #[allow(dead_code)]
+    stderr: String,
+    dual_eof: bool,
+}
+
+fn guard_capture_stream_terminal(completion: &sgenaxis_ports::StreamCompletion) -> bool {
+    !matches!(completion, sgenaxis_ports::StreamCompletion::Open)
+}
+
+fn guard_capture_draft_is_safe(draft: &CandidateDraft, bound_root: &str) -> bool {
+    let expected_build_args = ["test", "--no-run", "--message-format=json", "--lib"];
+    guard_capture_cwd_is_within_root(&draft.red_job.cwd_ref, bound_root)
+        && std::path::Path::new(&draft.red_job.program).is_absolute()
+        && std::path::Path::new(&draft.red_job.program).file_name()
+            .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case("cargo.exe") || name.to_string_lossy().eq_ignore_ascii_case("cargo"))
+        && draft.red_job.build_argv.iter().map(String::as_str).eq(expected_build_args)
+        && draft.red_job.timeout_ms == 120_000
+        && !draft.red_job.test_target.trim().is_empty()
+        && !draft.red_job.test_id.trim().is_empty()
+        && !draft.red_job.test_id.contains('\0')
+}
+
+/// Accept the bound project root or an explicitly declared lexical descendant.
+/// This validates only the logical path reference; it makes no symlink/reparse
+/// containment claim and performs no filesystem existence probe.
+fn guard_capture_cwd_is_within_root(cwd_ref: &str, bound_root: &str) -> bool {
+    let root = bound_root.trim_end_matches(|character| character == '/' || character == '\\');
+    if cwd_ref == root { return true; }
+    let Some(suffix) = cwd_ref.strip_prefix(root) else { return false; };
+    let Some(relative) = suffix.strip_prefix('/').or_else(|| suffix.strip_prefix('\\')) else { return false; };
+    if relative.is_empty() || relative.contains('\0') || relative.contains(':') {
+        return false;
+    }
+    let normalized = relative.replace('\\', "/");
+    guard_manifest_path_ok(&normalized)
+}
+
+struct GuardSelectedArtifact {
+    path: String,
+    json_record: String,
+}
+
+fn guard_capture_select_artifact(
+    cargo_stdout: &str,
+    target_name: &str,
+    project_root: &str,
+    deadline: std::time::Instant,
+    now: &mut impl FnMut() -> std::time::Instant,
+) -> Result<GuardSelectedArtifact, GuardCandidateError> {
+    let mut exact_paths = std::collections::BTreeMap::<String, String>::new();
+    let mut other_test_target = false;
+    for line in cargo_stdout.lines() {
+        if now() >= deadline { return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut)); }
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else { continue; };
+        if now() >= deadline { return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut)); }
+        if value.get("reason").and_then(serde_json::Value::as_str) != Some("compiler-artifact") {
+            continue;
+        }
+        let target = value.get("target");
+        let is_test_target = target.and_then(|target| target.get("test")).and_then(serde_json::Value::as_bool) == Some(true)
+            && value.get("profile").and_then(|profile| profile.get("test")).and_then(serde_json::Value::as_bool) == Some(true);
+        if !is_test_target { continue; }
+        let actual_name = target.and_then(|target| target.get("name")).and_then(serde_json::Value::as_str).unwrap_or_default();
+        if actual_name != target_name {
+            other_test_target = true;
+            continue;
+        }
+        let Some(executable) = value.get("executable").and_then(serde_json::Value::as_str) else {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactMissing));
+        };
+        let executable_listed = value.get("filenames")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|filenames| filenames.iter().any(|filename| filename.as_str() == Some(executable)));
+        if !executable_listed {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactMissing));
+        }
+        let artifact = std::path::Path::new(executable);
+        if !artifact.is_absolute() || !artifact.starts_with(project_root) {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::TargetMismatch));
+        }
+        if exact_paths.insert(executable.to_owned(), line.to_owned()).is_some() {
+            return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactAmbiguous));
+        }
+    }
+    match exact_paths.len() {
+        0 if other_test_target => Err(GuardCandidateError::Capture(GuardCaptureError::TargetMismatch)),
+        0 => Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactMissing)),
+        1 => {
+            let (path, json_record) = exact_paths.into_iter().next().unwrap_or_default();
+            Ok(GuardSelectedArtifact { path, json_record })
+        },
+        _ => Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactAmbiguous)),
+    }
+}
+
+struct GuardObservedTestFailure {
+    case_line: String,
+    summary_line: String,
+}
+
+fn guard_capture_exact_case_failure(
+    test_stdout: &str,
+    expected_case: &str,
+    deadline: std::time::Instant,
+    now: &mut impl FnMut() -> std::time::Instant,
+) -> Result<Option<GuardObservedTestFailure>, GuardCaptureError> {
+    let mut exact_failed = false;
+    let mut exact_count = 0usize;
+    let mut exact_passed_or_ignored = false;
+    let mut case_line = None;
+    let mut summary_line = None;
+    for line in test_stdout.lines() {
+        if now() >= deadline { return Err(GuardCaptureError::TimedOut); }
+        if let Some(rest) = line.strip_prefix("test ") {
+            if let Some((case_id, status)) = rest.split_once(" ... ") {
+                if case_id == expected_case {
+                    exact_count += 1;
+                    match status.trim() {
+                        "FAILED" => { exact_failed = true; case_line = Some(line.to_owned()); },
+                        "ok" | "ignored" => exact_passed_or_ignored = true,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        if line.starts_with("test result: FAILED.")
+            && line.contains("0 passed; 1 failed; 0 ignored;")
+        {
+            summary_line = Some(line.to_owned());
+        }
+        if now() >= deadline { return Err(GuardCaptureError::TimedOut); }
+    }
+    if exact_count == 1 && exact_failed && !exact_passed_or_ignored {
+        match (case_line, summary_line) {
+            (Some(case_line), Some(summary_line)) => Ok(Some(GuardObservedTestFailure { case_line, summary_line })),
+            _ => Ok(None),
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+/// First differing GC04 binding field name, or `None` when exact-equal.
+fn guard_binding_stale_field(
+    bound: &GuardSnapshot,
+    current: &GuardSnapshot,
+) -> Option<&'static str> {
+    if bound.task != current.task {
+        return Some("task");
+    }
+    if bound.module != current.module {
+        return Some("module");
+    }
+    if bound.project != current.project {
+        return Some("project");
+    }
+    if bound.root != current.root {
+        return Some("root");
+    }
+    if bound.input_fp != current.input_fp {
+        return Some("input_fp");
+    }
+    if bound.architecture != current.architecture {
+        return Some("architecture");
+    }
+    if bound.bdd != current.bdd {
+        return Some("bdd");
+    }
+    if bound.skeleton != current.skeleton {
+        return Some("skeleton");
+    }
+    if bound.envelope != current.envelope {
+        return Some("envelope");
+    }
+    if bound.red_id != current.red_id {
+        return Some("red_id");
+    }
+    if bound.test_manifest != current.test_manifest {
+        return Some("test_manifest");
+    }
+    None
+}
+
+fn guard_sha256_hex_ok(hash: &str) -> bool {
+    hash.len() == 64 && hash.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+/// Canonical relative path: slash-separated, no empty／`.`／`..`／absolute／drive.
+fn guard_manifest_path_ok(path: &str) -> bool {
+    if path.is_empty() || path.starts_with('/') || path.starts_with('\\') {
+        return false;
+    }
+    let bytes = path.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return false;
+    }
+    for component in path.split('/') {
+        if component.is_empty() || component == "." || component == ".." {
+            return false;
+        }
+        if component.contains('\\') {
+            return false;
+        }
+    }
+    true
+}
+
+impl GuardSessionState {
+    /// Authorize implementation start against current HOST snapshot (GC10).
+    pub(crate) fn authorize_start(
+        &mut self,
+        host_resolved_intent: GuardHostIntent,
+        reference: u64,
+        current: &GuardSnapshot,
+    ) -> Result<(), GuardAuthorityError> {
+        match host_resolved_intent {
+            GuardHostIntent::Unknown => return Err(GuardAuthorityError::IntentUnknown),
+            GuardHostIntent::Generic => return Err(GuardAuthorityError::RequiresApproval),
+            GuardHostIntent::Implementation => {}
+        }
+
+        let approval = self
+            .approval
+            .as_mut()
+            .filter(|a| a.session == self.boot && a.id == reference)
+            .ok_or(GuardAuthorityError::MissingRecord)?;
+
+        match approval.status {
+            GuardApprovalStatus::Consumed => return Err(GuardAuthorityError::Consumed),
+            GuardApprovalStatus::Revoked => return Err(GuardAuthorityError::Revoked),
+            GuardApprovalStatus::Approved => {}
+        }
+
+        if let Some(field) = guard_binding_stale_field(&approval.binding, current) {
+            return Err(GuardAuthorityError::Stale(field));
+        }
+
+        approval.status = GuardApprovalStatus::Consumed;
+        Ok(())
+    }
+
+    /// Generic route checks HOST-owned intent only (GC01／GC11).
+    pub(crate) fn authorize_generic(
+        &self,
+        host_resolved_intent: GuardHostIntent,
+    ) -> Result<(), GuardAuthorityError> {
+        match host_resolved_intent {
+            GuardHostIntent::Generic => Ok(()),
+            GuardHostIntent::Unknown => Err(GuardAuthorityError::IntentUnknown),
+            GuardHostIntent::Implementation => Err(GuardAuthorityError::RequiresApproval),
+        }
+    }
+
+    /// Commit native Yes／No／Cancel observation after lock reacquire (GC05／GC06).
+    pub(crate) fn commit_native_observation(
+        &mut self,
+        nonce: u64,
+        observation: GuardNativeObservation,
+        current: &GuardSnapshot,
+    ) -> Result<(), GuardAuthorityError> {
+        let pending = match self.pending.as_ref() {
+            Some(p) if p.nonce == nonce => p,
+            _ => return Err(GuardAuthorityError::MissingRecord),
+        };
+
+        if pending.revoked {
+            self.pending = None;
+            return Err(GuardAuthorityError::Revoked);
+        }
+
+        match observation {
+            GuardNativeObservation::No | GuardNativeObservation::Cancel => {
+                self.pending = None;
+                return Err(GuardAuthorityError::NativeDeclined);
+            }
+            GuardNativeObservation::Yes => {}
+        }
+
+        if let Some(field) = guard_binding_stale_field(&pending.binding, current) {
+            self.pending = None;
+            return Err(GuardAuthorityError::Stale(field));
+        }
+
+        let binding = pending.binding.clone();
+        self.pending = None;
+        self.approval = Some(GuardApproval {
+            session: self.boot,
+            id: nonce,
+            binding,
+            status: GuardApprovalStatus::Approved,
+        });
+        Ok(())
+    }
+
+    /// Idempotent revoke of known approval／pending (GC11).
+    pub(crate) fn revoke(&mut self, reference: u64) -> Result<(), GuardAuthorityError> {
+        if let Some(approval) = self.approval.as_mut() {
+            if approval.id == reference {
+                approval.status = GuardApprovalStatus::Revoked;
+            }
+        }
+        if let Some(pending) = self.pending.as_mut() {
+            if pending.nonce == reference {
+                pending.revoked = true;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Qualify RED from HOST-produced capture facts (GC07／GC08).
+pub(crate) fn guard_qualify_red(facts: &GuardCaptureFacts) -> Result<(), GuardAuthorityError> {
+    let mechanical_ok = facts.host_owned
+        && facts.build_ok
+        && facts.case_executed
+        && !facts.case_ignored
+        && facts.case_failed
+        && facts.exit_code != 0
+        && facts.dual_eof
+        && !facts.stream_error
+        && facts.same_snapshot
+        && facts.case_id == facts.expected_case_id;
+    if !mechanical_ok || !facts.owner_qualifies {
+        return Err(GuardAuthorityError::RedUnqualified);
+    }
+    Ok(())
+}
+
+/// Validate canonical relative-path manifest entries (GC03).
+pub(crate) fn guard_validate_manifest(
+    entries: &[GuardManifestEntry],
+) -> Result<(), GuardAuthorityError> {
+    if entries.is_empty() {
+        return Err(GuardAuthorityError::InvalidManifest);
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for entry in entries {
+        if !guard_manifest_path_ok(&entry.relative_path) || !guard_sha256_hex_ok(&entry.sha256) {
+            return Err(GuardAuthorityError::InvalidManifest);
+        }
+        if !seen.insert(entry.relative_path.as_str()) {
+            return Err(GuardAuthorityError::InvalidManifest);
+        }
+    }
+    Ok(())
+}
+
+// ─── GUARD F-A CURRENT-BYTE SNAPSHOT PRODUCER ───────────────────────────────
+// Private application helper after independently verified intended RED.
+// HOST composition, trusted root resolution and approval binding are separate.
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardInputManifest {
+    pub revision: String,
+    pub inputs: Vec<String>,
+    pub architecture: Vec<String>,
+    pub bdd: Vec<String>,
+    pub skeleton: Vec<String>,
+    pub tests: Vec<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GuardCurrentByteSnapshot {
+    pub manifest_fingerprint: String,
+    pub entries: Vec<GuardManifestEntry>,
+    pub artifact_digests: BTreeMap<String, String>,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GuardReadFailureCategory {
+    NotFound,
+    PermissionDenied,
+    InvalidPath,
+    Io,
+    Other,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum GuardSnapshotProducerError {
+    NotReady,
+    TimedOut,
+    InvalidManifest,
+    ReadFailure {
+        relative_path: String,
+        category: GuardReadFailureCategory,
+    },
+}
+
+/// Read and hash the exact bytes of a validated F-A manifest.
+///
+/// F-A covers only explicitly listed inputs and binds a logical root. It does
+/// not fingerprint the whole worktree or claim hostile-filesystem containment.
+#[allow(dead_code)]
+pub(crate) fn guard_current_byte_snapshot(
+    fs: &dyn FileSystemPort,
+    logical_root: &str,
+    manifest: &GuardInputManifest,
+) -> Result<GuardCurrentByteSnapshot, GuardSnapshotProducerError> {
+    guard_current_byte_snapshot_with_checkpoint(fs, logical_root, manifest, || Ok(()))
+}
+
+fn guard_current_byte_snapshot_with_checkpoint<F>(
+    fs: &dyn FileSystemPort,
+    logical_root: &str,
+    manifest: &GuardInputManifest,
+    mut checkpoint: F,
+) -> Result<GuardCurrentByteSnapshot, GuardSnapshotProducerError>
+where
+    F: FnMut() -> Result<(), GuardSnapshotProducerError>,
+{
+    use sgenaxis_spec::packet::source_sha256;
+    let invalid = GuardSnapshotProducerError::InvalidManifest;
+    checkpoint()?;
+    if logical_root.is_empty() || manifest.revision.is_empty() || manifest.inputs.is_empty() {
+        return Err(invalid);
+    }
+    let mut paths = manifest.inputs.clone();
+    paths.sort_by(|a, b| a.as_bytes().cmp(b.as_bytes()));
+    if paths.windows(2).any(|pair| pair[0] == pair[1])
+        || paths.iter().any(|path| !guard_manifest_path_ok(path)
+            || path.contains('\0') || path.contains(':'))
+    {
+        return Err(invalid);
+    }
+    // Validate the entire declaration before the first read. These four sets
+    // are the approved file categories; EnvelopeDraft is bound separately.
+    let categories = [
+        ("architecture", &manifest.architecture),
+        ("bdd", &manifest.bdd),
+        ("skeleton", &manifest.skeleton),
+        ("tests", &manifest.tests),
+    ];
+    for (_, members) in &categories {
+        if members.is_empty() || members.iter().any(|path| paths.binary_search(path).is_err()) {
+            return Err(invalid);
+        }
+    }
+    let root = logical_root.trim_end_matches(|c| c == '/' || c == '\\');
+    let mut entries = Vec::with_capacity(paths.len());
+    for path in paths {
+        checkpoint()?;
+        let bytes = fs.read(&format!("{root}/{path}")).map_err(|error| {
+            use sgenaxis_ports::PortError;
+            let category = match error {
+                PortError::NotFound(_) => GuardReadFailureCategory::NotFound,
+                PortError::PermissionDenied(_) => GuardReadFailureCategory::PermissionDenied,
+                PortError::InvalidPath(_) => GuardReadFailureCategory::InvalidPath,
+                PortError::Io(_) => GuardReadFailureCategory::Io,
+                _ => GuardReadFailureCategory::Other,
+            };
+            GuardSnapshotProducerError::ReadFailure { relative_path: path.clone(), category }
+        })?;
+        checkpoint()?;
+        let sha256 = source_sha256(&bytes);
+        checkpoint()?;
+        entries.push(GuardManifestEntry { relative_path: path, sha256 });
+    }
+    // Private canonical format: sorted UTF-8 paths, fixed sorted object keys,
+    // compact JSON and exact-byte SHA. Never serialize caller-supplied hashes.
+    let entry_values = |selected: &[&GuardManifestEntry]| {
+        selected.iter().map(|entry| BTreeMap::from([
+            ("relative_path", entry.relative_path.clone()),
+            ("sha256", entry.sha256.clone()),
+        ])).collect::<Vec<_>>()
+    };
+    let mut artifact_digests = BTreeMap::new();
+    for (name, members) in categories {
+        let selected = entries.iter().filter(|entry| members.contains(&entry.relative_path)).collect::<Vec<_>>();
+        checkpoint()?;
+        let encoded = serde_json::to_vec(&entry_values(&selected)).map_err(|_| GuardSnapshotProducerError::InvalidManifest)?;
+        checkpoint()?;
+        artifact_digests.insert(name.to_string(), source_sha256(&encoded));
+        checkpoint()?;
+    }
+    let all = entries.iter().collect::<Vec<_>>();
+    let canonical = BTreeMap::from([
+        ("artifacts", serde_json::to_value(&artifact_digests).map_err(|_| GuardSnapshotProducerError::InvalidManifest)?),
+        ("entries", serde_json::to_value(entry_values(&all)).map_err(|_| GuardSnapshotProducerError::InvalidManifest)?),
+        ("logical_root", serde_json::Value::String(logical_root.to_string())),
+        ("revision", serde_json::Value::String(manifest.revision.clone())),
+    ]);
+    let encoded = serde_json::to_vec(&canonical).map_err(|_| GuardSnapshotProducerError::InvalidManifest)?;
+    checkpoint()?;
+    let manifest_fingerprint = source_sha256(&encoded);
+    checkpoint()?;
+    Ok(GuardCurrentByteSnapshot { manifest_fingerprint, entries, artifact_digests })
+}
+
+/// Failure boundary for HOST-owned project-root resolution plus snapshot production.
+#[allow(dead_code)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum GuardProjectSnapshotError {
+    NotReady,
+    ProjectNotFound,
+    ProjectReadFailure(sgenaxis_work::WorkError),
+    Snapshot(GuardSnapshotProducerError),
+}
+
+impl DispatchHost {
+    /// Compute a current snapshot using only the root registered for `project_id`.
+    ///
+    /// No caller root or selected-project projection is an authority here.
+    /// Re-read WORK and the declared bytes on every request; do not cache them.
+    #[allow(dead_code)]
+    fn guard_project_input_snapshot(
+        &self,
+        project_id: &sgenaxis_work::ProjectId,
+        manifest: &GuardInputManifest,
+    ) -> Result<GuardCurrentByteSnapshot, GuardProjectSnapshotError> {
+        let project = self.work.get_project(project_id)
+            .map_err(GuardProjectSnapshotError::ProjectReadFailure)?
+            .ok_or(GuardProjectSnapshotError::ProjectNotFound)?;
+        guard_current_byte_snapshot(self.guard_input_fs.as_ref(), &project.root, manifest)
+            .map_err(GuardProjectSnapshotError::Snapshot)
+    }
+}
+
+/// Predicate-only main＋trusted-local origin check (GC05). Not ACL wiring proof.
+pub(crate) fn guard_require_main_local(
+    injected_label: &str,
+    is_trusted_local_app_origin: bool,
+) -> Result<(), GuardAuthorityError> {
+    if injected_label == "main" && is_trusted_local_app_origin {
+        Ok(())
+    } else {
+        Err(GuardAuthorityError::AuthorityDenied)
+    }
+}
+
+// === EA-A0 SKELETON ONLY (PD-RUST-EA-A0-SKELETON-MATERIALIZE-01) ===
+// Private DispatchHost fixture-session ownership + approved signatures.
+// Structural stubs intentionally omit approved observable transitions.
+// NOT a public Manager/Service; ProcessPort / EXEC / ConPTY / six commands untouched.
+
+/// Private fixture lifecycle phase (HOST-owned; UI only projects).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    Idle,
+    Starting,
+    Running,
+    Closing,
+    Closed,
+    FailedNoHandle,
+    CleanupFailed,
+}
+
+/// Private fixture session policy errors (not InteractiveError).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SessionError {
+    Busy,
+    Unbound,
+    InvalidState,
+    InputTooLarge,
+    InvalidSize,
+    Port,
+}
+
+/// Maps to DispatchHost's private fixture use-case state, not a new production service.
+#[allow(dead_code)]
+struct Session<P: InteractiveFixturePort> {
+    port: P,
+    phase: Phase,
+    id: u64,
+    resource: Option<InteractiveId>,
+    stop_requested: bool,
+    stop_observed_ms: Option<u64>,
+    executable: String,
+    cwd: String,
+}
+
+#[allow(dead_code)]
+impl<P: InteractiveFixturePort> Session<P> {
+    fn new(port: P) -> Self {
+        Self {
+            port,
+            phase: Phase::Idle,
+            id: 0,
+            resource: None,
+            stop_requested: false,
+            stop_observed_ms: None,
+            executable: "LOCKED_FIXTURE_NOT_STARTED".into(),
+            cwd: "ISOLATED_FIXTURE_ROOT_NOT_STARTED".into(),
+        }
+    }
+
+    /// Private spawn-barrier phase (not a public command).
+    fn begin_start(&mut self, bound: bool) -> Result<u64, SessionError> {
+        if !bound {
+            return Err(SessionError::Unbound);
+        }
+        match self.phase {
+            Phase::Idle | Phase::FailedNoHandle | Phase::Closed => {
+                self.id = self.id.saturating_add(1);
+                self.phase = Phase::Starting;
+                self.resource = None;
+                self.stop_requested = false;
+                self.stop_observed_ms = None;
+                Ok(self.id)
+            }
+            _ => Err(SessionError::Busy),
+        }
+    }
+
+    /// Private spawn-barrier completion (not a public command).
+    fn finish_start(
+        &mut self,
+        result: Result<InteractiveId, InteractiveError>,
+    ) -> Result<(), SessionError> {
+        if self.phase != Phase::Starting {
+            return Err(SessionError::InvalidState);
+        }
+        match result {
+            Ok(id) => {
+                self.resource = Some(id);
+                if self.stop_requested {
+                    match self.port.request_stop(id) {
+                        Ok(()) => {
+                            self.phase = Phase::Closing;
+                            Ok(())
+                        }
+                        Err(_) => {
+                            self.phase = Phase::CleanupFailed;
+                            Ok(())
+                        }
+                    }
+                } else {
+                    self.phase = Phase::Running;
+                    Ok(())
+                }
+            }
+            Err(_) => {
+                self.resource = None;
+                self.phase = Phase::FailedNoHandle;
+                Ok(())
+            }
+        }
+    }
+
+    fn send(&mut self, text: &str) -> Result<(), SessionError> {
+        if self.phase != Phase::Running {
+            return Err(SessionError::InvalidState);
+        }
+        if text.is_empty() {
+            return Ok(());
+        }
+        if text.len() > 4096 {
+            return Err(SessionError::InputTooLarge);
+        }
+        let id = self.resource.ok_or(SessionError::InvalidState)?;
+        self.port
+            .write_text(id, text)
+            .map_err(|_| SessionError::Port)
+    }
+
+    fn resize(&mut self, cols: i32, rows: i32) -> Result<(), SessionError> {
+        if self.phase != Phase::Running {
+            return Err(SessionError::InvalidState);
+        }
+        if !(1..=512).contains(&cols) || !(1..=256).contains(&rows) {
+            return Err(SessionError::InvalidSize);
+        }
+        let id = self.resource.ok_or(SessionError::InvalidState)?;
+        let size = InteractiveSize {
+            cols: cols as u16,
+            rows: rows as u16,
+        };
+        self.port.resize(id, size).map_err(|_| SessionError::Port)
+    }
+
+    fn close_at(&mut self, now_ms: u64) -> Result<(), SessionError> {
+        match self.phase {
+            Phase::Starting => {
+                self.stop_requested = true;
+                if self.stop_observed_ms.is_none() {
+                    self.stop_observed_ms = Some(now_ms);
+                }
+                Ok(())
+            }
+            Phase::Running => {
+                self.stop_requested = true;
+                if self.stop_observed_ms.is_none() {
+                    self.stop_observed_ms = Some(now_ms);
+                }
+                self.phase = Phase::Closing;
+                if let Some(id) = self.resource {
+                    if self.port.request_stop(id).is_err() {
+                        self.phase = Phase::CleanupFailed;
+                    }
+                }
+                Ok(())
+            }
+            Phase::Closing | Phase::CleanupFailed => Ok(()),
+            Phase::Idle | Phase::Closed | Phase::FailedNoHandle => Ok(()),
+        }
+    }
+
+    fn poll_at(&mut self, now_ms: u64) -> Result<Phase, SessionError> {
+        if matches!(self.phase, Phase::Running | Phase::Closing | Phase::CleanupFailed) {
+            if let Some(id) = self.resource {
+                match self.port.poll(id) {
+                    Ok(obs) => self.apply_fixture_observation(obs),
+                    // EC04: observation/poll error => CleanupFailed; retain unresolved handle.
+                    Err(_) => {
+                        self.phase = Phase::CleanupFailed;
+                    }
+                }
+            }
+            if self.phase == Phase::Closing {
+                if let Some(t0) = self.stop_observed_ms {
+                    if now_ms.saturating_sub(t0) >= 2000 {
+                        self.phase = Phase::CleanupFailed;
+                    }
+                }
+            }
+        }
+        Ok(self.phase)
+    }
+
+    fn apply_fixture_observation(&mut self, obs: InteractiveObservation) {
+        // EC04: stream error => CleanupFailed with unresolved handle retained.
+        // Stream failure is not successful cleanup even if cleanup bits look terminal.
+        if matches!(obs.read_state, ReadState::Error(_)) {
+            self.phase = Phase::CleanupFailed;
+            return;
+        }
+        match obs.cleanup {
+            Cleanup::Complete if obs.child_exit.is_some() => {
+                self.phase = Phase::Closed;
+                self.resource = None;
+            }
+            Cleanup::Failed => {
+                self.phase = Phase::CleanupFailed;
+            }
+            Cleanup::Complete | Cleanup::Pending => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use sgenaxis_exec::FakeMcpClient;
+    mod mcp_notrun_tests { include!("mcp_notrun_tests.rs"); }
     use super::*;
     use sgenaxis_exec::{DEMO_PROJECT_ROOT, DEMO_WORK_ITEM_ID, DEMO_WORKTREE_FINGERPRINT};
     use sgenaxis_listen::FsChangeKind;
@@ -1945,6 +3993,11 @@ mod tests {
     #[test]
     fn live_mcp_via_dispatch_host_is_not_dry_run_only() {
         let mut host = DispatchHost::new();
+        // Explicit simulated transport: this is adapter coverage, not production availability.
+        host.exec = AgentRouter::new(
+            CliAgentAdapter::with_defaults(Box::new(FakeProcess::new())),
+            McpAgentAdapter::with_defaults(Box::new(FakeMcpClient::default())),
+        );
         let mut settings = McpAgentSettings::defaults();
         settings.endpoint = "http://127.0.0.1:3920/sse".into();
         settings.approved_tools = vec!["list_tools".into()];
@@ -2137,7 +4190,9 @@ mod tests {
             .expect_err("busy while second active");
         assert!(busy_again.contains("busy") || busy_again.contains("PD-EXEC-SINGLE-01"));
 
-        let board = host.cancel_run(second.run_id).expect("cancel");
+        let pending = host.cancel_run(second.run_id).expect("cancel");
+        assert_eq!(pending.active_run_id, Some(second.run_id), "cancel is request acknowledgment");
+        let board = host.poll_chunks(second.run_id).expect("terminal poll").board;
         assert!(board.active_run_id.is_none());
 
         let third = host
@@ -2218,7 +4273,9 @@ mod tests {
             "unexpected: {busy}"
         );
 
-        let board = host.cancel_run(started.run_id).expect("cancel");
+        let pending = host.cancel_run(started.run_id).expect("cancel");
+        assert_eq!(pending.active_run_id, Some(started.run_id), "cancel acknowledgment retains lease until terminal poll");
+        let board = host.poll_chunks(started.run_id).expect("terminal poll").board;
         assert_eq!(board.green, 0, "§7.1 never green on cancel");
         assert!(board.yellow >= 1);
         assert_eq!(board.blue, 0);
@@ -2416,7 +4473,9 @@ mod tests {
         assert_eq!(started.board.blue, 1);
 
         // cancel_run → EXEC cancel + drain; UI maps host cancelled → badge cancelled.
-        let board = host.cancel_run(started.run_id).expect("cancel");
+        let pending = host.cancel_run(started.run_id).expect("cancel");
+        assert_eq!(pending.active_run_id, Some(started.run_id), "cancel acknowledgment retains lease until terminal poll");
+        let board = host.poll_chunks(started.run_id).expect("terminal poll").board;
         assert_eq!(board.green, 0);
         assert_eq!(board.blue, 0);
         assert!(board.yellow >= 1);
@@ -2853,3 +4912,15 @@ mod tests {
         assert!(err.contains("無可復原"), "{err}");
     }
 }
+
+#[cfg(test)]
+#[path = "process_lifecycle_tests.rs"]
+mod process_lifecycle_tests;
+
+#[cfg(test)]
+#[path = "guard_authority_tests.rs"]
+mod guard_authority_tests;
+
+#[cfg(test)]
+#[path = "interactive_session_tests.rs"]
+mod interactive_session_tests;

@@ -40,9 +40,13 @@ use sgenaxis_host::{
     DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, State, WebviewWindow};
+use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 
 use crate::dispatch::DispatchHost;
+use crate::code_import::{preview_selected, ImportPreview, ImportPreviewRequest};
+use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
+    IndexCommitPreviewDto, IndexCommitRequestDto};
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitCommitDto, GitDiffDto, GitEntryDto,
@@ -50,7 +54,7 @@ use crate::dto::{
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
     SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
-    WorkItemGateArgs,
+    WorkItemGateArgs, OwnerClassifyGuardTaskArgs,
 };
 
 /// Shared CMD dispatch state for IPC.
@@ -92,6 +96,162 @@ fn poison_dispatch() -> String {
 
 fn poison_host() -> String {
     "host lock poisoned".into()
+}
+
+/// DOC-ENTRY-01: command-only adapter; preserve existing WORK/HOST adoption.
+#[tauri::command]
+pub fn project_document_prepare(
+    window: WebviewWindow,
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: crate::dto::DocumentPrepareArgs,
+) -> Result<crate::dto::DocumentPrepareResultDto, crate::dto::DocumentPrepareErrorDto> {
+    use crate::dto::DocumentPrepareErrorDto as E;
+    authorize("project_document_prepare").map_err(|_| E::UnauthorizedCaller)?;
+    let url = window.url().map_err(|_| E::UnauthorizedCaller)?;
+    let local = guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port());
+    if !local { return Err(E::UnauthorizedCaller); }
+    let root = state.inner.lock().map_err(|_| E::WorkspaceRejected { reason: "HostStateUnavailable".into() })?;
+    let mut dispatch = app.host.lock().map_err(|_| E::WorkspaceRejected { reason: "DispatchStateUnavailable".into() })?;
+    dispatch.project_document_prepare(root.fs(), &root.host_settings().project_root, &args, window.label(), local)
+}
+
+/// DOC-ENTRY-01 explicit adoption; no automatic registration.
+#[tauri::command]
+pub fn project_document_adopt(
+    window: WebviewWindow,
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: crate::dto::DocumentAdoptArgs,
+) -> Result<crate::dto::DocumentAdoptResultDto, crate::dto::DocumentAdoptErrorDto> {
+    use crate::dto::DocumentAdoptErrorDto as E;
+    authorize("project_document_adopt").map_err(|_| E::UnauthorizedCaller)?;
+    let url = window.url().map_err(|_| E::UnauthorizedCaller)?;
+    let local = guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port());
+    if !local { return Err(E::UnauthorizedCaller); }
+    // Keep the trusted settings binding stable until the existing manifest
+    // operation completes; use the existing HostState -> AppState lock order.
+    let root = state.inner.lock().map_err(|_| E::ProjectNotBound)?;
+    let mut dispatch = app.host.lock().map_err(|_| E::ProjectNotBound)?;
+    let candidate = crate::document_identity::new_document_id_candidate();
+    dispatch.project_document_adopt(root.fs(), &root.host_settings().project_root,
+        &args, &candidate, window.label(), local)
+}
+
+#[cfg(test)]
+mod guard_owner_caller_tests {
+    use super::{guard_native_observation, guard_owner_caller_allowed, guard_owner_public_error};
+    use crate::dispatch::{GuardAuthorityError, GuardCandidateError, GuardNativeObservation};
+    use rfd::MessageDialogResult;
+
+    const DISPATCH_PERMISSIONS: &str = include_str!("../permissions/dispatch.toml");
+    const MAIN_CAPABILITY: &str = include_str!("../capabilities/default.json");
+    const UIDESIGN_CAPABILITY: &str = include_str!("../capabilities/uidesign-window.json");
+
+    #[test]
+    fn guard_owner_caller_accepts_only_main_local_origins() {
+        for (scheme, host) in [("tauri", "localhost"), ("http", "tauri.localhost"), ("https", "tauri.localhost")] {
+            assert!(guard_owner_caller_allowed("main", scheme, host, None), "{scheme}://{host}");
+        }
+        for (label, scheme, host, port) in [
+            ("settings", "tauri", "localhost", None),
+            ("main", "https", "example.com", None),
+            ("main", "http", "localhost", Some(1420)),
+            ("main", "http", "tauri.localhost", Some(1420)),
+        ] {
+            assert!(!guard_owner_caller_allowed(label, scheme, host, port), "{label} {scheme}://{host}:{port:?}");
+        }
+    }
+
+    #[test]
+    fn guard_native_dialog_result_preserves_yes_no_cancel_semantics() {
+        assert_eq!(guard_native_observation(MessageDialogResult::Yes), GuardNativeObservation::Yes);
+        assert_eq!(guard_native_observation(MessageDialogResult::No), GuardNativeObservation::No);
+        assert_eq!(guard_native_observation(MessageDialogResult::Cancel), GuardNativeObservation::Cancel);
+    }
+
+    #[test]
+    fn guard_owner_invoke_permission_isolated_to_main_capability() {
+        let dispatch_default = DISPATCH_PERMISSIONS
+            .split("[[set]]")
+            .find(|section| section.contains("identifier = \"dispatch-default\""))
+            .expect("shared dispatch set");
+        assert!(!dispatch_default.contains("allow-owner-classify-guard-task"));
+        let owner_set = DISPATCH_PERMISSIONS
+            .split("[[set]]")
+            .find(|section| section.contains("identifier = \"guard-owner-default\""))
+            .expect("dedicated owner permission set");
+        assert!(owner_set.contains("allow-owner-classify-guard-task"));
+
+        let capability: serde_json::Value = serde_json::from_str(MAIN_CAPABILITY).unwrap();
+        assert_eq!(capability["windows"], serde_json::json!(["main"]));
+        assert!(capability["permissions"].as_array().unwrap().iter().any(|item| {
+            item.as_str() == Some("guard-owner-default")
+        }));
+        let uidesign: serde_json::Value = serde_json::from_str(UIDESIGN_CAPABILITY).unwrap();
+        assert_eq!(uidesign["windows"], serde_json::json!(["ui-editor", "ui-viewer"]));
+        assert!(!uidesign["permissions"].as_array().unwrap().iter().any(|item| {
+            item.as_str() == Some("guard-owner-default")
+        }));
+    }
+
+    #[test]
+    fn guard_owner_errors_use_the_approved_stable_codes() {
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::UnknownTask), "INTENT_UNKNOWN");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::InvalidCandidate), "APPROVAL_NOT_READY");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::MissingRecord)), "APPROVAL_NOT_FOUND");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Stale("input_fp"))), "APPROVAL_STALE:input_fp");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Revoked)), "APPROVAL_REVOKED");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Consumed)), "APPROVAL_CONSUMED");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified)), "RED_UNQUALIFIED");
+        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::RequiresApproval)), "IMPLEMENTATION_REQUIRES_APPROVAL");
+    }
+}
+
+fn guard_native_observation(result: MessageDialogResult) -> crate::dispatch::GuardNativeObservation {
+    match result {
+        MessageDialogResult::Yes => crate::dispatch::GuardNativeObservation::Yes,
+        MessageDialogResult::No => crate::dispatch::GuardNativeObservation::No,
+        MessageDialogResult::Cancel | MessageDialogResult::Ok | MessageDialogResult::Custom(_) => {
+            crate::dispatch::GuardNativeObservation::Cancel
+        }
+    }
+}
+
+fn guard_owner_public_error(error: &crate::dispatch::GuardCandidateError) -> String {
+    use crate::dispatch::{GuardAuthorityError as Authority, GuardCandidateError as Candidate};
+
+    match error {
+        Candidate::UnknownTask => "INTENT_UNKNOWN".to_owned(),
+        Candidate::Authority(authority) => match authority {
+            Authority::AuthorityDenied | Authority::NativeDeclined => "AUTHORITY_DENIED".to_owned(),
+            Authority::IntentUnknown => "INTENT_UNKNOWN".to_owned(),
+            Authority::RequiresApproval => "IMPLEMENTATION_REQUIRES_APPROVAL".to_owned(),
+            Authority::MissingRecord => "APPROVAL_NOT_FOUND".to_owned(),
+            Authority::Stale(field) => format!("APPROVAL_STALE:{field}"),
+            Authority::Revoked => "APPROVAL_REVOKED".to_owned(),
+            Authority::Consumed => "APPROVAL_CONSUMED".to_owned(),
+            Authority::RedUnqualified => "RED_UNQUALIFIED".to_owned(),
+            Authority::NotReady | Authority::InvalidManifest => "APPROVAL_NOT_READY".to_owned(),
+        },
+        Candidate::Capture(_) => "RED_UNQUALIFIED".to_owned(),
+        Candidate::NotReady
+        | Candidate::InvalidCandidate
+        | Candidate::ProjectNotFound
+        | Candidate::ProjectReadFailure
+        | Candidate::Snapshot(_) => "APPROVAL_NOT_READY".to_owned(),
+    }
+}
+
+fn guard_owner_caller_allowed(label: &str, scheme: &str, host: &str, port: Option<u16>) -> bool {
+    label == "main"
+        && port.is_none()
+        && matches!(
+            (scheme, host),
+            ("tauri", "localhost")
+                | ("http", "tauri.localhost")
+                | ("https", "tauri.localhost")
+        )
 }
 
 /// PD-WIRE-ROOT-01: explicit arg wins; else host settings; unbound → clear error (no `/demo/root`).
@@ -154,6 +314,8 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_workbench_diff",
         "git_write_commit",
         "git_write_push",
+        "git_index_commit_preview",
+        "git_index_commit_confirm",
         "load_local_board",
         "deploy_status",
         "deploy_check",
@@ -176,6 +338,8 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "uidesign_ask_agent",
         "scene_save",
         "scene_load",
+        "import_preview",
+        "owner_classify_guard_task",
     ] {
         cmds.push(CommandDescriptor {
             name: name.into(),
@@ -407,6 +571,85 @@ pub fn guard_check_start(
     authorize("guard_check_start").map_err(|e| e.to_string())?;
     let host = state.host.lock().map_err(|_| poison_dispatch())?;
     Ok(host.guard_check_start(&packet))
+}
+
+/// GC01/GC05: prepare a bounded HOST candidate, then obtain a native rfd
+/// observation outside the DispatchHost mutex. The invoke DTO has no approval
+/// or confirmation field; only a Rust-controlled Yes can complete the step.
+#[tauri::command]
+pub async fn owner_classify_guard_task(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    args: OwnerClassifyGuardTaskArgs,
+) -> Result<u64, String> {
+    authorize("owner_classify_guard_task").map_err(|error| error.to_string())?;
+    let url = window.url().map_err(|error| error.to_string())?;
+    if !guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port()) {
+        return Err("GUARD_OWNER_CALLER_NOT_TRUSTED".into());
+    }
+    let (candidate_ref, summary) = match args.intent.as_str() {
+        "generic" => {
+            if args.candidate.is_some() {
+                return Err("GUARD_GENERIC_CANDIDATE_FORBIDDEN".into());
+            }
+            let candidate_ref = {
+                let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
+                host.guard_prepare_generic_classification(&args.task_id)
+                    .map_err(|error| guard_owner_public_error(&error))?
+            };
+            (
+                candidate_ref,
+                format!(
+                    "Classify this task as generic?\n\nTask: {}\n\nGeneric classification grants no implementation, RED capture, approval, or execution authority.",
+                    args.task_id
+                ),
+            )
+        }
+        "implementation" => {
+            let draft = args.candidate.ok_or_else(|| "GUARD_CANDIDATE_REQUIRED".to_string())?;
+            let candidate_ref = {
+                let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
+                host.guard_prepare_candidate(&args.task_id, &draft)
+                    .map_err(|error| guard_owner_public_error(&error))?
+            };
+            let summary = format!(
+                "Confirm this implementation candidate?\n\nTask: {}\nModule: {}\nProject: {}\nWorking root: {}\nManifest revision: {}\nInput paths: {}\nArchitecture paths: {}\nBDD paths: {}\nSkeleton paths: {}\nTest paths: {}\nBuild executable: {}\nExact argv: {:?}\nWorking directory: {}\nTarget: {}\nTest: {}\nBDD: {}\nAllowed paths: {}\nProtected paths: {}\n\nThis confirms task intent only. It does not approve or run the RED job.",
+                args.task_id,
+                draft.module_id,
+                draft.project_id,
+                draft.red_job.cwd_ref,
+                draft.manifest_revision,
+                draft.input_paths.join(", "),
+                draft.architecture_paths.join(", "),
+                draft.bdd_paths.join(", "),
+                draft.skeleton_paths.join(", "),
+                draft.test_paths.join(", "),
+                draft.red_job.program,
+                draft.red_job.build_argv,
+                draft.red_job.cwd_ref,
+                draft.red_job.test_target,
+                draft.red_job.test_id,
+                draft.red_job.bdd_id,
+                draft.envelope.allowed_patterns.join(", "),
+                draft.envelope.protected_patterns.join(", "),
+            );
+            (candidate_ref, summary)
+        }
+        _ => return Err("GUARD_OWNER_INTENT_UNSUPPORTED".into()),
+    };
+    let result = AsyncMessageDialog::new()
+        .set_parent(&window)
+        .set_level(MessageLevel::Warning)
+        .set_title("SGenAxis implementation candidate")
+        .set_description(summary)
+        .set_buttons(MessageButtons::YesNoCancel)
+        .show()
+        .await;
+    let observation = guard_native_observation(result);
+    let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
+    host.guard_complete_candidate_confirmation(candidate_ref, observation)
+        .map_err(|error| guard_owner_public_error(&error))?;
+    Ok(candidate_ref)
 }
 
 /// PD-GUARD-CMD-01: pre-write path gate — protected／out-of-scope → `CODE:detail`.
@@ -985,6 +1228,41 @@ pub fn host_create_project_directory(
 }
 
 /// PD-SET-01／PD-SET-UI-01: persist CLI／MCP via host settings.
+#[tauri::command]
+pub fn host_project_preferences_load(state:State<'_,HostState>,expected_project_root:String)->Result<serde_json::Value,String>{
+    authorize("host_project_preferences_load").map_err(|e|e.to_string())?;
+    let root=state.inner.lock().map_err(|_|poison_host())?;
+    DispatchHost::project_policy_load(root.fs(),&root.host_settings().project_root,&expected_project_root)
+}
+#[tauri::command]
+pub fn host_project_preferences_save(state:State<'_,HostState>,expected_project_root:String,expected_digest:Option<String>,draft_json:String)->Result<serde_json::Value,String>{
+    authorize("host_project_preferences_save").map_err(|e|e.to_string())?;
+    let root=state.inner.lock().map_err(|_|poison_host())?;
+    DispatchHost::project_policy_save(root.fs(),&root.host_settings().project_root,&expected_project_root,expected_digest.as_deref(),draft_json.as_bytes())
+}
+#[tauri::command]
+pub fn host_project_preferences_presets()->Result<serde_json::Value,String>{
+    authorize("host_project_preferences_presets").map_err(|e|e.to_string())?;
+    DispatchHost::project_policy_presets()
+}
+#[tauri::command]
+pub fn host_project_preferences_pick_import(state:State<'_,HostState>)->Result<serde_json::Value,String>{
+    authorize("host_project_preferences_pick_import").map_err(|e|e.to_string())?;
+    let Some(path)=rfd::FileDialog::new().add_filter("專案偏好 JSON", &["json"]).pick_file() else {return Ok(serde_json::json!({"status":"cancelled"}));};
+    let root=state.inner.lock().map_err(|_|poison_host())?;
+    DispatchHost::project_policy_import(root.fs(),&path.to_string_lossy())
+}
+#[derive(Debug,Deserialize)]
+#[serde(rename_all="camelCase",deny_unknown_fields)]
+pub struct CreateProjectPreferencesArgs {pub parent:String,pub name:String,pub preset_id:Option<String>,pub imported_json:Option<String>}
+#[tauri::command]
+pub fn host_create_project_with_preferences(state:State<'_,HostState>,args:CreateProjectPreferencesArgs)->Result<serde_json::Value,String>{
+    authorize("host_create_project_with_preferences").map_err(|e|e.to_string())?;
+    let root=state.inner.lock().map_err(|_|poison_host())?;
+    DispatchHost::project_policy_create(root.fs(),&args.parent,&args.name,args.preset_id.as_deref(),args.imported_json.as_deref())
+}
+
+/// PD-SET-01／PD-SET-UI-01: persist CLI／MCP via host settings.
 /// `activate=true` → Live（rejects invalid paths）；`false` → DryRun（`revoke_agent_live`）.
 #[tauri::command]
 pub fn host_set_agent_settings(
@@ -1227,6 +1505,51 @@ pub fn git_workbench_diff(
         pathspec: path,
         diff_text,
     })
+}
+
+/// Read-only preview of the already-staged Index; never stages or mutates Git state.
+#[tauri::command]
+pub fn git_index_commit_preview(
+    state: State<'_, AppState>,
+    host: State<'_, HostState>,
+    repo: Option<String>,
+) -> Result<IndexCommitPreviewDto, IndexCommitErrorDto> {
+    authorize("git_index_commit_preview").map_err(|e| IndexCommitErrorDto {
+        code: "InvalidInput".into(), preview_id: None, observed: None,
+        diagnostic: e.to_string(), mutation_started: false, requires_new_preview: false,
+    })?;
+    let project_root = {
+        let root = host.inner.lock().map_err(|_| IndexCommitErrorDto {
+            code: "Busy".into(), preview_id: None, observed: None,
+            diagnostic: poison_host(), mutation_started: false, requires_new_preview: false,
+        })?;
+        resolve_repo(repo, root.host_settings()).map_err(|message| IndexCommitErrorDto {
+            code: "InvalidInput".into(), preview_id: None, observed: None,
+            diagnostic: message, mutation_started: false, requires_new_preview: false,
+        })?
+    };
+    let coordinator = state.host.lock().map_err(|_| IndexCommitErrorDto {
+        code: "Busy".into(), preview_id: None, observed: None,
+        diagnostic: poison_dispatch(), mutation_started: false, requires_new_preview: false,
+    })?.git_index_commit_coordinator();
+    coordinator.prepare(&project_root)
+}
+
+/// Explicitly confirm one preview generation; host consumes it once and commits only its Index.
+#[tauri::command]
+pub fn git_index_commit_confirm(
+    state: State<'_, AppState>,
+    request: IndexCommitRequestDto,
+) -> Result<IndexCommitOutcomeDto, IndexCommitErrorDto> {
+    authorize("git_index_commit_confirm").map_err(|e| IndexCommitErrorDto {
+        code: "InvalidInput".into(), preview_id: Some(request.preview_id.clone()), observed: None,
+        diagnostic: e.to_string(), mutation_started: false, requires_new_preview: false,
+    })?;
+    let coordinator = state.host.lock().map_err(|_| IndexCommitErrorDto {
+        code: "Busy".into(), preview_id: Some(request.preview_id.clone()), observed: None,
+        diagnostic: poison_dispatch(), mutation_started: false, requires_new_preview: false,
+    })?.git_index_commit_coordinator();
+    coordinator.commit(request)
 }
 
 /// Approval-gated commit via [`GitWritePort`] (PD-GIT-WRITE-UI-01). No UI→git CLI.
@@ -1947,6 +2270,21 @@ pub fn scene_load(
         text,
         product_pass: false,
         message: Some("loaded scene from project scene/".into()),
+    })
+}
+
+/// PD-ELU-IMPORT-ARCH-01 — read-only syntax preview of selected project-relative Rust files.
+#[tauri::command]
+pub fn import_preview(
+    host: State<'_, HostState>,
+    request: ImportPreviewRequest,
+) -> Result<ImportPreview, String> {
+    authorize("import_preview").map_err(|e| e.to_string())?;
+    let root = host.inner.lock().map_err(|_| poison_host())?;
+    let project_root = resolve_bound_project_root(None, root.host_settings())?;
+    preview_selected(root.fs(), &project_root, &request).map_err(|error| {
+        let path = error.relative_path.map(|path| format!(" ({path})")).unwrap_or_default();
+        format!("{}{path}: {}", error.code, error.message)
     })
 }
 

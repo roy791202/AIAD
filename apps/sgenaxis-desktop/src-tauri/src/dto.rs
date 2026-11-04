@@ -1,7 +1,73 @@
 //! IPC DTOs for Vanilla UI — projection／Run events only.
 //! Adapter types (ProcessPort, McpClientPort, secrets) must never appear here.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+
+/// DOC-ENTRY-01: callers identify a project/reference, never an identity or root authority.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DocumentAdoptArgs {
+    pub expected_project_id: String,
+    pub reference: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DocumentPrepareArgs {
+    pub expected_project_root: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct DocumentPrepareResultDto {
+    pub project_id: String,
+    pub project_root: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(tag = "code", content = "detail")]
+pub enum DocumentPrepareErrorDto {
+    UnauthorizedCaller,
+    ProjectNotBound,
+    ProjectChanged,
+    RootUnavailable,
+    Busy,
+    WorkspaceRejected { reason: String },
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct DocumentAdoptResultDto {
+    pub outcome: String,
+    pub document_id: String,
+    pub kind: String,
+    pub reference: String,
+    pub revision_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(tag = "code", content = "detail")]
+pub enum DocumentAdoptErrorDto {
+    UnauthorizedCaller,
+    ProjectNotBound,
+    ProjectMismatch,
+    InvalidProjectRoot,
+    InvalidReference,
+    UnsupportedKind,
+    MalformedManifest,
+    UnsupportedSchema,
+    InvalidManifestRecord,
+    InvalidDocumentId,
+    DocumentIdConflict,
+    ManifestChanged,
+    RevisionConflict,
+    ReferenceConflict,
+    SourceRead(String),
+    ManifestRead(String),
+    CreateDirectory(String),
+    Write(String),
+    DurabilityUnverified,
+}
 
 /// Kanban zone string for UI (`gray`｜`blue`｜`yellow`｜`red`｜`green`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -512,4 +578,134 @@ pub struct ListenProjectionDto {
     /// Agent ingress via `poll_chunks` → EventBridge (wired).
     pub host_agent_bridge: String,
     pub note: Option<String>,
+}
+
+// ── GUARD-S1: reviewed DTO declarations only (no handler switch / fallback) ─
+// Shapes from owner-approved dto-schema.json. Existing StartRun／StartImplementation
+// commands remain on legacy GuardPacket until a separately gated migration slice.
+
+/// Owner classify task intent + optional implementation candidate draft.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerClassifyGuardTaskArgs {
+    pub task_id: String,
+    /// `generic`｜`implementation`
+    pub intent: String,
+    #[serde(default)]
+    pub candidate: Option<CandidateDraft>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct CandidateDraft {
+    pub module_id: String,
+    pub project_id: String,
+    pub manifest_revision: String,
+    pub input_paths: Vec<String>,
+    pub architecture_paths: Vec<String>,
+    pub bdd_paths: Vec<String>,
+    pub skeleton_paths: Vec<String>,
+    pub test_paths: Vec<String>,
+    pub envelope: EnvelopeDraft,
+    pub red_job: RedJobDraft,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct EnvelopeDraft {
+    pub primary_module: String,
+    #[serde(default)]
+    pub integration_modules: Vec<String>,
+    pub allowed_patterns: Vec<String>,
+    #[serde(default)]
+    pub protected_patterns: Vec<String>,
+    /// Sorted module → relative prefix map (BTreeMap for stable JSON).
+    #[serde(default)]
+    pub module_prefixes: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct RedJobDraft {
+    pub program: String,
+    pub build_argv: Vec<String>,
+    pub cwd_ref: String,
+    pub test_target: String,
+    pub test_id: String,
+    pub bdd_id: String,
+    /// Fixed approved maximum (120000); client override rejected at HOST.
+    pub timeout_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerRequestGuardRedCaptureArgs {
+    pub candidate_ref: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerRequestGuardApprovalArgs {
+    pub candidate_ref: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct OwnerRevokeGuardApprovalArgs {
+    pub approval_ref: u64,
+}
+
+/// Reference-only implementation start (approval_ref required; no caller approved bool).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GuardReferenceStartImplementationArgs {
+    pub approval_ref: u64,
+    pub provider: ProviderDto,
+    #[serde(default = "default_true")]
+    pub dry_run: bool,
+    pub work_item_id: String,
+    #[serde(default)]
+    pub project_root: Option<String>,
+    #[serde(default)]
+    pub worktree_fingerprint: Option<String>,
+}
+
+/// Reference-only generic start; legacy `guard` packet rejected as authority.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GuardReferenceStartRunArgs {
+    pub provider: ProviderDto,
+    #[serde(default = "default_true")]
+    pub dry_run: bool,
+    pub work_item_id: String,
+    #[serde(default)]
+    pub project_root: Option<String>,
+    #[serde(default)]
+    pub worktree_fingerprint: Option<String>,
+    #[serde(default)]
+    pub guard: Option<sgenaxis_host::GuardPacketDto>,
+    #[serde(default)]
+    pub approval_ref: Option<u64>,
+}
+
+/// Read-only owner projection (HOST-computed digests only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GuardOwnerProjection {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub candidate_ref: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_ref: Option<u64>,
+    /// pending_confirmation｜capture_requested｜capture_running｜red_unqualified｜
+    /// awaiting_red_qualification｜ready_for_approval｜approved｜consumed｜revoked｜stale｜rejected
+    pub state: String,
+    pub task_id: String,
+    pub intent: String,
+    pub module_id: String,
+    pub project_id: String,
+    pub input_snapshot_fingerprint: String,
+    pub artifact_digests: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub red_evidence_id: Option<String>,
+    pub diagnostic_code: String,
+    pub message: String,
 }
