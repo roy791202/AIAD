@@ -1,0 +1,119 @@
+{
+  "verifier": "/root/wizard_migration_verify",
+  "developer": "/root",
+  "reviewed_at": "2026-11-04T15:08:41.497814+00:00",
+  "head": "03b22b63d9e1529de3c93b785a2f18b27528f5ef",
+  "status": "PASS_SCOPED_TEST_MIGRATION / BLOCKED_FULL_REGRESSION",
+  "scope": "One Owner-approved test-file migration only; no product edits by verifier",
+  "source_sha256": "9c9b78d539ea5f478917e9c9567fe0c5bcc28dd63ca7e63cdf7cbb4c01bb6f89",
+  "original_archive_sha256": "b4a8d33cd1f8b4012f68dcc40ea69bed0985c3fcf57de9511d203d97611be855",
+  "preservation": {
+    "four_noncreation_test_prefix_byte_identical": true,
+    "preserved_prefix_bytes": 2221,
+    "archive_matches_plan_sha": true,
+    "tracked_modified_paths": [
+      "apps/sgenaxis-desktop/src-tauri/tests/project_preferences_commands.rs"
+    ],
+    "product_source_changes": false
+  },
+  "static_checks": {
+    "seven_fs_methods_record_before_delegation": true,
+    "exact_errors": [
+      "WizardRequired",
+      "WizardRequired",
+      "CHOOSE_PRESET_OR_IMPORT"
+    ],
+    "zero_access_check_precedes_inner_verification_reads": true,
+    "seed_preserved_byte_exact": true,
+    "all_case_targets_absent": true,
+    "original_bad_target_assertion_retained": true,
+    "four_noncreation_test_bodies_unchanged": true,
+    "production_port_unchanged": true
+  },
+  "runs": [
+    {
+      "command": "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --locked --test project_preferences_commands --no-run",
+      "exit_code": 0,
+      "log": "reports\\commit-batches-20261104\\independent-wizard-migration-0.txt",
+      "summaries": [],
+      "log_sha256": "54fefdb5ee547a66dc70137bb2f406183b0c3bec2c0db25f7d25e9e00dade027"
+    },
+    {
+      "command": "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --locked --test project_preferences_commands",
+      "exit_code": 0,
+      "log": "reports\\commit-batches-20261104\\independent-wizard-migration-1.txt",
+      "summaries": [
+        "test result: ok. 173 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s"
+      ],
+      "log_sha256": "81a6fe0c286034428575f0a479eae6cfe94beffbed953a869beb199f83065f55"
+    },
+    {
+      "command": "cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml --locked -p sgenaxis-host --test phase1_project_creation_legacy",
+      "exit_code": 0,
+      "log": "reports\\commit-batches-20261104\\independent-wizard-migration-2.txt",
+      "summaries": [
+        "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "log_sha256": "fd64b6f21ee25acd29fbd5e65e1e0c0579be2d6bfa61d4d4c4de0191b82d0dec"
+    },
+    {
+      "command": "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --locked --all-targets",
+      "exit_code": 101,
+      "log": "reports\\commit-batches-20261104\\independent-wizard-migration-3.txt",
+      "summaries": [
+        "test result: FAILED. 239 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.30s"
+      ],
+      "log_sha256": "a981220403e3872af056a03bf543ac5f9f5616f71f8cbe3d7f3b8c9985292941"
+    },
+    {
+      "command": "isolated timing diagnostic",
+      "exit_code": 0,
+      "log": "reports/commit-batches-20261104/independent-wizard-timing-rerun.txt",
+      "log_sha256": "b080ecab545c21971a550517db78edfe40eddd6fa2a5e426265a50a419b7836a",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 239 filtered out; finished in 1.12s"
+      ]
+    },
+    {
+      "command": "default alltargets repeat",
+      "exit_code": 101,
+      "log": "reports/commit-batches-20261104/independent-wizard-alltargets-rerun.txt",
+      "log_sha256": "5fcc85f090390874b3d699136f5c6de9f2714cf693fd7f515d276f2beb13e034",
+      "summaries": [
+        "test result: FAILED. 239 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.61s"
+      ]
+    },
+    {
+      "command": "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --locked --all-targets -- --test-threads=1",
+      "exit_code": 0,
+      "log": "reports\\commit-batches-20261104\\independent-wizard-alltargets-serial-diagnostic.txt",
+      "log_sha256": "8f14defaf2752573ff09b4e8f2770fdb8769d1f450ef99a9cf024837355c3b51",
+      "summaries": [
+        "test result: ok. 240 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 27.72s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 184 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.29s",
+        "test result: ok. 173 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s"
+      ],
+      "purpose": "One serial diagnostic to exercise remaining targets, NOT a substitute for default CI regression",
+      "total_passed": 597,
+      "total_failed": 0,
+      "total_ignored": 0
+    }
+  ],
+  "regression_failure": {
+    "test": "mcp_stdio::tests::initialize_no_response_hits_its_deadline_and_closes_child",
+    "assertion": "started.elapsed() < Duration::from_secs(1)",
+    "default_full_run": "239 passed / 1 failed, twice",
+    "isolated_exact_case": "1 passed",
+    "classification": "Unrelated parallel/load-sensitive deadline failure in unchanged library source; no pre-existing baseline claim for this exact environment",
+    "effect": "Default all-targets regression NOT GREEN; cannot approve full merge or product completion",
+    "serial_diagnostic": "597 passed / 0 failed / 0 ignored across 4 binaries"
+  },
+  "not_run": [
+    "Actual wizard successful creation path",
+    "Runtime HOST binding preservation integration",
+    "S3 implementation/acceptance",
+    "Actual Live target/native UI/install/release"
+  ],
+  "acceptance_boundary": "The three legacy denial tests pass, but do not replace or prove archived wizard success obligations. No artificial production RED claimed."
+}
