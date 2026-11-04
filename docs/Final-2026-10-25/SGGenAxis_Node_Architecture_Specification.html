@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGGenAxis｜Node Architecture & AI Specification</title>
+<style>
+:root{--bg:#f4f7fb;--paper:#fff;--ink:#243247;--muted:#64748b;--line:#d9e2ec;--navy:#203954;--blue:#eaf1f8;--accent:#4b6b8a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif}
+header{background:linear-gradient(135deg,#172a46,#385776);color:#fff;padding:52px max(24px,calc((100vw - 1120px)/2)) 44px}
+header .eyebrow{letter-spacing:.12em;text-transform:uppercase;font-size:.78rem;opacity:.8}h1{font-size:clamp(2rem,4vw,3.1rem);line-height:1.15;margin:.5rem 0 1rem}header p{max-width:850px;color:#e2eaf2;margin:.4rem 0}
+.layout{max-width:1200px;margin:28px auto;padding:0 20px;display:grid;grid-template-columns:245px minmax(0,1fr);gap:24px}
+nav{position:sticky;top:18px;align-self:start;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;max-height:calc(100vh - 36px);overflow:auto}
+nav strong{display:block;margin:0 0 10px;color:var(--navy)}nav a{display:block;text-decoration:none;color:#43546a;padding:6px 8px;border-radius:7px;font-size:.9rem}nav a:hover{background:var(--blue);color:var(--navy)}
+main{min-width:0}.card{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:clamp(18px,3vw,30px);margin-bottom:20px;box-shadow:0 4px 16px #23374d08}
+h2{font-size:1.55rem;line-height:1.3;color:var(--navy);margin:0 0 14px;border-bottom:1px solid var(--line);padding-bottom:10px}h3{font-size:1.08rem;color:#2e4966;margin:22px 0 8px}p{margin:.5rem 0 1rem}ul,ol{padding-left:1.35rem}li{margin:.25rem 0}
+.callout{background:var(--blue);border-left:4px solid var(--accent);padding:14px 16px;border-radius:8px;margin:14px 0 18px}
+table{width:100%;border-collapse:collapse;margin:12px 0 18px;font-size:.92rem}th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}th{background:var(--navy);color:white;font-weight:650}tbody tr:nth-child(even){background:#f7f9fc}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#eef2f6;padding:.1em .35em;border-radius:4px;font-size:.92em}.node-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.node{border:1px solid var(--line);border-radius:10px;padding:14px}.node h3{margin:0 0 8px}.node ul{margin:0;padding-left:1.15rem;font-size:.93rem}
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin:16px 0}.flow div{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:13px}.flow b{display:block;color:var(--navy);margin-bottom:5px}.arrow{align-self:center;color:var(--accent);font-size:1.4rem}
+footer{max-width:1160px;margin:0 auto;padding:10px 20px 35px;color:var(--muted);font-size:.85rem}
+@media(max-width:850px){.layout{grid-template-columns:1fr}nav{position:static;max-height:none}.node-grid{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{text-align:center;transform:rotate(90deg)}}
+@media print{body{background:white;font-size:11pt}.layout{display:block;max-width:none;margin:0;padding:0}nav{display:none}.card{box-shadow:none;break-inside:avoid;border:0;padding:12px 0;margin:0}header{padding:24px;color:#111;background:white;border-bottom:2px solid #333}header p{color:#333}h2{break-after:avoid}table{font-size:9pt}a{color:inherit}footer{padding:10px 0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">SGGenAxis · Design Specification</div>
+  <h1>Node Architecture<br>&amp; AI Specification</h1>
+  <p>節點屬性、Layer / Module 佈局、Input / Output、BDD / TDD 與 UI Layout 設計建議</p>
+  <p>文件性質：設計建議稿（非既有系統實作規格）</p>
+</header>
+<div class="layout">
+<nav aria-label="目錄">
+<strong>文件目錄</strong>
+<a href="#principles">1. 核心架構概念</a><a href="#common">2. Node 共用屬性</a>
+<a href="#types">3. 十種 Node Type 專屬屬性</a><a href="#ports">4. Input / Output Port</a>
+<a href="#bddtdd">5. BDD / TDD 結構</a><a href="#drag">6. Module、Layer 與拖曳行為</a>
+<a href="#layout">7. UI Layout 與座標資料</a><a href="#inspector">8. Inspector 建議頁籤</a>
+<a href="#ai">9. AI 生成與驗證</a><a href="#roadmap">10. 實作優先順序</a>
+</nav>
+<main>
+<section class="card">
+<h2>文件目的</h2>
+<p>統整 SGGenAxis 節點架構的建議資料模型，供 UI 設計、資料結構規劃、AI 生成與驗證流程使用。</p>
+<div class="callout"><strong>核心原則：</strong>Node Definition 定義節點是什麼；Architecture Assignment 定義節點屬於哪裡；UI Layout 定義節點在畫布上如何呈現。三者分離，避免畫面變更影響業務規格。</div>
+</section>
+
+<section class="card" id="principles">
+<h2>1. 核心架構概念</h2>
+<p>SGGenAxis 建議採用共用 Node 基礎結構，再由不同 Node Type 定義專屬屬性、驗證規則與 AI 生成行為。BDD / TDD 是結構化規格，不應只存成自由文字。</p>
+<table><thead><tr><th>層級</th><th>責任</th><th>建議規則</th></tr></thead><tbody>
+<tr><td>Layer</td><td>技術架構層級與依賴方向</td><td>定義允許的 Node Type、依賴限制與 Layer 對外介面</td></tr>
+<tr><td>Module Slot</td><td>Layer 內的模組分組容器</td><td>可獨立展開／收合；可接收或移出 Node</td></tr>
+<tr><td>Node</td><td>具體責任單位</td><td>有專屬屬性、Input / Output、BDD / TDD 與依賴</td></tr>
+<tr><td>Module Registry</td><td>模組的穩定定義</td><td>Module ID 與顯示名稱分離；可供跨 Layer 參照</td></tr>
+</tbody></table>
+<h3>畫布行為</h3>
+<ul><li>Layer 內可有多個 Module Slot。</li><li>每個 Module Slot 可獨立展開／收合。</li><li>Module 展開後，Node 以水平方式排列。</li><li>Node 卡片只保留左側 Input、右側 Output。</li><li>Layer、Module Slot、Node 的 Input / Output 是不同層級的介面。</li><li>拖曳時應區分「改變歸屬」與「改變畫布位置」。</li></ul>
+<div class="callout">水平排列只代表視覺佈局，不代表程式執行順序；執行順序由明確連線、依賴與流程規則決定。</div>
+</section>
+
+<section class="card" id="common">
+<h2>2. Node 共用屬性</h2>
+<table><thead><tr><th>欄位</th><th>類型／例子</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>nodeId</code></td><td>Stable ID</td><td>唯一識別碼；改名不應改變 ID</td></tr>
+<tr><td><code>name</code></td><td>String</td><td>畫布與 Inspector 顯示名稱</td></tr>
+<tr><td><code>nodeType</code></td><td>API / Contract / UI…</td><td>決定專屬 Schema、Inspector 欄位與驗證器</td></tr>
+<tr><td><code>description</code></td><td>String</td><td>描述節點責任與使用情境</td></tr>
+<tr><td><code>layerRef</code></td><td>Layer ID</td><td>所屬技術層參照</td></tr>
+<tr><td><code>moduleRef</code></td><td>Module ID 或 null</td><td>所屬功能模組；未分配時可為 null</td></tr>
+<tr><td><code>inputPorts[]</code> / <code>outputPorts[]</code></td><td>Port definitions</td><td>輸入／輸出介面、型別、Schema 與限制</td></tr>
+<tr><td><code>dependencies[]</code></td><td>Node references</td><td>依賴節點、依賴種類與必要性</td></tr>
+<tr><td><code>bddSpecs[]</code></td><td>BDD records</td><td>行為需求與驗收場景</td></tr>
+<tr><td><code>tddSpecs[]</code></td><td>TDD records</td><td>測試案例與斷言</td></tr>
+<tr><td><code>specVersion</code></td><td>Version</td><td>追蹤規格變更</td></tr>
+<tr><td><code>validationStatus</code></td><td>Computed status</td><td>由系統計算，不應由使用者任意填寫</td></tr>
+<tr><td><code>implementationRef</code></td><td>Code / file / symbol ref</td><td>對應實作參照</td></tr>
+</tbody></table>
+</section>
+
+<section class="card" id="types">
+<h2>3. 十種 Node Type 專屬屬性</h2>
+<p>以下為建議欄位。實際 Schema 應依 SGGenAxis 支援的語言、執行環境與生成方式調整。</p>
+<div class="node-grid">
+<div class="node"><h3>3.1 API Node</h3><ul><li><code>httpMethod</code>：HTTP 方法</li><li><code>route</code>：路由定義</li><li><code>requestSchemaRef</code>：Request 結構</li><li><code>responseSchemaRef</code>：Response 結構</li><li><code>authPolicyRef</code>：驗證／授權政策</li><li><code>errorMapping[]</code>：錯誤映射</li><li><code>rateLimitPolicy</code>：流量限制（選用）</li></ul></div>
+<div class="node"><h3>3.2 Contract Node</h3><ul><li><code>contractKind</code>：DTO、Event、Interface、Schema 等</li><li><code>schemaDefinition</code>：欄位、型別與結構</li><li><code>requiredFields[]</code>：必填欄位</li><li><code>constraints[]</code>：格式、範圍、唯一性限制</li><li><code>compatibilityPolicy</code>：版本相容策略</li><li><code>contractVersion</code>：契約版本</li></ul></div>
+<div class="node"><h3>3.3 UI Node</h3><ul><li><code>componentType</code>：Page、Form、Panel、Dialog 等</li><li><code>layoutSpec</code>：版面配置</li><li><code>dataBindings[]</code>：資料綁定</li><li><code>actions[]</code>：操作與事件</li><li><code>stateDefinition[]</code>：狀態與轉換</li><li><code>validationRules[]</code>：表單驗證</li><li><code>accessibilitySpec</code>：無障礙需求</li></ul></div>
+<div class="node"><h3>3.4 Command Node</h3><ul><li><code>commandName</code>：命令名稱</li><li><code>inputSchemaRef</code>：輸入結構</li><li><code>preconditions[]</code>：執行前條件</li><li><code>effects[]</code>：預期狀態變更</li><li><code>transactionPolicy</code>：交易邊界與原子性</li><li><code>idempotencyPolicy</code>：重複執行策略</li><li><code>failurePolicy</code>：失敗、重試與補償策略</li></ul></div>
+<div class="node"><h3>3.5 Query Node</h3><ul><li><code>queryName</code>：查詢名稱</li><li><code>sourceRefs[]</code>：查詢來源</li><li><code>filterSchema</code>：篩選條件</li><li><code>sortRules[]</code>：排序規則</li><li><code>paginationPolicy</code>：分頁方式</li><li><code>projectionSchemaRef</code>：回傳欄位結構</li><li><code>consistencyPolicy</code>：一致性要求</li></ul></div>
+<div class="node"><h3>3.6 Application Node</h3><ul><li><code>useCaseName</code>：使用案例名稱</li><li><code>steps[]</code>：流程步驟</li><li><code>orchestrationMode</code>：Sequential、Parallel 等</li><li><code>branchRules[]</code>：條件分支</li><li><code>timeoutPolicy</code>：逾時策略</li><li><code>retryPolicy</code>：重試策略</li><li><code>compensationFlow[]</code>：補償流程</li></ul></div>
+<div class="node"><h3>3.7 Domain Node</h3><ul><li><code>domainKind</code>：Entity、Value Object、Aggregate、Domain Service 等</li><li><code>properties[]</code>：業務資料與型別</li><li><code>invariants[]</code>：必須成立的業務規則</li><li><code>domainOperations[]</code>：領域行為</li><li><code>domainEvents[]</code>：領域事件</li><li><code>identityPolicy</code>：身分與相等性規則</li><li><code>lifecycleRules[]</code>：生命週期限制</li></ul></div>
+<div class="node"><h3>3.8 Infrastructure Node</h3><ul><li><code>adapterKind</code>：Database、HTTP Client、Storage、Queue 等</li><li><code>implementsRef</code>：實作的介面／Port</li><li><code>provider</code>：技術提供者或驅動程式</li><li><code>connectionRef</code>：安全連線設定參照</li><li><code>mappingRules[]</code>：資料轉換</li><li><code>timeoutPolicy</code>：呼叫逾時</li><li><code>resiliencePolicy</code>：重試、斷路器等</li></ul></div>
+<div class="node"><h3>3.9 ACL Node</h3><ul><li><code>externalContractRef</code>：外部契約</li><li><code>internalContractRef</code>：內部契約</li><li><code>translationRules[]</code>：欄位及語意轉換</li><li><code>enumMappings[]</code>：枚舉映射</li><li><code>errorTranslationRules[]</code>：錯誤轉換</li><li><code>versionMappingPolicy</code>：版本相容</li><li><code>fallbackPolicy</code>：映射失敗處理</li></ul></div>
+<div class="node"><h3>3.10 Custom Node</h3><ul><li><code>customTypeId</code>：自訂類型 ID</li><li><code>schemaRef</code>：自訂屬性 Schema</li><li><code>inputSchema[]</code> / <code>outputSchema[]</code>：自訂介面</li><li><code>executionHandlerRef</code>：執行處理器參照</li><li><code>validationRules[]</code>：自訂驗證規則</li><li><code>capabilities[]</code>：能力宣告</li><li><code>permissionPolicy</code>：執行權限</li></ul></div>
+</div>
+</section>
+
+<section class="card" id="ports">
+<h2>4. Input / Output Port 資料結構</h2>
+<p>Port 不應只是視覺上的圓點，而是可供型別檢查、資料映射、AI 生成與連線驗證使用的結構化定義。</p>
+<table><thead><tr><th>欄位</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>portId</code></td><td>Port 唯一 ID</td></tr><tr><td><code>name</code></td><td>顯示名稱</td></tr><tr><td><code>direction</code></td><td><code>input</code> 或 <code>output</code></td></tr><tr><td><code>dataType</code></td><td>基本型別或自訂型別</td></tr><tr><td><code>schemaRef</code></td><td>複雜資料 Schema 參照</td></tr><tr><td><code>required</code></td><td>是否必填</td></tr><tr><td><code>cardinality</code></td><td>單筆、多筆或串流等基數</td></tr><tr><td><code>constraints[]</code></td><td>值域、格式及其他限制</td></tr><tr><td><code>defaultValue</code></td><td>可選預設值</td></tr><tr><td><code>errorTypeRefs[]</code></td><td>可能輸出的錯誤型別</td></tr><tr><td><code>description</code></td><td>用途與語意說明</td></tr>
+</tbody></table>
+<h3>Layer 與 Module Slot 的 Input / Output</h3>
+<p>Layer Input / Output 是 Layer 的對外介面；Module Slot Input / Output 是模組的對外契約；Node Input / Output 是節點本身的介面。三者透過明確 mapping 或連線建立，不應自動把所有內部 Port 全部暴露。</p>
+</section>
+
+<section class="card" id="bddtdd">
+<h2>5. BDD / TDD 結構</h2>
+<p>BDD 與 TDD 應為多筆可追蹤的結構化記錄，並以穩定 ID 關聯 Node、Port、Module 與測試證據。</p>
+<h3>BDD 欄位</h3>
+<table><thead><tr><th>欄位</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>bddId</code></td><td>唯一 ID</td></tr><tr><td><code>title</code></td><td>場景名稱</td></tr><tr><td><code>given[]</code></td><td>前置條件／Given</td></tr><tr><td><code>when[]</code></td><td>觸發事件／When</td></tr><tr><td><code>then[]</code></td><td>可驗證結果／Then</td></tr><tr><td><code>priority</code></td><td>優先級</td></tr><tr><td><code>tags[]</code></td><td>分類標籤</td></tr><tr><td><code>relatedNodeRefs[]</code></td><td>相關 Node</td></tr><tr><td><code>acceptanceStatus</code></td><td>待驗收、通過、失敗等</td></tr>
+</tbody></table>
+<h3>TDD 欄位</h3>
+<table><thead><tr><th>欄位</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>tddId</code></td><td>唯一 ID</td></tr><tr><td><code>title</code></td><td>測試案例名稱</td></tr><tr><td><code>testType</code></td><td>Unit、Integration、Contract、E2E 等</td></tr><tr><td><code>arrange[]</code></td><td>測試準備／Arrange</td></tr><tr><td><code>act[]</code></td><td>執行動作／Act</td></tr><tr><td><code>assertions[]</code></td><td>預期結果／Assert</td></tr><tr><td><code>relatedBddIds[]</code></td><td>覆蓋的 BDD 場景</td></tr><tr><td><code>relatedPortRefs[]</code></td><td>驗證的介面</td></tr><tr><td><code>testStatus</code></td><td>未執行、通過、失敗、過期等</td></tr><tr><td><code>evidenceRefs[]</code></td><td>執行紀錄、報告或產物</td></tr>
+</tbody></table>
+<div class="callout"><strong>範圍原則：</strong>Node 層 BDD / TDD 用於局部行為與單元測試；Module 層可定義跨 Node 的整合行為；系統層可定義端到端流程。規格變更後，相關測試應標記為需要重新驗證。</div>
+</section>
+
+<section class="card" id="drag">
+<h2>6. Module、Layer 與拖曳行為</h2>
+<table><thead><tr><th>操作</th><th>建議資料變更</th><th>驗證</th></tr></thead><tbody>
+<tr><td>Node 拖入 Module</td><td>設定 <code>moduleRef</code>；Node 出現在該 Module 內</td><td>Node Type 是否允許、依賴與 Port 相容性</td></tr>
+<tr><td>Node 移至另一 Module</td><td>更新 <code>moduleRef</code> 與佈局順序</td><td>跨模組依賴、介面與 Layer 規則</td></tr>
+<tr><td>Node 拖出 Module</td><td><code>moduleRef = null</code> 或指向新容器</td><td>檢查依賴及未分配政策</td></tr>
+<tr><td>Module 展開／收合</td><td>更新 UI Layout 的 <code>collapsed</code></td><td>不改變架構關係</td></tr>
+<tr><td>Node 排序</td><td>更新 <code>order</code>；自由畫布可更新 <code>x / y</code></td><td>不把視覺順序當成執行順序</td></tr>
+<tr><td>Module 改名</td><td>更新顯示名稱，不改 <code>moduleId</code></td><td>關聯維持穩定</td></tr>
+</tbody></table>
+<h3>Unassigned Nodes</h3>
+<p>建議提供未分配節點區域。未歸屬 Module 的 Node 可以存在於草稿階段；驗證時依專案政策決定顯示警告或錯誤。拖出 Module 不應直接刪除 Node。</p>
+<div class="flow">
+<div><b>未分配 Node</b>顯示名稱、類型與基本屬性</div><div class="arrow">→</div>
+<div><b>拖入 Module</b>設定 moduleRef，並依水平佈局排列</div><div class="arrow">→</div>
+<div><b>驗證歸屬</b>檢查 Node Type、Ports、依賴與必要規格</div>
+</div>
+</section>
+
+<section class="card" id="layout">
+<h2>7. UI Layout 與座標資料</h2>
+<p>座標有保存價值，但應放在獨立的 UI Layout／Presentation Model，而不是 Node 的業務定義內。若畫布採自由佈局，保存 x / y；若 Module 內 Node 固定水平排列，優先保存 order。</p>
+<table><thead><tr><th>欄位</th><th>適用情況</th><th>說明</th></tr></thead><tbody>
+<tr><td><code>nodeLayout.x / y</code></td><td>自由畫布</td><td>保存 Node 在畫布上的位置</td></tr><tr><td><code>nodeLayout.order</code></td><td>水平／自動排列</td><td>保存 Module 內的顯示順序</td></tr><tr><td><code>nodeLayout.width / height</code></td><td>可調尺寸節點</td><td>保存使用者調整後的尺寸</td></tr><tr><td><code>moduleLayout.order</code></td><td>Layer 內多個 Module</td><td>保存 Module 的排列順序</td></tr><tr><td><code>moduleLayout.x / y</code></td><td>自由排列 Module</td><td>保存 Module 容器的位置</td></tr><tr><td><code>moduleLayout.collapsed</code></td><td>可展開／收合 Module</td><td>保存展開狀態</td></tr><tr><td><code>viewport.zoom / pan</code></td><td>畫布檢視狀態</td><td>可選；保存縮放與視角位置</td></tr>
+</tbody></table>
+<h3>三類資料分離</h3>
+<table><thead><tr><th>資料區塊</th><th>主要內容</th></tr></thead><tbody>
+<tr><td><strong>Node Definition</strong></td><td><code>nodeId</code>、<code>nodeType</code>、Ports、專屬屬性、BDD、TDD</td></tr>
+<tr><td><strong>Architecture Assignment</strong></td><td><code>layerRef</code>、<code>moduleRef</code>、dependencies、歸屬狀態</td></tr>
+<tr><td><strong>UI Layout</strong></td><td>x、y、order、width、height、collapsed、viewport</td></tr>
+</tbody></table>
+<div class="callout">如果 Module 內 Node 固定水平排列，通常只需儲存 <code>order</code>；不必把每個 Node 的 x/y 當成主要資料。座標可由佈局引擎依容器大小與排序計算。</div>
+</section>
+
+<section class="card" id="inspector">
+<h2>8. Inspector 建議頁籤</h2>
+<table><thead><tr><th>頁籤</th><th>內容</th></tr></thead><tbody>
+<tr><td>Basic</td><td>Node Name、Node Type、Layer、Module、Description、Tags、Lifecycle</td></tr>
+<tr><td>I/O</td><td>Input / Output Ports、型別、Schema、Required、Constraints、Mapping</td></tr>
+<tr><td>Type Properties</td><td>依 Node Type 顯示專屬屬性與驗證欄位</td></tr>
+<tr><td>BDD / TDD</td><td>多筆 Scenario、Test Case、覆蓋關係、測試結果與過期狀態</td></tr>
+<tr><td>Dependencies</td><td>上游／下游 Node、依賴類型、必要性、循環依賴檢查</td></tr>
+<tr><td>AI Generation</td><td>生成限制、實作參照、上下文、驗證證據</td></tr>
+<tr><td>Layout</td><td>顯示順序、尺寸、位置；視需要提供進階設定</td></tr>
+</tbody></table>
+</section>
+
+<section class="card" id="ai">
+<h2>9. AI 生成與驗證</h2>
+<table><thead><tr><th>欄位</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>generationPolicy</code></td><td>AI 可新增、修改或禁止修改的範圍</td></tr>
+<tr><td><code>implementationRef</code></td><td>對應檔案、類別、函式或程式碼符號</td></tr>
+<tr><td><code>validationEvidence[]</code></td><td>型別檢查、測試、建置等證據參照</td></tr>
+<tr><td><code>specVersion</code></td><td>規格版本；規格更新後判斷測試是否過期</td></tr>
+<tr><td><code>validationStatus</code></td><td>由驗證器產生，不由 AI 自行宣告成功</td></tr>
+</tbody></table>
+<h3>AI 行為原則</h3>
+<ul><li>缺少必要規格時，提出缺項，不猜測核心業務規則。</li><li>發現互相矛盾的 BDD、TDD、Ports 或依賴時，回報衝突。</li><li>生成後必須經過可重現的驗證程序。</li><li>測試通過狀態由測試執行結果更新。</li><li>密碼、Token 等機敏資料不應直接放入一般 Node 屬性或提示內容。</li></ul>
+</section>
+
+<section class="card" id="roadmap">
+<h2>10. 實作優先順序</h2>
+<table><thead><tr><th>階段</th><th>建議交付項目</th></tr></thead><tbody>
+<tr><td>P0 — 資料骨架</td><td>共用 Node Schema、10 種 Node Type Registry、Layer／Module ID、Port Schema</td></tr>
+<tr><td>P1 — 畫布互動</td><td>拖放、Module 展開／收合、水平排列、Unassigned Nodes、佈局保存</td></tr>
+<tr><td>P2 — 規格管理</td><td>BDD／TDD 編輯器、關聯 ID、規格版本與過期狀態</td></tr>
+<tr><td>P3 — 驗證</td><td>型別相容、依賴規則、循環依賴、必要規格檢查</td></tr>
+<tr><td>P4 — AI 整合</td><td>上下文封裝、生成限制、實作追蹤、測試證據與報告</td></tr>
+</tbody></table>
+<h3>結論</h3>
+<div class="callout">SGGenAxis 應將 Node 定義、架構歸屬與 UI 佈局分離。Node 類型決定專屬屬性；Layer／Module 決定架構組織；Input／Output 決定介面契約；BDD／TDD 描述與驗證行為；座標與順序只控制畫面呈現。此分離方式有利於修改 UI、擴充 Node Type，以及讓 AI 更可靠地生成與驗證程式。</div>
+</section>
+</main>
+</div>
+<footer>SGGenAxis | Node Architecture Specification · 設計建議稿</footer>
+</body>
+</html>

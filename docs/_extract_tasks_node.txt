@@ -1,0 +1,1495 @@
+SGGenAxis - Node State & Event Log System Specification
+
+  
+SGGenAxis
+
+  
+Node State & Event Log System Specification
+
+  
+節點狀態、編輯日誌、歷史追蹤、工項管理與 Token 成本統計
+
+  
+文件導覽
+
+  
+系統定位
+
+  
+系統架構
+
+  
+節點模型
+
+  
+事件日誌
+
+  
+產物管理
+
+  
+快照與統計
+
+  
+工項 Spreadsheet
+
+  
+燈號規則
+
+  
+Token 成本
+
+  
+操作流程
+
+  
+驗收規範
+
+  
+01. 系統定位與設計目標
+
+  
+
+    本系統是 SGGenAxis 自動開發工具的共用資料管理層。
+    程式、工項、測試、建置、部署及其他工程資源皆可建立為節點，
+    並透過獨立事件日誌保存歷史，避免節點資料隨時間不斷膨脹。
+  
+
+  
+
+    
+核心原則：
+
+    Node Store 保存目前狀態；Event Log 保存歷史事件；
+    Artifact Store 保存大型產物；Snapshot 與 Aggregation 提供快速查詢及統計。
+  
+
+  
+設計目標
+
+  
+
+    
+節點資料保持精簡，歷史資料獨立保存。
+
+    
+所有節點使用穩定且唯一的 nodeId。
+
+    
+節點編輯、程式修改、TDD、建置、部署及 AI 呼叫均可追溯。
+
+    
+支援使用者自訂擴充欄位及事件類型。
+
+    
+保留灰、黃、紅、綠、橘五色燈號。
+
+    
+高層節點自動彙總子工項狀態與 Token 用量。
+
+    
+避免重複記錄 Token、重複計算工項或使用過期測試結果。
+
+    
+讓 AI 只讀取當前任務必要的上下文，降低 API 成本。
+
+  
+
+  
+系統不應採用的做法
+
+  
+
+    
+不把所有歷史紀錄直接嵌入節點 JSON。
+
+    
+不以檔案路徑作為節點唯一識別碼。
+
+    
+不把 TDD 結果與工作流程狀態混為單一資料欄位。
+
+    
+不把同一筆 AI 呼叫複製到多個節點後再直接加總。
+
+    
+不以「工項已完成」直接推定「TDD 已通過」。
+
+  
+
+  
+02. 系統資料架構
+
+  
+
+    
+
+      
+Node Store
+
+      
+保存節點 ID、類型、目前屬性、狀態、依賴關係與版本參照。
+
+      
+Current State
+
+    
+
+    
+
+      
+Node Event Log
+
+      
+保存節點建立、編輯、狀態變更、測試、核准與執行事件。
+
+      
+Append-oriented
+
+    
+
+    
+
+      
+Artifact Store
+
+      
+保存程式版本、Patch、測試報告、建置產物及大型執行輸出。
+
+      
+External Artifacts
+
+    
+
+    
+
+      
+Snapshot Store
+
+      
+保存指定時間點的節點狀態，協助快速還原與歷史比較。
+
+      
+Versioned State
+
+    
+
+    
+
+      
+Aggregation Engine
+
+      
+彙總工項燈號、Token、API 成本、測試結果及阻塞數。
+
+      
+Derived Metrics
+
+    
+
+    
+
+      
+Query / UI Layer
+
+      
+提供 Architecture Canvas、Inspector、History Window 與 Spreadsheet。
+
+      
+Read Models
+
+    
+
+  
+
+  
+資料流
+
+  
+
+User / AI / Test Runner / Build Runner
+                  |
+                  v
+            Command Handler
+                  |
+          Validate & Authorize
+                  |
+                  v
+          Transaction Boundary
+             /           \
+            v             v
+       Node Store      Event Log
+            |             |
+            +------v------+
+             Aggregation Engine
+                    |
+            Snapshot / Read Model
+                    |
+       Canvas / Inspector / Spreadsheet
+
+  
+
+    Node Store 與 Event Log 應盡可能在同一個資料庫交易中更新。
+    若採用不同儲存系統，必須加入可靠事件傳遞、重試、冪等處理及一致性修復機制。
+  
+
+  
+03. 通用節點資料模型
+
+  
+
+    所有節點共用基本欄位，各 Node Type 另外定義專屬 Property Schema。
+    節點不直接保存完整歷史，而是以 ID 參照相關事件與產物。
+  
+
+  
+
+    
+
+欄位
+
+型別
+
+用途
+
+    
+
+      
+
+nodeId
+
+String / UUID
+
+全系統唯一且穩定的節點識別碼。
+
+      
+
+nodeType
+
+String
+
+節點類型，如 module、work_item、code_file、test、build、deployment。
+
+      
+
+name
+
+String
+
+節點顯示名稱。
+
+      
+
+properties
+
+Object
+
+該節點類型的專屬屬性。
+
+      
+
+parentRefs
+
+Array
+
+父節點參照；是否允許多父節點由 Node Type 規則決定。
+
+      
+
+dependencyRefs
+
+Array
+
+依賴的其他節點。
+
+      
+
+workflowStatus
+
+Enum
+
+目前工作流程狀態。
+
+      
+
+testStatus
+
+Enum
+
+目前有效的測試狀態。
+
+      
+
+contentHash
+
+String / Null
+
+內容版本雜湊；適用於有版本內容的節點。
+
+      
+
+schemaVersion
+
+Integer
+
+節點資料結構版本。
+
+      
+
+createdAt
+
+Timestamp
+
+節點建立時間。
+
+      
+
+updatedAt
+
+Timestamp
+
+最近一次有效狀態更新時間。
+
+    
+
+  
+
+  
+節點資料範例
+
+  
+
+{
+  "nodeId": "code_001",
+  "nodeType": "code_file",
+  "name": "TokenManager",
+  "properties": {
+    "filePath": "src/core/token_manager.py",
+    "language": "python",
+    "moduleRef": "module_001"
+  },
+  "parentRefs": ["module_001"],
+  "dependencyRefs": ["code_002"],
+  "workflowStatus": "InProgress",
+  "testStatus": "Stale",
+  "contentHash": "sha256:example",
+  "schemaVersion": 1,
+  "createdAt": "2026-10-25T09:00:00+08:00",
+  "updatedAt": "2026-10-25T10:30:00+08:00"
+}
+
+  
+節點類型與專屬屬性
+
+  
+
+    
+
+Node Type
+
+專屬屬性範例
+
+    
+
+      
+
+Module / Feature
+
+moduleKey、ownerRef、childRefs、aggregationPolicy
+
+      
+
+Work Item
+
+description、acceptanceCriteria、priority、buildDate、completedDate
+
+      
+
+Code File
+
+filePath、language、contentHash、repositoryRef、commitRef
+
+      
+
+Test
+
+testSuiteRef、testFramework、testVersion、resultSummary
+
+      
+
+Build
+
+buildProfile、inputRefs、artifactRefs、buildResult
+
+      
+
+Deployment
+
+targetEnvironment、strategy、approvalPolicy、rollbackPolicy
+
+      
+
+AI Task
+
+modelPolicy、promptVersion、contextRefs、budgetPolicy
+
+    
+
+  
+
+  
+擴充規則
+
+  
+
+    
+固定核心欄位供索引、關聯及統計使用。
+
+    
+各類節點透過 Node Type Registry 定義專屬屬性。
+
+    
+自訂欄位需定義型別、預設值、驗證規則及是否可彙總。
+
+    
+Schema 更新需提供版本遷移策略。
+
+  
+
+  
+04. Node Event Log 規格
+
+  
+
+    Event Log 保存不可任意覆寫的歷史事件。
+    每次編輯、執行或狀態轉換，都依事件類型記錄必要資訊。
+  
+
+  
+通用事件欄位
+
+  
+
+    
+
+欄位
+
+用途
+
+    
+
+      
+
+eventId
+
+每筆事件的唯一識別碼。
+
+      
+
+entityRef
+
+發生事件的主要節點或工項。
+
+      
+
+eventType
+
+事件類型，例如 node.property.updated。
+
+      
+
+timestamp
+
+事件發生時間，使用具時區資訊的標準時間格式。
+
+      
+
+actorType / actorRef
+
+事件發起者，例如 user、AI、system 或 test_runner。
+
+      
+
+correlationId
+
+關聯同一個任務執行流程中的多筆事件。
+
+      
+
+causationId
+
+指向直接引發本事件的上一筆事件或命令。
+
+      
+
+schemaVersion
+
+事件 Payload 的版本。
+
+      
+
+payload
+
+依事件類型定義的資料內容。
+
+    
+
+  
+
+  
+事件分類
+
+  
+
+    
+
+類別
+
+事件範例
+
+    
+
+      
+
+Node
+
+node.created、node.property.updated、node.deleted、node.restored
+
+      
+
+Work Item
+
+workitem.started、workitem.blocked、workitem.completed
+
+      
+
+Code
+
+code.generated、code.modified、code.version.changed
+
+      
+
+Test
+
+test.started、test.passed、test.failed、test.invalidated
+
+      
+
+Build
+
+build.started、build.succeeded、build.failed
+
+      
+
+Deployment
+
+deployment.started、deployment.succeeded、deployment.failed、deployment.rolled_back
+
+      
+
+Approval
+
+approval.requested、approval.granted、approval.rejected
+
+      
+
+LLM
+
+llm.call.started、llm.call.completed、llm.call.failed
+
+    
+
+  
+
+  
+屬性修改事件範例
+
+  
+
+{
+  "eventId": "evt_00042",
+  "entityRef": "workitem_042",
+  "eventType": "node.property.updated",
+  "timestamp": "2026-10-25T10:30:00+08:00",
+  "actorType": "user",
+  "actorRef": "user_001",
+  "correlationId": "run_00015",
+  "schemaVersion": 1,
+  "payload": {
+    "changes": [
+      {
+        "property": "workflowStatus",
+        "oldValue": "NotStarted",
+        "newValue": "InProgress"
+      }
+    ]
+  }
+}
+
+  
+事件寫入規則
+
+  
+
+    
+事件寫入成功後，不直接修改既有事件的歷史內容。
+
+    
+發現錯誤時，以更正事件或補償事件修正狀態。
+
+    
+相同命令重試時，透過 idempotencyKey 避免重複執行。
+
+    
+payload 不存放密碼、API Key 或其他機密明文。
+
+    
+大型輸出與完整程式內容以 Artifact Reference 取代直接嵌入。
+
+    
+事件類型與 payload 必須經過 Schema 驗證。
+
+  
+
+  
+05. Artifact Store 與程式版本管理
+
+  
+
+    程式原始碼、Patch、測試報告與建置產物不應全部塞進 Node Store 或 Event Log。
+    系統應保存產物參照與內容雜湊，實際內容由檔案系統、Git 或物件儲存管理。
+  
+
+  
+
+    
+
+欄位
+
+說明
+
+    
+
+      
+
+artifactId
+
+產物唯一 ID。
+
+      
+
+artifactType
+
+source、patch、test_report、build_output、log_attachment 等。
+
+      
+
+storageRef
+
+實際儲存位置的抽象參照。
+
+      
+
+contentHash
+
+用於完整性驗證與去重。
+
+      
+
+sizeBytes
+
+產物大小。
+
+      
+
+createdAt
+
+產物建立時間。
+
+      
+
+retentionPolicy
+
+保留期限或封存規則。
+
+    
+
+  
+
+  
+Code Node 規則
+
+  
+
+    
+nodeId 是程式節點的穩定身分，不以 filePath 取代。
+
+    
+檔案移動時更新 filePath，並寫入路徑變更事件。
+
+    
+每次有效程式修改更新 contentHash 或版本參照。
+
+    
+一個工項可關聯多個 Code Node，一個 Code Node 也可被多個工項引用。
+
+    
+測試結果必須記錄所驗證的程式版本或 contentHash。
+
+    
+刪除程式節點時應檢查依賴關係，預設採軟刪除或封存。
+
+  
+
+  
+06. Snapshot 與 Aggregation
+
+  
+Snapshot
+
+  
+
+    Snapshot 保存某個時間點的狀態快照，讓系統快速載入節點或模組狀態。
+    Snapshot 是可重建的讀取最佳化資料，不應取代原始事件紀錄。
+  
+
+  
+
+    
+
+欄位
+
+用途
+
+    
+
+      
+
+snapshotId
+
+快照唯一 ID。
+
+      
+
+scopeRef
+
+快照涵蓋的節點或模組。
+
+      
+
+eventCursor
+
+快照已包含到哪個事件位置。
+
+      
+
+stateHash
+
+快照內容的完整性雜湊。
+
+      
+
+createdAt
+
+快照建立時間。
+
+      
+
+schemaVersion
+
+快照資料結構版本。
+
+    
+
+  
+
+  
+Aggregation 指標
+
+  
+
+    
+
+指標
+
+計算規則
+
+    
+
+      
+
+workItemCount
+
+符合統計範圍的有效工項數量。
+
+      
+
+lampCounts
+
+依每個工項目前的有效燈號計數。
+
+      
+
+lampPercentages
+
+各燈號工項數除以有效工項總數。
+
+      
+
+blockedCount
+
+目前未解除阻塞的工項數量。
+
+      
+
+validTddPassCount
+
+最新必要測試通過且仍對應目前版本的工項數。
+
+      
+
+inputTokens
+
+依唯一 LLM Call Record 彙總輸入 Token。
+
+      
+
+outputTokens
+
+依唯一 LLM Call Record 彙總輸出 Token。
+
+      
+
+cachedInputTokens
+
+依 API 實際回報的快取輸入 Token 彙總。
+
+      
+
+apiCost
+
+依模型價格與實際用量計算的成本。
+
+    
+
+  
+
+  
+彙總規則
+
+  
+
+    
+只計算指定範圍內的最底層有效工項，避免父子工項重複計數。
+
+    
+已封存、取消或排除的工項須依明確政策處理。
+
+    
+父節點統計由子節點的有效資料彙總，不直接累加已彙總的父節點數字。
+
+    
+快取資料必須能重建，且應有更新時間或版本游標。
+
+    
+不同統計時間區間需明確區分，例如全生命週期、當前版本、最近 7 日。
+
+  
+
+  
+07. Work Item Spreadsheet
+
+  
+
+    Spreadsheet 是單一工項視角的管理視窗。
+    它提供可排序、篩選、編輯與查詢歷史的表格介面，
+    不直接承擔歷史資料儲存責任。
+  
+
+  
+固定欄位
+
+  
+
+    
+
+欄位
+
+用途
+
+資料來源
+
+    
+
+      
+
+Lamp
+
+五色狀態燈號
+
+狀態規則引擎
+
+      
+
+Work Item ID
+
+工項唯一識別碼
+
+Node Store
+
+      
+
+Work Item
+
+工項名稱與摘要
+
+Node Store
+
+      
+
+Parent Node
+
+所屬模組或父節點
+
+Node Relations
+
+      
+
+Code Refs
+
+關聯程式節點
+
+Node Relations
+
+      
+
+Build Date
+
+首次實際開始建置日期
+
+工項事件或狀態資料
+
+      
+
+Modified Date
+
+最近一次有效修改日期
+
+工項事件或狀態資料
+
+      
+
+Completed Date
+
+首次達成完成條件的時間
+
+完成事件
+
+      
+
+TDD Status
+
+最新有效測試結果
+
+Test Node / Test Events
+
+      
+
+Input Tokens
+
+累計輸入 Token
+
+LLM Usage Ledger
+
+      
+
+Output Tokens
+
+累計輸出 Token
+
+LLM Usage Ledger
+
+      
+
+API Cost
+
+累計 API 成本
+
+LLM Usage Ledger
+
+      
+
+Blocker / Decision
+
+阻塞原因或待核准事項
+
+Node Store / Event Log
+
+      
+
+History
+
+開啟工項歷史視窗
+
+Event Log Query
+
+    
+
+  
+
+  
+可擴充欄位
+
+  
+
+    
+欄位需有 fieldId、label、dataType、defaultValue、validationRules。
+
+    
+支援 String、Number、Boolean、Date、Enum、Reference、Array、Object 等型別。
+
+    
+欄位定義應記錄 schemaVersion，避免使用者自訂欄位與系統欄位衝突。
+
+    
+高層統計欄位需明確標示為系統計算值，不能直接當成使用者輸入值。
+
+  
+
+  
+工項歷史視窗
+
+  
+應提供以下查詢功能：
+
+  
+
+    
+依時間區間查詢。
+
+    
+依事件類型篩選。
+
+    
+依操作者篩選。
+
+    
+依關聯 Code Node、Test Node 或 AI Task 查詢。
+
+    
+查看屬性修改前後的差異。
+
+    
+查看 Token 用量、API 成本、測試結果及執行摘要。
+
+    
+分頁載入日誌，避免一次載入完整歷史。
+
+  
+
+  
+08. 五色燈號與狀態規則
+
+  
+保留既有燈號設計，並將流程狀態、測試狀態與顯示燈號分開儲存。
+
+  
+
+    
+
+燈號
+
+顏色
+
+意義
+
+判定原則
+
+    
+
+      
+
+        
+
+灰色
+
+        
+Gray
+
+未啟動
+
+尚未開始，且沒有更高優先級的異常狀態。
+
+      
+
+      
+
+        
+
+黃色
+
+        
+Yellow
+
+進行中
+
+目前正在執行或開發。
+
+      
+
+      
+
+        
+
+紅色
+
+        
+Red
+
+阻塞
+
+存在尚未解除的阻塞事件。
+
+      
+
+      
+
+        
+
+綠色
+
+        
+Green
+
+TDD Pass
+
+必要測試通過，且測試對應的程式版本仍有效。
+
+      
+
+      
+
+        
+
+橘色
+
+        
+Orange
+
+待決策／核准
+
+有尚未完成的必要人工決策或核准。
+
+      
+
+    
+
+  
+
+  
+內部狀態欄位
+
+  
+
+workflowStatus:
+  NotStarted
+  InProgress
+  Blocked
+  PendingDecision
+  PendingApproval
+  Completed
+  Cancelled
+
+testStatus:
+  NotRun
+  Running
+  Passed
+  Failed
+  Stale
+  Skipped
+
+displayLamp:
+  Gray
+  Yellow
+  Red
+  Green
+  Orange
+
+  
+顯示優先順序
+
+  
+
+    
+存在有效的阻塞 → 紅色。
+
+    
+存在待決策或核准事項 → 橘色。
+
+    
+目前正在執行 → 黃色。
+
+    
+必要測試通過且版本一致 → 綠色。
+
+    
+尚未啟動 → 灰色。
+
+  
+
+  
+
+    Completed 不等於 TDD Passed。若程式版本變更，原有測試結果必須重新判斷；
+    測試失效時不得繼續顯示有效綠燈。可透過額外的完成標籤呈現已完成但尚未驗證的工項。
+  
+
+  
+測試失效規則
+
+  
+
+    當程式節點的 contentHash 改變時，系統應檢查依賴它的測試紀錄。
+    若測試涵蓋範圍受到影響，將相關測試狀態標記為 Stale，
+    並重新計算工項及高層節點的有效燈號。
+  
+
+  
+09. Token 與 API 成本帳務
+
+  
+
+    LLM Usage Ledger 是 Token 與 API 成本的唯一原始帳務來源。
+    節點、工項及高層模組只透過關聯與彙總讀取數字。
+  
+
+  
+LLM Call Record 欄位
+
+  
+
+    
+
+欄位
+
+說明
+
+    
+
+      
+
+callId
+
+每次 API 呼叫唯一 ID。
+
+      
+
+taskId
+
+所屬 AI 任務。
+
+      
+
+modelId
+
+實際使用的模型。
+
+      
+
+inputTokens
+
+API 回報的輸入 Token。
+
+      
+
+outputTokens
+
+API 回報的輸出 Token。
+
+      
+
+cachedInputTokens
+
+API 回報的快取輸入 Token。
+
+      
+
+retryIndex
+
+本次呼叫在重試流程中的序號。
+
+      
+
+status
+
+呼叫成功、失敗或取消等狀態。
+
+      
+
+latencyMs
+
+呼叫耗時。
+
+      
+
+costBreakdown
+
+依實際模型價格計算的輸入、輸出、快取等成本明細。
+
+      
+
+taskRefs
+
+相關工項的關聯；不可因此複製原始用量紀錄。
+
+      
+
+createdAt
+
+呼叫時間。
+
+    
+
+  
+
+  
+成本計算原則
+
+  
+
+    
+以 API 實際回傳用量為優先；若沒有用量資料，必須標示估算值。
+
+    
+依實際模型、價格版本、幣別及計費項目計算成本。
+
+    
+快取 Token 是輸入用量的分類，不能在總 Token 統計中無條件再次加總。
+
+    
+同一筆 callId 只在原始帳務中計算一次。
+
+    
+若一筆呼叫服務多個工項，透過明確的分攤紀錄分配成本；分攤總和必須與原始成本一致。
+
+    
+區分全生命週期累計、當前版本及指定時間區間。
+
+    
+Token 總量與 API 費用分開統計，避免將 Token 數量直接視為金額。
+
+  
+
+  
+高層節點統計
+
+  
+
+Module Metrics
+  ├── Work Item Count
+  ├── Lamp Distribution
+  │   ├── Gray Count / Percentage
+  │   ├── Yellow Count / Percentage
+  │   ├── Red Count / Percentage
+  │   ├── Green Count / Percentage
+  │   └── Orange Count / Percentage
+  ├── Valid TDD Pass Count
+  ├── Blocked Work Item Count
+  ├── Input Token Total
+  ├── Output Token Total
+  ├── Cached Input Token Total
+  ├── API Cost Total
+  └── Cost Per Successful Task
+
+  
+10. 核心操作流程
+
+  
+A. 編輯節點屬性
+
+  
+
+    
+使用者透過 Inspector 修改屬性。
+
+    
+系統驗證 Node Type Schema 與使用者權限。
+
+    
+建立包含 oldValue、newValue 的事件。
+
+    
+在同一交易中寫入事件並更新節點目前狀態。
+
+    
+更新相關讀取模型與統計快取。
+
+    
+UI 重新載入節點狀態與必要的燈號。
+
+  
+
+  
+B. AI 修改程式
+
+  
+
+    
+建立或載入 Work Item。
+
+    
+依工項及依賴關係查詢相關 Code Node。
+
+    
+只將必要上下文送入 AI，記錄每次 API 呼叫的唯一 callId。
+
+    
+將生成結果存成 Artifact，並套用至工作目錄。
+
+    
+更新程式節點的 contentHash 或版本參照。
+
+    
+寫入 code.modified 事件與關聯資訊。
+
+    
+將受影響的測試標記為 Stale。
+
+    
+執行相關 TDD，保存測試結果及其程式版本。
+
+    
+重新計算工項燈號、Token 與成本統計。
+
+  
+
+  
+C. 高層節點統計
+
+  
+
+    
+取得該模組所屬的有效工項集合。
+
+    
+依規則排除封存、取消或明確不參與統計的工項。
+
+    
+每個工項只計入一個目前有效的顯示燈號。
+
+    
+從 LLM Usage Ledger 依指定範圍彙總用量與成本。
+
+    
+更新 Aggregation Cache，提供 Canvas 與 Spreadsheet 使用。
+
+  
+
+  
+D. 歷史查詢
+
+  
+
+    
+使用 nodeId 或 workItemId 查詢事件。
+
+ 

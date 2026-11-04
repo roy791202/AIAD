@@ -1,0 +1,763 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGGenAxis - Node State & Event Log System Specification</title>
+<style>
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --text: #202938;
+  --muted: #687386;
+  --border: #dce2ea;
+  --accent: #326fd1;
+  --gray: #858b94;
+  --yellow: #eab308;
+  --red: #dc2626;
+  --green: #16a34a;
+  --orange: #ea580c;
+  --code: #172033;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.7 "Segoe UI", "Microsoft JhengHei", sans-serif;
+}
+header {
+  background: #182236;
+  color: white;
+  padding: 32px max(24px, calc((100% - 1120px)/2));
+}
+header h1 { margin: 0 0 8px; font-size: 27px; }
+header p { color: #c5cede; margin: 0; }
+main { max-width: 1120px; margin: 24px auto; padding: 0 20px 60px; }
+nav, section, .card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+nav { padding: 18px 22px; }
+nav a { color: var(--accent); text-decoration: none; margin-right: 16px; }
+section { padding: 24px; scroll-margin-top: 16px; }
+h2 { font-size: 21px; margin: 0 0 14px; }
+h3 { font-size: 16px; margin-top: 22px; }
+p, li { max-width: 1000px; }
+.muted { color: var(--muted); }
+.callout {
+  border-left: 4px solid var(--accent);
+  padding: 12px 16px;
+  background: #edf4ff;
+  border-radius: 4px;
+  margin: 14px 0;
+}
+.warning {
+  border-left-color: var(--orange);
+  background: #fff5e9;
+}
+table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+th, td {
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  padding: 9px 11px;
+  overflow-wrap: anywhere;
+}
+th { background: #eef1f6; }
+code {
+  background: #edf0f5;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: .92em;
+}
+pre {
+  background: var(--code);
+  color: #e5edf9;
+  padding: 17px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font: 12px/1.7 Consolas, monospace;
+}
+pre code { background: none; padding: 0; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.card { padding: 16px; margin: 0; }
+.card h3 { margin: 0 0 8px; }
+.pill {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: #edf0f5;
+  font-size: 12px;
+}
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.dot {
+  display: inline-block;
+  width: 11px; height: 11px; border-radius: 50%;
+}
+.gray { background: var(--gray); }
+.yellow { background: var(--yellow); }
+.red { background: var(--red); }
+.green { background: var(--green); }
+.orange { background: var(--orange); }
+footer {
+  color: var(--muted);
+  text-align: center;
+  padding: 24px;
+}
+@media (max-width: 650px) {
+  header { padding: 24px 20px; }
+  header h1 { font-size: 22px; }
+  section { padding: 16px; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SGGenAxis</h1>
+  <p>Node State & Event Log System Specification</p>
+  <p>節點狀態、編輯日誌、歷史追蹤、工項管理與 Token 成本統計</p>
+</header>
+
+<main>
+<nav>
+  <strong>文件導覽</strong><br><br>
+  <a href="#overview">系統定位</a>
+  <a href="#architecture">系統架構</a>
+  <a href="#node">節點模型</a>
+  <a href="#event">事件日誌</a>
+  <a href="#artifact">產物管理</a>
+  <a href="#snapshot">快照與統計</a>
+  <a href="#spreadsheet">工項 Spreadsheet</a>
+  <a href="#lamp">燈號規則</a>
+  <a href="#token">Token 成本</a>
+  <a href="#workflow">操作流程</a>
+  <a href="#validation">驗收規範</a>
+</nav>
+
+<section id="overview">
+  <h2>01. 系統定位與設計目標</h2>
+  <p>
+    本系統是 SGGenAxis 自動開發工具的共用資料管理層。
+    程式、工項、測試、建置、部署及其他工程資源皆可建立為節點，
+    並透過獨立事件日誌保存歷史，避免節點資料隨時間不斷膨脹。
+  </p>
+
+  <div class="callout">
+    <strong>核心原則：</strong>
+    Node Store 保存目前狀態；Event Log 保存歷史事件；
+    Artifact Store 保存大型產物；Snapshot 與 Aggregation 提供快速查詢及統計。
+  </div>
+
+  <h3>設計目標</h3>
+  <ul>
+    <li>節點資料保持精簡，歷史資料獨立保存。</li>
+    <li>所有節點使用穩定且唯一的 nodeId。</li>
+    <li>節點編輯、程式修改、TDD、建置、部署及 AI 呼叫均可追溯。</li>
+    <li>支援使用者自訂擴充欄位及事件類型。</li>
+    <li>保留灰、黃、紅、綠、橘五色燈號。</li>
+    <li>高層節點自動彙總子工項狀態與 Token 用量。</li>
+    <li>避免重複記錄 Token、重複計算工項或使用過期測試結果。</li>
+    <li>讓 AI 只讀取當前任務必要的上下文，降低 API 成本。</li>
+  </ul>
+
+  <h3>系統不應採用的做法</h3>
+  <ul>
+    <li>不把所有歷史紀錄直接嵌入節點 JSON。</li>
+    <li>不以檔案路徑作為節點唯一識別碼。</li>
+    <li>不把 TDD 結果與工作流程狀態混為單一資料欄位。</li>
+    <li>不把同一筆 AI 呼叫複製到多個節點後再直接加總。</li>
+    <li>不以「工項已完成」直接推定「TDD 已通過」。</li>
+  </ul>
+</section>
+
+<section id="architecture">
+  <h2>02. 系統資料架構</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Node Store</h3>
+      <p>保存節點 ID、類型、目前屬性、狀態、依賴關係與版本參照。</p>
+      <span class="pill">Current State</span>
+    </div>
+    <div class="card">
+      <h3>Node Event Log</h3>
+      <p>保存節點建立、編輯、狀態變更、測試、核准與執行事件。</p>
+      <span class="pill">Append-oriented</span>
+    </div>
+    <div class="card">
+      <h3>Artifact Store</h3>
+      <p>保存程式版本、Patch、測試報告、建置產物及大型執行輸出。</p>
+      <span class="pill">External Artifacts</span>
+    </div>
+    <div class="card">
+      <h3>Snapshot Store</h3>
+      <p>保存指定時間點的節點狀態，協助快速還原與歷史比較。</p>
+      <span class="pill">Versioned State</span>
+    </div>
+    <div class="card">
+      <h3>Aggregation Engine</h3>
+      <p>彙總工項燈號、Token、API 成本、測試結果及阻塞數。</p>
+      <span class="pill">Derived Metrics</span>
+    </div>
+    <div class="card">
+      <h3>Query / UI Layer</h3>
+      <p>提供 Architecture Canvas、Inspector、History Window 與 Spreadsheet。</p>
+      <span class="pill">Read Models</span>
+    </div>
+  </div>
+
+  <h3>資料流</h3>
+  <pre><code>User / AI / Test Runner / Build Runner
+                  |
+                  v
+            Command Handler
+                  |
+          Validate & Authorize
+                  |
+                  v
+          Transaction Boundary
+             /           \
+            v             v
+       Node Store      Event Log
+            |             |
+            +------v------+
+             Aggregation Engine
+                    |
+            Snapshot / Read Model
+                    |
+       Canvas / Inspector / Spreadsheet</code></pre>
+
+  <div class="callout warning">
+    Node Store 與 Event Log 應盡可能在同一個資料庫交易中更新。
+    若採用不同儲存系統，必須加入可靠事件傳遞、重試、冪等處理及一致性修復機制。
+  </div>
+</section>
+
+<section id="node">
+  <h2>03. 通用節點資料模型</h2>
+  <p>
+    所有節點共用基本欄位，各 Node Type 另外定義專屬 Property Schema。
+    節點不直接保存完整歷史，而是以 ID 參照相關事件與產物。
+  </p>
+
+  <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>nodeId</td><td>String / UUID</td><td>全系統唯一且穩定的節點識別碼。</td></tr>
+      <tr><td>nodeType</td><td>String</td><td>節點類型，如 module、work_item、code_file、test、build、deployment。</td></tr>
+      <tr><td>name</td><td>String</td><td>節點顯示名稱。</td></tr>
+      <tr><td>properties</td><td>Object</td><td>該節點類型的專屬屬性。</td></tr>
+      <tr><td>parentRefs</td><td>Array</td><td>父節點參照；是否允許多父節點由 Node Type 規則決定。</td></tr>
+      <tr><td>dependencyRefs</td><td>Array</td><td>依賴的其他節點。</td></tr>
+      <tr><td>workflowStatus</td><td>Enum</td><td>目前工作流程狀態。</td></tr>
+      <tr><td>testStatus</td><td>Enum</td><td>目前有效的測試狀態。</td></tr>
+      <tr><td>contentHash</td><td>String / Null</td><td>內容版本雜湊；適用於有版本內容的節點。</td></tr>
+      <tr><td>schemaVersion</td><td>Integer</td><td>節點資料結構版本。</td></tr>
+      <tr><td>createdAt</td><td>Timestamp</td><td>節點建立時間。</td></tr>
+      <tr><td>updatedAt</td><td>Timestamp</td><td>最近一次有效狀態更新時間。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>節點資料範例</h3>
+  <pre><code>{
+  "nodeId": "code_001",
+  "nodeType": "code_file",
+  "name": "TokenManager",
+  "properties": {
+    "filePath": "src/core/token_manager.py",
+    "language": "python",
+    "moduleRef": "module_001"
+  },
+  "parentRefs": ["module_001"],
+  "dependencyRefs": ["code_002"],
+  "workflowStatus": "InProgress",
+  "testStatus": "Stale",
+  "contentHash": "sha256:example",
+  "schemaVersion": 1,
+  "createdAt": "2026-10-25T09:00:00+08:00",
+  "updatedAt": "2026-10-25T10:30:00+08:00"
+}</code></pre>
+
+  <h3>節點類型與專屬屬性</h3>
+  <table>
+    <thead><tr><th>Node Type</th><th>專屬屬性範例</th></tr></thead>
+    <tbody>
+      <tr><td>Module / Feature</td><td>moduleKey、ownerRef、childRefs、aggregationPolicy</td></tr>
+      <tr><td>Work Item</td><td>description、acceptanceCriteria、priority、buildDate、completedDate</td></tr>
+      <tr><td>Code File</td><td>filePath、language、contentHash、repositoryRef、commitRef</td></tr>
+      <tr><td>Test</td><td>testSuiteRef、testFramework、testVersion、resultSummary</td></tr>
+      <tr><td>Build</td><td>buildProfile、inputRefs、artifactRefs、buildResult</td></tr>
+      <tr><td>Deployment</td><td>targetEnvironment、strategy、approvalPolicy、rollbackPolicy</td></tr>
+      <tr><td>AI Task</td><td>modelPolicy、promptVersion、contextRefs、budgetPolicy</td></tr>
+    </tbody>
+  </table>
+
+  <h3>擴充規則</h3>
+  <ul>
+    <li>固定核心欄位供索引、關聯及統計使用。</li>
+    <li>各類節點透過 Node Type Registry 定義專屬屬性。</li>
+    <li>自訂欄位需定義型別、預設值、驗證規則及是否可彙總。</li>
+    <li>Schema 更新需提供版本遷移策略。</li>
+  </ul>
+</section>
+
+<section id="event">
+  <h2>04. Node Event Log 規格</h2>
+  <p>
+    Event Log 保存不可任意覆寫的歷史事件。
+    每次編輯、執行或狀態轉換，都依事件類型記錄必要資訊。
+  </p>
+
+  <h3>通用事件欄位</h3>
+  <table>
+    <thead><tr><th>欄位</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>eventId</td><td>每筆事件的唯一識別碼。</td></tr>
+      <tr><td>entityRef</td><td>發生事件的主要節點或工項。</td></tr>
+      <tr><td>eventType</td><td>事件類型，例如 node.property.updated。</td></tr>
+      <tr><td>timestamp</td><td>事件發生時間，使用具時區資訊的標準時間格式。</td></tr>
+      <tr><td>actorType / actorRef</td><td>事件發起者，例如 user、AI、system 或 test_runner。</td></tr>
+      <tr><td>correlationId</td><td>關聯同一個任務執行流程中的多筆事件。</td></tr>
+      <tr><td>causationId</td><td>指向直接引發本事件的上一筆事件或命令。</td></tr>
+      <tr><td>schemaVersion</td><td>事件 Payload 的版本。</td></tr>
+      <tr><td>payload</td><td>依事件類型定義的資料內容。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>事件分類</h3>
+  <table>
+    <thead><tr><th>類別</th><th>事件範例</th></tr></thead>
+    <tbody>
+      <tr><td>Node</td><td>node.created、node.property.updated、node.deleted、node.restored</td></tr>
+      <tr><td>Work Item</td><td>workitem.started、workitem.blocked、workitem.completed</td></tr>
+      <tr><td>Code</td><td>code.generated、code.modified、code.version.changed</td></tr>
+      <tr><td>Test</td><td>test.started、test.passed、test.failed、test.invalidated</td></tr>
+      <tr><td>Build</td><td>build.started、build.succeeded、build.failed</td></tr>
+      <tr><td>Deployment</td><td>deployment.started、deployment.succeeded、deployment.failed、deployment.rolled_back</td></tr>
+      <tr><td>Approval</td><td>approval.requested、approval.granted、approval.rejected</td></tr>
+      <tr><td>LLM</td><td>llm.call.started、llm.call.completed、llm.call.failed</td></tr>
+    </tbody>
+  </table>
+
+  <h3>屬性修改事件範例</h3>
+  <pre><code>{
+  "eventId": "evt_00042",
+  "entityRef": "workitem_042",
+  "eventType": "node.property.updated",
+  "timestamp": "2026-10-25T10:30:00+08:00",
+  "actorType": "user",
+  "actorRef": "user_001",
+  "correlationId": "run_00015",
+  "schemaVersion": 1,
+  "payload": {
+    "changes": [
+      {
+        "property": "workflowStatus",
+        "oldValue": "NotStarted",
+        "newValue": "InProgress"
+      }
+    ]
+  }
+}</code></pre>
+
+  <h3>事件寫入規則</h3>
+  <ul>
+    <li>事件寫入成功後，不直接修改既有事件的歷史內容。</li>
+    <li>發現錯誤時，以更正事件或補償事件修正狀態。</li>
+    <li>相同命令重試時，透過 idempotencyKey 避免重複執行。</li>
+    <li>payload 不存放密碼、API Key 或其他機密明文。</li>
+    <li>大型輸出與完整程式內容以 Artifact Reference 取代直接嵌入。</li>
+    <li>事件類型與 payload 必須經過 Schema 驗證。</li>
+  </ul>
+</section>
+
+<section id="artifact">
+  <h2>05. Artifact Store 與程式版本管理</h2>
+  <p>
+    程式原始碼、Patch、測試報告與建置產物不應全部塞進 Node Store 或 Event Log。
+    系統應保存產物參照與內容雜湊，實際內容由檔案系統、Git 或物件儲存管理。
+  </p>
+
+  <table>
+    <thead><tr><th>欄位</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>artifactId</td><td>產物唯一 ID。</td></tr>
+      <tr><td>artifactType</td><td>source、patch、test_report、build_output、log_attachment 等。</td></tr>
+      <tr><td>storageRef</td><td>實際儲存位置的抽象參照。</td></tr>
+      <tr><td>contentHash</td><td>用於完整性驗證與去重。</td></tr>
+      <tr><td>sizeBytes</td><td>產物大小。</td></tr>
+      <tr><td>createdAt</td><td>產物建立時間。</td></tr>
+      <tr><td>retentionPolicy</td><td>保留期限或封存規則。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Code Node 規則</h3>
+  <ul>
+    <li>nodeId 是程式節點的穩定身分，不以 filePath 取代。</li>
+    <li>檔案移動時更新 filePath，並寫入路徑變更事件。</li>
+    <li>每次有效程式修改更新 contentHash 或版本參照。</li>
+    <li>一個工項可關聯多個 Code Node，一個 Code Node 也可被多個工項引用。</li>
+    <li>測試結果必須記錄所驗證的程式版本或 contentHash。</li>
+    <li>刪除程式節點時應檢查依賴關係，預設採軟刪除或封存。</li>
+  </ul>
+</section>
+
+<section id="snapshot">
+  <h2>06. Snapshot 與 Aggregation</h2>
+
+  <h3>Snapshot</h3>
+  <p>
+    Snapshot 保存某個時間點的狀態快照，讓系統快速載入節點或模組狀態。
+    Snapshot 是可重建的讀取最佳化資料，不應取代原始事件紀錄。
+  </p>
+  <table>
+    <thead><tr><th>欄位</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>snapshotId</td><td>快照唯一 ID。</td></tr>
+      <tr><td>scopeRef</td><td>快照涵蓋的節點或模組。</td></tr>
+      <tr><td>eventCursor</td><td>快照已包含到哪個事件位置。</td></tr>
+      <tr><td>stateHash</td><td>快照內容的完整性雜湊。</td></tr>
+      <tr><td>createdAt</td><td>快照建立時間。</td></tr>
+      <tr><td>schemaVersion</td><td>快照資料結構版本。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Aggregation 指標</h3>
+  <table>
+    <thead><tr><th>指標</th><th>計算規則</th></tr></thead>
+    <tbody>
+      <tr><td>workItemCount</td><td>符合統計範圍的有效工項數量。</td></tr>
+      <tr><td>lampCounts</td><td>依每個工項目前的有效燈號計數。</td></tr>
+      <tr><td>lampPercentages</td><td>各燈號工項數除以有效工項總數。</td></tr>
+      <tr><td>blockedCount</td><td>目前未解除阻塞的工項數量。</td></tr>
+      <tr><td>validTddPassCount</td><td>最新必要測試通過且仍對應目前版本的工項數。</td></tr>
+      <tr><td>inputTokens</td><td>依唯一 LLM Call Record 彙總輸入 Token。</td></tr>
+      <tr><td>outputTokens</td><td>依唯一 LLM Call Record 彙總輸出 Token。</td></tr>
+      <tr><td>cachedInputTokens</td><td>依 API 實際回報的快取輸入 Token 彙總。</td></tr>
+      <tr><td>apiCost</td><td>依模型價格與實際用量計算的成本。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>彙總規則</h3>
+  <ul>
+    <li>只計算指定範圍內的最底層有效工項，避免父子工項重複計數。</li>
+    <li>已封存、取消或排除的工項須依明確政策處理。</li>
+    <li>父節點統計由子節點的有效資料彙總，不直接累加已彙總的父節點數字。</li>
+    <li>快取資料必須能重建，且應有更新時間或版本游標。</li>
+    <li>不同統計時間區間需明確區分，例如全生命週期、當前版本、最近 7 日。</li>
+  </ul>
+</section>
+
+<section id="spreadsheet">
+  <h2>07. Work Item Spreadsheet</h2>
+  <p>
+    Spreadsheet 是單一工項視角的管理視窗。
+    它提供可排序、篩選、編輯與查詢歷史的表格介面，
+    不直接承擔歷史資料儲存責任。
+  </p>
+
+  <h3>固定欄位</h3>
+  <table>
+    <thead><tr><th>欄位</th><th>用途</th><th>資料來源</th></tr></thead>
+    <tbody>
+      <tr><td>Lamp</td><td>五色狀態燈號</td><td>狀態規則引擎</td></tr>
+      <tr><td>Work Item ID</td><td>工項唯一識別碼</td><td>Node Store</td></tr>
+      <tr><td>Work Item</td><td>工項名稱與摘要</td><td>Node Store</td></tr>
+      <tr><td>Parent Node</td><td>所屬模組或父節點</td><td>Node Relations</td></tr>
+      <tr><td>Code Refs</td><td>關聯程式節點</td><td>Node Relations</td></tr>
+      <tr><td>Build Date</td><td>首次實際開始建置日期</td><td>工項事件或狀態資料</td></tr>
+      <tr><td>Modified Date</td><td>最近一次有效修改日期</td><td>工項事件或狀態資料</td></tr>
+      <tr><td>Completed Date</td><td>首次達成完成條件的時間</td><td>完成事件</td></tr>
+      <tr><td>TDD Status</td><td>最新有效測試結果</td><td>Test Node / Test Events</td></tr>
+      <tr><td>Input Tokens</td><td>累計輸入 Token</td><td>LLM Usage Ledger</td></tr>
+      <tr><td>Output Tokens</td><td>累計輸出 Token</td><td>LLM Usage Ledger</td></tr>
+      <tr><td>API Cost</td><td>累計 API 成本</td><td>LLM Usage Ledger</td></tr>
+      <tr><td>Blocker / Decision</td><td>阻塞原因或待核准事項</td><td>Node Store / Event Log</td></tr>
+      <tr><td>History</td><td>開啟工項歷史視窗</td><td>Event Log Query</td></tr>
+    </tbody>
+  </table>
+
+  <h3>可擴充欄位</h3>
+  <ul>
+    <li>欄位需有 fieldId、label、dataType、defaultValue、validationRules。</li>
+    <li>支援 String、Number、Boolean、Date、Enum、Reference、Array、Object 等型別。</li>
+    <li>欄位定義應記錄 schemaVersion，避免使用者自訂欄位與系統欄位衝突。</li>
+    <li>高層統計欄位需明確標示為系統計算值，不能直接當成使用者輸入值。</li>
+  </ul>
+
+  <h3>工項歷史視窗</h3>
+  <p>應提供以下查詢功能：</p>
+  <ul>
+    <li>依時間區間查詢。</li>
+    <li>依事件類型篩選。</li>
+    <li>依操作者篩選。</li>
+    <li>依關聯 Code Node、Test Node 或 AI Task 查詢。</li>
+    <li>查看屬性修改前後的差異。</li>
+    <li>查看 Token 用量、API 成本、測試結果及執行摘要。</li>
+    <li>分頁載入日誌，避免一次載入完整歷史。</li>
+  </ul>
+</section>
+
+<section id="lamp">
+  <h2>08. 五色燈號與狀態規則</h2>
+  <p>保留既有燈號設計，並將流程狀態、測試狀態與顯示燈號分開儲存。</p>
+
+  <table>
+    <thead><tr><th>燈號</th><th>顏色</th><th>意義</th><th>判定原則</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="status"><span class="dot gray"></span>灰色</span></td>
+        <td>Gray</td><td>未啟動</td><td>尚未開始，且沒有更高優先級的異常狀態。</td>
+      </tr>
+      <tr>
+        <td><span class="status"><span class="dot yellow"></span>黃色</span></td>
+        <td>Yellow</td><td>進行中</td><td>目前正在執行或開發。</td>
+      </tr>
+      <tr>
+        <td><span class="status"><span class="dot red"></span>紅色</span></td>
+        <td>Red</td><td>阻塞</td><td>存在尚未解除的阻塞事件。</td>
+      </tr>
+      <tr>
+        <td><span class="status"><span class="dot green"></span>綠色</span></td>
+        <td>Green</td><td>TDD Pass</td><td>必要測試通過，且測試對應的程式版本仍有效。</td>
+      </tr>
+      <tr>
+        <td><span class="status"><span class="dot orange"></span>橘色</span></td>
+        <td>Orange</td><td>待決策／核准</td><td>有尚未完成的必要人工決策或核准。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>內部狀態欄位</h3>
+  <pre><code>workflowStatus:
+  NotStarted
+  InProgress
+  Blocked
+  PendingDecision
+  PendingApproval
+  Completed
+  Cancelled
+
+testStatus:
+  NotRun
+  Running
+  Passed
+  Failed
+  Stale
+  Skipped
+
+displayLamp:
+  Gray
+  Yellow
+  Red
+  Green
+  Orange</code></pre>
+
+  <h3>顯示優先順序</h3>
+  <ol>
+    <li>存在有效的阻塞 → 紅色。</li>
+    <li>存在待決策或核准事項 → 橘色。</li>
+    <li>目前正在執行 → 黃色。</li>
+    <li>必要測試通過且版本一致 → 綠色。</li>
+    <li>尚未啟動 → 灰色。</li>
+  </ol>
+
+  <div class="callout warning">
+    Completed 不等於 TDD Passed。若程式版本變更，原有測試結果必須重新判斷；
+    測試失效時不得繼續顯示有效綠燈。可透過額外的完成標籤呈現已完成但尚未驗證的工項。
+  </div>
+
+  <h3>測試失效規則</h3>
+  <p>
+    當程式節點的 contentHash 改變時，系統應檢查依賴它的測試紀錄。
+    若測試涵蓋範圍受到影響，將相關測試狀態標記為 Stale，
+    並重新計算工項及高層節點的有效燈號。
+  </p>
+</section>
+
+<section id="token">
+  <h2>09. Token 與 API 成本帳務</h2>
+  <p>
+    LLM Usage Ledger 是 Token 與 API 成本的唯一原始帳務來源。
+    節點、工項及高層模組只透過關聯與彙總讀取數字。
+  </p>
+
+  <h3>LLM Call Record 欄位</h3>
+  <table>
+    <thead><tr><th>欄位</th><th>說明</th></tr></thead>
+    <tbody>
+      <tr><td>callId</td><td>每次 API 呼叫唯一 ID。</td></tr>
+      <tr><td>taskId</td><td>所屬 AI 任務。</td></tr>
+      <tr><td>modelId</td><td>實際使用的模型。</td></tr>
+      <tr><td>inputTokens</td><td>API 回報的輸入 Token。</td></tr>
+      <tr><td>outputTokens</td><td>API 回報的輸出 Token。</td></tr>
+      <tr><td>cachedInputTokens</td><td>API 回報的快取輸入 Token。</td></tr>
+      <tr><td>retryIndex</td><td>本次呼叫在重試流程中的序號。</td></tr>
+      <tr><td>status</td><td>呼叫成功、失敗或取消等狀態。</td></tr>
+      <tr><td>latencyMs</td><td>呼叫耗時。</td></tr>
+      <tr><td>costBreakdown</td><td>依實際模型價格計算的輸入、輸出、快取等成本明細。</td></tr>
+      <tr><td>taskRefs</td><td>相關工項的關聯；不可因此複製原始用量紀錄。</td></tr>
+      <tr><td>createdAt</td><td>呼叫時間。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>成本計算原則</h3>
+  <ul>
+    <li>以 API 實際回傳用量為優先；若沒有用量資料，必須標示估算值。</li>
+    <li>依實際模型、價格版本、幣別及計費項目計算成本。</li>
+    <li>快取 Token 是輸入用量的分類，不能在總 Token 統計中無條件再次加總。</li>
+    <li>同一筆 callId 只在原始帳務中計算一次。</li>
+    <li>若一筆呼叫服務多個工項，透過明確的分攤紀錄分配成本；分攤總和必須與原始成本一致。</li>
+    <li>區分全生命週期累計、當前版本及指定時間區間。</li>
+    <li>Token 總量與 API 費用分開統計，避免將 Token 數量直接視為金額。</li>
+  </ul>
+
+  <h3>高層節點統計</h3>
+  <pre><code>Module Metrics
+  ├── Work Item Count
+  ├── Lamp Distribution
+  │   ├── Gray Count / Percentage
+  │   ├── Yellow Count / Percentage
+  │   ├── Red Count / Percentage
+  │   ├── Green Count / Percentage
+  │   └── Orange Count / Percentage
+  ├── Valid TDD Pass Count
+  ├── Blocked Work Item Count
+  ├── Input Token Total
+  ├── Output Token Total
+  ├── Cached Input Token Total
+  ├── API Cost Total
+  └── Cost Per Successful Task</code></pre>
+</section>
+
+<section id="workflow">
+  <h2>10. 核心操作流程</h2>
+
+  <h3>A. 編輯節點屬性</h3>
+  <ol>
+    <li>使用者透過 Inspector 修改屬性。</li>
+    <li>系統驗證 Node Type Schema 與使用者權限。</li>
+    <li>建立包含 oldValue、newValue 的事件。</li>
+    <li>在同一交易中寫入事件並更新節點目前狀態。</li>
+    <li>更新相關讀取模型與統計快取。</li>
+    <li>UI 重新載入節點狀態與必要的燈號。</li>
+  </ol>
+
+  <h3>B. AI 修改程式</h3>
+  <ol>
+    <li>建立或載入 Work Item。</li>
+    <li>依工項及依賴關係查詢相關 Code Node。</li>
+    <li>只將必要上下文送入 AI，記錄每次 API 呼叫的唯一 callId。</li>
+    <li>將生成結果存成 Artifact，並套用至工作目錄。</li>
+    <li>更新程式節點的 contentHash 或版本參照。</li>
+    <li>寫入 code.modified 事件與關聯資訊。</li>
+    <li>將受影響的測試標記為 Stale。</li>
+    <li>執行相關 TDD，保存測試結果及其程式版本。</li>
+    <li>重新計算工項燈號、Token 與成本統計。</li>
+  </ol>
+
+  <h3>C. 高層節點統計</h3>
+  <ol>
+    <li>取得該模組所屬的有效工項集合。</li>
+    <li>依規則排除封存、取消或明確不參與統計的工項。</li>
+    <li>每個工項只計入一個目前有效的顯示燈號。</li>
+    <li>從 LLM Usage Ledger 依指定範圍彙總用量與成本。</li>
+    <li>更新 Aggregation Cache，提供 Canvas 與 Spreadsheet 使用。</li>
+  </ol>
+
+  <h3>D. 歷史查詢</h3>
+  <ol>
+    <li>使用 nodeId 或 workItemId 查詢事件。</li>
+    <li>依時間、事件類型、操作者及關聯任務篩選。</li>
+    <li>分頁載入事件，避免一次讀取完整歷史。</li>
+    <li>需要查看程式內容時，依 artifactId 或版本參照載入。</li>
+    <li>需要還原時，先建立新版本或備份，再執行受權限控制的還原命令。</li>
+  </ol>
+</section>
+
+<section id="validation">
+  <h2>11. 資料一致性與驗收條件</h2>
+
+  <h3>資料一致性規則</h3>
+  <ul>
+    <li>每個 nodeId、eventId、callId 與 artifactId 必須唯一。</li>
+    <li>事件、節點及工項之間的參照必須有效或明確標記為已失效。</li>
+    <li>相同命令重試不得造成重複修改或重複計費紀錄。</li>
+    <li>節點狀態與事件紀錄的更新必須具有交易一致性，或具備可恢復的可靠事件機制。</li>
+    <li>父節點統計不得將已彙總的子節點統計再次重複加總。</li>
+    <li>程式修改後，所有受影響的測試必須重新判斷有效性。</li>
+    <li>歷史事件不得因一般節點更新而消失。</li>
+    <li>Snapshot 必須能追溯其涵蓋的事件位置。</li>
+    <li>Token 與成本統計須可追溯至原始 callId。</li>
+    <li>使用者自訂欄位及事件必須通過對應 Schema 驗證。</li>
+  </ul>
+
+  <h3>第一階段驗收清單</h3>
+  <ul>
+    <li>節點可以建立、編輯、查詢及軟刪除。</li>
+    <li>每次有效編輯都會留下可查詢的事件紀錄。</li>
+    <li>節點 JSON 不會隨歷史紀錄無限制增長。</li>
+    <li>Code Node 可以追蹤檔案路徑、內容雜湊與工項關聯。</li>
+    <li>工項 Spreadsheet 顯示五色燈號及建置、修改、完成日期。</li>
+    <li>修改程式後，舊測試結果可被標記為 Stale。</li>
+    <li>高層節點能正確彙總燈號數量與比例。</li>
+    <li>Token 與 API 成本能依唯一呼叫紀錄正確彙總。</li>
+    <li>歷史視窗支援事件類型篩選及分頁查詢。</li>
+    <li>快照與統計快取可從權威資料重新建立。</li>
+  </ul>
+
+  <h3>建議開發順序</h3>
+  <table>
+    <thead><tr><th>階段</th><th>開發內容</th><th>完成條件</th></tr></thead>
+    <tbody>
+      <tr><td>Phase 1</td><td>Node Store、Node Type Schema、基本 Event Log</td><td>節點建立、編輯及歷史查詢正常。</td></tr>
+      <tr><td>Phase 2</td><td>Work Item、五色燈號、Spreadsheet</td><td>工項狀態與日期可追蹤。</td></tr>
+      <tr><td>Phase 3</td><td>Code Node、Artifact Store、TDD 關聯</td><td>程式版本及測試結果可追溯。</td></tr>
+      <tr><td>Phase 4</td><td>LLM Usage Ledger、Token 與成本統計</td><td>呼叫用量不重複計算。</td></tr>
+      <tr><td>Phase 5</td><td>Snapshot、Aggregation Cache、效能最佳化</td><td>高層統計可快速載入並可重建。</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="implementation-notes">
+  <h2>12. 技術實作注意事項</h2>
+  <ul>
+    <li>第一版可使用 SQLite 或現有的關聯式資料庫，依併發需求決定。</li>
+    <li>節點、事件、LLM 呼叫及產物中繼資料分開建表，使用外鍵或應用層關聯維護一致性。</li>
+    <li>對 nodeId、entityRef、eventType、timestamp、callId 建立適當索引。</li>
+    <li>大規模歷史查詢使用游標分頁，不建議使用高偏移量的無限分頁。</li>
+    <li>以版本化 Schema 管理節點、事件、快照與自訂欄位。</li>
+    <li>使用交易、唯一索引及冪等鍵，處理重試與重複事件。</li>
+    <li>建立資料備份、還原、事件重播及統計重建測試。</li>
+    <li>日誌可能包含程式內容、Prompt 或使用者資訊，必須依資料敏感度管理存取權限與保留期限。</li>
+    <li>不要將 API Key、密碼或其他機密直接寫入事件 Payload。</li>
+  </ul>
+
+  <div class="callout">
+    <strong>實作原則：</strong>
+    先建立可靠的資料模型、事件紀錄及一致性規則，再建立複雜的視覺化管理介面。
+    這樣後續新增 Node Type、工項欄位、部署策略或成本指標時，
+    才能持續擴充而不需要反覆重寫底層架構。
+  </div>
+</section>
+
+<footer>
+  SGGenAxis · Node State & Event Log System Specification<br>
+  文件用途：系統架構設計、資料模型規劃、開發任務拆解與驗收依據
+</footer>
+</main>
+</body>
+</html>

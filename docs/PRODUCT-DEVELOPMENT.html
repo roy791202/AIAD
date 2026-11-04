@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SGenAxis 產品開發說明</title>
+  <style>
+    :root {
+      --bg: #0f1215;
+      --panel: #171b20;
+      --ink: #e8ecf1;
+      --muted: #9aa3ad;
+      --line: #2a3139;
+      --accent: #3d8bfd;
+      --good: #5bc98b;
+      --warn: #f2b544;
+      --bad: #f07979;
+      --code: #1e242c;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.65 "Segoe UI", "Microsoft JhengHei", sans-serif;
+    }
+    header {
+      padding: 48px max(5vw, 24px) 36px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(160deg, #141a22 0%, #0f1215 70%);
+    }
+    header .eyebrow {
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      color: #7eb6ff;
+      text-transform: uppercase;
+    }
+    h1 { font-size: 34px; margin: 10px 0 12px; font-weight: 700; }
+    header p { color: var(--muted); max-width: 720px; margin: 0; }
+    .badges { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--good); border-color: #2f5a44; }
+    .badge.warn { color: var(--warn); border-color: #5c4a22; }
+    nav {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; flex-wrap: wrap; gap: 6px 14px;
+      padding: 12px max(5vw, 24px);
+      background: rgba(15, 18, 21, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    nav a {
+      color: #b8c4d0;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    nav a:hover { color: #fff; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px max(5vw, 24px) 64px; }
+    section {
+      margin: 0 0 28px;
+      padding: 24px 26px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      scroll-margin-top: 56px;
+    }
+    h2 { font-size: 22px; margin: 0 0 14px; }
+    h3 { font-size: 16px; margin: 22px 0 10px; color: #d5dde6; }
+    p, li { color: #d0d7e0; }
+    .muted { color: var(--muted); }
+    a { color: var(--accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 12px 0;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 600; background: #12161b; }
+    code, pre {
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 13px;
+    }
+    code {
+      background: var(--code);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background: var(--code);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px 16px;
+      overflow: auto;
+      color: #c9d4e0;
+      line-height: 1.45;
+    }
+    .note {
+      border-left: 3px solid var(--warn);
+      background: #221c10;
+      padding: 12px 14px;
+      margin: 14px 0;
+      color: #e6d5a8;
+      font-size: 14px;
+    }
+    .flow {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin: 12px 0;
+    }
+    .flow span {
+      border: 1px solid var(--line);
+      background: #12161b;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .flow span em {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 600;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 8px 24px 40px;
+    }
+    @media (max-width: 700px) {
+      h1 { font-size: 26px; }
+      section { padding: 18px; }
+      th, td { padding: 8px; }
+    }
+    @media print {
+      nav { display: none; }
+      body { background: #fff; color: #111; }
+      section, header { background: #fff; border-color: #ccc; color: #111; }
+      p, li, td { color: #222; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">SGenAxis · Product Development</div>
+    <h1>產品開發說明</h1>
+    <p>跨平台桌機 · Comfy 式輕盈 · Tauri 2 + Vanilla Web UI + Rust Core。含 UI 與功能說明、製作流程與跨平台適配器。</p>
+    <div class="badges">
+      <span class="badge ok">技術棧已拍板</span>
+      <span class="badge warn">產品實作尚未開工</span>
+      <span class="badge">v0.2 · 2026-10-23</span>
+      <span class="badge">同源：PRODUCT-DEVELOPMENT.md</span>
+    </div>
+  </header>
+
+  <nav>
+    <a href="#meta">摘要</a>
+    <a href="#position">定位</a>
+    <a href="#stack">技術棧</a>
+    <a href="#arch">架構</a>
+    <a href="#flow">製作流程</a>
+    <a href="#ui">UI</a>
+    <a href="#features">功能</a>
+    <a href="#tools">開發工具</a>
+    <a href="#milestones">里程碑</a>
+    <a href="#refs">相關路徑</a>
+  </nav>
+
+  <main>
+    <section id="meta">
+      <h2>0 · 文件摘要</h2>
+      <table>
+        <tr><th>產品名稱</th><td>SGenAxis（看板工具側曾用 VGenAxIs）</td></tr>
+        <tr><th>UI 原型</th><td><code>git_workbench_interactive.html</code></td></tr>
+        <tr><th>PM 看板</th><td><code>docs/PROJECT-BOARD.html</code> + <code>start-board-watch.cmd</code> → <code>http://127.0.0.1:28789/</code></td></tr>
+        <tr><th>舊規畫</th><td><code>docs/product-plan/</code>（Electron + React <strong>已廢止</strong>為產品棧；模組語意可參考）</td></tr>
+      </table>
+    </section>
+
+    <section id="position">
+      <h2>1 · 產品定位</h2>
+      <p>SGenAxis 是<strong>本機優先的跨平台桌機</strong>「自動化開發控制中心」：人選專案與工項、核准意圖與驗收；系統派本機 Agent CLI、收集證據、管理 Git 與（後期）部署。</p>
+      <p>體感目標：<strong>ComfyUI 式輕盈</strong>（薄殼 + Web UI），但是<strong>正式桌機 App</strong>，不是純瀏覽器工具。</p>
+      <h3>使用者旅程（首版）</h3>
+      <ol>
+        <li>開啟桌機 App → 選／開專案</li>
+        <li>看工項燈號看板 → 篩選紅／黃／灰</li>
+        <li>指派 Agent → 看 Run／Log</li>
+        <li>檢視 Git 變更 →（後期）核准提交／發布</li>
+      </ol>
+      <p><strong>操作步驟</strong>（開專案／DryRun／設定、埠 28789 與 <code>:8788</code> 禁區）：
+        <code>apps/sgenaxis-desktop/README.md</code>「使用說明」· 索引 <code>docs/DESKTOP-APP-USAGE.md</code>（PD-README-APP-01）。</p>
+      <h3>範圍與非目標</h3>
+      <table>
+        <thead><tr><th>首版範圍</th><th>非目標</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Windows／macOS／Linux 桌機；單一進行中 Agent；Git 先讀後寫；本機專案根綁定</td>
+            <td>多租戶 RBAC、雲端 worker、多 Agent 並行、外掛市場；HoneyBadger <code>:8788</code> 不當產品通道</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="stack">
+      <h2>2 · 已拍板技術棧</h2>
+      <table>
+        <thead><tr><th>層</th><th>選型</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td>桌機殼</td><td><strong>Tauri 2</strong></td><td>MIT／Apache；跨平台；無框架授權費</td></tr>
+          <tr><td>Web UI</td><td><strong>Vanilla HTML／CSS／JS</strong></td><td>對齊現有原型；必要時局部 Svelte</td></tr>
+          <tr><td>核心</td><td><strong>Rust Core</strong></td><td>Property + Dirty + Evaluation</td></tr>
+          <tr><td>OS 邊界</td><td><strong>Ports + 跨平台 Adapters</strong></td><td>Core 不直接依賴 OS／CLI</td></tr>
+          <tr><td>不做預設</td><td>Electron、React 全家桶、egui／iced 主 UI、Slint</td><td>過重或授權風險</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">授權：棧本身無商用必付費隱憂。簽章憑證／商店帳號屬發行成本。</p>
+    </section>
+
+    <section id="arch">
+      <h2>3 · 系統架構與跨平台適配器</h2>
+      <pre>Vanilla Web UI  ──Tauri command／事件──►  Rust Core
+                                              │
+                         Property · Dirty · Evaluation
+                                              │
+                                         Ports（介面）
+                                              │
+                    ┌─────────────────────────┼─────────────────────────┐
+                    ▼                         ▼                         ▼
+            FileSystemPort              ProcessPort                  GitPort
+            PathPort                    DialogPort（可選）
+                    │                         │
+                    └──────────► Win／macOS／Linux Adapters ◄───────────┘
+                                              │
+                                         OS／CLI／FS</pre>
+      <h3>依賴規則</h3>
+      <ul>
+        <li>編譯依賴向內指向 Core</li>
+        <li>UI 只發 command／訂閱投影，不直撞 Adapter</li>
+        <li>Core 測試用 fake adapter</li>
+        <li>Tauri 是殼與 IPC，不把業務 OS 邏輯塞進 command</li>
+      </ul>
+      <h3>Ports 示例</h3>
+      <table>
+        <thead><tr><th>Port</th><th>職責</th></tr></thead>
+        <tbody>
+          <tr><td><code>FileSystemPort</code></td><td>讀寫、原子寫入、存在性</td></tr>
+          <tr><td><code>PathPort</code></td><td>設定／快取／專案慣例目錄</td></tr>
+          <tr><td><code>ProcessPort</code></td><td>Agent CLI 啟動／監看／取消</td></tr>
+          <tr><td><code>GitPort</code></td><td>status／log／diff（先讀後寫）</td></tr>
+          <tr><td><code>DialogPort</code></td><td>原生開檔／選目錄（經 Tauri）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="flow">
+      <h2>4 · 製作流程（強制順序）</h2>
+      <div class="flow">
+        <span><em>1</em> 先搭好 UI</span>
+        <span><em>2</em> 核心髒更新</span>
+        <span><em>2.5</em> 跨平台適配器</span>
+        <span><em>3</em> 功能</span>
+        <span><em>4</em> UI 接 command</span>
+      </div>
+      <table>
+        <thead><tr><th>#</th><th>階段</th><th>做什麼</th><th>退出條件</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>先搭好 UI</td><td>Tauri 載入 Vanilla 工作台；選單／側欄／主區／空狀態</td><td>無真資料可走完主路徑</td></tr>
+          <tr><td>2</td><td>核心髒更新</td><td>Property + Dirty + Evaluation；假資料驅動刷新</td><td>改一處 → 該亮投影都更新</td></tr>
+          <tr><td>2.5</td><td>跨平台適配器</td><td>Ports；stub → 真 OS 實作</td><td>Contract 可測；fake／真可切</td></tr>
+          <tr><td>3</td><td>功能</td><td>模組切片（只依賴 Port）</td><td>每片可測行為</td></tr>
+          <tr><td>4</td><td>UI 接 command</td><td>選單／按鈕 → command → Core</td><td>UI 無直接 OS／CLI</td></tr>
+        </tbody>
+      </table>
+      <div class="note">不可顛倒：沒有髒更新就堆真功能；沒有 Port 就寫死 OS。</div>
+    </section>
+
+    <section id="ui">
+      <h2>5 · UI 說明</h2>
+      <p>視覺與資訊架構以 <code>git_workbench_interactive.html</code> 為準。深色 DCC 工作台；側欄 + 主區 + Inspector；燈號需搭配文字／圖示。</p>
+      <h3>視窗結構</h3>
+      <table>
+        <thead><tr><th>區域</th><th>內容</th></tr></thead>
+        <tbody>
+          <tr><td>選單列</td><td>檔案／編輯／專案／模組／工項／視窗／說明</td></tr>
+          <tr><td>工具列</td><td>作用中專案、路徑、分支、常用動作</td></tr>
+          <tr><td>左側欄</td><td>Agent 派工、Tasks Status、佈版、模組架構圖、UI 設計工具</td></tr>
+          <tr><td>主區</td><td>工項看板、Git 工作台、架構 DAG、UI 設計總覽</td></tr>
+          <tr><td>Inspector</td><td>選中工項／模組詳情、下一步、證據摘要</td></tr>
+          <tr><td>狀態列</td><td>專案、Agent、簡短訊息</td></tr>
+        </tbody>
+      </table>
+      <h3>主要畫面</h3>
+      <table>
+        <thead><tr><th>畫面</th><th>用途</th><th>空／錯誤／停用</th></tr></thead>
+        <tbody>
+          <tr><td>工項看板</td><td>四態燈號、篩選、新增／切燈、派工</td><td>無結果可清篩選；失敗不殘留他專案</td></tr>
+          <tr><td>Agent 派工</td><td>紅 &gt; 黃 &gt; 灰 啟動本機 CLI</td><td>Provider 缺失則停用並說明</td></tr>
+          <tr><td>Git 工作台</td><td>變更、diff、分支；寫入另閘門</td><td>dirty／diverged／租約明示</td></tr>
+          <tr><td>模組架構圖</td><td>DAG、高亮、開規格</td><td>循環列路徑；無證據不綠</td></tr>
+          <tr><td>佈版／部署</td><td>後期部署狀態</td><td>未接 Adapter 顯示未支援</td></tr>
+          <tr><td>設定</td><td>Agent 路徑、DryRun／真啟動、專案根</td><td>無效路徑不可存為作用中</td></tr>
+        </tbody>
+      </table>
+      <h3>選單 → command（摘要）</h3>
+      <table>
+        <thead><tr><th>選單</th><th>代表動作</th></tr></thead>
+        <tbody>
+          <tr><td>檔案</td><td>新增／開啟專案、儲存、結束</td></tr>
+          <tr><td>編輯</td><td>復原／重做、全選變更、清除選取</td></tr>
+          <tr><td>專案</td><td>切換專案、重新掃描</td></tr>
+          <tr><td>模組</td><td>Git／架構圖／UI 設計、Ports 檢視</td></tr>
+          <tr><td>工項</td><td>新增工項、指派 Agent、批次 BDD／TDD 標籤</td></tr>
+          <tr><td>視窗</td><td>重設佈局、顯隱 Inspector／分支樹</td></tr>
+          <tr><td>說明</td><td>關於、架構說明</td></tr>
+        </tbody>
+      </table>
+      <h3>燈號語意</h3>
+      <table>
+        <thead><tr><th>燈</th><th>含義</th></tr></thead>
+        <tbody>
+          <tr><td>灰</td><td>未開始／等依賴</td></tr>
+          <tr><td>藍</td><td>執行中</td></tr>
+          <tr><td>黃</td><td>待核准／待處理／過期／待對帳</td></tr>
+          <tr><td>紅</td><td>失敗／阻塞</td></tr>
+          <tr><td>綠</td><td>核准範圍驗收完成（≠ 已正式發布）</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><code>PROJECT-BOARD.html</code> 是開發 PM 燈號，與產品內工項健康分開，勿混為同一權威。</div>
+    </section>
+
+    <section id="features">
+      <h2>6 · 功能說明（模組）</h2>
+      <p>實作只依賴 Port。下表延續舊 product-plan 責任劃分；<strong>宿主為 Tauri，UI 為 Vanilla</strong>。</p>
+      <table>
+        <thead><tr><th>模組</th><th>名稱</th><th>功能摘要</th></tr></thead>
+        <tbody>
+          <tr><td>HOST</td><td>桌面宿主與建置</td><td>生命週期、composition root、Tauri IPC、設定；不擁有業務狀態</td></tr>
+          <tr><td>UI</td><td>工程控制台</td><td>畫面與互動；mutation 經 command</td></tr>
+          <tr><td>WORK</td><td>專案工作區</td><td>專案 ID、root 綁定、切換與租約</td></tr>
+          <tr><td>SPEC</td><td>工程規格</td><td>ModuleSpec、契約、BDD／TDD；核准後不原地竄改</td></tr>
+          <tr><td>FLOW</td><td>流程與核准</td><td>工項階段、核准閘門、合法轉移</td></tr>
+          <tr><td>EXEC</td><td>Agent 執行</td><td>Run、取消；兩種 Provider：<strong>CLI</strong>／<strong>地端 MCP</strong>（見下）</td></tr>
+          <tr><td>GUARD</td><td>開發邊界</td><td>封包完整性、允許／保護路徑</td></tr>
+          <tr><td>EVID</td><td>驗證證據</td><td>不可變測試紀錄、有效 RED／GREEN</td></tr>
+          <tr><td>GIT</td><td>版本控管</td><td>讀寫 Git；寫入需閘門</td></tr>
+          <tr><td>REL</td><td>部署與發布</td><td>打包／安裝／核准／回滾（後期）；Windows 走 <strong>WiX</strong></td></tr>
+          <tr><td>REPORT</td><td>報告投影</td><td>模組／系統報告；只讀規格與證據</td></tr>
+        </tbody>
+      </table>
+      <h3>首版功能優先</h3>
+      <ol>
+        <li>HOST + UI 空殼（階段 1）</li>
+        <li>髒更新 + WORK 投影（階段 2）</li>
+        <li>Path／FS／Process stub→真適配器（階段 2.5）</li>
+        <li>FLOW 燈號 + EXEC DryRun→真 CLI + GIT 唯讀（階段 3）</li>
+        <li>看板／選單接 command（階段 4）</li>
+        <li>GUARD／EVID／SPEC 加深 → REL／REPORT</li>
+      </ol>
+      <h3>Agent 約束</h3>
+      <ul>
+        <li>Run 綁定專案 root、工項 ID、工作樹指紋</li>
+        <li>Provider 完成 ≠ 工項綠燈</li>
+        <li>取消／崩潰需對帳；禁止盲目重跑 mutation</li>
+        <li>首版單一進行中 Agent</li>
+        <li>UI／FLOW 只選 Provider 種類 + 設定，不直撞 CLI 或 MCP</li>
+      </ul>
+      <h3>Agent 兩種接入（已拍板）</h3>
+      <p>同一 <code>AgentPort</code>，兩套 Adapter，<strong>共用 Run 事件流</strong>（started／chunk／progress／exited／failed）：</p>
+      <table>
+        <thead><tr><th>模式</th><th>名稱</th><th>做法</th><th>適用</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>A. CLI</strong></td>
+            <td>原設計</td>
+            <td><code>ProcessPort</code> 啟動本機 CLI（Claude／cursor-agent／Codex／Antigravity 等），讀 stdout／stderr／結束碼</td>
+            <td>腳本化、可離線重現命令列</td>
+          </tr>
+          <tr>
+            <td><strong>B. MCP</strong></td>
+            <td>地端 Agent</td>
+            <td>經 <strong>MCP</strong> 連本機／區網 Agent（stdio 或本機 HTTP／SSE），工具與訊息走 MCP 協定</td>
+            <td>對接已開的地端 Agent／IDE MCP 宿主</td>
+          </tr>
+        </tbody>
+      </table>
+      <pre>UI「指派 Agent」
+  → command: start_run { provider: Cli | Mcp, … }
+    → EXEC 選 Adapter
+        ├─ CliAgentAdapter  → ProcessPort → 子行程
+        └─ McpAgentAdapter  → MCP client  → 地端 Agent
+    → 統一 Domain Event → Dirty → 投影（Run log／燈號）</pre>
+      <ul>
+        <li>兩種皆須：啟動、串流、取消、結束對帳、錯誤分類</li>
+        <li>設定分開：CLI 路徑／參數 vs MCP 端點／伺服器名／核准工具表</li>
+        <li>DryRun 兩種皆可只模擬事件</li>
+        <li>首版不強制同一 Run 雙通道並行</li>
+        <li>MCP 只連使用者明示的地端目標；秘密不進 UI 投影</li>
+      </ul>
+      <p class="muted">監聽：CLI 用 pipe；MCP 訂閱通知／串流，轉成同一套 AgentChunk 類事件。</p>
+      <h3>佈版工具（已拍板）</h3>
+      <table>
+        <thead><tr><th>項</th><th>定案</th></tr></thead>
+        <tbody>
+          <tr><td>Windows 安裝包</td><td><strong>WiX</strong>（開源、不收費）</td></tr>
+          <tr><td>產物</td><td>MSI（Bundle／burn 另評）</td></tr>
+          <tr><td>驗證</td><td>靜默安裝／卸載、檔案與捷徑、回滾紀錄</td></tr>
+          <tr><td>與 Tauri</td><td>Tauri 建本體 → WiX 包安裝程式</td></tr>
+          <tr><td>不做預設</td><td>NSIS、Inno 當正式管道</td></tr>
+          <tr><td>後續</td><td>macOS／Linux 屬 M4，不硬套 WiX</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">派工卡：<code>PD-REL-01</code>（M3，不插隊 M1／M2）。</p>
+      <h3 id="m4-pack-limits">M4 包裝範圍與限制（已拍板 · BDD-PD-M4-DOC-01）</h3>
+      <table>
+        <thead><tr><th>面</th><th>定案</th></tr></thead>
+        <tbody>
+          <tr><td>Windows（M3）</td><td>正式管道＝<strong>WiX → MSI</strong>；Tauri 建本體後由 WiX 包安裝程式</td></tr>
+          <tr><td>M4 包裝</td><td>macOS／Linux <strong>契約／stub／文件／CI 矩陣占位</strong>；可重跑、可標狀態；<strong>不</strong>硬套 WiX</td></tr>
+          <tr><td>非 M4 包裝</td><td>SSH／容器／DCC 宿主另案；不併入「跨平台安裝包已完成」；SSH／遠端／容器開題見 <code>docs/SSH-REMOTE-CONTAINER-EPIC-SCOPE.md</code>（<strong>未接通</strong>；禁止暗示已接通）</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>做</th><th>不做（禁止暗示已完成）</th></tr></thead>
+        <tbody>
+          <tr><td>PackSpec 產物欄位與 Build Result／releases 可掛接</td><td>宣稱已完整跨平台發行或全 OS 靜默裝卸皆綠</td></tr>
+          <tr><td>mac／linux 包裝 stub（無對應主機 → <strong>NOT RUN</strong>）</td><td>強制 notarize／App Store／發行版商店必過</td></tr>
+          <tr><td>CI／文件三 OS 占位；缺 runner → <strong>NOT RUN</strong></td><td>付費 mac runner 才算 M4 過關</td></tr>
+          <tr><td>文件寫清 WiX 僅 Windows</td><td>把 WiX MSI 成功寫成「三平台已發行」</td></tr>
+        </tbody>
+      </table>
+      <p>Build Result／PackSpec 狀態僅：<code>PASS</code>｜<code>FAIL</code>｜<code>BLOCKED</code>｜<code>NOT RUN</code>｜<code>PARTIAL</code>。</p>
+      <ul>
+        <li><strong>NOT RUN</strong>：主機 OS ≠ 目標、缺 runner、elevated／notarize／真機裝卸未執行；exit 可為 0，<strong>不得記成 PASS</strong></li>
+        <li><strong>PARTIAL</strong>：契約／stub／文件到位，真機驗證或簽章未跑</li>
+        <li><strong>PASS</strong>：該列目標上驗證實際跑過且通過；不可用「腳本存在」代替</li>
+      </ul>
+      <p class="muted">Stub／文件／Windows WiX MSI ≠ 跨平台發行完成。對照 <code>docs/CI-OS-MATRIX.md</code>；桌機 README 同步本節。</p>
+    </section>
+
+    <section id="tools">
+      <h2>7 · 開發期工具（非產品殼）</h2>
+      <table>
+        <thead><tr><th>工具</th><th>入口</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td>專案看板</td><td><code>http://127.0.0.1:28789/</code></td><td>開發燈號板；可寫回 PROJECT-BOARD.html</td></tr>
+          <tr><td>派工清單</td><td>epic <code>PRODUCT-DEV-20261023</code>＋灰燈 <code>PD-*</code></td><td><strong>首版切片</strong>（流程＋模組），非全產品／非 VGenAxIs 歷史全量；含 CLI／MCP</td></tr>
+          <tr><td>滅燈規則（硬性）</td><td>見下方 §7.1</td><td><strong>未產出且 TDD 未過關 → 禁止改綠</strong></td></tr>
+          <tr><td>PM Agent 必作</td><td>見 §7.3；<code>tools/board/PM-AGENT.md</code></td><td><strong>建工項 → 決策紅燈 → 派 subagent</strong></td></tr>
+          <tr><td>禁止占用</td><td><code>:8788</code>／指定勿動之 <code>:8787</code></td><td>不可當 SGenAxis 通道</td></tr>
+          <tr><td>舊埠</td><td><code>:18789</code></td><td>已讓出；勿寫回腳本</td></tr>
+        </tbody>
+      </table>
+      <p>產品發行走 Tauri 桌機；看板 HTTP 可留作內部 PM。</p>
+      <h3 id="extinguish-rule">7.1 滅燈規則（硬性 · 已拍板）</h3>
+      <p>工項改<strong>綠（滅燈）</strong>必須<strong>同時</strong>滿足：</p>
+      <table>
+        <thead><tr><th>#</th><th>條件</th><th>不合格例</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>有產出</strong>（可指認源碼／報告／產物路徑）</td><td>空承諾、只改備註、只改 zone</td></tr>
+          <tr><td>2</td><td><strong>獨立 TDD Agent</strong> 親跑／核對並回報 <code>TDD_PASS</code></td><td>實作代理自測自報、<code>PENDING_TDD_PACKET</code>、弱化 assertion</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>角色</th><th>可做</th><th>不可做</th></tr></thead>
+        <tbody>
+          <tr><td>實作 Agent</td><td>寫碼、交報告、標 <code>READY_FOR_TDD</code></td><td>改綠、自稱 TDD PASS</td></tr>
+          <tr><td>TDD Agent</td><td>定義／跑測、寫 <code>*-TDD-REVIEW.md</code>、<code>TDD_PASS</code>／<code>TDD_FAIL</code></td><td>代做業務功能</td></tr>
+          <tr><td>母對話／owner</td><td>僅在 <code>TDD_PASS</code>＋有產出時改綠</td><td>只憑實作口頭完成改綠</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>禁止排程／腳本批次直接改綠</li>
+        <li>禁止實作代理自測通過就滅燈</li>
+        <li><code>poll_next_work.py</code> 只列待做；<code>poll_extinguish.py</code> 拒絕直接滅燈</li>
+      </ul>
+      <h3 id="claim-read-scope">7.2 領取範圍／讀取範圍（硬性 · 省 token）</h3>
+      <p>Subagent <strong>只處理自己領取的那一張卡</strong>；禁止為「了解全貌」讀完整看板或其他卡。</p>
+      <table>
+        <thead><tr><th>角色</th><th>可讀</th><th>禁止</th></tr></thead>
+        <tbody>
+          <tr><td>母對話派工</td><td>只把該卡欄位與路徑寫進 Task prompt</td><td>叫子代理打開整份 <code>PROJECT-BOARD.html</code>、掃全部 <code>reports/dispatch-pd/*</code></td></tr>
+          <tr><td>實作 Agent</td><td>Prompt 摘錄；<code>reports/dispatch-pd/&lt;本卡ID&gt;.md</code>；允許路徑內檔案</td><td>其他 <code>PD-*</code> 報告／無關 crate；整板 Grep；整檔重寫看板</td></tr>
+          <tr><td>TDD Agent</td><td>佇列內各卡報告＋對應測試；寫 <code>&lt;ID&gt;-TDD-REVIEW.md</code></td><td>一次載入全部工項備註當上下文</td></tr>
+        </tbody>
+      </table>
+      <p>看板回寫：只追加本卡短註（或 <code>board.py report</code>）；禁止用過期整份 HTML 覆寫板面殼。</p>
+      <h3 id="pm-agent-must">7.3 PM Agent 必作事項（硬性 · 已拍板）</h3>
+      <p>母對話／PM Agent 使用看板工具時下列為<strong>必作</strong>（細節：<code>tools/board/PM-AGENT.md</code>）：</p>
+      <table>
+        <thead><tr><th>#</th><th>必作</th><th>不合格</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>建工項</strong>：下一批先寫入 <code>#board-snapshot</code>（預設灰燈；BDD／範圍／AC 齊）</td><td>只在聊天列清單就派工</td></tr>
+          <tr><td>2</td><td><strong>決策 → 紅燈</strong>：待核准／未決／REPLAN／SPEC_CONFLICT → <code>kind=decision</code>、<code>zone=red</code>，note 記<strong>待決策事項</strong></td><td>決策未決就黃燈開工</td></tr>
+          <tr><td>3</td><td><strong>分派 subagent</strong>：決策清後灰→黃；一卡一實作＋獨立 TDD Gate；§7.2 prompt；§7.1 滅燈</td><td>跳過 TDD；自改綠</td></tr>
+        </tbody>
+      </table>
+      <p>自動派工 <code>skip_kinds</code> 含 <code>decision</code>（紅燈決策卡不進 CLI lane）。</p>
+    </section>
+
+    <section id="milestones">
+      <h2>8 · 里程碑</h2>
+      <table>
+        <thead><tr><th>里程碑</th><th>目標</th><th>階段</th></tr></thead>
+        <tbody>
+          <tr><td>M0</td><td>本說明與棧／流程核准</td><td>—</td></tr>
+          <tr><td>M1</td><td>Tauri + Vanilla 可開；髒更新 + Ports stub</td><td>1 → 2 → 2.5</td></tr>
+          <tr><td>M2</td><td>真 Agent CLI + 看板／Git 讀取閉環</td><td>3 → 4</td></tr>
+          <tr><td>M3</td><td>證據閘門、審核式 Git 寫入、<strong>WiX</strong> 打包／靜默安裝</td><td>3 加深 + REL</td></tr>
+          <tr><td>M4</td><td>macOS／Linux <strong>包裝契約／stub／文件／CI 占位</strong>；SSH／容器／DCC <strong>另案</strong></td><td>可選；WiX 僅 Windows；<strong>≠ 已完整跨平台發行</strong>（見 §6.5）</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">每次建置留下 Build Result（PASS／FAIL／BLOCKED／NOT RUN／PARTIAL）。<strong>NOT RUN</strong>＝該檢查未執行（非失敗、亦非通過）。</p>
+    </section>
+
+    <section id="refs">
+      <h2>9 · 相關路徑</h2>
+      <table>
+        <thead><tr><th>路徑</th><th>角色</th></tr></thead>
+        <tbody>
+          <tr><td><code>git_workbench_interactive.html</code></td><td>產品 UI 原型</td></tr>
+          <tr><td><code>docs/PRODUCT-DEVELOPMENT.md</code></td><td>本說明 Markdown</td></tr>
+          <tr><td><code>docs/PRODUCT-DEVELOPMENT.html</code></td><td>本說明 HTML</td></tr>
+          <tr><td><code>docs/PROJECT-BOARD.html</code></td><td>開發看板</td></tr>
+          <tr><td><code>tools/board/PM-AGENT.md</code></td><td>PM Agent 必作：建工項、決策紅燈、分派 subagent</td></tr>
+          <tr><td><code>docs/start-board-watch.cmd</code></td><td>看板啟動（埠 28789）</td></tr>
+          <tr><td><code>apps/sgenaxis-desktop/README.md</code></td><td>桌機 App 使用說明（開專案／DryRun／設定；埠禁區）</td></tr>
+          <tr><td><code>docs/VERIFY-ELEVATED-AND-LIVE-SMOKE.md</code></td><td>elevated VERIFY-INSTALL／Live CLI 冒煙；風險；NOT RUN（PD-VERIFY-DOC-01）</td></tr>
+          <tr><td><code>docs/RELEASE-CHECKLIST-v0.1.md</code></td><td>v0.1 發布檢查清單（MSI／elev／sec／SBOM／簽章／CHANGELOG）（PD-REL-CHECKLIST-01）</td></tr>
+          <tr><td><code>docs/ROLLBACK-v0.1.md</code></td><td>v0.1 MSI 靜默卸載／失敗復原／風險；未真跑＝NOT RUN（PD-ROLLBACK-DOC-01）</td></tr>
+          <tr><td><code>docs/SSH-REMOTE-CONTAINER-EPIC-SCOPE.md</code></td><td>SSH／遠端／容器<strong>另案</strong>範圍一頁；<strong>未接通</strong>；無客戶端；禁止暗示遠端已接通（PD-REMAIN-SSH-EPIC-01）</td></tr>
+          <tr><td><code>docs/DESKTOP-APP-USAGE.md</code></td><td>桌機使用說明索引（指向 README）</td></tr>
+          <tr><td><code>reports/gonogo-v0.1.0-*.md</code></td><td>Rel-Freeze Go／NoGo／<strong>Go-with-PARTIAL</strong> 結案報告（PD-REL-GONOGO-01）；非正式商店發布</td></tr>
+          <tr><td><code>reports/milestone-validation-v0.1.md</code></td><td>Rel-Freeze 里程碑驗收（可 PARTIAL）（PD-MILESTONE-VAL-01）</td></tr>
+          <tr><td><code>reports/dispatch-pd/</code></td><td>派工證據目錄（含 Rel-Freeze／Post-Freeze）</td></tr>
+          <tr><td><code>docs/product-plan/</code></td><td>舊規畫；技術選型以本文件為準</td></tr>
+        </tbody>
+      </table>
+      <p class="muted"><strong>Post-Freeze／Rel-Freeze 結案語意（BDD-PD-PRODUCT-DOC-CLOSE-01）</strong>：Rel-Freeze verdict 可為 <strong>Go-with-PARTIAL</strong>（≠ 正式商店發布）；<strong>DCC／SSH／商店上架</strong>＝另案（SSH／遠端／容器開題：<code>docs/SSH-REMOTE-CONTAINER-EPIC-SCOPE.md</code>，<strong>未接通</strong>）；<strong>禁止暗示完整跨平台發行已完成</strong>（見 §6.5）。</p>
+      <h3>變更紀錄</h3>
+      <table>
+        <thead><tr><th>日期</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td>2026-10-24</td><td>PD-REMAIN-SSH-EPIC-01：SSH-REMOTE-CONTAINER-EPIC-SCOPE.md SSH／遠端／容器另案範圍一頁；未接通；禁止暗示遠端已接通；無客戶端實作</td></tr>
+          <tr><td>2026-10-24</td><td>PD-PRODUCT-DOC-CLOSE-01（Post-Freeze）：§9／變更紀錄記入 Rel-Freeze 結案與 Go-with-PARTIAL；明示 DCC／SSH／商店另案；禁止暗示完整跨平台發行已完成</td></tr>
+          <tr><td>2026-10-24</td><td>PD-ROLLBACK-DOC-01：ROLLBACK-v0.1.md 靜默卸載／失敗復原／風險；未真跑＝NOT RUN；禁止暗示正式發布回滾演練已完成</td></tr>
+          <tr><td>2026-10-24</td><td>PD-REL-CHECKLIST-01：RELEASE-CHECKLIST-v0.1.md 發布前可勾選項＋狀態語意</td></tr>
+          <tr><td>2026-10-24</td><td>PD-M4-DOC-01：§6.5 M4 包裝範圍／NOT RUN 語意／WiX 僅 Windows；禁止暗示已完整跨平台發行；桌機 README 對齊</td></tr>
+          <tr><td>2026-10-24</td><td>PD-README-APP-01：桌機使用說明（README＋DESKTOP-APP-USAGE.md）；明確 28789／:8788 禁區</td></tr>
+          <tr><td>2026-10-23</td><td>初版：Tauri 2 + Vanilla + Rust Core；流程 1→2→2.5→3→4；看板埠 28789；廢止 Electron／React 產品棧</td></tr>
+          <tr><td>2026-10-23</td><td>EXEC：Agent 分為 CLI 與地端 MCP 兩種 Provider，共用 Run 事件流</td></tr>
+          <tr><td>2026-10-23</td><td>看板寫入派工清單：PRODUCT-DEV-20261023＋PD-DOC/UI/DIRTY/ADAPT/EXEC-CLI/EXEC-MCP/CMD</td></tr>
+          <tr><td>2026-10-23</td><td>REL／佈版：Windows 安裝包拍板 WiX（M3；macOS／Linux 另案）</td></tr>
+          <tr><td>2026-10-24</td><td>滅燈規則：未產出且 TDD 未過關不可滅工項；禁止排程直接改綠</td></tr>
+          <tr><td>2026-10-24</td><td>TDD Agent 閘門：獨立 TDD Agent 回報 TDD_PASS 後母對話才可標綠</td></tr>
+          <tr><td>2026-10-24</td><td>§7.2 領取讀取範圍：subagent 只讀自己領取工項；禁止讀整板／全部報告（省 token）</td></tr>
+          <tr><td>2026-10-24</td><td>§7.3 PM Agent 必作：建工項、決策紅燈＋待決策事項、分派 subagent；PM-AGENT.md；skip_kinds+decision</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>SGenAxis 產品開發說明 · 與 PRODUCT-DEVELOPMENT.md 同源 · 可離線開啟</footer>
+</body>
+</html>
