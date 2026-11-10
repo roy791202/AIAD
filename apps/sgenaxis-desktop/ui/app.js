@@ -13706,6 +13706,9 @@
     }
   }
 
+  // Git 工作台不需要右側 Inspector：切到 git 時收合，離開時還原先前狀態。
+  let inspectorHiddenBeforeGit = false;
+  let gitInspectorForced = false;
   function showPanel(panelId, opts) {
     if (!PANEL_TITLES[panelId]) return;
     /* UI 設計改為獨立視窗：不佔主區 panel，也不從側欄進入 */
@@ -13731,6 +13734,24 @@
       btn.setAttribute("aria-selected", selected ? "true" : "false");
     });
     syncSideTabs(panelId);
+    // Git 工作台不需要右側 Inspector
+    if (inspector) {
+      const bodyElGit = document.getElementById("shell-body");
+      if (panelId === "git") {
+        if (!gitInspectorForced) {
+          inspectorHiddenBeforeGit = inspector.style.display === "none";
+          gitInspectorForced = true;
+        }
+        inspector.style.display = "none";
+        if (bodyElGit) bodyElGit.classList.add("is-inspector-collapsed");
+      } else if (gitInspectorForced) {
+        gitInspectorForced = false;
+        if (!inspectorHiddenBeforeGit) {
+          inspector.style.display = "";
+          if (bodyElGit) bodyElGit.classList.remove("is-inspector-collapsed");
+        }
+      }
+    }
     // Tasks Status：僅板面篩選
     if (panelId !== "board") {
       document
