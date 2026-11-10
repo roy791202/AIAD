@@ -81,3 +81,6 @@ pub use sgenaxis_exec::{LiveTargetProbeResult, LIVE_TARGET_STATUS_NOT_RUN, LIVE_
 
 /// M01-S2 local definition persistence boundary.
 pub mod project_definition;
+
+/// M01-S3 wizard command bridge — step-wise lifecycle over the S2 domain.
+pub mod project_wizard;

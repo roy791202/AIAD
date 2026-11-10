@@ -79,6 +79,9 @@ impl Default for AppState {
 /// HOST composition root (lifecycle + settings). Separate from CMD board state.
 pub struct HostState {
     pub inner: Mutex<CompositionRoot>,
+    /// M01-S3: server-side in-flight wizard sessions keyed by opaque token
+    /// (option A). The UI round-trips the token and never sees binding internals.
+    pub wizard: Mutex<sgenaxis_host::project_wizard::WizardSessionStore>,
 }
 
 impl HostState {
@@ -86,6 +89,7 @@ impl HostState {
         let root = CompositionRoot::boot_std().map_err(|e| e.to_string())?;
         Ok(Self {
             inner: Mutex::new(root),
+            wizard: Mutex::new(sgenaxis_host::project_wizard::WizardSessionStore::new()),
         })
     }
 }
@@ -1260,6 +1264,162 @@ pub fn host_create_project_with_preferences(state:State<'_,HostState>,args:Creat
     authorize("host_create_project_with_preferences").map_err(|e|e.to_string())?;
     let root=state.inner.lock().map_err(|_|poison_host())?;
     DispatchHost::project_policy_create(root.fs(),&args.parent,&args.name,args.preset_id.as_deref(),args.imported_json.as_deref())
+}
+
+// ── M01-S3 six-step project wizard command bridge ───────────────────────────
+//
+// Mirrors the S2 domain open/prepare/bind/save lifecycle. Owner authority is
+// snapshotted from the live DispatchHost owner (never from UI-supplied roots).
+// In-flight state lives server-side in `HostState.wizard`, keyed by an opaque
+// token. Orchestration bodies are SKELETON (RED): `wizard_commit` returns the
+// NOT_IMPLEMENTED sentinel until GREEN wires bind_definition + save_definition.
+use sgenaxis_host::project_definition::DefinitionLocation;
+use sgenaxis_host::project_preferences::PreferenceChoice;
+use sgenaxis_host::project_wizard::{
+    wizard_apply_step as host_wizard_apply_step, wizard_begin as host_wizard_begin,
+    wizard_cancel as host_wizard_cancel, wizard_commit as host_wizard_commit,
+    wizard_prepare_preferences as host_wizard_prepare_preferences, WizardBeginView,
+    WizardCommitReceipt, WizardDraftPatch, WizardPreferencePlanView, WizardStepDto, WizardStepView,
+    WizardToken,
+};
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WizardBeginArgs {
+    /// "new" → NewProject(parent,name); "existing" → ExistingProject(parent as root).
+    pub location_kind: String,
+    pub parent: String,
+    pub name: String,
+    pub purpose: Option<String>,
+}
+
+fn wizard_build_location(args: &WizardBeginArgs) -> Result<DefinitionLocation, String> {
+    match args.location_kind.as_str() {
+        "new" => Ok(DefinitionLocation::NewProject {
+            canonical_parent: args.parent.clone(),
+            single_name: args.name.clone(),
+        }),
+        "existing" => Ok(DefinitionLocation::ExistingProject {
+            canonical_root: args.parent.clone(),
+        }),
+        other => Err(format!("UNSUPPORTED_LOCATION_KIND: {other}")),
+    }
+}
+
+#[tauri::command]
+pub fn wizard_begin(
+    window: WebviewWindow,
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: WizardBeginArgs,
+) -> Result<WizardBeginView, String> {
+    authorize("wizard_begin").map_err(|e| e.to_string())?;
+    let url = window.url().map_err(|e| e.to_string())?;
+    if !guard_owner_caller_allowed(
+        window.label(),
+        url.scheme(),
+        url.host_str().unwrap_or_default(),
+        url.port(),
+    ) {
+        return Err("UNAUTHORIZED_CALLER".into());
+    }
+    let location = wizard_build_location(&args)?;
+    let authority = {
+        let dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+        dispatch
+            .definition_authority(window.label())
+            .map_err(|e| e.to_string())?
+    };
+    let mut store = state.wizard.lock().map_err(|_| poison_host())?;
+    host_wizard_begin(
+        &mut store,
+        authority,
+        location,
+        &args.name,
+        args.purpose.as_deref().unwrap_or_default(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WizardApplyStepArgs {
+    pub token: String,
+    pub step: WizardStepDto,
+    #[serde(default)]
+    pub patch: WizardDraftPatch,
+}
+
+#[tauri::command]
+pub fn wizard_apply_step(
+    state: State<'_, HostState>,
+    args: WizardApplyStepArgs,
+) -> Result<WizardStepView, String> {
+    authorize("wizard_apply_step").map_err(|e| e.to_string())?;
+    let token = WizardToken::from_raw(&args.token);
+    let mut store = state.wizard.lock().map_err(|_| poison_host())?;
+    host_wizard_apply_step(&mut store, &token, args.step, args.patch).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WizardPreparePreferencesArgs {
+    pub token: String,
+    /// "skip" | "preset" | "import".
+    pub choice: String,
+    pub preset_id: Option<String>,
+    pub imported_json: Option<String>,
+}
+
+#[tauri::command]
+pub fn wizard_prepare_preferences(
+    state: State<'_, HostState>,
+    args: WizardPreparePreferencesArgs,
+) -> Result<WizardPreferencePlanView, String> {
+    authorize("wizard_prepare_preferences").map_err(|e| e.to_string())?;
+    let token = WizardToken::from_raw(&args.token);
+    let choice = match args.choice.as_str() {
+        "skip" => PreferenceChoice::Skip,
+        "preset" => PreferenceChoice::Preset(
+            args.preset_id.as_deref().ok_or("MISSING_PRESET_ID")?,
+        ),
+        "import" => PreferenceChoice::Imported(
+            args.imported_json.as_deref().ok_or("MISSING_IMPORT")?.as_bytes(),
+        ),
+        other => return Err(format!("UNSUPPORTED_PREFERENCE_CHOICE: {other}")),
+    };
+    let mut store = state.wizard.lock().map_err(|_| poison_host())?;
+    host_wizard_prepare_preferences(&mut store, &token, choice).map_err(|e| e.to_string())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WizardTokenArgs {
+    pub token: String,
+}
+
+#[tauri::command]
+pub fn wizard_commit(
+    state: State<'_, HostState>,
+    args: WizardTokenArgs,
+) -> Result<WizardCommitReceipt, String> {
+    authorize("wizard_commit").map_err(|e| e.to_string())?;
+    let token = WizardToken::from_raw(&args.token);
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let mut store = state.wizard.lock().map_err(|_| poison_host())?;
+    let commit = sgenaxis_adapters::StdFileCommit::new();
+    host_wizard_commit(root.fs(), &commit, &mut store, &token).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn wizard_cancel(
+    state: State<'_, HostState>,
+    args: WizardTokenArgs,
+) -> Result<(), String> {
+    authorize("wizard_cancel").map_err(|e| e.to_string())?;
+    let token = WizardToken::from_raw(&args.token);
+    let mut store = state.wizard.lock().map_err(|_| poison_host())?;
+    host_wizard_cancel(&mut store, &token).map_err(|e| e.to_string())
 }
 
 /// PD-SET-01／PD-SET-UI-01: persist CLI／MCP via host settings.

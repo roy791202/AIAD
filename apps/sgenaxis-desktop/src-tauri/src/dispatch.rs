@@ -285,6 +285,26 @@ impl DispatchHost {
         let text=String::from_utf8(bytes).map_err(|e|e.to_string())?;
         Ok(serde_json::json!({"status":"ok","json":text}))
     }
+    /// M01-S3 owner-snapshot authority producer. Snapshots the host's *live*
+    /// owner facts (owner window + a per-host selection/session nonce) into a
+    /// [`sgenaxis_host::project_definition::DefinitionAuthorityContext`]. Authority
+    /// is derived only from the host owner; it is NEVER inferred from a
+    /// UI-supplied project root.
+    pub fn definition_authority(
+        &self,
+        owner_window: &str,
+    ) -> Result<
+        sgenaxis_host::project_definition::DefinitionAuthorityContext,
+        sgenaxis_host::project_wizard::WizardBridgeError,
+    > {
+        let snapshot = sgenaxis_host::project_wizard::OwnerWindowSnapshot {
+            owner_window: owner_window.to_owned(),
+            selection_id: format!("sel-{:016x}", guard_session_nonce()),
+            session_id: format!("ses-{:016x}", guard_session_nonce()),
+        };
+        sgenaxis_host::project_wizard::snapshot_definition_authority(&snapshot)
+    }
+
     /// Compose Fake Process + unavailable MCP transport.
     /// DryRun never dials OS; Live CLI needs [`Self::wire_cli_live`] (StdProcess／test ProcessPort).
     /// Live MCP remains unavailable with [`StubMcpClient`], including with `real-mcp` enabled.

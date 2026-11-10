@@ -19,6 +19,12 @@ pub enum AllowedIpcCommand {
     HostProjectPreferencesPresets,
     HostProjectPreferencesPickImport,
     HostCreateProjectWithPreferences,
+    /// M01-S3 six-step project wizard command bridge (begin/apply/prepare/commit/cancel).
+    WizardBegin,
+    WizardApplyStep,
+    WizardPreparePreferences,
+    WizardCommit,
+    WizardCancel,
     /// Update＋persist host settings (validated).
     HostSetSettings,
     /// PD-SET-01: update＋persist CLI／MCP agent settings (draft or activate).
@@ -95,6 +101,11 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::HostCreateProjectWithPreferences => {
                 "host_create_project_with_preferences"
             }
+            AllowedIpcCommand::WizardBegin => "wizard_begin",
+            AllowedIpcCommand::WizardApplyStep => "wizard_apply_step",
+            AllowedIpcCommand::WizardPreparePreferences => "wizard_prepare_preferences",
+            AllowedIpcCommand::WizardCommit => "wizard_commit",
+            AllowedIpcCommand::WizardCancel => "wizard_cancel",
             AllowedIpcCommand::HostSetSettings => "host_set_settings",
             AllowedIpcCommand::HostSetAgentSettings => "host_set_agent_settings",
             AllowedIpcCommand::HostPickProjectDirectory => "host_pick_project_directory",
@@ -137,6 +148,11 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::HostProjectPreferencesPresets,
             AllowedIpcCommand::HostProjectPreferencesPickImport,
             AllowedIpcCommand::HostCreateProjectWithPreferences,
+            AllowedIpcCommand::WizardBegin,
+            AllowedIpcCommand::WizardApplyStep,
+            AllowedIpcCommand::WizardPreparePreferences,
+            AllowedIpcCommand::WizardCommit,
+            AllowedIpcCommand::WizardCancel,
             AllowedIpcCommand::HostSetSettings,
             AllowedIpcCommand::HostSetAgentSettings,
             AllowedIpcCommand::HostPickProjectDirectory,
@@ -245,6 +261,11 @@ mod tests {
         assert!(is_allowed("host_pick_project_directory"));
         assert!(is_allowed("host_new_project_directory"));
         assert!(is_allowed("host_create_project_directory"));
+        assert!(is_allowed("wizard_begin"));
+        assert!(is_allowed("wizard_apply_step"));
+        assert!(is_allowed("wizard_prepare_preferences"));
+        assert!(is_allowed("wizard_commit"));
+        assert!(is_allowed("wizard_cancel"));
         assert!(is_allowed("file_save"));
         assert!(is_allowed("host_request_shutdown"));
         assert!(is_allowed("git_workbench_summary"));
