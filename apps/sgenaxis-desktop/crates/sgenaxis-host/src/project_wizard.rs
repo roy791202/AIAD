@@ -33,15 +33,11 @@ use sgenaxis_work::project_definition::{
 };
 
 use crate::project_definition::{
-    DefinitionAuthorityContext, DefinitionBaseline, DefinitionBinding, DefinitionLocation,
-    PreparedPreferencePlan,
+    bind_definition, save_definition, DefinitionAuthorityContext, DefinitionBaseline,
+    DefinitionBinding, DefinitionLocation, DefinitionSaveReceipt, DefinitionStoreError,
+    PreferenceCommitStatus, PreparedPreferencePlan,
 };
 use crate::project_preferences::PreferenceChoice;
-
-/// Placeholder identity used while the draft is in-flight. Real persistent-id
-/// minting / `open_definition` adoption is GREEN work performed by
-/// [`wizard_commit`]; the skeleton never persists this value.
-const DRAFT_PLACEHOLDER_UUID: &str = "11111111-1111-4111-8111-111111111111";
 
 // ───────────────────────── Owner-snapshot authority ─────────────────────────
 
@@ -123,12 +119,25 @@ struct InFlight {
 #[derive(Debug, Default)]
 pub struct WizardSessionStore {
     next: u64,
+    minted: u64,
     sessions: BTreeMap<String, InFlight>,
 }
 
 impl WizardSessionStore {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Mint a fresh persistent project identity, host-side.
+    ///
+    /// Identity minting is a HOST responsibility (never derived from a UI root).
+    /// A monotonic per-store counter is formatted as a RFC-4122 v4-shaped uuid so
+    /// it passes the domain's structural `valid_uuid` check without pulling a uuid
+    /// dependency into this crate. It is unique within one running store; a
+    /// process-global random id is a defensible later refinement.
+    fn mint_identity(&mut self) -> PersistentProjectId {
+        self.minted = self.minted.wrapping_add(1);
+        PersistentProjectId::candidate(format!("00000000-0000-4000-8000-{:012x}", self.minted))
     }
 
     /// Number of live in-flight sessions (diagnostics / tests).
@@ -294,8 +303,19 @@ pub enum WizardBridgeError {
     UnknownToken,
     /// A draft input failed the pure WORK validator.
     InvalidInput { field: String },
+    /// The domain bind/save boundary rejected the commit (digest / revision /
+    /// existing-target / storage fault). Carries the domain error's debug form.
+    Commit { message: String },
     /// SKELETON sentinel: orchestration body not yet implemented (RED).
     NotImplemented { detail: String },
+}
+
+impl From<DefinitionStoreError> for WizardBridgeError {
+    fn from(err: DefinitionStoreError) -> Self {
+        WizardBridgeError::Commit {
+            message: format!("{err:?}"),
+        }
+    }
 }
 
 impl std::fmt::Display for WizardBridgeError {
@@ -304,6 +324,7 @@ impl std::fmt::Display for WizardBridgeError {
             WizardBridgeError::Unauthorized => write!(f, "UNAUTHORIZED"),
             WizardBridgeError::UnknownToken => write!(f, "UNKNOWN_TOKEN"),
             WizardBridgeError::InvalidInput { field } => write!(f, "INVALID_INPUT: {field}"),
+            WizardBridgeError::Commit { message } => write!(f, "COMMIT_REJECTED: {message}"),
             WizardBridgeError::NotImplemented { detail } => {
                 write!(f, "NOT_IMPLEMENTED: {detail}")
             }
@@ -384,7 +405,7 @@ pub fn wizard_begin(
         return Err(WizardBridgeError::Unauthorized);
     }
     let draft = ProjectDefinition {
-        project_uuid: PersistentProjectId::candidate(DRAFT_PLACEHOLDER_UUID),
+        project_uuid: store.mint_identity(),
         definition_revision: DefinitionRevision(0),
         draft: empty_draft(name, purpose),
         mode: DefinitionMode::Draft,
@@ -475,25 +496,58 @@ pub fn wizard_prepare_preferences(
     Ok(WizardPreferencePlanView { kind, preset_id })
 }
 
-/// Commit the in-flight session to disk: re-check owner authority, `bind_definition`
-/// then `save_definition`, map the receipt, and clear the token.
+/// Commit the in-flight session to disk: re-check owner authority via
+/// `bind_definition`, persist via `save_definition`, map the receipt to a DTO,
+/// and clear the token (single-use).
 ///
-/// SKELETON: not implemented. Returns [`WizardBridgeError::NotImplemented`] so the
-/// RED integration test observes the sentinel exactly at the commit boundary.
+/// The session snapshot is cloned up front so a domain rejection leaves the
+/// in-flight session intact for a retry; the token is removed only on success.
 pub fn wizard_commit(
     fs: &dyn FileSystemPort,
     commit: &dyn FileCommitPort,
     store: &mut WizardSessionStore,
     token: &WizardToken,
 ) -> Result<WizardCommitReceipt, WizardBridgeError> {
-    // Touch the inputs so the orchestration signature is exercised and the
-    // skeleton stays honest about what GREEN must consume.
-    let _ = (fs, commit);
-    let _state = store.get(token)?;
-    Err(WizardBridgeError::NotImplemented {
-        detail: "wizard_commit: bind_definition + save_definition orchestration pending GREEN"
-            .into(),
-    })
+    let state = store.get(token)?.clone();
+
+    // bind_definition re-validates the owner authority context and the
+    // location/baseline/preferences shape; it never infers authority from IO.
+    let binding = bind_definition(
+        fs,
+        state.authority.clone(),
+        state.location.clone(),
+        state.draft.project_uuid.clone(),
+        state.baseline.clone(),
+        state.prepared.clone(),
+        &[],
+    )?;
+
+    // Absent baseline → no expected on-disk digest; Present → the baseline digest.
+    let expected = match &state.baseline {
+        DefinitionBaseline::Present { raw_digest, .. } => Some(raw_digest.as_str().to_owned()),
+        DefinitionBaseline::Absent => None,
+    };
+
+    let receipt = save_definition(fs, commit, &binding, expected.as_deref(), &state.draft)?;
+    let dto = commit_receipt_view(&receipt);
+
+    // Single-use: drop the in-flight session now that it is persisted.
+    store.remove(token)?;
+    Ok(dto)
+}
+
+fn commit_receipt_view(receipt: &DefinitionSaveReceipt) -> WizardCommitReceipt {
+    WizardCommitReceipt {
+        project_root: receipt.canonical_root.clone(),
+        relative_path: receipt.definition.relative_path.clone(),
+        persisted_revision: receipt.definition.persisted_revision.0,
+        raw_digest: receipt.definition.raw_digest.as_str().to_owned(),
+        transaction_id: receipt.definition.transaction_id.clone(),
+        preferences_committed: matches!(
+            receipt.preferences,
+            PreferenceCommitStatus::Committed { .. }
+        ),
+    }
 }
 
 /// Drop the in-flight session for `token`.

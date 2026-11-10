@@ -39,6 +39,11 @@ impl Rig {
     }
 }
 
+/// Same digest form the HOST codec verifies receipts against.
+fn digest(b: &[u8]) -> String {
+    format!("sha256:{}", sgenaxis_spec::packet::source_sha256(b))
+}
+
 impl FileSystemPort for Rig {
     fn exists(&self, p: &str) -> Result<bool, PortError> {
         Ok(self.0.lock().unwrap().contains_key(p))
@@ -98,15 +103,25 @@ impl FileWriteLease for Lease {
     }
     fn replace_checked(
         &mut self,
-        _expected: Option<&str>,
+        expected: Option<&str>,
         bytes: &[u8],
     ) -> Result<CommitReceipt, CommitError> {
         let mut tree = self.rig.0.lock().unwrap();
+        let old = match tree.get(&self.path) {
+            Some(Node::File(b)) => Some(digest(b)),
+            _ => None,
+        };
+        if old.as_deref() != expected {
+            return Err(CommitError::Conflict {
+                expected: expected.map(String::from),
+                observed: old,
+            });
+        }
         tree.insert(self.path.clone(), Node::File(bytes.to_vec()));
         Ok(CommitReceipt {
             target_path: self.path.clone(),
-            previous_digest: None,
-            committed_digest: "sha256:fixture".into(),
+            previous_digest: old,
+            committed_digest: digest(bytes),
             transaction_id: "0123456789abcdef0123456789abcdef".into(),
         })
     }
@@ -195,26 +210,43 @@ fn wizard_bridge_new_project_commit_persists_definition() {
     assert_eq!(store.len(), 0, "token cleared after commit");
 }
 
-// ── Guard: the sentinel is the ONLY thing blocking commit (valid RED) ────────
+// ── Guard: the opaque token is single-use and cleared on commit ──────────────
 
 #[test]
-fn wizard_commit_blocked_only_on_not_implemented_sentinel() {
+fn wizard_commit_clears_token_and_rejects_reuse() {
     let rig = Rig::default();
     let mut store = WizardSessionStore::new();
-    let begin = wizard_begin(&mut store, authority(), new_location(), NAME, "p")
-        .expect("begin");
+    let begin = wizard_begin(&mut store, authority(), new_location(), NAME, "p").expect("begin");
     let token = WizardToken::from_raw(&begin.token);
     for step in STEPS {
         wizard_apply_step(&mut store, &token, step, WizardDraftPatch::default()).expect("apply");
     }
     wizard_prepare_preferences(&mut store, &token, PreferenceChoice::Skip).expect("prepare");
 
+    wizard_commit(&rig, &rig, &mut store, &token).expect("commit should persist the definition");
+    assert_eq!(store.len(), 0, "token cleared on commit");
+
+    // A reused token no longer maps to a live session.
     let err = wizard_commit(&rig, &rig, &mut store, &token)
-        .expect_err("skeleton commit must return the NotImplemented sentinel");
+        .expect_err("a reused (single-use) token must be rejected");
     assert!(
-        matches!(err, WizardBridgeError::NotImplemented { .. }),
-        "commit must fail ONLY on the NOT_IMPLEMENTED sentinel, got {err:?}"
+        matches!(err, WizardBridgeError::UnknownToken),
+        "reused token must be UnknownToken, got {err:?}"
     );
-    // Nothing was written: the orchestration never touched the Ports.
-    assert!(rig.tree().is_empty(), "no filesystem effect before GREEN");
+}
+
+// ── cancel drops in-flight state ─────────────────────────────────────────────
+
+#[test]
+fn wizard_cancel_drops_in_flight_session() {
+    let mut store = WizardSessionStore::new();
+    let begin = wizard_begin(&mut store, authority(), new_location(), NAME, "p").expect("begin");
+    let token = WizardToken::from_raw(&begin.token);
+    assert_eq!(store.len(), 1);
+    wizard_cancel(&mut store, &token).expect("cancel");
+    assert_eq!(store.len(), 0);
+    assert!(matches!(
+        wizard_cancel(&mut store, &token),
+        Err(WizardBridgeError::UnknownToken)
+    ));
 }
