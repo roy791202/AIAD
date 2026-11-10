@@ -178,6 +178,7 @@ fn wizard_bridge_new_project_commit_persists_definition() {
             WizardDraftPatch {
                 name: Some(NAME.into()),
                 purpose: Some("先保存需求草稿".into()),
+                ..Default::default()
             }
         } else {
             WizardDraftPatch::default()
@@ -233,6 +234,127 @@ fn wizard_commit_clears_token_and_rejects_reuse() {
         matches!(err, WizardBridgeError::UnknownToken),
         "reused token must be UnknownToken, got {err:?}"
     );
+}
+
+// ── invalid step input is rejected (validation.ok == false) ──────────────────
+
+#[test]
+fn wizard_apply_step_rejects_invalid_name() {
+    let mut store = WizardSessionStore::new();
+    let begin = wizard_begin(&mut store, authority(), new_location(), NAME, "p").expect("begin");
+    let token = WizardToken::from_raw(&begin.token);
+    // "CON" is a reserved device name → validate_definition rejects it.
+    let applied = wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Basics,
+        WizardDraftPatch {
+            name: Some("CON".into()),
+            ..Default::default()
+        },
+    )
+    .expect("apply returns Ok with the validation verdict");
+    assert!(!applied.validation.ok, "invalid name must not validate");
+    assert_eq!(applied.validation.invalid_field.as_deref(), Some("name"));
+}
+
+// ── full per-step data round-trips through commit ────────────────────────────
+
+#[test]
+fn wizard_full_fields_commit_persists_delivery_and_topology() {
+    let rig = Rig::default();
+    let mut store = WizardSessionStore::new();
+    let begin = wizard_begin(&mut store, authority(), new_location(), NAME, "先保存需求草稿")
+        .expect("begin");
+    let token = WizardToken::from_raw(&begin.token);
+
+    wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Basics,
+        WizardDraftPatch {
+            name: Some(NAME.into()),
+            purpose: Some("桌面工具".into()),
+            ..Default::default()
+        },
+    )
+    .expect("basics");
+    let delivery = wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Delivery,
+        WizardDraftPatch {
+            delivery_form: Some("desktop".into()),
+            delivery_platform: Some("windows".into()),
+            delivery_language: Some("rust".into()),
+            delivery_framework: Some("tauri".into()),
+            delivery_has_ui: Some(true),
+            ..Default::default()
+        },
+    )
+    .expect("delivery");
+    assert!(delivery.validation.ok);
+    assert_eq!(delivery.view.delivery_count, 1);
+    wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Topology,
+        WizardDraftPatch {
+            topology: Some("single-crate".into()),
+            ..Default::default()
+        },
+    )
+    .expect("topology");
+    wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Requirements,
+        WizardDraftPatch {
+            requirement_intent: Some("建立專案骨架".into()),
+            requirement_acceptance: Some("骨架存在\n可編譯".into()),
+            ..Default::default()
+        },
+    )
+    .expect("requirements");
+    wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::TechnologyUi,
+        WizardDraftPatch {
+            delivery_host_version: Some("2".into()),
+            delivery_toolchain: Some("cargo, rustc".into()),
+            ..Default::default()
+        },
+    )
+    .expect("technology-ui");
+    let preview = wizard_apply_step(
+        &mut store,
+        &token,
+        WizardStepDto::Preview,
+        WizardDraftPatch::default(),
+    )
+    .expect("preview");
+    assert_eq!(preview.view.topology.as_deref(), Some("single-crate"));
+    assert_eq!(preview.view.requirement_count, 1);
+
+    wizard_prepare_preferences(&mut store, &token, PreferenceChoice::Skip).expect("prepare");
+    let receipt =
+        wizard_commit(&rig, &rig, &mut store, &token).expect("commit persists full definition");
+    assert_eq!(receipt.project_root, ROOT);
+
+    // Decode the on-disk bytes: delivery target + topology survived the codec.
+    let bytes = match rig.tree().get(PATH).expect("definition written") {
+        Node::File(b) => b.clone(),
+        _ => panic!("definition is not a file"),
+    };
+    let def = sgenaxis_host::project_definition::decode_definition(&bytes)
+        .expect("written definition decodes");
+    assert_eq!(def.draft.delivery_targets.len(), 1);
+    assert_eq!(def.draft.requirements.len(), 1);
+    assert!(matches!(
+        def.draft.topology,
+        sgenaxis_work::project_definition::FieldState::Confirmed(ref v) if v == "single-crate"
+    ));
 }
 
 // ── cancel drops in-flight state ─────────────────────────────────────────────

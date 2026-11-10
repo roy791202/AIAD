@@ -31,7 +31,14 @@ impl FileCommitPort for StdFileCommit {
 
 /// The owned native sidecar handle is held for the entire lease lifetime.
 pub(crate) struct StdFileWriteLease {
+    /// Internally-canonicalized absolute target used for all filesystem ops and
+    /// the private journal.
     target_path: String,
+    /// The exact path string the caller passed to `acquire_write`. The commit
+    /// receipt echoes THIS verbatim so the Port contract — "the receipt reports
+    /// the target you asked me to write" — holds regardless of how the adapter
+    /// canonicalizes internally (e.g. Windows `\\?\` extended-length prefix).
+    requested_path: String,
     _lock_handle: std::fs::File,
     blocked: bool,
     #[cfg(test)]
@@ -162,6 +169,7 @@ impl StdFileWriteLease {
         checkpoints: TestCheckpoints,
     ) -> Self {
         Self {
+            requested_path: target_path.clone(),
             target_path,
             _lock_handle: handle,
             blocked: false,
@@ -409,6 +417,7 @@ fn inspect(target: &str) -> Result<Option<JournalRecord>, CommitError> {
     Ok(Some(r))
 }
 fn acquire(path: &str) -> Result<StdFileWriteLease, CommitError> {
+    let requested = path.to_owned();
     let target = normalize_target(path)?;
     let side = PathBuf::from(format!("{target}.eluslot-lock"));
     if let Ok(m) = fs::symlink_metadata(&side) {
@@ -438,6 +447,7 @@ fn acquire(path: &str) -> Result<StdFileWriteLease, CommitError> {
     inspect(&target)?;
     Ok(StdFileWriteLease {
         target_path: target,
+        requested_path: requested,
         _lock_handle: handle,
         blocked: false,
         #[cfg(test)]
@@ -986,7 +996,9 @@ impl StdFileWriteLease {
         match result {
             Ok(()) => {
                 let receipt = CommitReceipt {
-                    target_path: self.target_path.clone(),
+                    // Echo the caller's requested path (Port contract), not the
+                    // internally-canonicalized form.
+                    target_path: self.requested_path.clone(),
                     previous_digest: previous,
                     committed_digest: tx.record.new_digest.clone(),
                     transaction_id: tx.record.transaction_id.clone(),

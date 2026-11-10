@@ -27,8 +27,9 @@ use serde::{Deserialize, Serialize};
 
 use sgenaxis_ports::{FileCommitPort, FileSystemPort};
 use sgenaxis_work::project_definition::{
-    validate_definition, DefinitionDraft, DefinitionError, DefinitionMode, DefinitionRevision,
-    ExtensionValue, FieldState, PersistentProjectId, PreferenceSource, ProjectDefinition,
+    missing_generation_requirements, validate_definition, DefinitionDraft, DefinitionError,
+    DefinitionMode, DefinitionRequirement, DefinitionRevision, DeliveryTarget, ExtensionValue,
+    FieldState, PersistentProjectId, PreferenceSource, ProjectDefinition, RequirementState,
     WizardStep,
 };
 
@@ -226,13 +227,34 @@ pub enum PreferencePlanKind {
     ImportedCopy,
 }
 
-/// Request DTO: a partial patch of one wizard step's inputs. Only the Basics
-/// fields are modeled in the skeleton; later steps are GREEN work.
+/// Request DTO: a partial patch of one wizard step's inputs. Every field is
+/// optional; `wizard_apply_step` maps the subset relevant to the named step into
+/// the in-flight draft. Empty/absent fields are no-ops, so a default patch leaves
+/// the draft unchanged. Delivery/TechnologyUi fields feed a single delivery
+/// target; requirement fields feed a single requirement.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WizardDraftPatch {
+    // Basics
     pub name: Option<String>,
     pub purpose: Option<String>,
+    // Delivery (single target)
+    pub delivery_form: Option<String>,
+    pub delivery_platform: Option<String>,
+    pub delivery_language: Option<String>,
+    pub delivery_framework: Option<String>,
+    pub delivery_has_ui: Option<bool>,
+    // Topology
+    pub topology: Option<String>,
+    // Requirements (single requirement)
+    pub requirement_intent: Option<String>,
+    /// Newline/comma-separated acceptance list.
+    pub requirement_acceptance: Option<String>,
+    // TechnologyUi (refines the single delivery target)
+    pub delivery_host: Option<String>,
+    pub delivery_host_version: Option<String>,
+    /// Comma-separated toolchain list.
+    pub delivery_toolchain: Option<String>,
 }
 
 /// Response DTO: a read-only projection of the in-flight draft. Never exposes
@@ -244,6 +266,12 @@ pub struct WizardDraftView {
     pub purpose: String,
     pub last_saved_step: WizardStepDto,
     pub preference_source: String,
+    /// Confirmed topology value, if any.
+    pub topology: Option<String>,
+    pub delivery_count: usize,
+    pub requirement_count: usize,
+    /// Field paths still missing for generation (projection; never blocks commit).
+    pub missing_generation_requirements: Vec<String>,
 }
 
 /// Response DTO: validation outcome of applying one step.
@@ -363,6 +391,10 @@ fn empty_draft(name: &str, purpose: &str) -> DefinitionDraft {
 }
 
 fn draft_view(def: &ProjectDefinition) -> WizardDraftView {
+    let topology = match &def.draft.topology {
+        FieldState::Confirmed(v) => Some(v.clone()),
+        _ => None,
+    };
     WizardDraftView {
         name: def.draft.name.clone(),
         purpose: def.draft.purpose.clone(),
@@ -373,7 +405,65 @@ fn draft_view(def: &ProjectDefinition) -> WizardDraftView {
             PreferenceSource::ImportedCopy => "imported-copy",
         }
         .to_owned(),
+        topology,
+        delivery_count: def.draft.delivery_targets.len(),
+        requirement_count: def.draft.requirements.len(),
+        missing_generation_requirements: missing_generation_requirements(def),
     }
+}
+
+/// `Confirmed` for a non-blank value, else `Unresolved`.
+fn field_state(value: Option<String>) -> Option<FieldState<String>> {
+    value.map(|s| {
+        if s.trim().is_empty() {
+            FieldState::Unresolved
+        } else {
+            FieldState::Confirmed(s)
+        }
+    })
+}
+
+/// Split a comma/newline-separated list into trimmed, non-empty entries.
+fn split_list(value: Option<String>) -> Option<Vec<String>> {
+    value.map(|s| {
+        s.split([',', '\n', ';'])
+            .map(|x| x.trim().to_owned())
+            .filter(|x| !x.is_empty())
+            .collect()
+    })
+}
+
+/// Ensure the single delivery target exists (id = the project uuid, which is a
+/// valid uuid and trivially unique for one target) and return it for mutation.
+fn ensure_target<'a>(draft: &'a mut DefinitionDraft, uuid: &str) -> &'a mut DeliveryTarget {
+    if draft.delivery_targets.is_empty() {
+        draft.delivery_targets.push(DeliveryTarget {
+            id: uuid.to_owned(),
+            form: FieldState::Unresolved,
+            platform: FieldState::Unresolved,
+            host: FieldState::Unresolved,
+            host_version: FieldState::Unresolved,
+            language: FieldState::Unresolved,
+            framework: FieldState::Unresolved,
+            toolchain: Vec::new(),
+            has_ui: None,
+        });
+    }
+    &mut draft.delivery_targets[0]
+}
+
+fn delivery_has_input(patch: &WizardDraftPatch) -> bool {
+    patch.delivery_form.is_some()
+        || patch.delivery_platform.is_some()
+        || patch.delivery_language.is_some()
+        || patch.delivery_framework.is_some()
+        || patch.delivery_has_ui.is_some()
+}
+
+fn technology_has_input(patch: &WizardDraftPatch) -> bool {
+    patch.delivery_host.is_some()
+        || patch.delivery_host_version.is_some()
+        || patch.delivery_toolchain.is_some()
 }
 
 fn plan_kind(plan: &PreparedPreferencePlan) -> PreferencePlanKind {
@@ -441,13 +531,71 @@ pub fn wizard_apply_step(
     patch: WizardDraftPatch,
 ) -> Result<WizardStepView, WizardBridgeError> {
     let state = store.get_mut(token)?;
-    if let Some(name) = patch.name {
-        state.draft.draft.name = name;
+    let uuid = state.draft.project_uuid.as_str().to_owned();
+    let draft = &mut state.draft.draft;
+    match step {
+        WizardStepDto::Basics => {
+            if let Some(name) = patch.name {
+                draft.name = name;
+            }
+            if let Some(purpose) = patch.purpose {
+                draft.purpose = purpose;
+            }
+        }
+        WizardStepDto::Delivery => {
+            if delivery_has_input(&patch) {
+                let target = ensure_target(draft, &uuid);
+                if let Some(v) = field_state(patch.delivery_form) {
+                    target.form = v;
+                }
+                if let Some(v) = field_state(patch.delivery_platform) {
+                    target.platform = v;
+                }
+                if let Some(v) = field_state(patch.delivery_language) {
+                    target.language = v;
+                }
+                if let Some(v) = field_state(patch.delivery_framework) {
+                    target.framework = v;
+                }
+                if let Some(b) = patch.delivery_has_ui {
+                    target.has_ui = Some(b);
+                }
+            }
+        }
+        WizardStepDto::Topology => {
+            if let Some(v) = field_state(patch.topology) {
+                draft.topology = v;
+            }
+        }
+        WizardStepDto::Requirements => {
+            if let Some(intent) = patch.requirement_intent {
+                if !intent.trim().is_empty() {
+                    draft.requirements = vec![DefinitionRequirement {
+                        id: "requirement-1".to_owned(),
+                        intent,
+                        acceptance: split_list(patch.requirement_acceptance).unwrap_or_default(),
+                        state: RequirementState::Confirmed,
+                    }];
+                }
+            }
+        }
+        WizardStepDto::TechnologyUi => {
+            if technology_has_input(&patch) {
+                let target = ensure_target(draft, &uuid);
+                if let Some(v) = field_state(patch.delivery_host) {
+                    target.host = v;
+                }
+                if let Some(v) = field_state(patch.delivery_host_version) {
+                    target.host_version = v;
+                }
+                if let Some(list) = split_list(patch.delivery_toolchain) {
+                    target.toolchain = list;
+                }
+            }
+        }
+        WizardStepDto::Preview => {}
     }
-    if let Some(purpose) = patch.purpose {
-        state.draft.draft.purpose = purpose;
-    }
-    state.draft.draft.last_saved_step = step.into();
+    draft.last_saved_step = step.into();
     let validation = match validate_definition(&state.draft.draft) {
         Ok(()) => WizardValidationDto {
             ok: true,

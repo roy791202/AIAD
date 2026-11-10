@@ -275,6 +275,36 @@ fn io_04_other_adapter_instance_cannot_take_an_owned_lease() {
 }
 
 #[test]
+fn io_receipt_echoes_requested_path_not_canonicalized_form() {
+    // Contract: the commit receipt reports the path the CALLER passed to
+    // acquire_write, not the adapter's internally-canonicalized form. A caller
+    // may legitimately pass a valid non-canonical path (e.g. without the Windows
+    // \\?\ extended-length prefix); the receipt must echo it verbatim so strict
+    // callers (save_definition's checked_receipt) do not see a false mismatch.
+    let f = Fixture::new();
+    let canonical = f.target();
+    let requested = canonical
+        .strip_prefix("\\\\?\\")
+        .unwrap_or(&canonical)
+        .to_string();
+    assert_ne!(
+        requested, canonical,
+        "fixture base is expected to be \\\\?\\-canonical on Windows"
+    );
+    let mut lease = StdFileCommit::new()
+        .acquire_write(&requested)
+        .expect("acquire with a valid non-canonical path");
+    let receipt = lease
+        .replace_checked(None, NEW)
+        .expect("commit via non-canonical path");
+    assert_eq!(
+        receipt.target_path, requested,
+        "receipt echoes the requested path verbatim"
+    );
+    assert_eq!(fs::read(&canonical).unwrap(), NEW, "bytes landed at the target");
+}
+
+#[test]
 fn io_05_independent_process_handle_blocks_product_lease() {
     let f = Fixture::new();
     let _child = ChildFixture::hold(&f);
