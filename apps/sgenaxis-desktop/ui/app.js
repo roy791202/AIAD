@@ -1301,24 +1301,33 @@
         setStatus(msg);
         return;
       }
-      const preferenceChoice = await window.ProjectPreferencesUI.chooseNewProject();
-      if (!preferenceChoice) {
-        toast("已取消新增專案（偏好設定）");
+      // PD-M01-S3: create through the six-step wizard command bridge
+      // (wizard_begin → wizard_apply_step × steps → wizard_prepare_preferences →
+      // wizard_commit). The wizard reuses ProjectPreferencesUI.chooseNewProject()
+      // for the preference step. Replaces the deprecated
+      // host_create_project_with_preferences path (now WIZARD_REQUIRED).
+      if (!window.ProjectWizardUI || !window.ProjectWizardUI.run) {
+        const msg = "新增專案失敗：專案精靈未載入";
+        toast(msg);
+        setStatus(msg);
         return;
       }
-      const created = await invoke("host_create_project_with_preferences", {
-        args: {
-          parent: String(parentPick.path).trim(),
-          name: name,
-          presetId: preferenceChoice.presetId,
-          importedJson: preferenceChoice.importedJson,
-        },
+      setStatus("新增專案：請依精靈填寫六個步驟…");
+      const created = await window.ProjectWizardUI.run({
+        parent: String(parentPick.path).trim(),
+        name: name,
       });
+      if (!created) {
+        toast("已取消新增專案（精靈）");
+        setStatus("新增專案：已取消（精靈）");
+        return;
+      }
       try {
         await bindPickedProjectRoot(created, "新增專案");
       } catch (bindError) {
-        const msg="專案目錄已建立，但未完成專案綁定："+String(bindError);
-        toast(msg);setStatus(msg);
+        const msg = "專案已建立，但未完成專案綁定：" + String(bindError);
+        toast(msg);
+        setStatus(msg);
       }
     } catch (err) {
       const msg = "新增專案失敗：" + String(err);
