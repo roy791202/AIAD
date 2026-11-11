@@ -7,7 +7,7 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, PortError,
+    GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream, PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -88,13 +88,16 @@ impl GitPort for StdGit {
 fn parse_porcelain_status(text: &str) -> GitStatus {
     let mut branch = None;
     let mut entries = Vec::new();
+    let mut upstream = None;
 
     for line in text.lines() {
         if line.is_empty() {
             continue;
         }
         if let Some(rest) = line.strip_prefix("## ") {
-            branch = Some(parse_branch_header(rest));
+            let (name, up) = parse_branch_header(rest);
+            branch = Some(name);
+            upstream = up;
             continue;
         }
         if line.len() < 3 {
@@ -110,20 +113,54 @@ fn parse_porcelain_status(text: &str) -> GitStatus {
         entries.push(GitStatusEntry { path, kind });
     }
 
-    GitStatus { branch, entries }
+    GitStatus {
+        branch,
+        entries,
+        upstream,
+    }
 }
 
-fn parse_branch_header(rest: &str) -> String {
-    // `main...origin/main [ahead 1]` → `main`
-    // `No commits yet on main` → `main` (best effort)
+fn parse_branch_header(rest: &str) -> (String, Option<GitUpstream>) {
+    // `main...origin/main [ahead 1, behind 2]` → ("main", upstream origin/main 1/2)
+    // `main...origin/main`                     → ("main", upstream origin/main 0/0)
+    // `main`                                   → ("main", None)
+    // `No commits yet on main`                 → ("main", None)
     let head = rest.split_whitespace().next().unwrap_or(rest);
-    if let Some((local, _)) = head.split_once("...") {
-        return local.to_string();
+    if let Some((local, remote)) = head.split_once("...") {
+        let (ahead, behind) = parse_ahead_behind(rest);
+        return (
+            local.to_string(),
+            Some(GitUpstream {
+                name: remote.to_string(),
+                ahead,
+                behind,
+            }),
+        );
     }
     if let Some(name) = rest.strip_prefix("No commits yet on ") {
-        return name.split_whitespace().next().unwrap_or(name).to_string();
+        let local = name.split_whitespace().next().unwrap_or(name).to_string();
+        return (local, None);
     }
-    head.to_string()
+    (head.to_string(), None)
+}
+
+/// Parse a trailing `[ahead N, behind M]` (either term optional) into counts.
+fn parse_ahead_behind(rest: &str) -> (usize, usize) {
+    let (mut ahead, mut behind) = (0usize, 0usize);
+    if let Some(open) = rest.find('[') {
+        if let Some(rel) = rest[open..].find(']') {
+            let inside = &rest[open + 1..open + rel];
+            for part in inside.split(',') {
+                let mut it = part.split_whitespace();
+                match (it.next(), it.next()) {
+                    (Some("ahead"), Some(n)) => ahead = n.parse().unwrap_or(0),
+                    (Some("behind"), Some(n)) => behind = n.parse().unwrap_or(0),
+                    _ => {}
+                }
+            }
+        }
+    }
+    (ahead, behind)
 }
 
 fn rename_path(path_part: &str) -> String {
@@ -197,5 +234,17 @@ R  old.rs -> renamed.rs
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].hash, "abc");
         assert_eq!(commits[1].subject, "feat: x");
+    }
+
+    // G2 RED (PD-GIT-01): upstream ahead/behind must be captured, not discarded.
+    #[test]
+    fn porcelain_captures_upstream_ahead_behind() {
+        let text = "## main...origin/main [ahead 2, behind 3]\n M src/a.rs\n";
+        let st = parse_porcelain_status(text);
+        assert_eq!(st.branch.as_deref(), Some("main"));
+        let up = st.upstream.expect("upstream divergence parsed");
+        assert_eq!(up.name, "origin/main");
+        assert_eq!(up.ahead, 2);
+        assert_eq!(up.behind, 3);
     }
 }

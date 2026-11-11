@@ -16,6 +16,12 @@ pub struct GitWorkbenchSummary {
     pub recent_commits: Vec<GitCommit>,
     /// Full unified diff text from [`GitPort::diff`] (may be large).
     pub diff_text: String,
+    /// Commits the local branch is ahead of its upstream (0 when untracked).
+    pub ahead: usize,
+    /// Commits the local branch is behind its upstream (0 when untracked).
+    pub behind: usize,
+    /// Upstream ref name when the branch tracks a remote (e.g. `origin/main`).
+    pub upstream: Option<String>,
     /// `false` for this read-only helper; host enables writes via approving
     /// [`crate::StdGitWrite`] / [`crate::FakeGitWrite`] separately.
     pub writes_enabled: bool,
@@ -31,6 +37,11 @@ pub fn summarize_worktree(
     let recent_commits = git.log(repo, log_limit)?;
     let diff_text = git.diff(repo, None)?;
 
+    let (ahead, behind, upstream) = match status.upstream {
+        Some(u) => (u.ahead, u.behind, Some(u.name)),
+        None => (0, 0, None),
+    };
+
     Ok(GitWorkbenchSummary {
         repo: repo.to_string(),
         branch: status.branch,
@@ -38,6 +49,9 @@ pub fn summarize_worktree(
         entries: status.entries,
         recent_commits,
         diff_text,
+        ahead,
+        behind,
+        upstream,
         writes_enabled: false,
     })
 }

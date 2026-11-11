@@ -30,6 +30,7 @@ fn fake_git_summary_dto_for_ui_projection() {
                     kind: GitStatusKind::Untracked,
                 },
             ],
+            upstream: None,
         },
     );
     git.set_log(

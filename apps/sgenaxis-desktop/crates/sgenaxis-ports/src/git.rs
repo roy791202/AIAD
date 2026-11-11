@@ -20,11 +20,21 @@ pub struct GitStatusEntry {
     pub kind: GitStatusKind,
 }
 
+/// Upstream tracking divergence parsed from the porcelain branch header.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitUpstream {
+    pub name: String,
+    pub ahead: usize,
+    pub behind: usize,
+}
+
 /// Aggregated status snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GitStatus {
     pub branch: Option<String>,
     pub entries: Vec<GitStatusEntry>,
+    /// Upstream divergence (`Some` only when the branch tracks a remote).
+    pub upstream: Option<GitUpstream>,
 }
 
 /// One commit from `git log`.

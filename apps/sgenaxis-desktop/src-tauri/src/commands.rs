@@ -1494,6 +1494,9 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
             })
             .collect(),
         diff_text: summary.diff_text.clone(),
+        ahead: summary.ahead,
+        behind: summary.behind,
+        upstream: summary.upstream.clone(),
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1514,6 +1517,9 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         entry_count: 0,
         recent_commits: Vec::new(),
         diff_text: String::new(),
+        ahead: 0,
+        behind: 0,
+        upstream: None,
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2452,7 +2458,7 @@ pub fn import_preview(
 mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
-    use sgenaxis_ports::{GitCommit, GitStatus, GitStatusEntry, GitStatusKind};
+    use sgenaxis_ports::{GitCommit, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream};
 
     #[test]
     fn workbench_dto_maps_summary_writes_flag() {
@@ -2465,6 +2471,7 @@ mod git_ui_tests {
                     path: "a.rs".into(),
                     kind: GitStatusKind::Modified,
                 }],
+                upstream: None,
             },
         );
         git.set_log(
@@ -2484,6 +2491,31 @@ mod git_ui_tests {
         assert!(!dto.writes_enabled);
         assert_eq!(dto.status, "ok");
         assert!(workbench_dto(&summary, true).writes_enabled);
+    }
+
+    // G2 DTO/UI RED: ahead/behind/upstream must surface through summary → DTO.
+    #[test]
+    fn workbench_dto_surfaces_ahead_behind() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("feature".into()),
+                entries: Vec::new(),
+                upstream: Some(GitUpstream {
+                    name: "origin/feature".into(),
+                    ahead: 2,
+                    behind: 1,
+                }),
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.ahead, 2);
+        assert_eq!(dto.behind, 1);
+        assert_eq!(dto.upstream.as_deref(), Some("origin/feature"));
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

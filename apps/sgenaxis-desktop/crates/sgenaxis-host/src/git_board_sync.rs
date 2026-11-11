@@ -254,6 +254,7 @@ mod tests {
                     path: "src/a.rs".into(),
                     kind: GitStatusKind::Modified,
                 }],
+                upstream: None,
             },
         );
         git.set_log(

@@ -130,6 +130,7 @@ fn successful_status_with_no_branch_preserves_exact_snapshot() {
             path: "draft.txt".to_owned(),
             kind: GitStatusKind::Untracked,
         }],
+        upstream: None,
     });
 }
 
@@ -138,6 +139,7 @@ fn successful_status_with_branch_preserves_exact_snapshot() {
     assert_status_snapshot_is_returned_exactly(GitStatus {
         branch: Some("fixture-branch".to_owned()),
         entries: Vec::new(),
+        upstream: None,
     });
 }
 

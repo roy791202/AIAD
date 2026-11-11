@@ -379,6 +379,15 @@ pub struct GitWorkbenchDto {
     pub entry_count: usize,
     pub recent_commits: Vec<GitCommitDto>,
     pub diff_text: String,
+    /// Commits ahead of upstream (0 when the branch has no upstream).
+    #[serde(default)]
+    pub ahead: usize,
+    /// Commits behind upstream (0 when the branch has no upstream).
+    #[serde(default)]
+    pub behind: usize,
+    /// Upstream ref name when tracking a remote (e.g. `origin/main`).
+    #[serde(default)]
+    pub upstream: Option<String>,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

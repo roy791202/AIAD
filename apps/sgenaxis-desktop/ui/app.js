@@ -2681,9 +2681,18 @@
       branchEl.textContent = "分支：" + (dto.branch || "（分離 HEAD／未知）");
     }
     if (syncEl) {
-      // ahead/behind 尚未進 GitWorkbenchDto — 頂列占位對齊 EluSlot_Git_UX
-      syncEl.textContent = "↑— ↓—";
-      syncEl.title = "ahead / behind（待投影欄位）";
+      // ahead/behind 已進 GitWorkbenchDto（G2）— 顯示分歧數
+      const hasUpstream = dto.upstream != null && dto.upstream !== "";
+      const ahead = dto.ahead || 0;
+      const behind = dto.behind || 0;
+      if (hasUpstream) {
+        syncEl.textContent = "↑" + ahead + " ↓" + behind;
+        syncEl.title =
+          "ahead " + ahead + " / behind " + behind + "（上游 " + dto.upstream + "）";
+      } else {
+        syncEl.textContent = "↑— ↓—";
+        syncEl.title = "未追蹤上游分支";
+      }
     }
     applyWriteGate(!!dto.writes_enabled);
     const n = String(dto.entry_count || 0);

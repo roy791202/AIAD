@@ -385,6 +385,7 @@ pub fn status_with_modified(branch: &str, path: &str) -> GitStatus {
             path: path.into(),
             kind: GitStatusKind::Modified,
         }],
+        upstream: None,
     }
 }
 
