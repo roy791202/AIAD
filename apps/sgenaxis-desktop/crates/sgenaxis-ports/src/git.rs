@@ -37,6 +37,14 @@ pub struct GitStatus {
     pub upstream: Option<GitUpstream>,
 }
 
+/// One local branch entry for the branches view (read-only).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitBranch {
+    pub name: String,
+    /// True for the currently checked-out branch (none when detached).
+    pub is_current: bool,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -77,6 +85,12 @@ pub trait GitPort: Send + Sync {
 
     /// Unified diff text; `pathspec` optional.
     fn diff(&self, repo: &str, pathspec: Option<&str>) -> Result<String, PortError>;
+
+    /// Local branches (current-first). Default empty keeps existing impls valid;
+    /// read adapters override. Never mutates.
+    fn branches(&self, _repo: &str) -> Result<Vec<GitBranch>, PortError> {
+        Ok(Vec::new())
+    }
 }
 
 /// Write / push operations — require [`GitWriteApproval`] (PD-GIT-02).

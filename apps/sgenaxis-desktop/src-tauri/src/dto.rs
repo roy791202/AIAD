@@ -362,6 +362,13 @@ pub struct GitEntryDto {
     pub kind: String,
 }
 
+/// One local branch for the branches view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GitBranchDto {
+    pub name: String,
+    pub is_current: bool,
+}
+
 /// Recent commit line for the branch／log strip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitCommitDto {
@@ -388,6 +395,9 @@ pub struct GitWorkbenchDto {
     /// Upstream ref name when tracking a remote (e.g. `origin/main`).
     #[serde(default)]
     pub upstream: Option<String>,
+    /// Local branches (current-first); empty when unavailable.
+    #[serde(default)]
+    pub branches: Vec<GitBranchDto>,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

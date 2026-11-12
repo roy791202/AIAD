@@ -4,7 +4,7 @@
 //! here — approving writes go through [`crate::StdGitWrite`] / FakeGitWrite
 //! with explicit approval; this helper never calls commit / push.
 
-use sgenaxis_ports::{GitCommit, GitPort, GitStatusEntry, PortError};
+use sgenaxis_ports::{GitBranch, GitCommit, GitPort, GitStatusEntry, PortError};
 
 /// Projection-friendly snapshot of a working tree (status + recent log + diff).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,6 +22,8 @@ pub struct GitWorkbenchSummary {
     pub behind: usize,
     /// Upstream ref name when the branch tracks a remote (e.g. `origin/main`).
     pub upstream: Option<String>,
+    /// Local branches (current-first); empty when the port read fails (degrade, not blank).
+    pub branches: Vec<GitBranch>,
     /// `false` for this read-only helper; host enables writes via approving
     /// [`crate::StdGitWrite`] / [`crate::FakeGitWrite`] separately.
     pub writes_enabled: bool,
@@ -52,6 +54,7 @@ pub fn summarize_worktree(
         ahead,
         behind,
         upstream,
+        branches: git.branches(repo).unwrap_or_default(),
         writes_enabled: false,
     })
 }

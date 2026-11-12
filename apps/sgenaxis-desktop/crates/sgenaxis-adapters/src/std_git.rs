@@ -7,7 +7,8 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream, PortError,
+    GitBranch, GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
+    PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -82,6 +83,11 @@ impl GitPort for StdGit {
             }
         }
         self.run(repo, &args)
+    }
+
+    fn branches(&self, repo: &str) -> Result<Vec<GitBranch>, PortError> {
+        let out = self.run(repo, &["branch", "--no-color"])?;
+        Ok(parse_branches(&out))
     }
 }
 
@@ -205,6 +211,33 @@ fn parse_log(text: &str) -> Vec<GitCommit> {
         .collect()
 }
 
+/// Parse `git branch` output into local branches; `*` marks current.
+/// Orders current-first, then by name. Detached-HEAD synthetic lines are skipped.
+fn parse_branches(text: &str) -> Vec<GitBranch> {
+    let mut items: Vec<GitBranch> = text
+        .lines()
+        .map(str::trim_end)
+        .filter(|l| !l.is_empty())
+        .filter_map(|line| {
+            let is_current = line.starts_with('*');
+            let name = line.trim_start_matches('*').trim();
+            if name.is_empty() || name.starts_with('(') {
+                return None; // detached HEAD / non-branch line
+            }
+            Some(GitBranch {
+                name: name.to_string(),
+                is_current,
+            })
+        })
+        .collect();
+    items.sort_by(|a, b| {
+        b.is_current
+            .cmp(&a.is_current)
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    items
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -246,5 +279,19 @@ R  old.rs -> renamed.rs
         assert_eq!(up.name, "origin/main");
         assert_eq!(up.ahead, 2);
         assert_eq!(up.behind, 3);
+    }
+
+    // PD-GIT-BRANCHES-01 RED: local branch list marks current, orders current-first then name-sorted.
+    #[test]
+    fn parse_branches_marks_current_and_orders() {
+        // `git branch` style: '*' marks the current branch.
+        let text = "  zeta\n* main\n  alpha\n";
+        let branches = parse_branches(text);
+        assert_eq!(branches.len(), 3);
+        assert_eq!(branches[0].name, "main");
+        assert!(branches[0].is_current, "current branch first and marked");
+        assert_eq!(branches[1].name, "alpha");
+        assert_eq!(branches[2].name, "zeta");
+        assert!(!branches[1].is_current && !branches[2].is_current);
     }
 }

@@ -49,7 +49,8 @@ use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
     IndexCommitPreviewDto, IndexCommitRequestDto};
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
-    EvidenceSummaryDto, GetEvidenceSummaryArgs, GitCommitDto, GitDiffDto, GitEntryDto,
+    EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
+    GitEntryDto,
     GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -1497,6 +1498,14 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
         ahead: summary.ahead,
         behind: summary.behind,
         upstream: summary.upstream.clone(),
+        branches: summary
+            .branches
+            .iter()
+            .map(|b| GitBranchDto {
+                name: b.name.clone(),
+                is_current: b.is_current,
+            })
+            .collect(),
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1520,6 +1529,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         ahead: 0,
         behind: 0,
         upstream: None,
+        branches: Vec::new(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2458,7 +2468,9 @@ pub fn import_preview(
 mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
-    use sgenaxis_ports::{GitCommit, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream};
+    use sgenaxis_ports::{
+        GitBranch, GitCommit, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
+    };
 
     #[test]
     fn workbench_dto_maps_summary_writes_flag() {
@@ -2516,6 +2528,42 @@ mod git_ui_tests {
         assert_eq!(dto.ahead, 2);
         assert_eq!(dto.behind, 1);
         assert_eq!(dto.upstream.as_deref(), Some("origin/feature"));
+    }
+
+    // PD-GIT-BRANCHES-01 RED: DTO must surface local branches (name + is_current).
+    #[test]
+    fn workbench_dto_surfaces_branches() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_branches(
+            "/r",
+            vec![
+                GitBranch {
+                    name: "main".into(),
+                    is_current: true,
+                },
+                GitBranch {
+                    name: "feature".into(),
+                    is_current: false,
+                },
+            ],
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.branches.len(), 2);
+        assert_eq!(dto.branches[0].name, "main");
+        assert!(dto.branches[0].is_current);
+        assert_eq!(dto.branches[1].name, "feature");
+        assert!(!dto.branches[1].is_current);
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

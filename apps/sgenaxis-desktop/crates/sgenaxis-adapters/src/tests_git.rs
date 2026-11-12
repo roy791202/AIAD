@@ -1,7 +1,7 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval,
+    GitBranch, GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval,
     GitWritePort, PortError,
 };
 
@@ -57,6 +57,41 @@ fn fake_git_summary_dto_for_ui_projection() {
     assert_eq!(summary.recent_commits[0].hash, "aaa");
     assert!(summary.diff_text.contains("a.rs"));
     assert!(!summary.writes_enabled);
+}
+
+// PD-GIT-BRANCHES-01 RED: summary must surface local branches (current-first) from the port.
+#[test]
+fn summarize_worktree_surfaces_branches() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_branches(
+        "/proj",
+        vec![
+            GitBranch {
+                name: "main".into(),
+                is_current: true,
+            },
+            GitBranch {
+                name: "feature".into(),
+                is_current: false,
+            },
+        ],
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert_eq!(summary.branches.len(), 2);
+    assert_eq!(summary.branches[0].name, "main");
+    assert!(summary.branches[0].is_current);
+    assert_eq!(summary.branches[1].name, "feature");
+    assert!(!summary.branches[1].is_current);
 }
 
 #[test]
