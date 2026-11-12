@@ -39,7 +39,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const btn=(id,label,extra='')=>`<button type="button" data-op="${id}" ${extra}>${label||esc(byId[id].label)}</button>`;
 const views={changes:'變更',history:'提交紀錄',branches:'分支',stash:'Stash',conflicts:'衝突',tags:'標籤',remotes:'遠端與驗證',settings:'Git 設定'};
 const listIds={changes:'FILE-SELECT',history:'HISTORY-LIST',branches:'BRANCH-LIST',stash:'STASH-LIST',conflicts:'CONFLICT-LIST',tags:'TAG-LIST',remotes:'REMOTE-LIST',settings:'SETTINGS-IDENTITY'};
-let state,pending=null,returnFocus=null,timer;
+let state,pending=null,returnFocus=null,timer,liveHooks=null;
 function historyFixture(){return [
  {id:'a3f9c2d',parents:['c7f10aa'],lane:1,message:'feat: polish Git panel interactions',refs:['HEAD → feature/git-ui'],author:'Alex',date:'10/25 16:42'},
  {id:'9ab14e0',parents:['8cd782b','c7f10aa'],lane:0,message:'Merge branch feature/git-ui into main',refs:['main','origin/main','tag: v0.2.0'],author:'Mina',date:'10/25 15:30'},
@@ -62,6 +62,12 @@ function init(scenario='dirty'){
  if(['conflict','rebase'].includes(scenario))startConflict(scenario==='rebase'?'Rebase':'Merge');
  render();
 }
+function liveStatusLetter(kind){return ({modified:'M',added:'A',deleted:'D',renamed:'R',untracked:'?',other:'·'})[kind]||'·';}
+function mapLiveEntry(e){const kind=(e&&e.kind)||'other';return {path:(e&&e.path)||'',status:liveStatusLetter(kind),kind,staged:false,dirty:true,untracked:kind==='untracked',conflicted:false};}
+function ensureLiveDiff(path){if(!path||!liveHooks||!liveHooks.fetchDiff)return;state.liveDiffByPath=state.liveDiffByPath||{};if(Object.prototype.hasOwnProperty.call(state.liveDiffByPath,path))return;state.liveDiffByPath[path]=undefined;Promise.resolve(liveHooks.fetchDiff(path)).then(function(t){state.liveDiffByPath[path]=t==null?'':String(t);if(state&&state.live&&state.selected===path)render();}).catch(function(){state.liveDiffByPath[path]='';if(state&&state.live&&state.selected===path)render();});}
+function initLive(){state={repoPath:'',scenario:'live',view:'changes',branch:'',files:[],selected:null,area:'dirty',message:'',amend:false,split:false,version:1,head:null,ahead:0,behind:0,upstream:null,conflict:null,unresolved:0,edited:false,draft:'',author:'',email:'',remoteEntries:[],remote:'',url:'',tested:false,ignore:'',branches:[],tags:[],stashes:[],history:[],historySelected:null,historyFocus:'all',logs:['Live 模式：真實 Git 投影（git_workbench_summary）。此工作台為唯讀，寫入走核准流程。'],failed:null,live:true,liveDiffByPath:{}};}
+function applyLive(dto){if(!state||!state.live)initLive();dto=dto||{};state.live=true;state.scenario='live';state.repoPath=dto.repo||state.repoPath||'';state.branch=dto.branch||'（分離 HEAD／未知）';state.ahead=dto.ahead||0;state.behind=dto.behind||0;state.upstream=(dto.upstream!=null&&dto.upstream!=='')?dto.upstream:null;const entries=Array.isArray(dto.entries)?dto.entries:[];state.files=entries.map(mapLiveEntry);if(!state.files.some(function(f){return f.path===state.selected;}))state.selected=state.files.length?state.files[0].path:null;const commits=Array.isArray(dto.recent_commits)?dto.recent_commits:[];state.history=commits.map(function(c,i){return {id:c.hash,parents:commits[i+1]?[commits[i+1].hash]:[],lane:0,message:c.subject,refs:i===0&&state.branch?['HEAD → '+state.branch]:[],author:'',date:''};});state.head=commits.length?commits[0].hash:null;state.historySelected=state.head;state.branches=state.branch&&state.branch.indexOf('（')<0?[state.branch]:[];state.liveDiffByPath={};render();if(state.selected)ensureLiveDiff(state.selected);}
+function mountLive(hooks){liveHooks=hooks||{};ensureGitUxListeners();if(!state||!state.live)initLive();render();}
 function toast(s){const t=$('#git-ux-toast');if(!t)return;t.textContent=s;t.hidden=false;clearTimeout(timer);timer=setTimeout(()=>{t.hidden=true},4500)}
 function log(s){state.logs.unshift(new Date().toLocaleTimeString('zh-TW',{hour12:false})+' · '+s);state.logs=state.logs.slice(0,30)}
 function page(_id){/* desktop mock: no doc pages */}
@@ -105,7 +111,15 @@ function changes(){let selected=state.files.find(f=>f.path===state.selected),sta
  const hunkAllowed=selected&&!selected.binary&&!selected.untracked&&!['large','conflict','rebase'].includes(state.scenario);
  return `${state.conflict?.active?'<div class="banner error">衝突檔案獨立列於「衝突」；請使用合併結果編輯流程，不以一般暫存動作標記解決。</div>':''}<div class="row viewbar"><h2>變更</h2><span class="spacer"></span>${btn('ALL-STAGE','全部暫存')}${btn('ALL-UNSTAGE','全部取消暫存')}</div>${!state.files.length?empty('工作目錄乾淨','沒有未提交的變更；本地提交仍可能尚未推送。',btn('HISTORY-LIST','查看提交紀錄')):`<div class="split"><div class="panel"><div class="panelhead">已暫存 <span class="count">${stageCount}</span></div>${rows('staged')}<div class="panelhead">未暫存 <span class="count">${state.files.filter(f=>f.dirty).length}</span></div>${rows('dirty')}</div><div class="panel"><div class="panelhead row"><span>${esc(state.selected)}</span><span class="spacer"></span>${btn('DIFF-VIEW',state.split?'同列檢視':'並排檢視')}</div><div class="diff">${diff(selected)}</div><div class="row" style="padding:10px;border-top:1px solid var(--line)">${btn('HUNK-STAGE','暫存此區塊',hunkAllowed&&state.area==='dirty'&&selected.dirty?'':'disabled')}${btn('HUNK-UNSTAGE','取消暫存區塊',hunkAllowed&&state.area==='staged'&&selected.staged?'':'disabled')}<small>示意 Hunk，不是真實檔案</small></div></div></div>`}<div class="commit"><div><label for="message">提交訊息</label><textarea id="git-ux-message" data-op="COMMIT-EDIT">${esc(state.message)}</textarea><label><input id="git-ux-amend" type="checkbox" data-op="COMMIT-AMEND" ${state.amend?'checked':''} ${!state.head?'disabled':''}> Amend 最近提交</label></div><div><strong>${stageCount} 個已暫存檔案</strong><p class="muted">Commit 只包含 Index。Push 會另外核對遠端與目標分支。</p>${btn('COMMIT-REVIEW','檢視並提交',`class="primary" ${(!stageCount&&!state.amend)||state.scenario==='detached'||state.conflict?.active?'disabled':''}`)}</div></div>`;
 }
-function diff(f){if(!f)return '<p class="muted" style="padding:20px">請選擇檔案</p>';if(f.binary)return '<div class="empty"><h3>二進位內容</h3><p>顯示檔案類型與大小，僅提供整檔操作。</p></div>';if(state.scenario==='large')return '<div class="empty"><h3>大型差異 · 按需載入</h3><p>正式版須分頁與截斷標示。原型不載入大量文字，停用區塊暫存。</p></div>';
+function liveDiffHtml(f){
+ if(!f)return '<p class="muted" style="padding:20px">請選擇檔案以載入真實差異（git_workbench_diff）。</p>';
+ const has=state.liveDiffByPath&&Object.prototype.hasOwnProperty.call(state.liveDiffByPath,f.path);
+ const d=has?state.liveDiffByPath[f.path]:undefined;
+ if(d===undefined)return '<p class="muted" style="padding:16px">載入差異中…（git_workbench_diff '+esc(f.path)+'）</p>';
+ if(!d||!d.trim())return '<p class="muted" style="padding:16px">此檔案無文字差異（可能為二進位或僅狀態變更）。</p>';
+ return '<div style="padding:8px 12px;color:var(--muted);font-size:11px">git_workbench_diff · '+esc(f.path)+'</div><pre class="livediff" style="margin:0;padding:10px 12px;white-space:pre-wrap">'+esc(d)+'</pre>';
+}
+function diff(f){if(state&&state.live)return liveDiffHtml(f);if(!f)return '<p class="muted" style="padding:20px">請選擇檔案</p>';if(f.binary)return '<div class="empty"><h3>二進位內容</h3><p>顯示檔案類型與大小，僅提供整檔操作。</p></div>';if(state.scenario==='large')return '<div class="empty"><h3>大型差異 · 按需載入</h3><p>正式版須分頁與截斷標示。原型不載入大量文字，停用區塊暫存。</p></div>';
  const old=["export const gitPanel = {","  theme: 'graphite',","  diffMode: 'unified',","  autoFetch: false,","}"];
  const fresh=["export const gitPanel = {","  theme: 'lavender',","  diffMode: 'split',","  autoFetch: false,","}"];
  const lines=(arr,kind)=>arr.map((l,i)=>`<div class="diffrow ${i===1||i===2?kind:''}"><span class="num">${i+1}</span><b>${i===1||i===2?(kind==='add'?'+':'−'):' '}</b><span>${esc(l)}</span></div>`).join('');
@@ -132,7 +146,8 @@ const field=(key,label,value='',type='text')=>`<label class="field">${label}<inp
 const select=(key,label,arr,selected='')=>`<label class="field">${label}<select id="f_${key}">${arr.map(v=>`<option ${v===selected?'selected':''} value="${esc(v)}">${esc(v)}</option>`).join('')}</select></label>`;
 const value=(k,alt='')=>$(`#f_${k}`)?.value??alt;
 function openOp(id,ctx={}){
- const o=byId[id];if(id==='CONFLICT-SAVE')ctx={...ctx,path:state.conflict?.selected};pending={id,ctx,version:state.version};let body='',readonly=['HISTORY-DETAIL','STASH-SHOW','CONFLICT-READ','LOG-OPEN'].includes(id);
+ const o=byId[id];
+ if(state&&state.live){toast('Live 模式：此操作為唯讀投影，寫入／進階動作暫停用。');return;}if(id==='CONFLICT-SAVE')ctx={...ctx,path:state.conflict?.selected};pending={id,ctx,version:state.version};let body='',readonly=['HISTORY-DETAIL','STASH-SHOW','CONFLICT-READ','LOG-OPEN'].includes(id);
  if(['REPO-OPEN','REPO-INIT','REPO-CLONE'].includes(id))body=field('path',id==='REPO-CLONE'?'目的資料夾':'專案路徑（示意）','D:/Projects/EluSlot')+(id==='REPO-CLONE'?field('url','來源 URL（不含憑證）',state.url):id==='REPO-INIT'?field('name','初始分支名稱','main'):'');
  if(['FILE-STAGE','FILE-UNSTAGE','FILE-DISCARD','FILE-DELETE','HUNK-STAGE','HUNK-UNSTAGE'].includes(id))body=`<p>指定檔案：<strong>${esc(ctx.path||state.selected)}</strong></p><p>${id.startsWith('HUNK')?'只處理核對的示意 Hunk；完整 patch 與內容 hash 在正式版由 DiffService 提供。':id==='FILE-DISCARD'?'工作檔還原至 Index，保留已暫存的內容。':id==='FILE-DELETE'?'僅未追蹤檔案；交由系統垃圾桶。':'執行前再次核對路徑與版本。'}</p>`;
  if(['ALL-STAGE','ALL-UNSTAGE'].includes(id))body='<p>只處理這次核對的檔案集合：</p><ul>'+state.files.filter(f=>id==='ALL-STAGE'?f.dirty:f.staged).map(f=>`<li>${esc(f.path)}</li>`).join('')+'</ul>';
@@ -167,7 +182,7 @@ function openOp(id,ctx={}){
  show(o.label+' · 模擬核對',`<div id="opError" class="banner error" role="alert" hidden></div>${body}<details><summary>Git 指令與執行責任</summary><pre>${esc(o.command.split('; ').join('\n'))}</pre><p>${esc(o.error)}</p></details>${readonly?'':select('failure','測試錯誤回饋',['正常執行',...(['BRANCH-MERGE','ADV-REBASE'].includes(id)?['產生合併衝突']:[]),'驗證失敗','非快轉拒絕','Hook 拒絕','逾時／結果不明'])}<p class="muted">操作只變更此頁示意資料，不讀寫專案、不執行 Git。</p>`,`<button data-spec="${id}">串接規格</button><button data-close>取消／關閉</button>${readonly?'':`<button data-run="${run}" data-op="${run}" class="primary">${run==='COMMIT-EXEC'?'確認模擬 Commit':'確認模擬執行'}</button>`}`);
 }
 function fail(msg,id){$('#opError').textContent=msg;$('#opError').hidden=false;state.failed={id,ctx:pending?.ctx||{}};log('模擬失敗 '+id+'：'+msg);$('#git-ux-logs').innerHTML=state.logs.map(s=>`<div>${esc(s)}</div>`).join('');$('#opError').scrollIntoView({block:'nearest'});return false}
-function execute(id){if(!pending)return;const ctx=pending.ctx,path=ctx.path||state.selected,o=byId[id];const error=m=>fail(m,id);
+function execute(id){if(state&&state.live){toast('Live 模式為唯讀投影：寫入請走核准流程。');close();return;}if(!pending)return;const ctx=pending.ctx,path=ctx.path||state.selected,o=byId[id];const error=m=>fail(m,id);
  if(state.scenario==='locked'&&!['HISTORY-COMPARE','REMOTE-TEST'].includes(id))return error('INDEX_LOCKED：請確認其他 Git 程序，不自動刪鎖。');
  if(state.conflict?.active&&['BRANCH-CREATE','BRANCH-SWITCH','BRANCH-MERGE','ADV-REBASE','ADV-RESET','ADV-REVERT','ADV-CHERRY','STASH-APPLY','STASH-POP','STASH-CREATE','REMOTE-PULL','REMOTE-PUSH','REMOTE-FORCE','FILE-STAGE','ALL-STAGE','FILE-UNSTAGE','ALL-UNSTAGE','FILE-DISCARD','HUNK-STAGE','HUNK-UNSTAGE','COMMIT-EXEC'].includes(id))return error('OPERATION_IN_PROGRESS：請先解決並繼續，或中止目前 '+state.conflict.kind+'。');
  if(value('failure')==='產生合併衝突'&&['BRANCH-MERGE','ADV-REBASE'].includes(id)){const source=value('target'),kind=id==='ADV-REBASE'?'Rebase':'Merge';startConflict(kind,source);state.scenario=kind==='Rebase'?'rebase':'conflict';$('#git-ux-scenario').value=state.scenario;state.version++;log('模擬偵測到衝突：'+kind+'，2 個檔案等待解決');close();render();toast('偵測到衝突，已顯示處理狀態。');return}
@@ -228,50 +243,19 @@ function execute(id){if(!pending)return;const ctx=pending.ctx,path=ctx.path||sta
 function route(id){const v=byId[id].view;return ['repo','logs'].includes(v)?'changes':v}
 function locate(id){close();page('prototype');if(['unbound','noGit','notRepo'].includes(state.scenario)){init();$('#git-ux-scenario').value='dirty'}if(route(id)==='conflicts'&&!['conflict','rebase'].includes(state.scenario)){init('conflict');$('#git-ux-scenario').value='conflict'}state.view=route(id);render();if(id==='COMMIT-EXEC'){openOp('COMMIT-REVIEW');return}const el=$(`#git-ux-view [data-op="${id}"]`)||$(`#git-ux-root [data-op="${id}"]`);if(el){el.classList.add('highlight');el.scrollIntoView({block:'center',behavior:'smooth'});el.focus();setTimeout(()=>el.classList.remove('highlight'),2400)}else openOp(id)}
 function handle(el){const id=el.dataset.op;if($('#git-ux-inspect')?.checked){spec(id);return}if(el.dataset.run){execute(el.dataset.run);return}if(el.dataset.historyNode){state.historySelected=el.dataset.historyNode;state.view='history';render();$('#historyInspector')?.scrollIntoView({block:'nearest'});return}if(el.dataset.conflictPath){state.conflict.selected=el.dataset.conflictPath;syncConflict();render();return}if(el.dataset.view){state.view=el.dataset.view;render();return}if(id==='COMMIT-EDIT')return;if(id==='COMMIT-AMEND')return;
- if(id==='FILE-SELECT'){state.selected=el.dataset.path||state.selected;state.area=el.dataset.area||state.area;render();return}
+ if(id==='FILE-SELECT'){state.selected=el.dataset.path||state.selected;state.area=el.dataset.area||state.area;if(state&&state.live)ensureLiveDiff(state.selected);render();return}
  if(id==='DIFF-VIEW'){state.split=!state.split;render();return}
  if(id==='CONFLICT-EDIT'){const f=currentConflict();if(!f)return;editConflict(el.dataset.value==='ours'?f.stage2:el.dataset.value==='theirs'?f.stage3:$('#result').value);render();toast('結果草稿已更新；狀態為編輯中，尚未儲存。');return}
  if(id==='HISTORY-COPY'){const text=el.dataset.value||state.head||'';if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(()=>toast('已複製示意 ID：'+text)).catch(()=>toast('請手動複製：'+text));else toast('請手動複製：'+text);return}
- if(['REPO-REFRESH','HISTORY-LIST','BRANCH-LIST','STASH-LIST','CONFLICT-LIST','TAG-LIST','REMOTE-LIST'].includes(id)){if(id!=='REPO-REFRESH')state.view=route(id);log('模擬重新讀取：'+byId[id].label);render();return}
+ if(['REPO-REFRESH','HISTORY-LIST','BRANCH-LIST','STASH-LIST','CONFLICT-LIST','TAG-LIST','REMOTE-LIST'].includes(id)){if(id!=='REPO-REFRESH')state.view=route(id);if(state&&state.live){if(liveHooks&&liveHooks.refresh){Promise.resolve(liveHooks.refresh()).catch(function(){});return}render();return}log('模擬重新讀取：'+byId[id].label);render();return}
  if(id==='LOG-RETRY'){if(!state.failed){toast('目前沒有可重試的失敗操作。');return}openOp(state.failed.id,state.failed.ctx);return}
  if(id==='OP-CANCEL'){toast('目前沒有執行中程序；正式版用 requestId 取消後重讀狀態。');return}
  openOp(id,{path:el.dataset.path,value:el.dataset.value,base:el.dataset.fromParent?$('#git-ux-merge-parent')?.value:undefined});
 }
 
-function bootGitUxMock(scenario) {
-  const root = document.querySelector(ROOT_SEL);
-  if (!root) return;
-  const dialog = $("#git-ux-op-dialog");
-  const closeBtn = $("#git-ux-close-dialog");
-  if (closeBtn) closeBtn.onclick = close;
-  if (dialog) {
-    dialog.addEventListener("cancel", function (e) {
-      e.preventDefault();
-      close();
-    });
-  }
-  const scenarioEl = $("#git-ux-scenario");
-  if (scenarioEl) {
-    scenarioEl.onchange = function (e) {
-      close();
-      init(e.target.value);
-    };
-  }
-  const resetEl = $("#git-ux-reset");
-  if (resetEl) {
-    resetEl.onclick = function () {
-      close();
-      init($("#git-ux-scenario").value);
-    };
-  }
-  const inspectEl = $("#git-ux-inspect");
-  if (inspectEl) {
-    inspectEl.onchange = function (e) {
-      document.body.classList.toggle("git-ux-specmode", e.target.checked);
-      root.classList.toggle("specmode", e.target.checked);
-    };
-  }
-  if (!bootGitUxMock._wired) {
+function ensureGitUxListeners() {
+  if (ensureGitUxListeners._wired) return;
+  ensureGitUxListeners._wired = true;
     document.addEventListener("click", function (e) {
       if (!document.querySelector(ROOT_SEL)) return;
       const el = e.target.closest("button,[data-op]");
@@ -340,8 +324,42 @@ function bootGitUxMock(scenario) {
         handle(node);
       }
     });
-    bootGitUxMock._wired = true;
+}
+function bootGitUxMock(scenario) {
+  const root = document.querySelector(ROOT_SEL);
+  if (!root) return;
+  const dialog = $("#git-ux-op-dialog");
+  const closeBtn = $("#git-ux-close-dialog");
+  if (closeBtn) closeBtn.onclick = close;
+  if (dialog) {
+    dialog.addEventListener("cancel", function (e) {
+      e.preventDefault();
+      close();
+    });
   }
+  const scenarioEl = $("#git-ux-scenario");
+  if (scenarioEl) {
+    scenarioEl.onchange = function (e) {
+      close();
+      init(e.target.value);
+    };
+  }
+  const resetEl = $("#git-ux-reset");
+  if (resetEl) {
+    resetEl.onclick = function () {
+      close();
+      init($("#git-ux-scenario").value);
+    };
+  }
+  const inspectEl = $("#git-ux-inspect");
+  if (inspectEl) {
+    inspectEl.onchange = function (e) {
+      document.body.classList.toggle("git-ux-specmode", e.target.checked);
+      root.classList.toggle("specmode", e.target.checked);
+    };
+  }
+  ensureGitUxListeners();
+
   init(scenario || "dirty");
   if (scenarioEl) scenarioEl.value = state.scenario;
 }
@@ -351,5 +369,8 @@ global.EluSlotGitUxMock = {
   init: function (s) { init(s || "dirty"); },
   render: function () { render(); },
   getState: function () { return state; },
+  applyLive: function (d) { applyLive(d); },
+  mountLive: function (h) { mountLive(h); },
+  isLive: function () { return !!(state && state.live); },
 };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -2755,6 +2755,15 @@
         (!!dto.writes_enabled),
       false
     );
+    if (
+      window.EluSlotGitUxMock &&
+      window.EluSlotGitUxMock.applyLive &&
+      document.getElementById("git-ux-root")
+    ) {
+      const uxRoot = document.getElementById("git-ux-root");
+      if (uxRoot) uxRoot.hidden = false;
+      window.EluSlotGitUxMock.applyLive(dto);
+    }
   }
 
   function renderGitNotRun(message) {
@@ -2799,6 +2808,20 @@
     renderGitHistory([]);
     applyWriteGate(false);
     setGitStatusLine(message || "git_workbench_summary → NOT RUN", false);
+    if (
+      window.EluSlotGitUxMock &&
+      window.EluSlotGitUxMock.applyLive &&
+      document.getElementById("git-ux-root")
+    ) {
+      window.EluSlotGitUxMock.applyLive({
+        entries: [],
+        recent_commits: [],
+        ahead: 0,
+        behind: 0,
+        branch: null,
+        upstream: null,
+      });
+    }
   }
 
   // PD-ELU-GIT-ARCH-01 A1 controller begin
@@ -3064,7 +3087,19 @@
     const panel = document.getElementById("panel-git");
     if (!panel || panel.querySelector("#git-index-commit-a1")) return null;
     const mockRoot = document.getElementById("git-ux-root");
-    if (mockRoot) mockRoot.hidden = true;
+    if (mockRoot) mockRoot.hidden = false;
+    if (mockRoot && window.EluSlotGitUxMock && window.EluSlotGitUxMock.mountLive) {
+      window.EluSlotGitUxMock.mountLive({
+        refresh: cmdGitRefresh,
+        fetchDiff: async function (pathspec) {
+          const d = await invoke("git_workbench_diff", {
+            repo: gitRepoArg(),
+            pathspec: pathspec || null,
+          });
+          return d && d.diff_text != null ? d.diff_text : "";
+        },
+      });
+    }
     const controller = mountGitIndexCommitUi({
       document,
       parent: panel,
@@ -3136,6 +3171,10 @@
    * PD-WIRE-BOOT-01 — boot／bind 自動載入。
    * ONLY via existing Tauri commands → host／DispatchHost projections；no JS file／git.
    */
+  if (typeof window !== "undefined") {
+    window.__eluGitRefresh = cmdGitRefresh;
+  }
+
   async function wireBootLoadProjections(opts) {
     opts = opts || {};
     const reason = opts.reason || "boot";
