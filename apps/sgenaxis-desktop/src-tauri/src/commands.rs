@@ -50,7 +50,7 @@ use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
-    GitEntryDto,
+    GitEntryDto, GitRemoteDto,
     GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -1506,6 +1506,14 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
                 is_current: b.is_current,
             })
             .collect(),
+        remotes: summary
+            .remotes
+            .iter()
+            .map(|r| GitRemoteDto {
+                name: r.name.clone(),
+                url: r.url.clone(),
+            })
+            .collect(),
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1530,6 +1538,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         behind: 0,
         upstream: None,
         branches: Vec::new(),
+        remotes: Vec::new(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2469,7 +2478,7 @@ mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
     use sgenaxis_ports::{
-        GitBranch, GitCommit, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
+        GitBranch, GitCommit, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
     };
 
     #[test]
@@ -2564,6 +2573,41 @@ mod git_ui_tests {
         assert!(dto.branches[0].is_current);
         assert_eq!(dto.branches[1].name, "feature");
         assert!(!dto.branches[1].is_current);
+    }
+
+    // PD-GIT-REMOTES-01 RED: DTO must surface configured remotes (name + url).
+    #[test]
+    fn workbench_dto_surfaces_remotes() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_remotes(
+            "/r",
+            vec![
+                GitRemote {
+                    name: "origin".into(),
+                    url: "https://github.com/roy/AIAD.git".into(),
+                },
+                GitRemote {
+                    name: "upstream".into(),
+                    url: "https://github.com/other/AIAD.git".into(),
+                },
+            ],
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.remotes.len(), 2);
+        assert_eq!(dto.remotes[0].name, "origin");
+        assert_eq!(dto.remotes[0].url, "https://github.com/roy/AIAD.git");
+        assert_eq!(dto.remotes[1].name, "upstream");
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

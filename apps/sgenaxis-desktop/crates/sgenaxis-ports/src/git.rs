@@ -45,6 +45,14 @@ pub struct GitBranch {
     pub is_current: bool,
 }
 
+/// One configured remote for the remotes view (read-only).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitRemote {
+    pub name: String,
+    /// Fetch URL for the remote.
+    pub url: String,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -89,6 +97,12 @@ pub trait GitPort: Send + Sync {
     /// Local branches (current-first). Default empty keeps existing impls valid;
     /// read adapters override. Never mutates.
     fn branches(&self, _repo: &str) -> Result<Vec<GitBranch>, PortError> {
+        Ok(Vec::new())
+    }
+
+    /// Configured remotes (name-sorted). Default empty keeps existing impls
+    /// valid; read adapters override. Never mutates.
+    fn remotes(&self, _repo: &str) -> Result<Vec<GitRemote>, PortError> {
         Ok(Vec::new())
     }
 }

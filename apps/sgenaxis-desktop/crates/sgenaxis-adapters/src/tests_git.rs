@@ -1,7 +1,8 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind,
+    GitWriteApproval,
     GitWritePort, PortError,
 };
 
@@ -92,6 +93,40 @@ fn summarize_worktree_surfaces_branches() {
     assert!(summary.branches[0].is_current);
     assert_eq!(summary.branches[1].name, "feature");
     assert!(!summary.branches[1].is_current);
+}
+
+// PD-GIT-REMOTES-01 RED: summary must surface configured remotes (name-sorted) from the port.
+#[test]
+fn summarize_worktree_surfaces_remotes() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_remotes(
+        "/proj",
+        vec![
+            GitRemote {
+                name: "origin".into(),
+                url: "https://github.com/roy/AIAD.git".into(),
+            },
+            GitRemote {
+                name: "upstream".into(),
+                url: "https://github.com/other/AIAD.git".into(),
+            },
+        ],
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert_eq!(summary.remotes.len(), 2);
+    assert_eq!(summary.remotes[0].name, "origin");
+    assert_eq!(summary.remotes[0].url, "https://github.com/roy/AIAD.git");
+    assert_eq!(summary.remotes[1].name, "upstream");
 }
 
 #[test]

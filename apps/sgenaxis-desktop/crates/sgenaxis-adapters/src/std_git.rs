@@ -7,8 +7,8 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
-    PortError,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind,
+    GitUpstream, PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -88,6 +88,11 @@ impl GitPort for StdGit {
     fn branches(&self, repo: &str) -> Result<Vec<GitBranch>, PortError> {
         let out = self.run(repo, &["branch", "--no-color"])?;
         Ok(parse_branches(&out))
+    }
+
+    fn remotes(&self, repo: &str) -> Result<Vec<GitRemote>, PortError> {
+        let out = self.run(repo, &["remote", "-v"])?;
+        Ok(parse_remotes(&out))
     }
 }
 
@@ -238,6 +243,37 @@ fn parse_branches(text: &str) -> Vec<GitBranch> {
     items
 }
 
+/// Parse `git remote -v` output. Each remote appears twice (fetch + push);
+/// dedup to one entry per remote (fetch URL preferred), ordered by name.
+fn parse_remotes(text: &str) -> Vec<GitRemote> {
+    use std::collections::BTreeMap;
+    let mut map: BTreeMap<String, String> = BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        // `<name>\t<url> (fetch|push)`
+        let mut it = line.split_whitespace();
+        let name = match it.next() {
+            Some(n) => n,
+            None => continue,
+        };
+        let url = match it.next() {
+            Some(u) => u,
+            None => continue,
+        };
+        let kind = it.next().unwrap_or("");
+        let entry = map.entry(name.to_string()).or_insert_with(|| url.to_string());
+        if kind == "(fetch)" {
+            *entry = url.to_string(); // prefer the fetch URL
+        }
+    }
+    map.into_iter()
+        .map(|(name, url)| GitRemote { name, url })
+        .collect()
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -293,5 +329,22 @@ R  old.rs -> renamed.rs
         assert_eq!(branches[1].name, "alpha");
         assert_eq!(branches[2].name, "zeta");
         assert!(!branches[1].is_current && !branches[2].is_current);
+    }
+
+    // PD-GIT-REMOTES-01 RED: `git remote -v` has two lines per remote
+    // (fetch + push); parser dedups to one entry per remote, fetch URL,
+    // ordered by name.
+    #[test]
+    fn parse_remotes_dedups_fetch_and_push() {
+        let text = "\
+upstream\thttps://github.com/other/AIAD.git (fetch)\n\
+upstream\thttps://github.com/other/AIAD.git (push)\n\
+origin\thttps://github.com/roy/AIAD.git (fetch)\n\
+origin\thttps://github.com/roy/AIAD.git (push)\n";
+        let remotes = parse_remotes(text);
+        assert_eq!(remotes.len(), 2, "one entry per remote, not per line");
+        assert_eq!(remotes[0].name, "origin");
+        assert_eq!(remotes[0].url, "https://github.com/roy/AIAD.git");
+        assert_eq!(remotes[1].name, "upstream");
     }
 }

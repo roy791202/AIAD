@@ -27,7 +27,8 @@ pub use error::PortError;
 pub use fs::FileSystemPort;
 pub use file_commit::{CommitError, CommitReceipt, CommitStage, FileCommitPort, FileWriteLease};
 pub use git::{
-    GitBranch, GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream, GitWriteApproval,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind,
+    GitUpstream, GitWriteApproval,
     GitWritePort,
 };
 pub use git_index_commit::{

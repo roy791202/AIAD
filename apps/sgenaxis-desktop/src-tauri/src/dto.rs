@@ -369,6 +369,13 @@ pub struct GitBranchDto {
     pub is_current: bool,
 }
 
+/// One configured remote for the remotes view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GitRemoteDto {
+    pub name: String,
+    pub url: String,
+}
+
 /// Recent commit line for the branch／log strip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitCommitDto {
@@ -398,6 +405,9 @@ pub struct GitWorkbenchDto {
     /// Local branches (current-first); empty when unavailable.
     #[serde(default)]
     pub branches: Vec<GitBranchDto>,
+    /// Configured remotes (name-sorted); empty when unavailable.
+    #[serde(default)]
+    pub remotes: Vec<GitRemoteDto>,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,
