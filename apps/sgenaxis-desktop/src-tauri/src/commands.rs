@@ -50,7 +50,7 @@ use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
-    GitEntryDto, GitRemoteDto,
+    GitEntryDto, GitRemoteDto, GitStashDto,
     GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -1515,6 +1515,14 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
             })
             .collect(),
         tags: summary.tags.iter().map(|t| t.name.clone()).collect(),
+        stashes: summary
+            .stashes
+            .iter()
+            .map(|st| GitStashDto {
+                id: st.id.clone(),
+                message: st.message.clone(),
+            })
+            .collect(),
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1541,6 +1549,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         branches: Vec::new(),
         remotes: Vec::new(),
         tags: Vec::new(),
+        stashes: Vec::new(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2480,8 +2489,8 @@ mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
     use sgenaxis_ports::{
-        GitBranch, GitCommit, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
-        GitUpstream,
+        GitBranch, GitCommit, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
+        GitTag, GitUpstream,
     };
 
     #[test]
@@ -2641,6 +2650,41 @@ mod git_ui_tests {
         let summary = summarize_worktree(&git, "/r", 5).unwrap();
         let dto = workbench_dto(&summary, false);
         assert_eq!(dto.tags, vec!["v0.1.0".to_string(), "v0.2.0".to_string()]);
+    }
+
+    // PD-GIT-STASH-01 RED: DTO must surface stashes (id + message).
+    #[test]
+    fn workbench_dto_surfaces_stashes() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_stashes(
+            "/r",
+            vec![
+                GitStash {
+                    id: "stash@{0}".into(),
+                    message: "WIP on main: slot editor".into(),
+                },
+                GitStash {
+                    id: "stash@{1}".into(),
+                    message: "On feature: theme".into(),
+                },
+            ],
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.stashes.len(), 2);
+        assert_eq!(dto.stashes[0].id, "stash@{0}");
+        assert_eq!(dto.stashes[0].message, "WIP on main: slot editor");
+        assert_eq!(dto.stashes[1].id, "stash@{1}");
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

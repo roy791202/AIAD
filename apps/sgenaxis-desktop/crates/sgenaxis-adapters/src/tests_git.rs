@@ -1,8 +1,8 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
-    GitWriteApproval,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
+    GitTag, GitWriteApproval,
     GitWritePort, PortError,
 };
 
@@ -158,6 +158,40 @@ fn summarize_worktree_surfaces_tags() {
     assert_eq!(summary.tags.len(), 2);
     assert_eq!(summary.tags[0].name, "v0.1.0");
     assert_eq!(summary.tags[1].name, "v0.2.0");
+}
+
+// PD-GIT-STASH-01 RED: summary must surface stashes (newest-first) from the port.
+#[test]
+fn summarize_worktree_surfaces_stashes() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_stashes(
+        "/proj",
+        vec![
+            GitStash {
+                id: "stash@{0}".into(),
+                message: "WIP on main: slot editor".into(),
+            },
+            GitStash {
+                id: "stash@{1}".into(),
+                message: "On feature: theme".into(),
+            },
+        ],
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert_eq!(summary.stashes.len(), 2);
+    assert_eq!(summary.stashes[0].id, "stash@{0}");
+    assert_eq!(summary.stashes[0].message, "WIP on main: slot editor");
+    assert_eq!(summary.stashes[1].id, "stash@{1}");
 }
 
 #[test]

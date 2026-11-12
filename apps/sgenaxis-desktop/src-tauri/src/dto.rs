@@ -376,6 +376,13 @@ pub struct GitRemoteDto {
     pub url: String,
 }
 
+/// One stash entry for the stash view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GitStashDto {
+    pub id: String,
+    pub message: String,
+}
+
 /// Recent commit line for the branch／log strip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitCommitDto {
@@ -411,6 +418,9 @@ pub struct GitWorkbenchDto {
     /// Tag names (sorted); empty when unavailable.
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Stashes (newest-first); empty when unavailable.
+    #[serde(default)]
+    pub stashes: Vec<GitStashDto>,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use sgenaxis_ports::{
     unsupported_platform_reason, windows_wix_supported, DeployCapability, DeployPlatform,
     DeployPort, DeploySupport, FileSystemPort, GitBranch, GitCommit, GitPort, GitRemote,
-    GitStatus, GitStatusEntry, GitTag,
+    GitStash, GitStatus, GitStatusEntry, GitTag,
     GitStatusKind, GitWriteApproval, GitWritePort, PathPort, PortError, ProcessId, ProcessOutput,
     ProcessPort, WINDOWS_WIX_PRODUCT_VERSION,
 };
@@ -330,6 +330,7 @@ pub struct FakeGit {
     branches: Arc<Mutex<HashMap<String, Vec<GitBranch>>>>,
     remotes: Arc<Mutex<HashMap<String, Vec<GitRemote>>>>,
     tags: Arc<Mutex<HashMap<String, Vec<GitTag>>>>,
+    stashes: Arc<Mutex<HashMap<String, Vec<GitStash>>>>,
 }
 
 impl FakeGit {
@@ -365,6 +366,11 @@ impl FakeGit {
     pub fn set_tags(&self, repo: &str, tags: Vec<GitTag>) {
         let mut m = self.tags.lock().expect("fake git lock");
         m.insert(repo.replace('\\', "/"), tags);
+    }
+
+    pub fn set_stashes(&self, repo: &str, stashes: Vec<GitStash>) {
+        let mut m = self.stashes.lock().expect("fake git lock");
+        m.insert(repo.replace('\\', "/"), stashes);
     }
 }
 
@@ -409,6 +415,12 @@ impl GitPort for FakeGit {
 
     fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
         let m = self.tags.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = repo.replace('\\', "/");
+        Ok(m.get(&key).cloned().unwrap_or_default())
+    }
+
+    fn stashes(&self, repo: &str) -> Result<Vec<GitStash>, PortError> {
+        let m = self.stashes.lock().map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }

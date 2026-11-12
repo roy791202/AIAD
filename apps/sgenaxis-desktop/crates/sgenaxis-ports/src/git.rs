@@ -59,6 +59,15 @@ pub struct GitTag {
     pub name: String,
 }
 
+/// One stash entry for the stash view (read-only).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitStash {
+    /// Stash ref, e.g. `stash@{0}`.
+    pub id: String,
+    /// Human-readable description.
+    pub message: String,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -115,6 +124,12 @@ pub trait GitPort: Send + Sync {
     /// Tags (name-sorted). Default empty keeps existing impls valid;
     /// read adapters override. Never mutates.
     fn tags(&self, _repo: &str) -> Result<Vec<GitTag>, PortError> {
+        Ok(Vec::new())
+    }
+
+    /// Stashes (newest-first). Default empty keeps existing impls valid;
+    /// read adapters override. Never mutates.
+    fn stashes(&self, _repo: &str) -> Result<Vec<GitStash>, PortError> {
         Ok(Vec::new())
     }
 }

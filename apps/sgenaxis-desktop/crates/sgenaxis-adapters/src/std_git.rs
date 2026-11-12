@@ -7,8 +7,8 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
-    GitUpstream, PortError,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
+    GitTag, GitUpstream, PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -98,6 +98,11 @@ impl GitPort for StdGit {
     fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
         let out = self.run(repo, &["tag", "--list"])?;
         Ok(parse_tags(&out))
+    }
+
+    fn stashes(&self, repo: &str) -> Result<Vec<GitStash>, PortError> {
+        let out = self.run(repo, &["stash", "list", "--no-color"])?;
+        Ok(parse_stashes(&out))
     }
 }
 
@@ -294,6 +299,21 @@ fn parse_tags(text: &str) -> Vec<GitTag> {
     items
 }
 
+/// Parse `git stash list` output: one `stash@{N}: <desc>` per line.
+/// Splits id from message on the first `: `; preserves newest-first order.
+fn parse_stashes(text: &str) -> Vec<GitStash> {
+    text.lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|line| {
+            let (id, message) = line.split_once(": ")?;
+            Some(GitStash {
+                id: id.trim().to_string(),
+                message: message.trim().to_string(),
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -377,5 +397,20 @@ origin\thttps://github.com/roy/AIAD.git (push)\n";
         assert_eq!(tags[0].name, "v1");
         assert_eq!(tags[1].name, "v10");
         assert_eq!(tags[2].name, "v2");
+    }
+
+    // PD-GIT-STASH-01 RED: `git stash list` → "stash@{N}: <desc>" per line;
+    // parser splits id from message and keeps newest-first order.
+    #[test]
+    fn parse_stashes_splits_id_and_message() {
+        let text = "\
+stash@{0}: WIP on main: a3f9c2d add slot editor\n\
+stash@{1}: On feature/x: tweak theme\n";
+        let stashes = parse_stashes(text);
+        assert_eq!(stashes.len(), 2);
+        assert_eq!(stashes[0].id, "stash@{0}");
+        assert_eq!(stashes[0].message, "WIP on main: a3f9c2d add slot editor");
+        assert_eq!(stashes[1].id, "stash@{1}");
+        assert_eq!(stashes[1].message, "On feature/x: tweak theme");
     }
 }
