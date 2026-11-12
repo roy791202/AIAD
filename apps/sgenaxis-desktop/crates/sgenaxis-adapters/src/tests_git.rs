@@ -1,7 +1,7 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
     GitWriteApproval,
     GitWritePort, PortError,
 };
@@ -127,6 +127,37 @@ fn summarize_worktree_surfaces_remotes() {
     assert_eq!(summary.remotes[0].name, "origin");
     assert_eq!(summary.remotes[0].url, "https://github.com/roy/AIAD.git");
     assert_eq!(summary.remotes[1].name, "upstream");
+}
+
+// PD-GIT-TAGS-01 RED: summary must surface tags (name-sorted) from the port.
+#[test]
+fn summarize_worktree_surfaces_tags() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_tags(
+        "/proj",
+        vec![
+            GitTag {
+                name: "v0.1.0".into(),
+            },
+            GitTag {
+                name: "v0.2.0".into(),
+            },
+        ],
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert_eq!(summary.tags.len(), 2);
+    assert_eq!(summary.tags[0].name, "v0.1.0");
+    assert_eq!(summary.tags[1].name, "v0.2.0");
 }
 
 #[test]

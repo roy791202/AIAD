@@ -7,7 +7,7 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind,
+    GitBranch, GitCommit, GitPort, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
     GitUpstream, PortError,
 };
 
@@ -93,6 +93,11 @@ impl GitPort for StdGit {
     fn remotes(&self, repo: &str) -> Result<Vec<GitRemote>, PortError> {
         let out = self.run(repo, &["remote", "-v"])?;
         Ok(parse_remotes(&out))
+    }
+
+    fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
+        let out = self.run(repo, &["tag", "--list"])?;
+        Ok(parse_tags(&out))
     }
 }
 
@@ -274,6 +279,21 @@ fn parse_remotes(text: &str) -> Vec<GitRemote> {
         .collect()
 }
 
+/// Parse `git tag --list` output: one tag per line. Trims blanks,
+/// sorts by name.
+fn parse_tags(text: &str) -> Vec<GitTag> {
+    let mut items: Vec<GitTag> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(|name| GitTag {
+            name: name.to_string(),
+        })
+        .collect();
+    items.sort_by(|a, b| a.name.cmp(&b.name));
+    items
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -346,5 +366,16 @@ origin\thttps://github.com/roy/AIAD.git (push)\n";
         assert_eq!(remotes[0].name, "origin");
         assert_eq!(remotes[0].url, "https://github.com/roy/AIAD.git");
         assert_eq!(remotes[1].name, "upstream");
+    }
+
+    // PD-GIT-TAGS-01 RED: `git tag --list` → one tag per line; parser trims
+    // blanks and sorts by name.
+    #[test]
+    fn parse_tags_sorts_names() {
+        let tags = parse_tags("v2\nv1\n\nv10\n");
+        assert_eq!(tags.len(), 3, "blank lines dropped");
+        assert_eq!(tags[0].name, "v1");
+        assert_eq!(tags[1].name, "v10");
+        assert_eq!(tags[2].name, "v2");
     }
 }

@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use sgenaxis_ports::{
     unsupported_platform_reason, windows_wix_supported, DeployCapability, DeployPlatform,
     DeployPort, DeploySupport, FileSystemPort, GitBranch, GitCommit, GitPort, GitRemote,
-    GitStatus, GitStatusEntry,
+    GitStatus, GitStatusEntry, GitTag,
     GitStatusKind, GitWriteApproval, GitWritePort, PathPort, PortError, ProcessId, ProcessOutput,
     ProcessPort, WINDOWS_WIX_PRODUCT_VERSION,
 };
@@ -329,6 +329,7 @@ pub struct FakeGit {
     diffs: Arc<Mutex<HashMap<String, String>>>,
     branches: Arc<Mutex<HashMap<String, Vec<GitBranch>>>>,
     remotes: Arc<Mutex<HashMap<String, Vec<GitRemote>>>>,
+    tags: Arc<Mutex<HashMap<String, Vec<GitTag>>>>,
 }
 
 impl FakeGit {
@@ -359,6 +360,11 @@ impl FakeGit {
     pub fn set_remotes(&self, repo: &str, remotes: Vec<GitRemote>) {
         let mut m = self.remotes.lock().expect("fake git lock");
         m.insert(repo.replace('\\', "/"), remotes);
+    }
+
+    pub fn set_tags(&self, repo: &str, tags: Vec<GitTag>) {
+        let mut m = self.tags.lock().expect("fake git lock");
+        m.insert(repo.replace('\\', "/"), tags);
     }
 }
 
@@ -397,6 +403,12 @@ impl GitPort for FakeGit {
 
     fn remotes(&self, repo: &str) -> Result<Vec<GitRemote>, PortError> {
         let m = self.remotes.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = repo.replace('\\', "/");
+        Ok(m.get(&key).cloned().unwrap_or_default())
+    }
+
+    fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
+        let m = self.tags.lock().map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }

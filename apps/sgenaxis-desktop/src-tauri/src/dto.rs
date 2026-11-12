@@ -408,6 +408,9 @@ pub struct GitWorkbenchDto {
     /// Configured remotes (name-sorted); empty when unavailable.
     #[serde(default)]
     pub remotes: Vec<GitRemoteDto>,
+    /// Tag names (sorted); empty when unavailable.
+    #[serde(default)]
+    pub tags: Vec<String>,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

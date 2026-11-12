@@ -53,6 +53,12 @@ pub struct GitRemote {
     pub url: String,
 }
 
+/// One tag for the tags view (read-only).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitTag {
+    pub name: String,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -103,6 +109,12 @@ pub trait GitPort: Send + Sync {
     /// Configured remotes (name-sorted). Default empty keeps existing impls
     /// valid; read adapters override. Never mutates.
     fn remotes(&self, _repo: &str) -> Result<Vec<GitRemote>, PortError> {
+        Ok(Vec::new())
+    }
+
+    /// Tags (name-sorted). Default empty keeps existing impls valid;
+    /// read adapters override. Never mutates.
+    fn tags(&self, _repo: &str) -> Result<Vec<GitTag>, PortError> {
         Ok(Vec::new())
     }
 }

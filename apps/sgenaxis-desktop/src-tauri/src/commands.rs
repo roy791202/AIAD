@@ -1514,6 +1514,7 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
                 url: r.url.clone(),
             })
             .collect(),
+        tags: summary.tags.iter().map(|t| t.name.clone()).collect(),
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1539,6 +1540,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         upstream: None,
         branches: Vec::new(),
         remotes: Vec::new(),
+        tags: Vec::new(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2478,7 +2480,8 @@ mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
     use sgenaxis_ports::{
-        GitBranch, GitCommit, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitUpstream,
+        GitBranch, GitCommit, GitRemote, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
+        GitUpstream,
     };
 
     #[test]
@@ -2608,6 +2611,36 @@ mod git_ui_tests {
         assert_eq!(dto.remotes[0].name, "origin");
         assert_eq!(dto.remotes[0].url, "https://github.com/roy/AIAD.git");
         assert_eq!(dto.remotes[1].name, "upstream");
+    }
+
+    // PD-GIT-TAGS-01 RED: DTO must surface tag names (flattened to Vec<String>).
+    #[test]
+    fn workbench_dto_surfaces_tags() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_tags(
+            "/r",
+            vec![
+                GitTag {
+                    name: "v0.1.0".into(),
+                },
+                GitTag {
+                    name: "v0.2.0".into(),
+                },
+            ],
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.tags, vec!["v0.1.0".to_string(), "v0.2.0".to_string()]);
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.
