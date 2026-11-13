@@ -33,18 +33,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Tauri Linux deps
-        if: ${{ hashFiles('apps/sgenaxis-desktop/src-tauri/Cargo.toml') != '' }}
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      - uses: dtolnay/rust-toolchain@stable
-        if: ${{ hashFiles('**/Cargo.toml') != '' }}
-      - name: cargo test
-        if: ${{ hashFiles('**/Cargo.toml') != '' }}
-        shell: bash
-        working-directory: apps/sgenaxis-desktop
-        run: |
-          cargo test --workspace --locked --all-targets
-          cargo test --manifest-path src-tauri/Cargo.toml --locked --all-targets
+      # Rust/cargo coverage runs on windows-latest in rust-gate.yml (check
+      # "rust-windows"), which runs cargo test --workspace / --lib / the exec
+      # matrix there. This app is Windows-first (Win32 paths, ConPTY,
+      # std::os::windows adapters), so its cargo tests belong on Windows, not
+      # on this Linux runner; this job covers the npm / UI tests only.
       - uses: actions/setup-node@v4
         if: ${{ hashFiles('apps/sgenaxis-desktop/package.json') != '' }}
         with:
