@@ -54,6 +54,7 @@ use crate::dto::{
     GitTagDto, GitWorkbenchDto,
     GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
     GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
+    GitWriteTagArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -329,6 +330,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_stash_pop",
         "git_write_stash_drop",
         "git_write_stash_push",
+        "git_write_tag",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -2298,6 +2300,96 @@ pub fn git_write_stash_push(
     perform_git_write_stash_push(root.git_write(), &repo, &args.message, args.approved)
 }
 
+/// Names that would become flags or destructive tag verbs.
+fn tag_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || matches!(
+            lower.as_str(),
+            "--delete" | "-d" | "-f" | "--force" | "push" | "--points-at"
+        )
+        || lower.contains("..")
+}
+
+fn reject_tag_scope(name: &str) -> Result<(), String> {
+    let t = name.trim();
+    if t.is_empty() {
+        return Ok(());
+    }
+    if tag_out_of_scope(t) {
+        return Err("force/delete/push tag writes are out of scope".into());
+    }
+    Ok(())
+}
+
+/// Soft-gated tag create: empty / unapproved never mutates; approved via port.
+fn perform_git_write_tag(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    message: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_tag_scope(name)?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-create".into(),
+            message: "empty tag name".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-create".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.create_tag(repo, name.trim(), message.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "tag-create".into(),
+            message: "tag-create ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-create".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git tag -- name` / `git tag -a -m`. Never `-f` / `--delete` / push.
+#[tauri::command]
+pub fn git_write_tag(
+    state: State<'_, HostState>,
+    args: GitWriteTagArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_tag").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-create".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_tag(
+        root.git_write(),
+        &repo,
+        &args.name,
+        &args.message,
+        args.approved,
+    )
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -3477,6 +3569,58 @@ mod git_ui_tests {
         assert!(ok_push.ok);
         assert_eq!(ok_push.op, "stash-create");
         assert_eq!(w.last_stash_push("/r").as_deref(), Some("WIP: panel"));
+    }
+
+    #[test]
+    fn git_write_tag_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_tag"));
+        assert!(!is_allowed("git_tag"));
+        assert!(!is_allowed("git_tag_delete"));
+        assert!(!is_allowed("git_tag_push"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_tag(&w, "/r", "v1.0.0", "", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_tag_create("/r").is_none());
+        let empty = perform_git_write_tag(&w, "/r", "  ", "", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_tag_create("/r").is_none());
+        let force = perform_git_write_tag(&w, "/r", "-f", "", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        assert!(w.last_tag_create("/r").is_none());
+        let delete = perform_git_write_tag(&w, "/r", "--delete", "v1.0.0", true).unwrap_err();
+        assert!(delete.contains("out of scope"));
+        assert!(w.last_tag_create("/r").is_none());
+
+        let ok_light = perform_git_write_tag(&w, "/r", "v1.0.0", "", true).unwrap();
+        assert!(ok_light.ok);
+        assert_eq!(ok_light.op, "tag-create");
+        assert_eq!(
+            w.last_tag_create("/r"),
+            Some(("v1.0.0".into(), "".into()))
+        );
+
+        let ok_ann = perform_git_write_tag(&w, "/r", "v1.1.0", "release", true).unwrap();
+        assert!(ok_ann.ok);
+        assert_eq!(
+            w.last_tag_create("/r"),
+            Some(("v1.1.0".into(), "release".into()))
+        );
+
+        let dup = perform_git_write_tag(&w, "/r", "v1.0.0", "again", true).unwrap();
+        assert!(!dup.ok);
+        assert!(dup.local_preserved);
+        assert!(dup.message.to_ascii_lowercase().contains("already exists"));
+        assert_eq!(
+            w.last_tag_create("/r"),
+            Some(("v1.1.0".into(), "release".into()))
+        );
+        assert_eq!(
+            w.created_tags("/r"),
+            vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+        );
     }
 
     #[test]

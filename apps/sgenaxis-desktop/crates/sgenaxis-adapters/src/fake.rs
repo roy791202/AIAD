@@ -488,6 +488,10 @@ struct FakeGitWriteState {
     stash_push: HashMap<String, String>,
     /// repo → next stash apply/pop/drop/push error (raw; redacted on return).
     stash_fail: HashMap<String, String>,
+    /// repo → last approved tag create `(name, message)`. Empty message = lightweight.
+    tag_create: HashMap<String, (String, String)>,
+    /// repo → created tag names (duplicate create fails honestly).
+    tags: HashMap<String, Vec<String>>,
     next_hash: u64,
 }
 
@@ -572,6 +576,18 @@ impl FakeGitWrite {
     pub fn last_stash_push(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.stash_push.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved tag create for `repo` as `(name, message)`. Empty message = lightweight.
+    pub fn last_tag_create(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.tag_create.get(&Self::key(repo)).cloned()
+    }
+
+    /// Tag names recorded for `repo` (creation order).
+    pub fn created_tags(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.tags.get(&Self::key(repo)).cloned().unwrap_or_default()
     }
 
     /// Inject a one-shot stash apply/pop/drop/push failure; do not record success.
@@ -754,6 +770,35 @@ impl GitWritePort for FakeGitWrite {
             return Err(git_error_redacted("stash push failed", &raw));
         }
         st.stash_push.insert(key, message.to_string());
+        Ok(())
+    }
+
+    fn create_tag(
+        &self,
+        repo: &str,
+        name: &str,
+        message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let tag = name.trim();
+        if tag.is_empty() {
+            return Err(PortError::Other("empty tag name".into()));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.tags.entry(key.clone()).or_default();
+        if existing.iter().any(|t| t == tag) {
+            // Duplicate: do not overwrite; fail honestly (no `-f`).
+            return Err(PortError::Git(format!("tag '{tag}' already exists")));
+        }
+        existing.push(tag.to_string());
+        st.tag_create
+            .insert(key, (tag.to_string(), message.to_string()));
         Ok(())
     }
 }

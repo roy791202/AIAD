@@ -572,6 +572,19 @@ pub struct GitWriteStashPushArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local tag create (`git tag -- name` or `git tag -a -m`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteTagArgs {
+    pub repo: Option<String>,
+    /// Tag name. Never flags (`-f`, `--delete`).
+    pub name: String,
+    /// Empty → lightweight; non-empty → annotated `-m`.
+    #[serde(default)]
+    pub message: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

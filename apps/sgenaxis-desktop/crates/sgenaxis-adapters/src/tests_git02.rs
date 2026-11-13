@@ -618,4 +618,90 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn tag_list(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "tag", "-l"])
+            .output()
+            .expect("git tag -l");
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    fn tag_object_type(repo: &str, name: &str) -> String {
+        let spec = format!("refs/tags/{name}");
+        let out = Command::new("git")
+            .args(["-C", repo, "cat-file", "-t", &spec])
+            .output()
+            .expect("git cat-file -t");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_create_tag_lightweight_and_annotated_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.create_tag(repo, "v1.0.0", "", GitWriteApproval::denied())
+            .expect_err("denied tag must not mutate");
+        assert!(tag_list(repo).trim().is_empty());
+
+        w.create_tag(repo, "  ", "", GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        assert!(tag_list(repo).trim().is_empty());
+
+        w.create_tag(repo, "-f", "", GitWriteApproval::granted())
+            .expect_err("force flag name is out of scope");
+        w.create_tag(repo, "--delete", "", GitWriteApproval::granted())
+            .expect_err("delete is out of scope");
+        assert!(tag_list(repo).trim().is_empty());
+
+        w.create_tag(repo, "v1.0.0", "", GitWriteApproval::granted())
+            .expect("approved lightweight");
+        let list = tag_list(repo);
+        assert!(list.contains("v1.0.0"), "lightweight tag missing: {list}");
+        assert_eq!(tag_object_type(repo, "v1.0.0"), "commit");
+
+        w.create_tag(repo, "v1.1.0", "release notes", GitWriteApproval::granted())
+            .expect("approved annotated");
+        let list = tag_list(repo);
+        assert!(list.contains("v1.1.0"), "annotated tag missing: {list}");
+        assert_eq!(tag_object_type(repo, "v1.1.0"), "tag");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_create_tag_duplicate_fails_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.create_tag(repo, "v1.0.0", "first", GitWriteApproval::granted())
+            .expect("first tag");
+        let err = w
+            .create_tag(repo, "v1.0.0", "overwrite", GitWriteApproval::granted())
+            .expect_err("duplicate must fail without -f");
+        assert!(matches!(err, PortError::Git(_)));
+        let msg = err.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("already exists") || msg.contains("v1.0.0"),
+            "duplicate must fail honestly: {err}"
+        );
+        assert_eq!(tag_object_type(repo, "v1.0.0"), "tag");
+        let log = Command::new("git")
+            .args(["-C", repo, "tag", "-l", "-n1", "v1.0.0"])
+            .output()
+            .unwrap();
+        let annotated = String::from_utf8_lossy(&log.stdout);
+        assert!(
+            annotated.contains("first"),
+            "duplicate must not overwrite annotated message: {annotated}"
+        );
+        assert!(
+            !annotated.contains("overwrite"),
+            "duplicate must not force-update: {annotated}"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

@@ -2488,7 +2488,13 @@
       return;
     }
     const payload = extra && typeof extra === "object" ? extra : { branch: extra };
-    pendingGitWrite = { op: op, branch: payload.branch, stash: payload.stash, message: payload.message };
+    pendingGitWrite = {
+      op: op,
+      branch: payload.branch,
+      stash: payload.stash,
+      message: payload.message,
+      name: payload.name,
+    };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
     const lede = document.getElementById("git-approve-lede");
@@ -2498,6 +2504,7 @@
     const authorWrap = document.getElementById("git-approve-author-wrap");
     const emailWrap = document.getElementById("git-approve-email-wrap");
     const ignoreWrap = document.getElementById("git-approve-ignore-wrap");
+    const tagWrap = document.getElementById("git-approve-tag-wrap");
     if (title) {
       title.textContent =
         op === "push"
@@ -2516,6 +2523,8 @@
           ? "審核 Stash Drop"
           : op === "stash-create"
           ? "審核 Stash Create"
+          : op === "tag-create"
+          ? "審核 Tag Create"
           : "審核 Commit";
     }
     if (lede) {
@@ -2544,17 +2553,30 @@
             "。缺漏的 Stash 會誠實失敗，不執行 stash clear。拒絕則無突變。"
           : op === "stash-create"
           ? "核准後經 git_write_stash_push → GitWritePort；只保存已追蹤變更（不加 -u／--all）。拒絕則無突變。"
+          : op === "tag-create"
+          ? "核准後經 git_write_tag → GitWritePort；本機建立標籤。空白訊息＝lightweight；有訊息＝annotated。重名誠實失敗。不刪除、不推送、不加 -f。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
-      msgWrap.hidden = op !== "commit" && op !== "stash-create";
+      msgWrap.hidden = op !== "commit" && op !== "stash-create" && op !== "tag-create";
       const span = msgWrap.querySelector("span");
       const input = document.getElementById("git-approve-message");
-      if (span) span.textContent = op === "stash-create" ? "Stash 說明" : "Commit message";
+      if (span) {
+        span.textContent =
+          op === "stash-create"
+            ? "Stash 說明"
+            : op === "tag-create"
+            ? "標籤訊息（選填）"
+            : "Commit message";
+      }
       if (input) {
         input.setAttribute(
           "aria-label",
-          op === "stash-create" ? "Stash message" : "Commit message"
+          op === "stash-create"
+            ? "Stash message"
+            : op === "tag-create"
+            ? "Tag message (optional)"
+            : "Commit message"
         );
       }
     }
@@ -2563,6 +2585,7 @@
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
+    if (tagWrap) tagWrap.hidden = op !== "tag-create";
     if (box) box.hidden = false;
     if (op === "commit" || op === "stash-create") {
       const msg = document.getElementById("git-approve-message");
@@ -2573,6 +2596,16 @@
         } else if (!msg.value) {
           msg.value = "";
         }
+      }
+    } else if (op === "tag-create") {
+      const tag = document.getElementById("git-approve-tag");
+      const msg = document.getElementById("git-approve-message");
+      if (tag) {
+        tag.value = payload.name != null ? String(payload.name) : "";
+        tag.focus();
+      }
+      if (msg) {
+        msg.value = payload.message != null ? String(payload.message) : "";
       }
     } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
@@ -2783,6 +2816,35 @@
             true
           );
           toast("Stash create 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "tag-create") {
+        const tagEl = document.getElementById("git-approve-tag");
+        const name = tagEl && tagEl.value ? tagEl.value.trim() : "";
+        if (!name) {
+          setGitStatusLine("標籤名稱不可空白", true);
+          toast("請填寫標籤名稱");
+          return;
+        }
+        const msgEl = document.getElementById("git-approve-message");
+        const message = msgEl && msgEl.value ? msgEl.value.trim() : "";
+        const dto = await invoke("git_write_tag", {
+          args: { repo: repo, name: name, message: message, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已建立標籤 " + name + "（經 GitWritePort；" + (message ? "annotated" : "lightweight") + "）",
+            false
+          );
+          toast("Tag create 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "tag 失敗：" + ((dto && dto.message) || "unknown") + "（本機標籤依 Git 真實結果保留）",
+            true
+          );
+          toast("Tag create 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3306,6 +3368,7 @@
         stashPop: function (stash) { showGitApprove("stash-pop", { stash: stash }); },
         stashDrop: function (stash) { showGitApprove("stash-drop", { stash: stash }); },
         stashCreate: function () { showGitApprove("stash-create", {}); },
+        tagCreate: function () { showGitApprove("tag-create", {}); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

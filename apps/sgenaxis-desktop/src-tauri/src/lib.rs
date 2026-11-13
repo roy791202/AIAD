@@ -133,6 +133,7 @@ pub fn run() {
             commands::git_write_stash_pop,
             commands::git_write_stash_drop,
             commands::git_write_stash_push,
+            commands::git_write_tag,
             commands::deploy_status,
             commands::deploy_check,
             commands::list_artifacts,
@@ -189,6 +190,7 @@ mod host_ipc_integration {
             "git_write_stash_pop",
             "git_write_stash_drop",
             "git_write_stash_push",
+            "git_write_tag",
             "deploy_status",
             "deploy_check",
             "list_artifacts",
@@ -212,6 +214,8 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_commit"));
         assert!(!is_allowed("git_push"));
         assert!(!is_allowed("git_force_push"));
+        assert!(!is_allowed("git_tag"));
+        assert!(!is_allowed("git_tag_delete"));
         assert!(!is_allowed("deploy_install"));
         assert!(!is_allowed("deploy_msiexec"));
         assert!(!is_allowed("list_os_devices"));

@@ -9,6 +9,8 @@
 //! - Stash: `git stash apply/pop/drop -- stash@{n}` and
 //!   `git stash push -m <message>` (tracked-only). Never `-q` / `--quiet`.
 //!   Never `-u` / `--all`. Never `stash clear`. Never force.
+//! - Tag: `git tag -- <name>` (lightweight) or `git tag -a -m <msg> -- <name>`
+//!   (annotated). Never `-f` / `--force`. Never `--delete`. Never push.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -122,6 +124,21 @@ impl StdGitWrite {
         }
         Ok(())
     }
+
+    fn require_tag_name(name: &str) -> Result<(), PortError> {
+        if name.trim().is_empty() {
+            return Err(PortError::Other("empty tag name".into()));
+        }
+        if name.contains('\n') || name.contains('\0') {
+            return Err(PortError::Other("tag name must be a single line".into()));
+        }
+        if tag_out_of_scope(name) {
+            return Err(PortError::Other(
+                "force/delete/push tag writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// `stash@{N}` only — never flags (`-q`, `--index`) or other stash verbs.
@@ -133,6 +150,18 @@ fn is_stash_selector(value: &str) -> bool {
         return false;
     };
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Names that would become flags or destructive tag verbs without `--`.
+fn tag_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || matches!(
+            lower.as_str(),
+            "--delete" | "-d" | "-f" | "--force" | "push" | "--points-at"
+        )
+        || lower.contains("..")
 }
 
 /// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
@@ -314,6 +343,31 @@ impl GitWritePort for StdGitWrite {
         // Tracked-only: never `-u` / `--include-untracked` / `--all`.
         // `-m` takes the next argv as the message (not a flag).
         self.run(repo, &["stash", "push", "-m", msg])?;
+        Ok(())
+    }
+
+    fn create_tag(
+        &self,
+        repo: &str,
+        name: &str,
+        message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let tag = name.trim();
+        Self::require_tag_name(tag)?;
+        let msg = message.trim();
+        if msg.contains('\0') {
+            return Err(PortError::Other("tag message must be text".into()));
+        }
+        // Never `-f` / `--force` (would overwrite). Never `-d` / `--delete`.
+        // `--` stops option parse so a name cannot be read as a flag.
+        // Duplicate names fail honestly (git exits non-zero without `-f`).
+        if msg.is_empty() {
+            self.run(repo, &["tag", "--", tag])?;
+        } else {
+            self.run(repo, &["tag", "-a", "-m", msg, "--", tag])?;
+        }
         Ok(())
     }
 }

@@ -62,6 +62,8 @@ pub enum AllowedIpcCommand {
     GitWriteStashDrop,
     /// Approval-gated `git stash push -m` via GitWritePort (tracked-only; never -u/--all).
     GitWriteStashPush,
+    /// Approval-gated local `git tag -- name` / `git tag -a -m` via GitWritePort (never -f/--delete/push).
+    GitWriteTag,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -138,6 +140,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashPop => "git_write_stash_pop",
             AllowedIpcCommand::GitWriteStashDrop => "git_write_stash_drop",
             AllowedIpcCommand::GitWriteStashPush => "git_write_stash_push",
+            AllowedIpcCommand::GitWriteTag => "git_write_tag",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -192,6 +195,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashPop,
             AllowedIpcCommand::GitWriteStashDrop,
             AllowedIpcCommand::GitWriteStashPush,
+            AllowedIpcCommand::GitWriteTag,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -307,10 +311,14 @@ mod tests {
         assert!(is_allowed("git_write_stash_pop"));
         assert!(is_allowed("git_write_stash_drop"));
         assert!(is_allowed("git_write_stash_push"));
+        assert!(is_allowed("git_write_tag"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
         assert!(!is_allowed("git_stash_push"));
+        assert!(!is_allowed("git_tag"));
+        assert!(!is_allowed("git_tag_delete"));
+        assert!(!is_allowed("git_tag_push"));
         assert!(is_allowed("git_index_commit_preview"));
         assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));
@@ -411,9 +419,16 @@ mod tests {
             authorize("git_write_stash_push").unwrap(),
             AllowedIpcCommand::GitWriteStashPush
         );
+        assert_eq!(
+            authorize("git_write_tag").unwrap(),
+            AllowedIpcCommand::GitWriteTag
+        );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());
         assert!(authorize("git_stash_clear").is_err());
+        assert!(authorize("git_tag").is_err());
+        assert!(authorize("git_tag_delete").is_err());
+        assert!(authorize("git_tag_push").is_err());
         assert!(authorize("import_apply").is_err());
         assert!(authorize("shell_execute").is_err());
     }

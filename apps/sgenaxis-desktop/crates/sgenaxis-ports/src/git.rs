@@ -218,6 +218,10 @@ pub trait GitPort: Send + Sync {
 ///   Conflicts surface as errors; pop must not invent success or drop.
 ///   Drop of a missing stash must fail honestly. Push is tracked-only
 ///   (`git stash push -m`); never `-u` / `--all`, never `stash clear`, never force.
+/// - Tag create requires approval (no skip default). Lightweight:
+///   `git tag -- <name>`. Annotated: `git tag -a -m <msg> -- <name>`.
+///   Never `-f` / `--force`. Never `--delete`. Never push. Duplicate names
+///   must fail honestly.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -295,6 +299,18 @@ pub trait GitWritePort: Send + Sync {
     fn stash_push(
         &self,
         repo: &str,
+        message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Create a local tag. Requires approval.
+    /// Empty `message` → lightweight (`git tag -- <name>`).
+    /// Non-empty `message` → annotated (`git tag -a -m <msg> -- <name>`).
+    /// Never `-f` / `--force` / `--delete`. Never push. Duplicate names fail honestly.
+    fn create_tag(
+        &self,
+        repo: &str,
+        name: &str,
         message: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;

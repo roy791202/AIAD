@@ -486,6 +486,42 @@ fn fake_git_write_stash_records_when_approved() {
 }
 
 #[test]
+fn fake_git_write_tag_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.create_tag("/r", "v1.0.0", "", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_tag_create("/r").is_none());
+    assert!(w.created_tags("/r").is_empty());
+
+    w.create_tag("/r", "v1.0.0", "", GitWriteApproval::granted())
+        .expect("lightweight");
+    assert_eq!(w.last_tag_create("/r"), Some(("v1.0.0".into(), "".into())));
+    assert_eq!(w.created_tags("/r"), vec!["v1.0.0".to_string()]);
+
+    w.create_tag("/r", "v1.1.0", "release", GitWriteApproval::granted())
+        .expect("annotated");
+    assert_eq!(
+        w.last_tag_create("/r"),
+        Some(("v1.1.0".into(), "release".into()))
+    );
+    assert_eq!(
+        w.created_tags("/r"),
+        vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+    );
+
+    let dup = w.create_tag("/r", "v1.0.0", "again", GitWriteApproval::granted());
+    assert!(matches!(dup, Err(PortError::Git(ref m)) if m.contains("already exists")));
+    assert_eq!(
+        w.last_tag_create("/r"),
+        Some(("v1.1.0".into(), "release".into()))
+    );
+    assert_eq!(
+        w.created_tags("/r"),
+        vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+    );
+}
+
+#[test]
 fn gated_git_write_blocks_commit_and_push() {
     let w = GatedGitWrite::new();
     let c = w.commit("/any", "msg", GitWriteApproval::denied());
@@ -519,6 +555,13 @@ fn gated_git_write_blocks_stash_even_when_approved() {
     assert!(matches!(drop, Err(PortError::PermissionDenied(_))));
     let push = w.stash_push("/any", "wip", GitWriteApproval::granted());
     assert!(matches!(push, Err(PortError::PermissionDenied(_))));
+}
+
+#[test]
+fn gated_git_write_blocks_tag_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let tag = w.create_tag("/any", "v1.0.0", "msg", GitWriteApproval::granted());
+    assert!(matches!(tag, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
 #[test]
