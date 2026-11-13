@@ -74,6 +74,8 @@ pub enum AllowedIpcCommand {
     GitWriteRemoteAdd,
     /// Approval-gated local `git remote remove -- name` via GitWritePort (never prune/fetch).
     GitWriteRemoteRemove,
+    /// Approval-gated local `git remote set-url -- name url` via GitWritePort (never fetch/push/--add/--delete/--push).
+    GitWriteRemoteSetUrl,
     /// Approval-gated `git add -- path` for one resolved conflict (never -A / .).
     GitWriteConflictSave,
     /// Approval-gated merge/rebase/cherry-pick continue (never --skip / -X).
@@ -162,6 +164,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteBranchDelete => "git_write_branch_delete",
             AllowedIpcCommand::GitWriteRemoteAdd => "git_write_remote_add",
             AllowedIpcCommand::GitWriteRemoteRemove => "git_write_remote_remove",
+            AllowedIpcCommand::GitWriteRemoteSetUrl => "git_write_remote_set_url",
             AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
             AllowedIpcCommand::GitWriteConflictContinue => "git_write_conflict_continue",
             AllowedIpcCommand::GitWriteConflictAbort => "git_write_conflict_abort",
@@ -225,6 +228,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteBranchDelete,
             AllowedIpcCommand::GitWriteRemoteAdd,
             AllowedIpcCommand::GitWriteRemoteRemove,
+            AllowedIpcCommand::GitWriteRemoteSetUrl,
             AllowedIpcCommand::GitWriteConflictSave,
             AllowedIpcCommand::GitWriteConflictContinue,
             AllowedIpcCommand::GitWriteConflictAbort,
@@ -349,6 +353,7 @@ mod tests {
         assert!(is_allowed("git_write_branch_delete"));
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
+        assert!(is_allowed("git_write_remote_set_url"));
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
         assert!(is_allowed("git_write_conflict_abort"));
@@ -495,6 +500,10 @@ mod tests {
         assert_eq!(
             authorize("git_write_remote_remove").unwrap(),
             AllowedIpcCommand::GitWriteRemoteRemove
+        );
+        assert_eq!(
+            authorize("git_write_remote_set_url").unwrap(),
+            AllowedIpcCommand::GitWriteRemoteSetUrl
         );
         assert_eq!(
             authorize("git_write_conflict_save").unwrap(),

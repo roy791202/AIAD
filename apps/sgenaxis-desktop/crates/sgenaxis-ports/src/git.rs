@@ -241,6 +241,11 @@ pub trait GitPort: Send + Sync {
 /// - Remote remove requires approval (no skip default). Local config only:
 ///   `git remote remove -- <name>` (or `git remote rm`). Never prune/fetch.
 ///   Missing remotes fail honestly.
+/// - Remote set-url requires approval (no skip default). Local config only:
+///   `git remote set-url -- <name> <url>`. Never `--add` / `--delete` /
+///   `--push` / `--mirror`. Never fetch. Never `git push`. Unknown names
+///   and invalid name/url (including leading `-` and shell metacharacters)
+///   fail honestly.
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -394,6 +399,17 @@ pub trait GitWritePort: Send + Sync {
         &self,
         repo: &str,
         name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Update an existing local remote URL. Requires approval.
+    /// `git remote set-url -- <name> <url>`. Never `--add` / `--delete` /
+    /// `--push` / `--mirror`. Never fetch. Never push. Unknown remotes fail honestly.
+    fn set_remote_url(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 

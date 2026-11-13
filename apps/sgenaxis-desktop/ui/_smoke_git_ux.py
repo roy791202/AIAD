@@ -44,8 +44,10 @@ assert "liveHooks.branchDelete" in js
 assert "git_write_branch_delete" in js
 assert "liveHooks.remoteAdd" in js
 assert "liveHooks.remoteRemove" in js
+assert "liveHooks.remoteSetUrl" in js
 assert "git_write_remote_add" in js
 assert "git_write_remote_remove" in js
+assert "git_write_remote_set_url" in js
 assert "liveHooks.conflictSave" in js
 assert "liveHooks.conflictContinue" in js
 assert "liveHooks.conflictAbort" in js

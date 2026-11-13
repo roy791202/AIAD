@@ -22,6 +22,9 @@
 //!   Never `set-url`. Never `git push`. Duplicate names fail honestly.
 //! - Remote remove: `git remote remove -- <name>`. Never prune/fetch.
 //!   Missing remotes fail honestly.
+//! - Remote set-url: `git remote set-url -- <name> <url>`. Never `--add` /
+//!   `--delete` / `--push` / `--mirror`. Never fetch. Never `git push`.
+//!   Unknown remotes fail honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -636,6 +639,25 @@ impl GitWritePort for StdGitWrite {
         // Never prune/fetch. `--` stops option parse.
         // Missing remotes fail honestly (git exits non-zero).
         self.run(repo, &["remote", "remove", "--", remote])?;
+        Ok(())
+    }
+
+    fn set_remote_url(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let remote = name.trim();
+        let remote_url = url.trim();
+        Self::require_remote_name(remote)?;
+        Self::require_remote_url(remote_url)?;
+        // Local config only: `git remote set-url -- <name> <url>`.
+        // Never `--add` / `--delete` / `--push` / `--mirror`.
+        // Never fetch. Never `git push`. `--` stops option parse.
+        self.run(repo, &["remote", "set-url", "--", remote, remote_url])?;
         Ok(())
     }
 

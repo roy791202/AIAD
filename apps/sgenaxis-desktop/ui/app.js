@@ -2539,6 +2539,8 @@
           ? "審核 Branch Delete"
           : op === "remote-add"
           ? "審核 Remote Add"
+          : op === "remote-set-url"
+          ? "審核 Remote Set URL"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "conflict-save"
@@ -2589,6 +2591,8 @@
             "（git branch -d -- name）。不刪目前 HEAD。未合併會誠實失敗，不加 -D／--force／-r，不刪遠端。拒絕則無突變。"
           : op === "remote-add"
           ? "核准後經 git_write_remote_add → GitWritePort；只新增本機遠端設定（git remote add -- name url），不 fetch、不加 -f、不 set-url、不 push。重名與無效名稱／URL 誠實失敗。拒絕則無突變。"
+          : op === "remote-set-url"
+          ? "核准後經 git_write_remote_set_url → GitWritePort；只更新既有本機遠端 URL（git remote set-url -- name url），不 fetch、不加 --add／--delete／--push／--mirror、不 push。未知遠端與無效名稱／URL 誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -2633,8 +2637,8 @@
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
     if (branchWrap) branchWrap.hidden = op !== "branch-create";
-    if (remoteNameWrap) remoteNameWrap.hidden = op !== "remote-add";
-    if (remoteUrlWrap) remoteUrlWrap.hidden = op !== "remote-add";
+    if (remoteNameWrap) remoteNameWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
+    if (remoteUrlWrap) remoteUrlWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
     if (box) box.hidden = false;
     if (op === "commit" || op === "stash-create") {
       const msg = document.getElementById("git-approve-message");
@@ -2662,15 +2666,16 @@
         branch.value = payload.name != null ? String(payload.name) : "";
         branch.focus();
       }
-    } else if (op === "remote-add") {
+    } else if (op === "remote-add" || op === "remote-set-url") {
       const nameEl = document.getElementById("git-approve-remote-name");
       const urlEl = document.getElementById("git-approve-remote-url");
       if (nameEl) {
         nameEl.value = payload.name != null ? String(payload.name) : "";
-        nameEl.focus();
+        if (op === "remote-add") nameEl.focus();
       }
       if (urlEl) {
         urlEl.value = payload.url != null ? String(payload.url) : "";
+        if (op === "remote-set-url") urlEl.focus();
       }
     } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
@@ -3023,6 +3028,37 @@
             true
           );
           toast("Remote add 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "remote-set-url") {
+        const nameEl = document.getElementById("git-approve-remote-name");
+        const urlEl = document.getElementById("git-approve-remote-url");
+        const name = nameEl && nameEl.value ? nameEl.value.trim() : "";
+        const url = urlEl && urlEl.value ? urlEl.value.trim() : "";
+        if (!name || !url) {
+          setGitStatusLine("遠端名稱與 URL 不可空白", true);
+          toast("請填寫遠端名稱與 URL");
+          return;
+        }
+        const dto = await invoke("git_write_remote_set_url", {
+          args: { repo: repo, name: name, url: url, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已更新本機遠端 " + name + " 的 URL（經 GitWritePort；未 fetch／未 push）",
+            false
+          );
+          toast("Remote set-url 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "remote set-url 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Remote set-url 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-remove") {
@@ -3647,6 +3683,14 @@
           const urlEl = document.getElementById("git-ux-remote-url");
           showGitApprove("remote-add", {
             name: "",
+            url: urlEl && urlEl.value ? urlEl.value : "",
+          });
+        },
+        remoteSetUrl: function (name) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          const urlEl = document.getElementById("git-ux-remote-url");
+          showGitApprove("remote-set-url", {
+            name: name || (picker && picker.value) || "",
             url: urlEl && urlEl.value ? urlEl.value : "",
           });
         },

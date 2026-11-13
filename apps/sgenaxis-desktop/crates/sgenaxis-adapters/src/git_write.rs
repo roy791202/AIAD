@@ -76,7 +76,18 @@ pub(crate) fn remote_name_out_of_scope(value: &str) -> bool {
 
 pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
     let t = value.trim();
-    t.starts_with('-') || t.contains('\0') || t.contains('\n') || t.contains(' ')
+    t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\r')
+        || t.contains('\t')
+        || t.contains(' ')
+        || t.chars().any(|c| {
+            matches!(
+                c,
+                ';' | '|' | '&' | '$' | '`' | '<' | '>' | '(' | ')' | '\'' | '"' | '\\' | '*' | '?'
+            )
+        })
 }
 
 /// Paths that would become flags or widen `git add` beyond one conflicted file.
@@ -250,6 +261,16 @@ impl GitWritePort for GatedGitWrite {
         &self,
         _repo: &str,
         _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn set_remote_url(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _url: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

@@ -581,6 +581,8 @@ struct FakeGitWriteState {
     remote_add: HashMap<String, (String, String)>,
     /// repo → last approved remote remove name.
     remote_remove: HashMap<String, String>,
+    /// repo → last approved remote set-url `(name, url)`.
+    remote_set_url: HashMap<String, (String, String)>,
     /// repo → local remotes `(name, url)` (duplicate add fails; missing remove fails).
     remotes: HashMap<String, Vec<(String, String)>>,
     /// repo → in-progress conflict kind (`Merge` / `Rebase` / `CherryPick` / `Revert`).
@@ -739,6 +741,12 @@ impl FakeGitWrite {
     pub fn last_remote_remove(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.remote_remove.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved remote set-url for `repo` as `(name, url)`.
+    pub fn last_remote_set_url(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_set_url.get(&Self::key(repo)).cloned()
     }
 
     /// Local remotes recorded for `repo` as `(name, url)` (add order).
@@ -1238,6 +1246,55 @@ impl GitWritePort for FakeGitWrite {
         }
         existing.retain(|(n, _)| n != remote);
         st.remote_remove.insert(key, remote.to_string());
+        Ok(())
+    }
+
+    fn set_remote_url(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let remote = name.trim();
+        let remote_url = url.trim();
+        if remote.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if remote_url.is_empty() {
+            return Err(PortError::Other("empty remote url".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(remote) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        if crate::git_write::remote_url_out_of_scope(remote_url) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.remotes.entry(key.clone()).or_default();
+        if !existing.iter().any(|(n, _)| n == remote) {
+            return Err(PortError::Git(format!("No such remote: '{remote}'")));
+        }
+        for pair in existing.iter_mut() {
+            if pair.0 == remote {
+                pair.1 = remote_url.to_string();
+            }
+        }
+        st.remote_set_url
+            .insert(key, (remote.to_string(), remote_url.to_string()));
         Ok(())
     }
 

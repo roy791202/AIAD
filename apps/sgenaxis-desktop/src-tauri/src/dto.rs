@@ -637,6 +637,18 @@ pub struct GitWriteRemoteRemoveArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local `git remote set-url -- name url`. Never fetch/push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteRemoteSetUrlArgs {
+    pub repo: Option<String>,
+    /// Existing remote name. Never flags (`-f`, `--mirror`, `--push`, `--add`).
+    pub name: String,
+    /// Replacement fetch URL. Never flags; never `--push` URL.
+    pub url: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictSaveArgs {

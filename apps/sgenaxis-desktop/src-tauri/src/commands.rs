@@ -49,15 +49,14 @@ use crate::dto::{
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
-    GitWriteCommitArgs,
-    GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
-    GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteResultDto,
-    GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
-    GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
-    OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
-    SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
-    SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
-    WorkItemGateArgs,
+    GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteIdentityArgs,
+    GitWriteIgnoreArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
+    GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs,
+    GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs, ListenProjectionDto,
+    LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs, PollResult, ProviderDto,
+    SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs,
+    SpecRevisionDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult,
+    UpsertTaskArgs, WorkItemGateArgs,
 };
 use crate::git_index_commit::{
     IndexCommitErrorDto, IndexCommitOutcomeDto, IndexCommitPreviewDto, IndexCommitRequestDto,
@@ -429,6 +428,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_branch_delete",
         "git_write_remote_add",
         "git_write_remote_remove",
+        "git_write_remote_set_url",
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
@@ -2804,7 +2804,18 @@ fn remote_out_of_scope(value: &str) -> bool {
 
 fn remote_url_out_of_scope(value: &str) -> bool {
     let t = value.trim();
-    t.starts_with('-') || t.contains('\0') || t.contains('\n') || t.contains(' ')
+    t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\r')
+        || t.contains('\t')
+        || t.contains(' ')
+        || t.chars().any(|c| {
+            matches!(
+                c,
+                ';' | '|' | '&' | '$' | '`' | '<' | '>' | '(' | ')' | '\'' | '"' | '\\' | '*' | '?'
+            )
+        })
 }
 
 fn reject_remote_scope(name: &str, url: Option<&str>) -> Result<(), String> {
@@ -2952,6 +2963,80 @@ pub fn git_write_remote_remove(
         });
     }
     perform_git_write_remote_remove(root.git_write(), &repo, &args.name, args.approved)
+}
+
+fn perform_git_write_remote_set_url(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    url: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_remote_scope(name, Some(url))?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-set-url".into(),
+            message: "empty remote name".into(),
+            local_preserved: true,
+        });
+    }
+    if url.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-set-url".into(),
+            message: "empty remote url".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-set-url".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.set_remote_url(repo, name.trim(), url.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "remote-set-url".into(),
+            message: "remote-set-url ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-set-url".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git remote set-url -- name url`. Never fetch / push / `--add` / `--delete`.
+#[tauri::command]
+pub fn git_write_remote_set_url(
+    state: State<'_, HostState>,
+    args: GitWriteRemoteSetUrlArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_remote_set_url").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-set-url".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_remote_set_url(
+        root.git_write(),
+        &repo,
+        &args.name,
+        &args.url,
+        args.approved,
+    )
 }
 
 fn conflict_path_out_of_scope(value: &str) -> bool {
@@ -4538,6 +4623,7 @@ mod git_ui_tests {
         use sgenaxis_host::is_allowed;
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
+        assert!(is_allowed("git_write_remote_set_url"));
         assert!(!is_allowed("git_remote"));
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));
@@ -4622,6 +4708,111 @@ mod git_ui_tests {
         assert_eq!(rm.op, "remote-remove");
         assert_eq!(w.last_remote_remove("/r").as_deref(), Some("upstream"));
         assert!(w.configured_remotes("/r").is_empty());
+        assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_remote_set_url_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_remote_set_url"));
+        assert!(!is_allowed("git_remote_set_url"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/old.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+
+        let denied = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "origin",
+            "https://example.invalid/new.git",
+            false,
+        )
+        .unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_remote_set_url("/r").is_none());
+        assert_eq!(w.push_count("/r"), 0);
+
+        let empty = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "  ",
+            "https://example.invalid/new.git",
+            true,
+        )
+        .unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_remote_set_url("/r").is_none());
+
+        let empty_url = perform_git_write_remote_set_url(&w, "/r", "origin", "  ", true).unwrap();
+        assert!(!empty_url.ok);
+
+        let force = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "-f",
+            "https://example.invalid/new.git",
+            true,
+        )
+        .unwrap_err();
+        assert!(force.contains("out of scope"));
+        let flag_url =
+            perform_git_write_remote_set_url(&w, "/r", "origin", "-u", true).unwrap_err();
+        assert!(flag_url.contains("out of scope"));
+        let meta = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "origin",
+            "https://example.invalid/r.git;echo",
+            true,
+        )
+        .unwrap_err();
+        assert!(meta.contains("out of scope"));
+
+        let missing = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "ghost",
+            "https://example.invalid/new.git",
+            true,
+        )
+        .unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
+
+        let ok = perform_git_write_remote_set_url(
+            &w,
+            "/r",
+            "origin",
+            "https://example.invalid/new.git",
+            true,
+        )
+        .unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "remote-set-url");
+        assert_eq!(
+            w.last_remote_set_url("/r"),
+            Some((
+                "origin".to_string(),
+                "https://example.invalid/new.git".to_string()
+            ))
+        );
+        assert_eq!(
+            w.configured_remotes("/r"),
+            vec![(
+                "origin".to_string(),
+                "https://example.invalid/new.git".to_string()
+            )]
+        );
         assert_eq!(w.push_count("/r"), 0);
     }
 
