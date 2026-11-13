@@ -140,6 +140,10 @@ mod std_write_temp {
         git(repo, &["config", "user.name", "PD-GIT-02 Test"]);
         // Avoid signing / hooks in temp fixtures.
         git(repo, &["config", "commit.gpgsign", "false"]);
+        // Windows Git defaults to autocrlf=true; stash apply/pop then rewrites
+        // seeded LF files as CRLF and breaks exact content assertions.
+        git(repo, &["config", "core.autocrlf", "false"]);
+        git(repo, &["config", "core.eol", "lf"]);
     }
 
     fn make_worktree_with_bare_remote() -> (PathBuf, PathBuf) {
