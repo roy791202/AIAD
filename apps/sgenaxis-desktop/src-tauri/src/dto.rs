@@ -409,6 +409,17 @@ pub struct GitConflictDto {
     pub files: Vec<GitConflictFileDto>,
 }
 
+/// Local identity + root `.gitignore` for the settings view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitSettingsDto {
+    #[serde(default)]
+    pub author: String,
+    #[serde(default)]
+    pub email: String,
+    #[serde(default)]
+    pub ignore: String,
+}
+
 /// Recent commit line for the branch／log strip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitCommitDto {
@@ -450,6 +461,9 @@ pub struct GitWorkbenchDto {
     /// Conflict snapshot; inactive/empty when unavailable (degrade, never block).
     #[serde(default)]
     pub conflict: GitConflictDto,
+    /// Local identity + root `.gitignore`; empty when unavailable (degrade, never block).
+    #[serde(default)]
+    pub settings: GitSettingsDto,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

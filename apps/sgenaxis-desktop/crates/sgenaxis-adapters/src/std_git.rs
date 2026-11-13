@@ -7,8 +7,8 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitStash,
-    GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream, PortError,
+    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitSettings,
+    GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream, PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -111,6 +111,10 @@ impl GitPort for StdGit {
 
     fn conflicts(&self, repo: &str) -> Result<GitConflictState, PortError> {
         read_conflicts(self, repo)
+    }
+
+    fn settings(&self, repo: &str) -> Result<GitSettings, PortError> {
+        read_settings(self, repo)
     }
 }
 
@@ -451,6 +455,32 @@ fn attach_stage_blobs(git: &StdGit, repo: &str, files: &mut [GitConflictFile]) {
     }
 }
 
+fn read_settings(git: &StdGit, repo: &str) -> Result<GitSettings, PortError> {
+    Ok(GitSettings {
+        author: local_config(git, repo, "user.name"),
+        email: local_config(git, repo, "user.email"),
+        ignore: read_gitignore(repo),
+    })
+}
+
+fn local_config(git: &StdGit, repo: &str, key: &str) -> String {
+    git.run(repo, &["config", "--local", "--get", key])
+        .unwrap_or_default()
+        .trim()
+        .to_string()
+}
+
+fn read_gitignore(repo: &str) -> String {
+    if repo.trim().is_empty() {
+        return String::new();
+    }
+    let path = std::path::Path::new(repo).join(".gitignore");
+    match std::fs::read(&path) {
+        Ok(bytes) => decode_stage_blob(&bytes),
+        Err(_) => String::new(),
+    }
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -586,5 +616,30 @@ DU deleted-by-us.rs
         let cut = decode_stage_blob(&huge);
         assert!(cut.ends_with('…'));
         assert!(cut.len() <= MAX_STAGE_BYTES + 3);
+    }
+
+    // PD-GIT-SETTINGS-01 RED: missing / empty repo → empty ignore, never panic.
+    #[test]
+    fn read_gitignore_empty_when_missing() {
+        assert_eq!(read_gitignore(""), "");
+        assert_eq!(read_gitignore("/no/such/sgenaxis-settings-repo"), "");
+    }
+
+    // PD-GIT-SETTINGS-01 RED: working-tree `.gitignore` is the settings source.
+    #[test]
+    fn read_gitignore_reads_working_tree_file() {
+        let dir = std::env::temp_dir().join(format!(
+            "sgenaxis-gitignore-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        std::fs::create_dir_all(&dir).expect("temp gitignore dir");
+        std::fs::write(dir.join(".gitignore"), "node_modules/\ndist/\n").expect("write gitignore");
+        let text = read_gitignore(dir.to_str().expect("utf8 temp path"));
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(text, "node_modules/\ndist/\n");
     }
 }

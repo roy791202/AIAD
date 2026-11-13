@@ -1,8 +1,9 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitStash,
-    GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitWriteApproval, GitWritePort, PortError,
+    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitSettings,
+    GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitWriteApproval, GitWritePort,
+    PortError,
 };
 
 use crate::compose::{BoxedPorts, HostPorts};
@@ -280,6 +281,74 @@ fn summarize_worktree_degrades_conflicts_to_empty() {
     let summary = summarize_worktree(&git, "/proj", 1).expect("summary must not block");
     assert!(!summary.conflict.active);
     assert!(summary.conflict.files.is_empty());
+}
+
+// PD-GIT-SETTINGS-01 RED: summary must surface local identity + .gitignore from the port.
+#[test]
+fn summarize_worktree_surfaces_settings() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_settings(
+        "/proj",
+        GitSettings {
+            author: "Example Developer".into(),
+            email: "dev@example.invalid".into(),
+            ignore: "node_modules/\ndist/\n".into(),
+        },
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert_eq!(summary.settings.author, "Example Developer");
+    assert_eq!(summary.settings.email, "dev@example.invalid");
+    assert_eq!(summary.settings.ignore, "node_modules/\ndist/\n");
+}
+
+struct SettingsUnavailable {
+    inner: FakeGit,
+}
+
+impl GitPort for SettingsUnavailable {
+    fn status(&self, repo: &str) -> Result<GitStatus, PortError> {
+        self.inner.status(repo)
+    }
+    fn log(&self, repo: &str, limit: usize) -> Result<Vec<GitCommit>, PortError> {
+        self.inner.log(repo, limit)
+    }
+    fn diff(&self, repo: &str, pathspec: Option<&str>) -> Result<String, PortError> {
+        self.inner.diff(repo, pathspec)
+    }
+    fn settings(&self, _repo: &str) -> Result<GitSettings, PortError> {
+        Err(PortError::Git("settings unavailable".into()))
+    }
+}
+
+// PD-GIT-SETTINGS-01: a settings-port failure must degrade to empty, never block the snapshot.
+#[test]
+fn summarize_worktree_degrades_settings_to_empty() {
+    let inner = FakeGit::new();
+    inner.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    inner.set_log("/proj", Vec::new());
+    inner.set_diff("/proj", "");
+    let git = SettingsUnavailable { inner };
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary must not block");
+    assert!(summary.settings.author.is_empty());
+    assert!(summary.settings.email.is_empty());
+    assert!(summary.settings.ignore.is_empty());
 }
 
 // PD-GIT-SWITCH-01 RED: FakeGitWrite records an approved switch; denies without approval.

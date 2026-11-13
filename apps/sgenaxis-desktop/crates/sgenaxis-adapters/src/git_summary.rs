@@ -5,8 +5,8 @@
 //! with explicit approval; this helper never calls commit / push.
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitConflictState, GitPort, GitRemote, GitStash, GitStatusEntry, GitTag,
-    PortError,
+    GitBranch, GitCommit, GitConflictState, GitPort, GitRemote, GitSettings, GitStash,
+    GitStatusEntry, GitTag, PortError,
 };
 
 /// Projection-friendly snapshot of a working tree (status + recent log + diff).
@@ -35,6 +35,8 @@ pub struct GitWorkbenchSummary {
     pub stashes: Vec<GitStash>,
     /// Conflict snapshot; inactive/empty when the port read fails (degrade, not blank).
     pub conflict: GitConflictState,
+    /// Local identity + root `.gitignore`; empty when the port read fails (degrade, not blank).
+    pub settings: GitSettings,
     /// `false` for this read-only helper; host enables writes via approving
     /// [`crate::StdGitWrite`] / [`crate::FakeGitWrite`] separately.
     pub writes_enabled: bool,
@@ -70,6 +72,7 @@ pub fn summarize_worktree(
         tags: git.tags(repo).unwrap_or_default(),
         stashes: git.stashes(repo).unwrap_or_default(),
         conflict: git.conflicts(repo).unwrap_or_default(),
+        settings: git.settings(repo).unwrap_or_default(),
         writes_enabled: false,
     })
 }

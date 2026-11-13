@@ -50,7 +50,8 @@ use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
-    GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitStashDto, GitWorkbenchDto,
+    GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
+    GitWorkbenchDto,
     GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
@@ -1557,6 +1558,11 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
                 })
                 .collect(),
         },
+        settings: GitSettingsDto {
+            author: summary.settings.author.clone(),
+            email: summary.settings.email.clone(),
+            ignore: summary.settings.ignore.clone(),
+        },
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1585,6 +1591,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         tags: Vec::new(),
         stashes: Vec::new(),
         conflict: GitConflictDto::default(),
+        settings: GitSettingsDto::default(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2588,8 +2595,8 @@ mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
     use sgenaxis_ports::{
-        GitBranch, GitCommit, GitConflictFile, GitConflictState, GitRemote, GitStash, GitStatus,
-        GitStatusEntry, GitStatusKind, GitTag, GitUpstream,
+        GitBranch, GitCommit, GitConflictFile, GitConflictState, GitRemote, GitSettings, GitStash,
+        GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream,
     };
 
     #[test]
@@ -2827,6 +2834,35 @@ mod git_ui_tests {
         assert_eq!(dto.conflict.files[0].code, "UU");
         assert_eq!(dto.conflict.files[0].ours, "status: ready");
         assert_eq!(dto.conflict.files[0].theirs, "status: idle");
+    }
+
+    // PD-GIT-SETTINGS-01 RED: DTO must flatten local identity + .gitignore.
+    #[test]
+    fn workbench_dto_surfaces_settings() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_settings(
+            "/r",
+            GitSettings {
+                author: "Example Developer".into(),
+                email: "dev@example.invalid".into(),
+                ignore: "node_modules/\ndist/\n".into(),
+            },
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.settings.author, "Example Developer");
+        assert_eq!(dto.settings.email, "dev@example.invalid");
+        assert_eq!(dto.settings.ignore, "node_modules/\ndist/\n");
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

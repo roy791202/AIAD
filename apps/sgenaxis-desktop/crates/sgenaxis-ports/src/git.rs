@@ -97,6 +97,19 @@ pub struct GitConflictState {
     pub files: Vec<GitConflictFile>,
 }
 
+/// Local identity + root `.gitignore` for the settings view (read-only).
+///
+/// Empty strings when unset / missing. Never includes global config.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitSettings {
+    /// `git config --local user.name`.
+    pub author: String,
+    /// `git config --local user.email`.
+    pub email: String,
+    /// Working-tree `.gitignore` at the repo root.
+    pub ignore: String,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -166,6 +179,12 @@ pub trait GitPort: Send + Sync {
     /// impls valid; read adapters override. Never mutates.
     fn conflicts(&self, _repo: &str) -> Result<GitConflictState, PortError> {
         Ok(GitConflictState::default())
+    }
+
+    /// Local `user.name` / `user.email` and root `.gitignore`. Default empty
+    /// keeps existing impls valid; read adapters override. Never mutates.
+    fn settings(&self, _repo: &str) -> Result<GitSettings, PortError> {
+        Ok(GitSettings::default())
     }
 }
 
