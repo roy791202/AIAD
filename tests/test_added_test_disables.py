@@ -17,6 +17,8 @@ spec.loader.exec_module(guard)
 @pytest.mark.parametrize("path,source", [
     ("test_alias.py", "import pytest as p\np.skip('missing')\n"),
     ("test_case.py", "import pytest\npytest.skip('missing tool')\n"),
+    ("test_case.py", "value = f\"{pytest.skip('missing')}\"\n"),
+    ("test_case.py", "value = f\"{obj.skipif(True)}\"\n"),
     ("test_case.py", "@pytest.mark.skipif(True, reason='missing')\ndef test_x(): pass\n"),
     ("test_case.py", "@unittest.skip('missing')\ndef test_x(): pass\n"),
     ("test_case.js", "test.skip('case', () => {});\n"),
@@ -32,6 +34,8 @@ def test_ci_pr1_rejects_executable_disables(path, source):
     ("review.py", "assert '#[ignore]' not in source\n"),
     ("review.py", "assert 'pytest.skip(\"reason\")' not in source\n"),
     ("review.py", "# pytest.skip('not executable')\nvalue = 1\n"),
+    ("review.py", "source = f'const value = obj.{name} / test.skip(\"case\") / 2;'\n"),
+    ("review.py", "assert check(f\"{alias}.skip('case')\") == {1}\n"),
     ("review.js", 'const evidence = "test.skip(\\\"case\\\")";\n'),
     ("review.rs", 'let evidence = "#[ignore]";\n'),
     ("module.feature", "Then the text contains test.skip()\n"),

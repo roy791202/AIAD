@@ -14,6 +14,15 @@ def _blank(match: re.Match) -> str:
     return re.sub(r"[^\n]", " ", match.group())
 
 
+# STRING/COMMENT cover Py3.11 f-strings. Py3.12+ emits FSTRING_* for literal
+# parts only; interpolations stay as ordinary tokens and remain fail-closed.
+_PYTHON_MASKED_TOKENS = {tokenize.STRING, tokenize.COMMENT}
+for _name in ("FSTRING_START", "FSTRING_MIDDLE", "FSTRING_END"):
+    _value = getattr(tokenize, _name, None)
+    if _value is not None:
+        _PYTHON_MASKED_TOKENS.add(_value)
+
+
 def _python_code(source: str) -> str:
     lines = source.splitlines(keepends=True)
     offsets = [0]
@@ -21,7 +30,7 @@ def _python_code(source: str) -> str:
         offsets.append(offsets[-1] + len(line))
     chars = list(source)
     for token in tokenize.generate_tokens(io.StringIO(source).readline):
-        if token.type not in (tokenize.STRING, tokenize.COMMENT):
+        if token.type not in _PYTHON_MASKED_TOKENS:
             continue
         start = offsets[token.start[0] - 1] + token.start[1]
         end = offsets[token.end[0] - 1] + token.end[1]
