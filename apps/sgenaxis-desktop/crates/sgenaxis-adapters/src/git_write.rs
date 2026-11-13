@@ -42,6 +42,15 @@ impl GitWritePort for GatedGitWrite {
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
+
+    fn switch_branch(
+        &self,
+        _repo: &str,
+        _branch: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
 }
 
 /// Redact credentials / tokens from git or auth error text (BDD-PD-GIT-02).

@@ -156,4 +156,13 @@ pub trait GitWritePort: Send + Sync {
         refspec: Option<&str>,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Switch the worktree to an existing local branch. Requires approval.
+    /// Never creates, force-switches, or detaches.
+    fn switch_branch(
+        &self,
+        repo: &str,
+        branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 }

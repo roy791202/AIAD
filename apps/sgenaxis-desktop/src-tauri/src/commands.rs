@@ -51,7 +51,8 @@ use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
     GitEntryDto, GitRemoteDto, GitStashDto,
-    GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, ListenProjectionDto,
+    GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
+    ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
     SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
@@ -319,6 +320,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_workbench_diff",
         "git_write_commit",
         "git_write_push",
+        "git_switch_branch",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -1809,6 +1811,70 @@ pub fn git_write_push(
     )
 }
 
+/// Soft-gated switch: empty branch or unapproved never mutates; approved switches via port.
+fn perform_git_switch(
+    write: &dyn GitWritePort,
+    repo: &str,
+    branch: &str,
+    approved: bool,
+) -> GitWriteResultDto {
+    if branch.trim().is_empty() {
+        return GitWriteResultDto {
+            ok: false,
+            op: "switch".into(),
+            message: "empty branch name".into(),
+            local_preserved: true,
+        };
+    }
+    if !approved {
+        return GitWriteResultDto {
+            ok: false,
+            op: "switch".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        };
+    }
+    match write.switch_branch(repo, branch, GitWriteApproval::granted()) {
+        Ok(()) => GitWriteResultDto {
+            ok: true,
+            op: "switch".into(),
+            message: "switch ok".into(),
+            local_preserved: true,
+        },
+        Err(e) => GitWriteResultDto {
+            ok: false,
+            op: "switch".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        },
+    }
+}
+
+/// Approval-gated switch to an existing local branch (PD-GIT-SWITCH-03). No force／create.
+#[tauri::command]
+pub fn git_switch_branch(
+    state: State<'_, HostState>,
+    args: GitWriteSwitchArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_switch_branch").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "switch".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    Ok(perform_git_switch(
+        root.git_write(),
+        &repo,
+        &args.branch,
+        args.approved,
+    ))
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -2712,6 +2778,32 @@ mod git_ui_tests {
         assert!(!is_allowed("git_commit"));
         assert!(!is_allowed("git_push"));
         assert!(!is_allowed("git_force_push"));
+    }
+
+    // PD-GIT-SWITCH-03 RED: new switch command is allowlisted + soft-gated
+    // (unapproved / empty branch never switches; approved switches via port).
+    #[test]
+    fn git_switch_branch_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_switch_branch"));
+        assert!(!is_allowed("git_switch"));
+        assert!(!is_allowed("git_checkout"));
+
+        let w = FakeGitWrite::new();
+        // Unapproved → no mutation.
+        let denied = perform_git_switch(&w, "/r", "feature", false);
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.switched_branch("/r").is_none());
+        // Empty branch → rejected, no mutation.
+        let empty = perform_git_switch(&w, "/r", "", true);
+        assert!(!empty.ok);
+        assert!(w.switched_branch("/r").is_none());
+        // Approved + valid → switches via port.
+        let ok = perform_git_switch(&w, "/r", "feature", true);
+        assert!(ok.ok);
+        assert_eq!(ok.op, "switch");
+        assert_eq!(w.switched_branch("/r").as_deref(), Some("feature"));
     }
 
     #[test]

@@ -7,7 +7,7 @@ use sgenaxis_ports::{
 };
 
 use crate::compose::{BoxedPorts, HostPorts};
-use crate::fake::{status_with_modified, FakeGit};
+use crate::fake::{status_with_modified, FakeGit, FakeGitWrite};
 use crate::git_summary::summarize_worktree;
 use crate::git_write::{GatedGitWrite, GIT_WRITE_GATED_MSG};
 
@@ -192,6 +192,20 @@ fn summarize_worktree_surfaces_stashes() {
     assert_eq!(summary.stashes[0].id, "stash@{0}");
     assert_eq!(summary.stashes[0].message, "WIP on main: slot editor");
     assert_eq!(summary.stashes[1].id, "stash@{1}");
+}
+
+// PD-GIT-SWITCH-01 RED: FakeGitWrite records an approved switch; denies without approval.
+#[test]
+fn fake_git_write_switch_records_when_approved() {
+    let w = FakeGitWrite::new();
+    // Without approval: PermissionDenied and nothing recorded.
+    let denied = w.switch_branch("/r", "feature", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.switched_branch("/r").is_none());
+    // With approval: records the target branch.
+    w.switch_branch("/r", "feature", GitWriteApproval::granted())
+        .expect("switch");
+    assert_eq!(w.switched_branch("/r").as_deref(), Some("feature"));
 }
 
 #[test]

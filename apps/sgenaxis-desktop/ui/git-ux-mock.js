@@ -250,6 +250,7 @@ function handle(el){const id=el.dataset.op;if($('#git-ux-inspect')?.checked){spe
  if(['REPO-REFRESH','HISTORY-LIST','BRANCH-LIST','STASH-LIST','CONFLICT-LIST','TAG-LIST','REMOTE-LIST'].includes(id)){if(id!=='REPO-REFRESH')state.view=route(id);if(state&&state.live){if(liveHooks&&liveHooks.refresh){Promise.resolve(liveHooks.refresh()).catch(function(){});return}render();return}log('模擬重新讀取：'+byId[id].label);render();return}
  if(id==='LOG-RETRY'){if(!state.failed){toast('目前沒有可重試的失敗操作。');return}openOp(state.failed.id,state.failed.ctx);return}
  if(id==='OP-CANCEL'){toast('目前沒有執行中程序；正式版用 requestId 取消後重讀狀態。');return}
+ if(id==='BRANCH-SWITCH'&&state&&state.live){if(liveHooks&&liveHooks.switchBranch){Promise.resolve(liveHooks.switchBranch(el.dataset.value)).catch(function(){});return}}
  openOp(id,{path:el.dataset.path,value:el.dataset.value,base:el.dataset.fromParent?$('#git-ux-merge-parent')?.value:undefined});
 }
 

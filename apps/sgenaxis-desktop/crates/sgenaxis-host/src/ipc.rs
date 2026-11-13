@@ -48,6 +48,8 @@ pub enum AllowedIpcCommand {
     GitWriteCommit,
     /// PD-GIT-WRITE-UI-01: approval-gated push via GitWritePort (no force).
     GitWritePush,
+    /// PD-GIT-SWITCH-03: approval-gated switch to an existing local branch (no force／create).
+    GitSwitchBranch,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -117,6 +119,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWorkbenchDiff => "git_workbench_diff",
             AllowedIpcCommand::GitWriteCommit => "git_write_commit",
             AllowedIpcCommand::GitWritePush => "git_write_push",
+            AllowedIpcCommand::GitSwitchBranch => "git_switch_branch",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -164,6 +167,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWorkbenchDiff,
             AllowedIpcCommand::GitWriteCommit,
             AllowedIpcCommand::GitWritePush,
+            AllowedIpcCommand::GitSwitchBranch,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -272,6 +276,7 @@ mod tests {
         assert!(is_allowed("git_workbench_diff"));
         assert!(is_allowed("git_write_commit"));
         assert!(is_allowed("git_write_push"));
+        assert!(is_allowed("git_switch_branch"));
         assert!(is_allowed("git_index_commit_preview"));
         assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));

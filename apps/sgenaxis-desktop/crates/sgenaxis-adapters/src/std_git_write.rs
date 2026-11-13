@@ -105,4 +105,21 @@ impl GitWritePort for StdGitWrite {
         self.run(repo, &args)?;
         Ok(())
     }
+
+    fn switch_branch(
+        &self,
+        repo: &str,
+        branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        if branch.trim().is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        // Switch to an existing local branch only: no -c/-C (create),
+        // no --force, no --detach. `--` terminates options so a branch
+        // named like a flag can never be misread.
+        self.run(repo, &["switch", "--", branch])?;
+        Ok(())
+    }
 }

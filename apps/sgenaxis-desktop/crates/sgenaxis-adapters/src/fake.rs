@@ -448,6 +448,8 @@ struct FakeGitWriteState {
     push_fail: HashMap<String, String>,
     /// repo → successful push count.
     push_count: HashMap<String, u32>,
+    /// repo → last branch switched to (approved).
+    switched: HashMap<String, String>,
     next_hash: u64,
 }
 
@@ -490,6 +492,12 @@ impl FakeGitWrite {
     pub fn fail_next_push(&self, repo: &str, raw_error: impl Into<String>) {
         let mut st = self.inner.lock().expect("fake git write lock");
         st.push_fail.insert(Self::key(repo), raw_error.into());
+    }
+
+    /// Last branch an approved switch moved to for `repo`, if any.
+    pub fn switched_branch(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.switched.get(&Self::key(repo)).cloned()
     }
 }
 
@@ -534,6 +542,22 @@ impl GitWritePort for FakeGitWrite {
             return Err(git_error_redacted("push rejected", &raw));
         }
         *st.push_count.entry(key).or_insert(0) += 1;
+        Ok(())
+    }
+
+    fn switch_branch(
+        &self,
+        repo: &str,
+        branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        st.switched.insert(Self::key(repo), branch.to_string());
         Ok(())
     }
 }

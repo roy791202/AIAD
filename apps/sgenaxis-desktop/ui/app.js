@@ -2482,12 +2482,12 @@
     pendingGitWrite = null;
   }
 
-  function showGitApprove(op) {
+  function showGitApprove(op, branch) {
     if (!gitWritesEnabled) {
       toast("寫入閘門關閉");
       return;
     }
-    pendingGitWrite = { op: op };
+    pendingGitWrite = { op: op, branch: branch };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
     const lede = document.getElementById("git-approve-lede");
@@ -2495,12 +2495,15 @@
     const remoteWrap = document.getElementById("git-approve-remote-wrap");
     const refWrap = document.getElementById("git-approve-refspec-wrap");
     if (title) {
-      title.textContent = op === "push" ? "審核 Push" : "審核 Commit";
+      title.textContent =
+        op === "push" ? "審核 Push" : op === "switch" ? "審核 Switch" : "審核 Commit";
     }
     if (lede) {
       lede.textContent =
         op === "push"
           ? "核准後經 git_write_push → GitWritePort；拒絕則無突變。不做 force push。"
+          : op === "switch"
+          ? "核准後經 git_switch_branch → GitWritePort；切換到 " + (branch || "") + "。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) msgWrap.hidden = op !== "commit";
@@ -2513,7 +2516,7 @@
         msg.focus();
         if (!msg.value) msg.value = "";
       }
-    } else {
+    } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
       if (remote && !remote.value.trim()) remote.value = "origin";
       if (remote) remote.focus();
@@ -2588,6 +2591,28 @@
             true
           );
           toast("Push 失敗（本機保留）");
+        }
+      } else if (op === "switch") {
+        const branch = pendingGitWrite.branch;
+        if (!branch) {
+          hideGitApprove();
+          setGitStatusLine("未指定分支，未切換", true);
+          return;
+        }
+        const dto = await invoke("git_switch_branch", {
+          args: { repo: repo, branch: branch, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已切換到 " + branch + "（經 GitWritePort）", false);
+          toast("切換完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "切換失敗：" + ((dto && dto.message) || "unknown"),
+            true
+          );
+          toast("切換失敗");
         }
       } else {
         hideGitApprove();
@@ -3091,6 +3116,7 @@
     if (mockRoot && window.EluSlotGitUxMock && window.EluSlotGitUxMock.mountLive) {
       window.EluSlotGitUxMock.mountLive({
         refresh: cmdGitRefresh,
+        switchBranch: function (branch) { showGitApprove("switch", branch); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

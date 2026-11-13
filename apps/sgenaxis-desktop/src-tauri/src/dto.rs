@@ -463,6 +463,15 @@ pub struct GitWritePushArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated branch switch (PD-GIT-SWITCH-03). Existing branch only.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteSwitchArgs {
+    pub repo: Option<String>,
+    pub branch: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

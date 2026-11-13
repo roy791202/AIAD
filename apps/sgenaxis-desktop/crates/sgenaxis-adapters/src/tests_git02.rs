@@ -294,4 +294,29 @@ mod std_write_temp {
         assert!(!clean.contains("ghp_LEAKEDSECRET"));
         assert!(!clean.contains("bot:ghp_"));
     }
+
+    fn head_ref(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    // PD-GIT-SWITCH-02 RED: approved switch moves HEAD to an existing local branch.
+    #[test]
+    fn std_write_switch_moves_head_to_existing_branch() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        // Second local branch at the seed commit; stay on main.
+        git(&work, &["branch", "feature"]);
+        assert_eq!(head_ref(repo), "main", "fixture starts on main");
+
+        let w = StdGitWrite::new();
+        w.switch_branch(repo, "feature", GitWriteApproval::granted())
+            .expect("approved switch");
+
+        assert_eq!(head_ref(repo), "feature", "approved switch must move HEAD");
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }
