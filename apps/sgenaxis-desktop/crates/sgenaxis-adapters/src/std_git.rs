@@ -7,8 +7,8 @@
 use std::process::Command;
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
-    GitTag, GitUpstream, PortError,
+    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitStash,
+    GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream, PortError,
 };
 
 /// Real Git read adapter via the `git` executable on `PATH`.
@@ -32,6 +32,11 @@ impl StdGit {
     }
 
     fn run(&self, repo: &str, args: &[&str]) -> Result<String, PortError> {
+        let stdout = self.run_bytes(repo, args)?;
+        String::from_utf8(stdout).map_err(|e| PortError::Git(e.to_string()))
+    }
+
+    fn run_bytes(&self, repo: &str, args: &[&str]) -> Result<Vec<u8>, PortError> {
         if repo.trim().is_empty() {
             return Err(PortError::InvalidPath("empty git repo path".into()));
         }
@@ -50,8 +55,7 @@ impl StdGit {
                 args
             )));
         }
-
-        String::from_utf8(output.stdout).map_err(|e| PortError::Git(e.to_string()))
+        Ok(output.stdout)
     }
 }
 
@@ -103,6 +107,10 @@ impl GitPort for StdGit {
     fn stashes(&self, repo: &str) -> Result<Vec<GitStash>, PortError> {
         let out = self.run(repo, &["stash", "list", "--no-color"])?;
         Ok(parse_stashes(&out))
+    }
+
+    fn conflicts(&self, repo: &str) -> Result<GitConflictState, PortError> {
+        read_conflicts(self, repo)
     }
 }
 
@@ -314,6 +322,135 @@ fn parse_stashes(text: &str) -> Vec<GitStash> {
         .collect()
 }
 
+const MAX_STAGE_FETCHES: usize = 32;
+const MAX_STAGE_BYTES: usize = 32 * 1024;
+
+fn read_conflicts(git: &StdGit, repo: &str) -> Result<GitConflictState, PortError> {
+    let out = git.run(repo, &["status", "--porcelain=v1", "-b"])?;
+    let mut files = parse_unmerged_files(&out);
+    let marker = conflict_kind_from_markers(git, repo);
+    if files.is_empty() && marker.is_none() {
+        return Ok(GitConflictState::default());
+    }
+    let kind = marker.unwrap_or("Merge").to_string();
+    let target = parse_porcelain_status(&out).branch.unwrap_or_default();
+    let source = conflict_source(git, repo, &kind);
+    attach_stage_blobs(git, repo, &mut files);
+    Ok(GitConflictState {
+        active: true,
+        kind,
+        source,
+        target,
+        files,
+    })
+}
+
+fn conflict_kind_from_markers(git: &StdGit, repo: &str) -> Option<&'static str> {
+    const MARKERS: &[(&str, &str)] = &[
+        ("MERGE_HEAD", "Merge"),
+        ("REBASE_HEAD", "Rebase"),
+        ("CHERRY_PICK_HEAD", "CherryPick"),
+        ("REVERT_HEAD", "Revert"),
+    ];
+    MARKERS
+        .iter()
+        .find(|(rev, _)| {
+            git.run(repo, &["rev-parse", "--verify", "--quiet", rev])
+                .is_ok()
+        })
+        .map(|(_, kind)| *kind)
+}
+
+fn conflict_source(git: &StdGit, repo: &str, kind: &str) -> String {
+    let rev = match kind {
+        "Rebase" => "REBASE_HEAD",
+        "CherryPick" => "CHERRY_PICK_HEAD",
+        "Revert" => "REVERT_HEAD",
+        _ => "MERGE_HEAD",
+    };
+    let named = git
+        .run(repo, &["name-rev", "--name-only", rev])
+        .or_else(|_| git.run(repo, &["rev-parse", "--short", rev]))
+        .unwrap_or_default();
+    let named = named.trim();
+    if named.is_empty() || named == "undefined" {
+        String::new()
+    } else {
+        named.to_string()
+    }
+}
+
+fn unmerged_xy(xy: &str) -> bool {
+    matches!(xy, "DD" | "AU" | "UD" | "UA" | "DU" | "AA" | "UU")
+}
+
+fn unmerged_kind(code: &str) -> &'static str {
+    match code {
+        "UU" => "雙方皆修改",
+        "AA" => "雙方皆新增",
+        "DD" => "雙方皆刪除",
+        "AU" => "我方新增",
+        "UA" => "對方新增",
+        "DU" => "我方刪除",
+        "UD" => "對方刪除",
+        _ => "未合併",
+    }
+}
+
+fn parse_unmerged_files(text: &str) -> Vec<GitConflictFile> {
+    text.lines()
+        .filter(|l| !l.is_empty() && !l.starts_with("## "))
+        .filter(|l| l.len() >= 3)
+        .filter_map(|line| {
+            let code = &line[..2];
+            if !unmerged_xy(code) {
+                return None;
+            }
+            let path = rename_path(line[3..].trim());
+            if path.is_empty() {
+                return None;
+            }
+            Some(GitConflictFile {
+                path,
+                code: code.to_string(),
+                kind: unmerged_kind(code).to_string(),
+                ours: String::new(),
+                theirs: String::new(),
+            })
+        })
+        .collect()
+}
+
+fn decode_stage_blob(bytes: &[u8]) -> String {
+    if bytes.contains(&0) {
+        return "(二進位內容)".into();
+    }
+    let text = String::from_utf8_lossy(bytes).into_owned();
+    if text.len() <= MAX_STAGE_BYTES {
+        return text;
+    }
+    let mut end = MAX_STAGE_BYTES;
+    while end > 0 && !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}…", &text[..end])
+}
+
+fn stage_blob(git: &StdGit, repo: &str, stage: u8, path: &str) -> String {
+    let spec = format!(":{stage}:{path}");
+    match git.run_bytes(repo, &["show", &spec]) {
+        Ok(bytes) => decode_stage_blob(&bytes),
+        Err(_) => String::new(),
+    }
+}
+
+fn attach_stage_blobs(git: &StdGit, repo: &str, files: &mut [GitConflictFile]) {
+    for file in files.iter_mut().take(MAX_STAGE_FETCHES) {
+        file.ours = stage_blob(git, repo, 2, &file.path);
+        file.theirs = stage_blob(git, repo, 3, &file.path);
+    }
+}
+
 #[cfg(test)]
 mod parse_tests {
     use super::*;
@@ -412,5 +549,42 @@ stash@{1}: On feature/x: tweak theme\n";
         assert_eq!(stashes[0].message, "WIP on main: a3f9c2d add slot editor");
         assert_eq!(stashes[1].id, "stash@{1}");
         assert_eq!(stashes[1].message, "On feature/x: tweak theme");
+    }
+
+    // PD-GIT-CONFLICTS-01 RED: porcelain unmerged XY codes become conflict files;
+    // ordinary status lines are ignored.
+    #[test]
+    fn parse_unmerged_files_keeps_conflict_codes() {
+        let text = "\
+## feature/x...origin/feature/x
+UU src/git.ts
+AA src/components/GitPanel.tsx
+ M src/ok.rs
+DU deleted-by-us.rs
+";
+        let files = parse_unmerged_files(text);
+        assert_eq!(files.len(), 3, "ordinary status lines dropped");
+        assert_eq!(files[0].path, "src/git.ts");
+        assert_eq!(files[0].code, "UU");
+        assert_eq!(files[0].kind, "雙方皆修改");
+        assert_eq!(files[1].code, "AA");
+        assert_eq!(files[1].kind, "雙方皆新增");
+        assert_eq!(files[2].code, "DU");
+        assert_eq!(files[2].kind, "我方刪除");
+    }
+
+    #[test]
+    fn parse_unmerged_files_empty_when_clean() {
+        let files = parse_unmerged_files("## main\n");
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn decode_stage_blob_rejects_binary_and_caps_size() {
+        assert_eq!(decode_stage_blob(b"abc\0def"), "(二進位內容)");
+        let huge = vec![b'a'; MAX_STAGE_BYTES + 8];
+        let cut = decode_stage_blob(&huge);
+        assert!(cut.ends_with('…'));
+        assert!(cut.len() <= MAX_STAGE_BYTES + 3);
     }
 }

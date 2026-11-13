@@ -50,8 +50,8 @@ use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
-    GitEntryDto, GitRemoteDto, GitStashDto,
-    GitWorkbenchDto, GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
+    GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitStashDto, GitWorkbenchDto,
+    GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -1539,6 +1539,24 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
                 message: st.message.clone(),
             })
             .collect(),
+        conflict: GitConflictDto {
+            active: summary.conflict.active,
+            kind: summary.conflict.kind.clone(),
+            source: summary.conflict.source.clone(),
+            target: summary.conflict.target.clone(),
+            files: summary
+                .conflict
+                .files
+                .iter()
+                .map(|f| GitConflictFileDto {
+                    path: f.path.clone(),
+                    code: f.code.clone(),
+                    kind: f.kind.clone(),
+                    ours: f.ours.clone(),
+                    theirs: f.theirs.clone(),
+                })
+                .collect(),
+        },
         // Host sets true only with approving GitWritePort; each write still needs approval.
         writes_enabled,
         status: if empty { "empty".into() } else { "ok".into() },
@@ -1566,6 +1584,7 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
         remotes: Vec::new(),
         tags: Vec::new(),
         stashes: Vec::new(),
+        conflict: GitConflictDto::default(),
         writes_enabled: false,
         status: "not_run".into(),
         message: Some(message.into()),
@@ -2569,8 +2588,8 @@ mod git_ui_tests {
     use super::*;
     use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
     use sgenaxis_ports::{
-        GitBranch, GitCommit, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
-        GitTag, GitUpstream,
+        GitBranch, GitCommit, GitConflictFile, GitConflictState, GitRemote, GitStash, GitStatus,
+        GitStatusEntry, GitStatusKind, GitTag, GitUpstream,
     };
 
     #[test]
@@ -2765,6 +2784,49 @@ mod git_ui_tests {
         assert_eq!(dto.stashes[0].id, "stash@{0}");
         assert_eq!(dto.stashes[0].message, "WIP on main: slot editor");
         assert_eq!(dto.stashes[1].id, "stash@{1}");
+    }
+
+    // PD-GIT-CONFLICTS-01 RED: DTO must flatten the conflict snapshot (kind + files).
+    #[test]
+    fn workbench_dto_surfaces_conflicts() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("feature/git-ui".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log("/r", Vec::new());
+        git.set_diff("/r", "");
+        git.set_conflicts(
+            "/r",
+            GitConflictState {
+                active: true,
+                kind: "Rebase".into(),
+                source: "main".into(),
+                target: "feature/git-ui".into(),
+                files: vec![GitConflictFile {
+                    path: "src/git.ts".into(),
+                    code: "UU".into(),
+                    kind: "雙方皆修改".into(),
+                    ours: "status: ready".into(),
+                    theirs: "status: idle".into(),
+                }],
+            },
+        );
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert!(dto.conflict.active);
+        assert_eq!(dto.conflict.kind, "Rebase");
+        assert_eq!(dto.conflict.source, "main");
+        assert_eq!(dto.conflict.target, "feature/git-ui");
+        assert_eq!(dto.conflict.files.len(), 1);
+        assert_eq!(dto.conflict.files[0].path, "src/git.ts");
+        assert_eq!(dto.conflict.files[0].code, "UU");
+        assert_eq!(dto.conflict.files[0].ours, "status: ready");
+        assert_eq!(dto.conflict.files[0].theirs, "status: idle");
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

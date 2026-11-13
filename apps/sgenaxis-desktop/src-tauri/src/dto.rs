@@ -383,6 +383,32 @@ pub struct GitStashDto {
     pub message: String,
 }
 
+/// One unmerged path for the conflicts view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitConflictFileDto {
+    pub path: String,
+    pub code: String,
+    pub kind: String,
+    #[serde(default)]
+    pub ours: String,
+    #[serde(default)]
+    pub theirs: String,
+}
+
+/// Conflict snapshot for the conflicts view. Inactive when none / unavailable.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitConflictDto {
+    pub active: bool,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub source: String,
+    #[serde(default)]
+    pub target: String,
+    #[serde(default)]
+    pub files: Vec<GitConflictFileDto>,
+}
+
 /// Recent commit line for the branch／log strip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitCommitDto {
@@ -421,6 +447,9 @@ pub struct GitWorkbenchDto {
     /// Stashes (newest-first); empty when unavailable.
     #[serde(default)]
     pub stashes: Vec<GitStashDto>,
+    /// Conflict snapshot; inactive/empty when unavailable (degrade, never block).
+    #[serde(default)]
+    pub conflict: GitConflictDto,
     /// When true, UI may offer commit／push; each mutation still needs explicit approval
     /// (PD-GIT-WRITE-UI-01 → GitWriteApproval).
     pub writes_enabled: bool,

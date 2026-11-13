@@ -68,6 +68,35 @@ pub struct GitStash {
     pub message: String,
 }
 
+/// One unmerged path for the conflicts view (read-only).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitConflictFile {
+    pub path: String,
+    /// Porcelain unmerged code (`UU`, `AA`, `DU`, …).
+    pub code: String,
+    /// Human-readable unmerged type (e.g. `雙方皆修改`).
+    pub kind: String,
+    /// Stage 2 blob text (ours / replay target). Empty when missing or binary.
+    pub ours: String,
+    /// Stage 3 blob text (theirs / incoming). Empty when missing or binary.
+    pub theirs: String,
+}
+
+/// Merge / rebase / cherry-pick / revert snapshot for the conflicts view.
+///
+/// `active` is false when no in-progress operation and no unmerged paths.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GitConflictState {
+    pub active: bool,
+    /// `Merge` | `Rebase` | `CherryPick` | `Revert`.
+    pub kind: String,
+    /// Incoming side (`MERGE_HEAD` / `REBASE_HEAD` / …).
+    pub source: String,
+    /// Current branch / HEAD name.
+    pub target: String,
+    pub files: Vec<GitConflictFile>,
+}
+
 /// One commit from `git log`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitCommit {
@@ -131,6 +160,12 @@ pub trait GitPort: Send + Sync {
     /// read adapters override. Never mutates.
     fn stashes(&self, _repo: &str) -> Result<Vec<GitStash>, PortError> {
         Ok(Vec::new())
+    }
+
+    /// Conflict snapshot (inactive when none). Default empty keeps existing
+    /// impls valid; read adapters override. Never mutates.
+    fn conflicts(&self, _repo: &str) -> Result<GitConflictState, PortError> {
+        Ok(GitConflictState::default())
     }
 }
 

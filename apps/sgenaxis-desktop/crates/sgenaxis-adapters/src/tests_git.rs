@@ -1,9 +1,8 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
 use sgenaxis_ports::{
-    GitBranch, GitCommit, GitPort, GitRemote, GitStash, GitStatus, GitStatusEntry, GitStatusKind,
-    GitTag, GitWriteApproval,
-    GitWritePort, PortError,
+    GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitStash,
+    GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitWriteApproval, GitWritePort, PortError,
 };
 
 use crate::compose::{BoxedPorts, HostPorts};
@@ -192,6 +191,95 @@ fn summarize_worktree_surfaces_stashes() {
     assert_eq!(summary.stashes[0].id, "stash@{0}");
     assert_eq!(summary.stashes[0].message, "WIP on main: slot editor");
     assert_eq!(summary.stashes[1].id, "stash@{1}");
+}
+
+// PD-GIT-CONFLICTS-01 RED: summary must surface the conflict snapshot from the port.
+#[test]
+fn summarize_worktree_surfaces_conflicts() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("feature/git-ui".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log("/proj", Vec::new());
+    git.set_diff("/proj", "");
+    git.set_conflicts(
+        "/proj",
+        GitConflictState {
+            active: true,
+            kind: "Merge".into(),
+            source: "main".into(),
+            target: "feature/git-ui".into(),
+            files: vec![
+                GitConflictFile {
+                    path: "src/git.ts".into(),
+                    code: "UU".into(),
+                    kind: "雙方皆修改".into(),
+                    ours: "ours".into(),
+                    theirs: "theirs".into(),
+                },
+                GitConflictFile {
+                    path: "src/components/GitPanel.tsx".into(),
+                    code: "AA".into(),
+                    kind: "雙方皆新增".into(),
+                    ours: String::new(),
+                    theirs: String::new(),
+                },
+            ],
+        },
+    );
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
+    assert!(summary.conflict.active);
+    assert_eq!(summary.conflict.kind, "Merge");
+    assert_eq!(summary.conflict.source, "main");
+    assert_eq!(summary.conflict.target, "feature/git-ui");
+    assert_eq!(summary.conflict.files.len(), 2);
+    assert_eq!(summary.conflict.files[0].path, "src/git.ts");
+    assert_eq!(summary.conflict.files[0].code, "UU");
+    assert_eq!(summary.conflict.files[0].ours, "ours");
+}
+
+struct ConflictsUnavailable {
+    inner: FakeGit,
+}
+
+impl GitPort for ConflictsUnavailable {
+    fn status(&self, repo: &str) -> Result<GitStatus, PortError> {
+        self.inner.status(repo)
+    }
+    fn log(&self, repo: &str, limit: usize) -> Result<Vec<GitCommit>, PortError> {
+        self.inner.log(repo, limit)
+    }
+    fn diff(&self, repo: &str, pathspec: Option<&str>) -> Result<String, PortError> {
+        self.inner.diff(repo, pathspec)
+    }
+    fn conflicts(&self, _repo: &str) -> Result<GitConflictState, PortError> {
+        Err(PortError::Git("conflicts unavailable".into()))
+    }
+}
+
+// PD-GIT-CONFLICTS-01: a conflicts-port failure must degrade to empty, never block the snapshot.
+#[test]
+fn summarize_worktree_degrades_conflicts_to_empty() {
+    let inner = FakeGit::new();
+    inner.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    inner.set_log("/proj", Vec::new());
+    inner.set_diff("/proj", "");
+    let git = ConflictsUnavailable { inner };
+    let summary = summarize_worktree(&git, "/proj", 1).expect("summary must not block");
+    assert!(!summary.conflict.active);
+    assert!(summary.conflict.files.is_empty());
 }
 
 // PD-GIT-SWITCH-01 RED: FakeGitWrite records an approved switch; denies without approval.

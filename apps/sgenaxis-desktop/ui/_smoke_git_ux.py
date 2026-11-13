@@ -10,6 +10,8 @@ assert "git-ux-mock.js" in html
 assert "git-ux-mock.css" in html
 assert 'id="git-empty"' in html
 assert "EluSlotGitUxMock" in js
+assert "mapLiveConflict" in js
+assert "state.conflict=mapLiveConflict(dto)" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65
