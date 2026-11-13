@@ -6,6 +6,13 @@
 //! SKELETON: `wizard_commit` is not yet implemented and returns the
 //! `NotImplemented` sentinel, so the end-to-end success assertion fails here
 //! (valid RED). begin/apply/prepare/cancel are in-flight scaffolding only.
+//!
+//! The bridge commit binds through the S2 domain (bind_definition), which
+//! rejects a non-absolute project root; the fixtures use Win32 roots
+//! ("C:/owned-fixture-parent/..."), so on Linux the end-to-end commit fails
+//! with a path mismatch. Gate the whole file to Windows (as with
+//! phase1_project_definition.rs); Windows CI (rust-windows) keeps covering it.
+#![cfg(windows)]
 
 use sgenaxis_host::project_definition::DefinitionAuthorityContext;
 use sgenaxis_host::project_definition::DefinitionLocation;
