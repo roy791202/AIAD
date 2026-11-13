@@ -40,10 +40,12 @@ fn fake_git_summary_dto_for_ui_projection() {
             GitCommit {
                 hash: "aaa".into(),
                 subject: "one".into(),
+                ..Default::default()
             },
             GitCommit {
                 hash: "bbb".into(),
                 subject: "two".into(),
+                ..Default::default()
             },
         ],
     );
@@ -58,6 +60,36 @@ fn fake_git_summary_dto_for_ui_projection() {
     assert_eq!(summary.recent_commits[0].hash, "aaa");
     assert!(summary.diff_text.contains("a.rs"));
     assert!(!summary.writes_enabled);
+}
+
+// PD-GIT-HISTORY-01 RED: summary must surface author + date from the port log.
+#[test]
+fn summarize_worktree_surfaces_history_author_and_date() {
+    let git = FakeGit::new();
+    git.set_status(
+        "/proj",
+        GitStatus {
+            branch: Some("main".into()),
+            entries: vec![],
+            upstream: None,
+        },
+    );
+    git.set_log(
+        "/proj",
+        vec![GitCommit {
+            hash: "aaa".into(),
+            subject: "feat: polish Git panel".into(),
+            author: "Alex".into(),
+            date: "2026-10-25T16:42:00+00:00".into(),
+        }],
+    );
+    git.set_diff("/proj", "");
+    let summary = summarize_worktree(&git, "/proj", 5).expect("summary");
+    assert_eq!(summary.recent_commits.len(), 1);
+    assert_eq!(summary.recent_commits[0].hash, "aaa");
+    assert_eq!(summary.recent_commits[0].subject, "feat: polish Git panel");
+    assert_eq!(summary.recent_commits[0].author, "Alex");
+    assert_eq!(summary.recent_commits[0].date, "2026-10-25T16:42:00+00:00");
 }
 
 // PD-GIT-BRANCHES-01 RED: summary must surface local branches (current-first) from the port.
@@ -391,7 +423,10 @@ fn host_ports_fake_includes_git_write_gate() {
     let _w: &dyn GitWritePort = &host.git_write;
     host.git
         .set_status("/r", status_with_modified("dev", "x.rs"));
-    assert_eq!(host.git.status("/r").unwrap().branch.as_deref(), Some("dev"));
+    assert_eq!(
+        host.git.status("/r").unwrap().branch.as_deref(),
+        Some("dev")
+    );
     assert!(host
         .git_write
         .push("/r", "origin", None, GitWriteApproval::granted())

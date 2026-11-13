@@ -263,10 +263,12 @@ mod tests {
                 GitCommit {
                     hash: "aaa111".into(),
                     subject: "feat: a".into(),
+                    ..Default::default()
                 },
                 GitCommit {
                     hash: "bbb222".into(),
                     subject: "chore: b".into(),
+                    ..Default::default()
                 },
             ],
         );

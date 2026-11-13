@@ -1509,6 +1509,8 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
             .map(|c| GitCommitDto {
                 hash: c.hash.clone(),
                 subject: c.subject.clone(),
+                author: c.author.clone(),
+                date: c.date.clone(),
             })
             .collect(),
         diff_text: summary.diff_text.clone(),
@@ -2618,6 +2620,7 @@ mod git_ui_tests {
             vec![GitCommit {
                 hash: "abc".into(),
                 subject: "wip".into(),
+                ..Default::default()
             }],
         );
         git.set_diff("/r", "diff --git a/a.rs\n");
@@ -2863,6 +2866,37 @@ mod git_ui_tests {
         assert_eq!(dto.settings.author, "Example Developer");
         assert_eq!(dto.settings.email, "dev@example.invalid");
         assert_eq!(dto.settings.ignore, "node_modules/\ndist/\n");
+    }
+
+    // PD-GIT-HISTORY-01 RED: DTO must flatten commit author + date from the summary.
+    #[test]
+    fn workbench_dto_surfaces_history_author_and_date() {
+        let git = FakeGit::new();
+        git.set_status(
+            "/r",
+            GitStatus {
+                branch: Some("main".into()),
+                entries: Vec::new(),
+                upstream: None,
+            },
+        );
+        git.set_log(
+            "/r",
+            vec![GitCommit {
+                hash: "abc".into(),
+                subject: "feat: polish Git panel".into(),
+                author: "Alex".into(),
+                date: "2026-10-25T16:42:00+00:00".into(),
+            }],
+        );
+        git.set_diff("/r", "");
+        let summary = summarize_worktree(&git, "/r", 5).unwrap();
+        let dto = workbench_dto(&summary, false);
+        assert_eq!(dto.recent_commits.len(), 1);
+        assert_eq!(dto.recent_commits[0].hash, "abc");
+        assert_eq!(dto.recent_commits[0].subject, "feat: polish Git panel");
+        assert_eq!(dto.recent_commits[0].author, "Alex");
+        assert_eq!(dto.recent_commits[0].date, "2026-10-25T16:42:00+00:00");
     }
 
     /// PD-WIRE-BOOT-01: unbound／非 git → not_run 投影（可讀空態）.

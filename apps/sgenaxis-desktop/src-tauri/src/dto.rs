@@ -425,6 +425,12 @@ pub struct GitSettingsDto {
 pub struct GitCommitDto {
     pub hash: String,
     pub subject: String,
+    /// Author name; empty when the log line omitted it (degrade, never invent).
+    #[serde(default)]
+    pub author: String,
+    /// Author date (ISO 8601); empty when the log line omitted it.
+    #[serde(default)]
+    pub date: String,
 }
 
 /// Worktree summary projection; `writes_enabled` reflects host approving write adapter.

@@ -98,6 +98,7 @@ fn m2_e2e_loop_board_git_cli_mcp_dryrun_chain() {
         vec![GitCommit {
             hash: "abc1234".into(),
             subject: "PD-M2-E2E-LOOP-01 fixture".into(),
+            ..Default::default()
         }],
     );
     git.set_diff(REPO, "diff --git a/fixture b/fixture\n");

@@ -16,6 +16,10 @@ assert "dto.settings" in js
 assert "state.author=typeof s.author==='string'?s.author:''" in js
 assert "state.email=typeof s.email==='string'?s.email:''" in js
 assert "state.ignore=typeof s.ignore==='string'?s.ignore:''" in js
+assert "typeof c.author==='string'?c.author:''" in js
+assert "typeof c.date==='string'?c.date:''" in js
+assert "state.live?(h.author||''):(h.author||'Example Developer')" in js
+assert "state.live?(h.date||''):(h.date||'剛剛')" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

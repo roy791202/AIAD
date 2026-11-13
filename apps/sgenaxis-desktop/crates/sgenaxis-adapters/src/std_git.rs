@@ -74,7 +74,11 @@ impl GitPort for StdGit {
         let n_arg = n.to_string();
         let out = self.run(
             repo,
-            &["log", &format!("-n{n_arg}"), "--pretty=format:%H\t%s"],
+            &[
+                "log",
+                &format!("-n{n_arg}"),
+                "--pretty=format:%H\t%an\t%aI\t%s",
+            ],
         )?;
         Ok(parse_log(&out))
     }
@@ -228,14 +232,32 @@ fn status_kind(xy: &str) -> GitStatusKind {
 fn parse_log(text: &str) -> Vec<GitCommit> {
     text.lines()
         .filter(|l| !l.is_empty())
-        .filter_map(|line| {
-            let (hash, subject) = line.split_once('\t')?;
-            Some(GitCommit {
-                hash: hash.to_string(),
-                subject: subject.to_string(),
-            })
-        })
+        .filter_map(parse_log_line)
         .collect()
+}
+
+/// Two tab-separated fields stay hash+subject (legacy). Four fields are
+/// hash, author, date, subject from live `git log`. Missing author/date
+/// become empty strings — never drop the commit.
+fn parse_log_line(line: &str) -> Option<GitCommit> {
+    let fields: Vec<&str> = line.splitn(4, '\t').collect();
+    let hash = *fields.first()?;
+    if hash.is_empty() {
+        return None;
+    }
+    let (author, date, subject) = match fields.as_slice() {
+        [_] => ("", "", ""),
+        [_, subject] => ("", "", *subject),
+        [_, author, date] => (*author, *date, ""),
+        [_, author, date, subject, ..] => (*author, *date, *subject),
+        [] => return None,
+    };
+    Some(GitCommit {
+        hash: hash.to_string(),
+        subject: subject.to_string(),
+        author: author.to_string(),
+        date: date.to_string(),
+    })
 }
 
 /// Parse `git branch` output into local branches; `*` marks current.
@@ -286,7 +308,9 @@ fn parse_remotes(text: &str) -> Vec<GitRemote> {
             None => continue,
         };
         let kind = it.next().unwrap_or("");
-        let entry = map.entry(name.to_string()).or_insert_with(|| url.to_string());
+        let entry = map
+            .entry(name.to_string())
+            .or_insert_with(|| url.to_string());
         if kind == "(fetch)" {
             *entry = url.to_string(); // prefer the fetch URL
         }
@@ -510,6 +534,35 @@ R  old.rs -> renamed.rs
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].hash, "abc");
         assert_eq!(commits[1].subject, "feat: x");
+        assert!(commits[0].author.is_empty() && commits[0].date.is_empty());
+        assert!(commits[1].author.is_empty() && commits[1].date.is_empty());
+    }
+
+    // PD-GIT-HISTORY-01 RED: live `git log` lines carry author + ISO date.
+    #[test]
+    fn log_parses_author_and_date() {
+        let commits = parse_log(
+            "abc\tAlex\t2026-10-25T16:42:00+00:00\tinit\n\
+             def\tMina\t2026-10-25T15:30:00+08:00\tfeat: x\n",
+        );
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].hash, "abc");
+        assert_eq!(commits[0].author, "Alex");
+        assert_eq!(commits[0].date, "2026-10-25T16:42:00+00:00");
+        assert_eq!(commits[0].subject, "init");
+        assert_eq!(commits[1].author, "Mina");
+        assert_eq!(commits[1].date, "2026-10-25T15:30:00+08:00");
+        assert_eq!(commits[1].subject, "feat: x");
+    }
+
+    #[test]
+    fn log_parses_empty_author_date_without_dropping_commit() {
+        let commits = parse_log("abc\t\t\tsubject only\n");
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].hash, "abc");
+        assert!(commits[0].author.is_empty());
+        assert!(commits[0].date.is_empty());
+        assert_eq!(commits[0].subject, "subject only");
     }
 
     // G2 RED (PD-GIT-01): upstream ahead/behind must be captured, not discarded.

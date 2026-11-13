@@ -111,10 +111,16 @@ pub struct GitSettings {
 }
 
 /// One commit from `git log`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `author` / `date` are empty when the log line omits them (degrade, never invent).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GitCommit {
     pub hash: String,
     pub subject: String,
+    /// Author name (`%an`). Empty when unavailable.
+    pub author: String,
+    /// Author date, strict ISO 8601 (`%aI`). Empty when unavailable.
+    pub date: String,
 }
 
 /// Explicit FLOW / human approval for a single write mutation (PD-GIT-02).

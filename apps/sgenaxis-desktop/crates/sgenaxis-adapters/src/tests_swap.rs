@@ -118,6 +118,7 @@ fn fake_git_status_log_diff() {
         vec![sgenaxis_ports::GitCommit {
             hash: "abc123".into(),
             subject: "init".into(),
+            ..Default::default()
         }],
     );
     git.set_diff("/repo", "diff --git a/src/lib.rs\n");
