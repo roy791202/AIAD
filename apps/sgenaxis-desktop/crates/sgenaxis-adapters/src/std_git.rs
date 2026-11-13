@@ -100,7 +100,18 @@ impl GitPort for StdGit {
 
     fn remotes(&self, repo: &str) -> Result<Vec<GitRemote>, PortError> {
         let out = self.run(repo, &["remote", "-v"])?;
-        Ok(parse_remotes(&out))
+        let mut remotes = parse_remotes(&out);
+        // Choice (a): last-known local tracking refs only. Never `ls-remote`
+        // on summary — a network probe would hang CI. Failed listing degrades
+        // to untested; never invents `tested: true` from name/url alone.
+        let tracking = self
+            .run(
+                repo,
+                &["for-each-ref", "--format=%(refname)", "refs/remotes"],
+            )
+            .unwrap_or_default();
+        mark_remotes_tested_from_tracking(&mut remotes, &tracking);
+        Ok(remotes)
     }
 
     fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
@@ -327,8 +338,26 @@ fn parse_remotes(text: &str) -> Vec<GitRemote> {
         }
     }
     map.into_iter()
-        .map(|(name, url)| GitRemote { name, url })
+        .map(|(name, url)| GitRemote {
+            name,
+            url,
+            tested: false,
+        })
         .collect()
+}
+
+/// Set `tested` when local remote-tracking refs exist under
+/// `refs/remotes/<name>/`. Empty / failed listing leaves every remote untested.
+fn mark_remotes_tested_from_tracking(remotes: &mut [GitRemote], tracking: &str) {
+    for remote in remotes.iter_mut() {
+        let prefix = format!("refs/remotes/{}/", remote.name);
+        let head = format!("refs/remotes/{}", remote.name);
+        remote.tested = tracking
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .any(|line| line.starts_with(&prefix) || line == head);
+    }
 }
 
 /// Parse tag listing from `git for-each-ref` (tab: name, *object, object),
@@ -667,6 +696,48 @@ origin\thttps://github.com/roy/AIAD.git (push)\n";
         assert_eq!(remotes[0].name, "origin");
         assert_eq!(remotes[0].url, "https://github.com/roy/AIAD.git");
         assert_eq!(remotes[1].name, "upstream");
+        assert!(
+            remotes.iter().all(|r| !r.tested),
+            "remote -v must not invent tested: true"
+        );
+    }
+
+    // PD-GIT-REMOTES-01: last-known tracking refs mark tested; other remotes stay false.
+    #[test]
+    fn mark_remotes_tested_from_local_tracking_refs() {
+        let mut remotes = parse_remotes(
+            "\
+origin\thttps://github.com/roy/AIAD.git (fetch)\n\
+origin\thttps://github.com/roy/AIAD.git (push)\n\
+upstream\thttps://github.com/other/AIAD.git (fetch)\n\
+upstream\thttps://github.com/other/AIAD.git (push)\n",
+        );
+        mark_remotes_tested_from_tracking(
+            &mut remotes,
+            "\
+refs/remotes/origin/HEAD
+refs/remotes/origin/main
+",
+        );
+        assert_eq!(remotes.len(), 2);
+        assert_eq!(remotes[0].name, "origin");
+        assert!(remotes[0].tested, "origin has local tracking refs");
+        assert_eq!(remotes[1].name, "upstream");
+        assert!(!remotes[1].tested, "upstream has no tracking refs");
+    }
+
+    #[test]
+    fn mark_remotes_tested_degrades_when_tracking_missing() {
+        let mut remotes = vec![GitRemote {
+            name: "origin".into(),
+            url: "https://github.com/roy/AIAD.git".into(),
+            tested: true,
+        }];
+        mark_remotes_tested_from_tracking(&mut remotes, "");
+        assert!(
+            !remotes[0].tested,
+            "empty tracking listing degrades to untested"
+        );
     }
 
     // PD-GIT-TAGS-01 RED: `git tag --list` → one tag per line; parser trims

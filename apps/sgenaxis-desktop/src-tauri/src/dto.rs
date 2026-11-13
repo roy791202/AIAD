@@ -374,6 +374,9 @@ pub struct GitBranchDto {
 pub struct GitRemoteDto {
     pub name: String,
     pub url: String,
+    /// Last-known local connectivity; false when unknown (degrade, never invent).
+    #[serde(default)]
+    pub tested: bool,
 }
 
 /// One tag for the tags view (read-only).

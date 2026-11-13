@@ -23,6 +23,11 @@ assert "state.live?(h.date||''):(h.date||'剛剛')" in js
 assert "typeof t.peeled==='string'?t.peeled:''" in js
 assert "function tagPeeled" in js
 assert "state.live?esc(tagPeeled(t))" in js
+assert "tested:r.tested===true" in js
+assert "state.remoteEntries[0].tested===true" in js
+assert "r.tested === true" in js
+assert "本機已有遠端追蹤紀錄" in js
+assert "tested 來自本機 refs/remotes" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

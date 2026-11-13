@@ -46,11 +46,17 @@ pub struct GitBranch {
 }
 
 /// One configured remote for the remotes view (read-only).
+///
+/// `tested` is last-known local connectivity (remote-tracking refs exist
+/// under `refs/remotes/<name>/`). False when unknown — never invent, never
+/// block the remotes list.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GitRemote {
     pub name: String,
     /// Fetch URL for the remote.
     pub url: String,
+    /// True when local remote-tracking refs exist for this remote.
+    pub tested: bool,
 }
 
 /// One tag for the tags view (read-only).
@@ -168,8 +174,8 @@ pub trait GitPort: Send + Sync {
         Ok(Vec::new())
     }
 
-    /// Configured remotes (name-sorted). Default empty keeps existing impls
-    /// valid; read adapters override. Never mutates.
+    /// Configured remotes (name-sorted, with last-known `tested`). Default
+    /// empty keeps existing impls valid; read adapters override. Never mutates.
     fn remotes(&self, _repo: &str) -> Result<Vec<GitRemote>, PortError> {
         Ok(Vec::new())
     }

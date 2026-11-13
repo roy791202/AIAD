@@ -147,10 +147,12 @@ fn summarize_worktree_surfaces_remotes() {
             GitRemote {
                 name: "origin".into(),
                 url: "https://github.com/roy/AIAD.git".into(),
+                tested: true,
             },
             GitRemote {
                 name: "upstream".into(),
                 url: "https://github.com/other/AIAD.git".into(),
+                tested: false,
             },
         ],
     );
@@ -158,7 +160,9 @@ fn summarize_worktree_surfaces_remotes() {
     assert_eq!(summary.remotes.len(), 2);
     assert_eq!(summary.remotes[0].name, "origin");
     assert_eq!(summary.remotes[0].url, "https://github.com/roy/AIAD.git");
+    assert!(summary.remotes[0].tested);
     assert_eq!(summary.remotes[1].name, "upstream");
+    assert!(!summary.remotes[1].tested);
 }
 
 // PD-GIT-TAGS-01 RED: summary must surface tags (name-sorted) from the port,

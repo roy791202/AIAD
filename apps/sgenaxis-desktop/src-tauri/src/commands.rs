@@ -1531,6 +1531,7 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
             .map(|r| GitRemoteDto {
                 name: r.name.clone(),
                 url: r.url.clone(),
+                tested: r.tested,
             })
             .collect(),
         tags: summary
@@ -2723,10 +2724,12 @@ mod git_ui_tests {
                 GitRemote {
                     name: "origin".into(),
                     url: "https://github.com/roy/AIAD.git".into(),
+                    tested: true,
                 },
                 GitRemote {
                     name: "upstream".into(),
                     url: "https://github.com/other/AIAD.git".into(),
+                    tested: false,
                 },
             ],
         );
@@ -2735,7 +2738,9 @@ mod git_ui_tests {
         assert_eq!(dto.remotes.len(), 2);
         assert_eq!(dto.remotes[0].name, "origin");
         assert_eq!(dto.remotes[0].url, "https://github.com/roy/AIAD.git");
+        assert!(dto.remotes[0].tested);
         assert_eq!(dto.remotes[1].name, "upstream");
+        assert!(!dto.remotes[1].tested);
     }
 
     // PD-GIT-TAGS-01 RED: DTO must surface tag names + peeled commit OIDs.

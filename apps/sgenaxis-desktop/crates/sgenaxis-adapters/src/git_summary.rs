@@ -27,7 +27,7 @@ pub struct GitWorkbenchSummary {
     pub upstream: Option<String>,
     /// Local branches (current-first); empty when the port read fails (degrade, not blank).
     pub branches: Vec<GitBranch>,
-    /// Configured remotes (name-sorted); empty when the port read fails (degrade, not blank).
+    /// Configured remotes (name-sorted, with last-known `tested`); empty when the port read fails (degrade, not blank).
     pub remotes: Vec<GitRemote>,
     /// Tags (name-sorted, with peeled OID); empty when the port read fails (degrade, not blank).
     pub tags: Vec<GitTag>,
