@@ -1,4 +1,11 @@
 //! M01-S2 shared-state Port contract tests; no native filesystem proof.
+//!
+//! The fixtures use Win32-shaped roots ("C:/owned-fixture-parent/...") and
+//! assert exact Win32 command strings ("mkdir:C:/...", "replace:C:/..."), and
+//! bind_definition rejects a non-absolute root, so on Linux every case fails
+//! with a path mismatch. Gate the whole file to Windows (as with
+//! project_preferences_creation.rs); Windows CI (rust-windows) keeps covering it.
+#![cfg(windows)]
 use sgenaxis_host::project_definition::*;
 use sgenaxis_host::project_preferences::PreferenceChoice;
 use sgenaxis_ports::*;
