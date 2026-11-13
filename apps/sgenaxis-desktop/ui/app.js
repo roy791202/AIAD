@@ -2488,7 +2488,7 @@
       return;
     }
     const payload = extra && typeof extra === "object" ? extra : { branch: extra };
-    pendingGitWrite = { op: op, branch: payload.branch, stash: payload.stash };
+    pendingGitWrite = { op: op, branch: payload.branch, stash: payload.stash, message: payload.message };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
     const lede = document.getElementById("git-approve-lede");
@@ -2512,6 +2512,10 @@
           ? "審核 Stash Apply"
           : op === "stash-pop"
           ? "審核 Stash Pop"
+          : op === "stash-drop"
+          ? "審核 Stash Drop"
+          : op === "stash-create"
+          ? "審核 Stash Create"
           : "審核 Commit";
     }
     if (lede) {
@@ -2534,20 +2538,41 @@
           ? "核准後經 git_write_stash_pop → GitWritePort；套用並移除 " +
             (payload.stash || "") +
             "。衝突時保留 Stash，不假裝成功。拒絕則無突變。"
+          : op === "stash-drop"
+          ? "核准後經 git_write_stash_drop → GitWritePort；刪除 " +
+            (payload.stash || "") +
+            "。缺漏的 Stash 會誠實失敗，不執行 stash clear。拒絕則無突變。"
+          : op === "stash-create"
+          ? "核准後經 git_write_stash_push → GitWritePort；只保存已追蹤變更（不加 -u／--all）。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
-    if (msgWrap) msgWrap.hidden = op !== "commit";
+    if (msgWrap) {
+      msgWrap.hidden = op !== "commit" && op !== "stash-create";
+      const span = msgWrap.querySelector("span");
+      const input = document.getElementById("git-approve-message");
+      if (span) span.textContent = op === "stash-create" ? "Stash 說明" : "Commit message";
+      if (input) {
+        input.setAttribute(
+          "aria-label",
+          op === "stash-create" ? "Stash message" : "Commit message"
+        );
+      }
+    }
     if (remoteWrap) remoteWrap.hidden = op !== "push";
     if (refWrap) refWrap.hidden = op !== "push";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (box) box.hidden = false;
-    if (op === "commit") {
+    if (op === "commit" || op === "stash-create") {
       const msg = document.getElementById("git-approve-message");
       if (msg) {
         msg.focus();
-        if (!msg.value) msg.value = "";
+        if (op === "stash-create") {
+          msg.value = payload.message != null ? String(payload.message) : "";
+        } else if (!msg.value) {
+          msg.value = "";
+        }
       }
     } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
@@ -2702,9 +2727,14 @@
           );
           toast(".gitignore 失敗");
         }
-      } else if (op === "stash-apply" || op === "stash-pop") {
+      } else if (op === "stash-apply" || op === "stash-pop" || op === "stash-drop") {
         const stash = pendingGitWrite.stash;
-        const cmd = op === "stash-pop" ? "git_write_stash_pop" : "git_write_stash_apply";
+        const cmd =
+          op === "stash-pop"
+            ? "git_write_stash_pop"
+            : op === "stash-drop"
+            ? "git_write_stash_drop"
+            : "git_write_stash_apply";
         if (!stash) {
           hideGitApprove();
           setGitStatusLine("未指定 Stash，未執行", true);
@@ -2714,22 +2744,45 @@
           args: { repo: repo, stash: stash, approved: true },
         });
         hideGitApprove();
+        const verb =
+          op === "stash-pop" ? "pop" : op === "stash-drop" ? "drop" : "apply";
         if (dto && dto.ok) {
-          setGitStatusLine(
-            (op === "stash-pop" ? "已 pop " : "已 apply ") + stash + "（經 GitWritePort）",
-            false
-          );
-          toast(op === "stash-pop" ? "Stash pop 完成" : "Stash apply 完成");
+          setGitStatusLine("已 " + verb + " " + stash + "（經 GitWritePort）", false);
+          toast("Stash " + verb + " 完成");
           await cmdGitRefresh();
         } else {
           setGitStatusLine(
-            (op === "stash-pop" ? "pop" : "apply") +
+            verb +
               " 失敗：" +
               ((dto && dto.message) || "unknown") +
               "（Stash／工作樹依 Git 真實結果保留）",
             true
           );
-          toast(op === "stash-pop" ? "Stash pop 失敗（未假裝成功）" : "Stash apply 失敗（未假裝成功）");
+          toast("Stash " + verb + " 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "stash-create") {
+        const msgEl = document.getElementById("git-approve-message");
+        const message = msgEl && msgEl.value ? msgEl.value.trim() : "";
+        if (!message) {
+          setGitStatusLine("Stash 說明不可空白", true);
+          toast("請填寫 Stash 說明");
+          return;
+        }
+        const dto = await invoke("git_write_stash_push", {
+          args: { repo: repo, message: message, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已建立 Stash（經 GitWritePort；僅已追蹤變更）", false);
+          toast("Stash create 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "create 失敗：" + ((dto && dto.message) || "unknown") + "（工作樹依 Git 真實結果保留）",
+            true
+          );
+          toast("Stash create 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3251,6 +3304,8 @@
         },
         stashApply: function (stash) { showGitApprove("stash-apply", { stash: stash }); },
         stashPop: function (stash) { showGitApprove("stash-pop", { stash: stash }); },
+        stashDrop: function (stash) { showGitApprove("stash-drop", { stash: stash }); },
+        stashCreate: function () { showGitApprove("stash-create", {}); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

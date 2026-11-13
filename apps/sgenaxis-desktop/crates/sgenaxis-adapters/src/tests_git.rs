@@ -465,6 +465,24 @@ fn fake_git_write_stash_records_when_approved() {
     let conflict = w.stash_pop("/r", "stash@{0}", GitWriteApproval::granted());
     assert!(matches!(conflict, Err(PortError::Git(_))));
     assert_eq!(w.last_stash_pop("/r").as_deref(), Some("stash@{1}"));
+
+    let denied_drop = w.stash_drop("/r", "stash@{0}", GitWriteApproval::denied());
+    assert!(matches!(denied_drop, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stash_drop("/r").is_none());
+    w.stash_drop("/r", "stash@{2}", GitWriteApproval::granted())
+        .expect("drop");
+    assert_eq!(w.last_stash_drop("/r").as_deref(), Some("stash@{2}"));
+    w.fail_next_stash("/r", "stash@{9} is not a valid reference");
+    let missing = w.stash_drop("/r", "stash@{9}", GitWriteApproval::granted());
+    assert!(matches!(missing, Err(PortError::Git(_))));
+    assert_eq!(w.last_stash_drop("/r").as_deref(), Some("stash@{2}"));
+
+    let denied_push = w.stash_push("/r", "wip", GitWriteApproval::denied());
+    assert!(matches!(denied_push, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stash_push("/r").is_none());
+    w.stash_push("/r", "WIP: panel", GitWriteApproval::granted())
+        .expect("push");
+    assert_eq!(w.last_stash_push("/r").as_deref(), Some("WIP: panel"));
 }
 
 #[test]
@@ -497,6 +515,10 @@ fn gated_git_write_blocks_stash_even_when_approved() {
     assert!(matches!(apply, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let pop = w.stash_pop("/any", "stash@{0}", GitWriteApproval::granted());
     assert!(matches!(pop, Err(PortError::PermissionDenied(_))));
+    let drop = w.stash_drop("/any", "stash@{0}", GitWriteApproval::granted());
+    assert!(matches!(drop, Err(PortError::PermissionDenied(_))));
+    let push = w.stash_push("/any", "wip", GitWriteApproval::granted());
+    assert!(matches!(push, Err(PortError::PermissionDenied(_))));
 }
 
 #[test]

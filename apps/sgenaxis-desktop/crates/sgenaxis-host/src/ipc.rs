@@ -58,6 +58,10 @@ pub enum AllowedIpcCommand {
     GitWriteStashApply,
     /// Approval-gated `git stash pop -- stash@{n}` via GitWritePort (conflict keeps stash).
     GitWriteStashPop,
+    /// Approval-gated `git stash drop -- stash@{n}` via GitWritePort (never clear).
+    GitWriteStashDrop,
+    /// Approval-gated `git stash push -m` via GitWritePort (tracked-only; never -u/--all).
+    GitWriteStashPush,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -132,6 +136,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteIgnore => "git_write_ignore",
             AllowedIpcCommand::GitWriteStashApply => "git_write_stash_apply",
             AllowedIpcCommand::GitWriteStashPop => "git_write_stash_pop",
+            AllowedIpcCommand::GitWriteStashDrop => "git_write_stash_drop",
+            AllowedIpcCommand::GitWriteStashPush => "git_write_stash_push",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -184,6 +190,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteIgnore,
             AllowedIpcCommand::GitWriteStashApply,
             AllowedIpcCommand::GitWriteStashPop,
+            AllowedIpcCommand::GitWriteStashDrop,
+            AllowedIpcCommand::GitWriteStashPush,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -297,6 +305,8 @@ mod tests {
         assert!(is_allowed("git_write_ignore"));
         assert!(is_allowed("git_write_stash_apply"));
         assert!(is_allowed("git_write_stash_pop"));
+        assert!(is_allowed("git_write_stash_drop"));
+        assert!(is_allowed("git_write_stash_push"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -393,7 +403,17 @@ mod tests {
             authorize("git_write_stash_pop").unwrap(),
             AllowedIpcCommand::GitWriteStashPop
         );
+        assert_eq!(
+            authorize("git_write_stash_drop").unwrap(),
+            AllowedIpcCommand::GitWriteStashDrop
+        );
+        assert_eq!(
+            authorize("git_write_stash_push").unwrap(),
+            AllowedIpcCommand::GitWriteStashPush
+        );
         assert!(authorize("git_stash_drop").is_err());
+        assert!(authorize("git_stash_push").is_err());
+        assert!(authorize("git_stash_clear").is_err());
         assert!(authorize("import_apply").is_err());
         assert!(authorize("shell_execute").is_err());
     }

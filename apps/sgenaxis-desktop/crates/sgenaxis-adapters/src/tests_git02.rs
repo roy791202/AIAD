@@ -524,4 +524,98 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    #[test]
+    fn std_write_stash_drop_removes_only_the_named_stash() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        seed_stash(&work);
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        let w = StdGitWrite::new();
+        w.stash_drop(repo, "stash@{0}", GitWriteApproval::denied())
+            .expect_err("denied drop must not mutate");
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        w.stash_drop(repo, "clear", GitWriteApproval::granted())
+            .expect_err("clear is out of scope");
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        w.stash_drop(repo, "stash@{0}", GitWriteApproval::granted())
+            .expect("approved drop");
+        assert!(
+            stash_list(repo).trim().is_empty(),
+            "successful drop must remove the named stash: {}",
+            stash_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_stash_drop_missing_fails_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        seed_stash(&work);
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        let w = StdGitWrite::new();
+        let err = w
+            .stash_drop(repo, "stash@{9}", GitWriteApproval::granted())
+            .expect_err("missing stash must fail");
+        assert!(matches!(err, PortError::Git(_)));
+        let msg = err.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("stash@{9}") || msg.contains("not a valid reference"),
+            "missing drop must fail honestly: {err}"
+        );
+        assert!(
+            stash_list(repo).contains("stash@{0}"),
+            "failed drop must leave existing stashes: {}",
+            stash_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_stash_push_tracked_only_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "tracked dirty\n").unwrap();
+        fs::write(work.join("untracked.txt"), "leave me\n").unwrap();
+
+        let w = StdGitWrite::new();
+        w.stash_push(repo, "wip", GitWriteApproval::denied())
+            .expect_err("denied push must not mutate");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            "tracked dirty\n"
+        );
+        assert!(stash_list(repo).trim().is_empty());
+
+        w.stash_push(repo, "   ", GitWriteApproval::granted())
+            .expect_err("empty message must fail");
+        assert!(stash_list(repo).trim().is_empty());
+
+        w.stash_push(repo, "WIP: panel", GitWriteApproval::granted())
+            .expect("approved tracked-only push");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v1\n");
+        assert_eq!(
+            fs::read_to_string(work.join("untracked.txt")).unwrap(),
+            "leave me\n",
+            "tracked-only push must not consume untracked files"
+        );
+        let list = stash_list(repo);
+        assert!(
+            list.contains("WIP: panel"),
+            "stash list must include the message: {list}"
+        );
+        assert!(
+            list.contains("stash@{0}"),
+            "successful push must create a stash: {list}"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

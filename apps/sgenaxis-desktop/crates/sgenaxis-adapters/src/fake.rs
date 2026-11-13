@@ -482,7 +482,11 @@ struct FakeGitWriteState {
     stash_apply: HashMap<String, String>,
     /// repo → last approved stash pop selector.
     stash_pop: HashMap<String, String>,
-    /// repo → next stash apply/pop error (raw; redacted on return).
+    /// repo → last approved stash drop selector.
+    stash_drop: HashMap<String, String>,
+    /// repo → last approved stash push message.
+    stash_push: HashMap<String, String>,
+    /// repo → next stash apply/pop/drop/push error (raw; redacted on return).
     stash_fail: HashMap<String, String>,
     next_hash: u64,
 }
@@ -558,7 +562,19 @@ impl FakeGitWrite {
         st.stash_pop.get(&Self::key(repo)).cloned()
     }
 
-    /// Inject a one-shot stash apply/pop failure; do not record success.
+    /// Last stash selector an approved drop recorded for `repo`, if any.
+    pub fn last_stash_drop(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.stash_drop.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last message an approved stash push recorded for `repo`, if any.
+    pub fn last_stash_push(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.stash_push.get(&Self::key(repo)).cloned()
+    }
+
+    /// Inject a one-shot stash apply/pop/drop/push failure; do not record success.
     pub fn fail_next_stash(&self, repo: &str, raw_error: impl Into<String>) {
         let mut st = self.inner.lock().expect("fake git write lock");
         st.stash_fail.insert(Self::key(repo), raw_error.into());
@@ -697,6 +713,47 @@ impl GitWritePort for FakeGitWrite {
             return Err(git_error_redacted("stash pop conflict", &raw));
         }
         st.stash_pop.insert(key, stash_ref.to_string());
+        Ok(())
+    }
+
+    fn stash_drop(
+        &self,
+        repo: &str,
+        stash_ref: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if let Some(raw) = st.stash_fail.remove(&key) {
+            // Missing / invalid stash: do not record drop (list unchanged).
+            return Err(git_error_redacted("stash drop failed", &raw));
+        }
+        st.stash_drop.insert(key, stash_ref.to_string());
+        Ok(())
+    }
+
+    fn stash_push(
+        &self,
+        repo: &str,
+        message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if let Some(raw) = st.stash_fail.remove(&key) {
+            return Err(git_error_redacted("stash push failed", &raw));
+        }
+        st.stash_push.insert(key, message.to_string());
         Ok(())
     }
 }

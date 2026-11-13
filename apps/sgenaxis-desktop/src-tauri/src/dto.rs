@@ -552,12 +552,22 @@ pub struct GitWriteIgnoreArgs {
     pub approved: bool,
 }
 
-/// Args for approval-gated stash apply / pop (`stash@{n}` only).
+/// Args for approval-gated stash apply / pop / drop (`stash@{n}` only).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteStashArgs {
     pub repo: Option<String>,
     /// Stash selector, e.g. `stash@{0}`. Never flags or other stash verbs.
     pub stash: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
+/// Args for approval-gated `git stash push -m` (tracked-only; never `-u` / `--all`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteStashPushArgs {
+    pub repo: Option<String>,
+    /// Stash message passed to `git stash push -m`. Never flags.
+    pub message: String,
     /// Must be `true` after UI confirm; `false` → no mutation.
     pub approved: bool,
 }

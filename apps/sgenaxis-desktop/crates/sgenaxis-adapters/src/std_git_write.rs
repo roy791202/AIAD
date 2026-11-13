@@ -1,13 +1,14 @@
 //! Approving Git write adapter via `git` CLI (PD-GIT-02).
 //!
-//! - Commit / push / switch / local settings / stash apply+pop only when
-//!   [`GitWriteApproval`] is granted.
+//! - Commit / push / switch / local settings / stash apply+pop+drop+push only
+//!   when [`GitWriteApproval`] is granted.
 //! - Never force-pushes.
 //! - On push failure, does not reset / discard local commits.
 //! - Settings: `git config --local` for identity; direct `.gitignore` write.
 //!   Never `--global` / `--system`. Never `git rm --cached`.
-//! - Stash: `git stash apply -- stash@{n}` / `git stash pop -- stash@{n}`.
-//!   Never `-q` / `--quiet` (conflicts must surface). Never drop/clear/push.
+//! - Stash: `git stash apply/pop/drop -- stash@{n}` and
+//!   `git stash push -m <message>` (tracked-only). Never `-q` / `--quiet`.
+//!   Never `-u` / `--all`. Never `stash clear`. Never force.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -278,6 +279,41 @@ impl GitWritePort for StdGitWrite {
         // Pop itself drops only after a clean apply. Conflict → non-zero,
         // git keeps the stash; we return Err and do not invent success.
         self.run(repo, &["stash", "pop", "--", selector])?;
+        Ok(())
+    }
+
+    fn stash_drop(
+        &self,
+        repo: &str,
+        stash_ref: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let selector = stash_ref.trim();
+        Self::require_stash_selector(selector)?;
+        // Never `stash clear` (would wipe the whole list). Never `-q`.
+        // `--` stops option parse so a selector cannot be read as a flag.
+        self.run(repo, &["stash", "drop", "--", selector])?;
+        Ok(())
+    }
+
+    fn stash_push(
+        &self,
+        repo: &str,
+        message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let msg = message.trim();
+        if msg.is_empty() {
+            return Err(PortError::Other("empty stash message".into()));
+        }
+        if msg.contains('\0') {
+            return Err(PortError::Other("stash message must be text".into()));
+        }
+        // Tracked-only: never `-u` / `--include-untracked` / `--all`.
+        // `-m` takes the next argv as the message (not a flag).
+        self.run(repo, &["stash", "push", "-m", msg])?;
         Ok(())
     }
 }
