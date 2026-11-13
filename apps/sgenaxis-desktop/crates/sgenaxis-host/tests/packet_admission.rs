@@ -5,9 +5,20 @@ use sgenaxis_host::packet_admission::{
 };
 use sgenaxis_host::{EnvelopeDto, GuardPacketDto, RedKindDto};
 
+// The admission logic compares normalized ABSOLUTE project roots, so the
+// fixture root must be absolute on the running OS: a drive-anchored path on
+// Windows, a POSIX-absolute path elsewhere. (See
+// root_comparison_is_absolute_and_platform_normalized for the semantics.)
+fn project_root() -> &'static str {
+    if cfg!(windows) { "D:/work/project" } else { "/work/project" }
+}
+fn other_root() -> &'static str {
+    if cfg!(windows) { "D:/other" } else { "/other" }
+}
+
 fn make_request() -> Request {
     Request {
-        expected_project_root: "D:/work/project".into(),
+        expected_project_root: project_root().into(),
         source_path: "design/main.ess".into(),
         task_id: "TASK-1".into(),
         module_id: "MODULE-1".into(),
@@ -18,7 +29,7 @@ fn make_request() -> Request {
 
 fn verified_facts() -> Facts {
     Facts {
-        normalized_project_root: "D:/work/project".into(),
+        normalized_project_root: project_root().into(),
         source_path: "design/main.ess".into(),
         task_id: "TASK-1".into(),
         module_id: "MODULE-1".into(),
@@ -73,7 +84,7 @@ fn unresolved_ui_reference_rejects_with_a_typed_reason() {
 fn every_identity_and_authority_binding_fails_closed() {
     let cases: Vec<(fn(&mut Request, &mut Facts), Reject)> = vec![
         (
-            |_request, facts| facts.normalized_project_root = "D:/other".into(),
+            |_request, facts| facts.normalized_project_root = other_root().into(),
             Reject::ProjectRootMismatch,
         ),
         (
