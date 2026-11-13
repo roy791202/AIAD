@@ -1401,6 +1401,7 @@ pub struct WizardTokenArgs {
     pub token: String,
 }
 
+#[cfg(windows)]
 #[tauri::command]
 pub fn wizard_commit(
     state: State<'_, HostState>,
@@ -1412,6 +1413,19 @@ pub fn wizard_commit(
     let mut store = state.wizard.lock().map_err(|_| poison_host())?;
     let commit = sgenaxis_adapters::StdFileCommit::new();
     host_wizard_commit(root.fs(), &commit, &mut store, &token).map_err(|e| e.to_string())
+}
+
+// StdFileCommit is the Windows-only file-commit adapter (std::os::windows::fs),
+// exported only under cfg(all(windows, feature = "std-adapters")). Off Windows the
+// command stays registered (handler/ACL/tests unchanged) but refuses at runtime.
+#[cfg(not(windows))]
+#[tauri::command]
+pub fn wizard_commit(
+    _state: State<'_, HostState>,
+    _args: WizardTokenArgs,
+) -> Result<WizardCommitReceipt, String> {
+    authorize("wizard_commit").map_err(|e| e.to_string())?;
+    Err("wizard_commit requires the Windows file-commit adapter".to_string())
 }
 
 #[tauri::command]

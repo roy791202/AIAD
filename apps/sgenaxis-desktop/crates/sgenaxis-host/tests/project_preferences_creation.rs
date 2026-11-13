@@ -2,6 +2,12 @@
 //! Original source is retained in planning/s2-exact-design/legacy-history.
 //! Seven other original creation tests retain their names and full behavior in
 //! phase1_project_definition.rs; see migration-map.json. This is real native IO.
+//!
+//! StdFileCommit is a Windows-only adapter (uses std::os::windows::fs) and is
+//! only exported under cfg(all(windows, feature = "std-adapters")), so this
+//! whole native-IO test compiles on Windows only. Matches the guard on
+//! adapters/tests/phase1_file_commit.rs. On Linux CI the test binary is empty.
+#![cfg(all(windows, feature = "std-adapters"))]
 use sgenaxis_host::project_definition::*;
 use sgenaxis_host::project_preferences::*;
 use sgenaxis_ports::FileSystemPort;
