@@ -1,10 +1,13 @@
 //! Approving Git write adapter via `git` CLI (PD-GIT-02).
 //!
-//! - Commit / push / switch / local settings only when [`GitWriteApproval`] is granted.
+//! - Commit / push / switch / local settings / stash apply+pop only when
+//!   [`GitWriteApproval`] is granted.
 //! - Never force-pushes.
 //! - On push failure, does not reset / discard local commits.
 //! - Settings: `git config --local` for identity; direct `.gitignore` write.
 //!   Never `--global` / `--system`. Never `git rm --cached`.
+//! - Stash: `git stash apply -- stash@{n}` / `git stash pop -- stash@{n}`.
+//!   Never `-q` / `--quiet` (conflicts must surface). Never drop/clear/push.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -106,6 +109,29 @@ impl StdGitWrite {
         let path = Path::new(repo).join(".gitignore");
         fs::write(&path, contents).map_err(|e| PortError::Io(e.to_string()))
     }
+
+    fn require_stash_selector(stash_ref: &str) -> Result<(), PortError> {
+        if stash_ref.trim().is_empty() {
+            return Err(PortError::Other("empty stash ref".into()));
+        }
+        if !is_stash_selector(stash_ref.trim()) {
+            return Err(PortError::Other(
+                "stash ref must be stash@{n}; drop/clear/push/quiet are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// `stash@{N}` only — never flags (`-q`, `--index`) or other stash verbs.
+fn is_stash_selector(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("stash@{") else {
+        return false;
+    };
+    let Some(digits) = rest.strip_suffix('}') else {
+        return false;
+    };
+    !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
 }
 
 /// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
@@ -223,5 +249,35 @@ impl GitWritePort for StdGitWrite {
         // Direct file write at `<repo>/.gitignore`. Never `git rm --cached`,
         // never `git update-index`, never stop tracking existing files.
         Self::write_root_gitignore(repo, contents)
+    }
+
+    fn stash_apply(
+        &self,
+        repo: &str,
+        stash_ref: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let selector = stash_ref.trim();
+        Self::require_stash_selector(selector)?;
+        // Never `-q` / `--quiet`: conflicts must surface as a failed Result.
+        // `--` stops option parse so a selector cannot be read as a flag.
+        self.run(repo, &["stash", "apply", "--", selector])?;
+        Ok(())
+    }
+
+    fn stash_pop(
+        &self,
+        repo: &str,
+        stash_ref: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let selector = stash_ref.trim();
+        Self::require_stash_selector(selector)?;
+        // Pop itself drops only after a clean apply. Conflict → non-zero,
+        // git keeps the stash; we return Err and do not invent success.
+        self.run(repo, &["stash", "pop", "--", selector])?;
+        Ok(())
     }
 }

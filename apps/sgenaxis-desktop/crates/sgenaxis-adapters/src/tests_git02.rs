@@ -400,4 +400,128 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn stash_list(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "stash", "list"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    fn unmerged(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    fn is_honest_stash_failure(err: &PortError, repo: &str) -> bool {
+        let msg = err.to_string().to_ascii_lowercase();
+        msg.contains("conflict")
+            || msg.contains("abort")
+            || msg.contains("overwritten")
+            || !unmerged(repo).trim().is_empty()
+    }
+
+    fn seed_stash(work: &Path) {
+        fs::write(work.join("a.txt"), "stashed\n").unwrap();
+        git(work, &["stash", "push", "-m", "wip"]);
+    }
+
+    #[test]
+    fn std_write_stash_apply_keeps_stash_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        seed_stash(&work);
+        assert!(stash_list(repo).contains("stash@{0}"));
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v1\n");
+
+        let w = StdGitWrite::new();
+        w.stash_apply(repo, "stash@{0}", GitWriteApproval::denied())
+            .expect_err("denied apply must not mutate");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v1\n");
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        w.stash_apply(repo, "-q", GitWriteApproval::granted())
+            .expect_err("quiet flag is out of scope");
+        w.stash_apply(repo, "drop", GitWriteApproval::granted())
+            .expect_err("drop is out of scope");
+
+        w.stash_apply(repo, "stash@{0}", GitWriteApproval::granted())
+            .expect("approved apply");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "stashed\n");
+        assert!(
+            stash_list(repo).contains("stash@{0}"),
+            "apply must keep the stash: {}",
+            stash_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_stash_pop_drops_only_on_success() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        seed_stash(&work);
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        let w = StdGitWrite::new();
+        w.stash_pop(repo, "stash@{0}", GitWriteApproval::denied())
+            .expect_err("denied pop must not mutate");
+        assert!(stash_list(repo).contains("stash@{0}"));
+
+        w.stash_pop(repo, "stash@{0}", GitWriteApproval::granted())
+            .expect("approved pop");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "stashed\n");
+        assert!(
+            stash_list(repo).trim().is_empty(),
+            "successful pop must remove the stash: {}",
+            stash_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_stash_conflict_preserves_stash_and_does_not_invent_success() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        seed_stash(&work);
+        fs::write(work.join("a.txt"), "other\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "divergent"]);
+
+        let w = StdGitWrite::new();
+        let apply_err = w
+            .stash_apply(repo, "stash@{0}", GitWriteApproval::granted())
+            .expect_err("conflicting apply must fail");
+        assert!(matches!(apply_err, PortError::Git(_)));
+        assert!(
+            is_honest_stash_failure(&apply_err, repo),
+            "conflict must not be hidden by -q: {apply_err}"
+        );
+        assert!(
+            stash_list(repo).contains("stash@{0}"),
+            "apply conflict must keep the stash"
+        );
+
+        git(&work, &["reset", "--hard", "HEAD"]);
+        let pop_err = w
+            .stash_pop(repo, "stash@{0}", GitWriteApproval::granted())
+            .expect_err("conflicting pop must fail");
+        assert!(matches!(pop_err, PortError::Git(_)));
+        assert!(
+            stash_list(repo).contains("stash@{0}"),
+            "pop conflict must keep the stash; must not invent success"
+        );
+        assert!(
+            is_honest_stash_failure(&pop_err, repo),
+            "pop conflict must leave honest repo state: {pop_err}"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

@@ -53,7 +53,7 @@ use crate::dto::{
     GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto,
     GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
-    GitWriteResultDto, GitWriteSwitchArgs,
+    GitWriteResultDto, GitWriteStashArgs, GitWriteSwitchArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -325,6 +325,8 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_switch_branch",
         "git_write_identity",
         "git_write_ignore",
+        "git_write_stash_apply",
+        "git_write_stash_pop",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -2065,6 +2067,116 @@ pub fn git_write_ignore(
     perform_git_write_ignore(root.git_write(), &repo, &args.ignore, args.approved)
 }
 
+/// `stash@{N}` only — never flags (`-q`, `--index`) or other stash verbs.
+fn is_stash_selector(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("stash@{") else {
+        return false;
+    };
+    let Some(digits) = rest.strip_suffix('}') else {
+        return false;
+    };
+    !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn reject_stash_scope(stash: &str) -> Result<(), String> {
+    let t = stash.trim();
+    if t.is_empty() {
+        return Ok(());
+    }
+    if !is_stash_selector(t) {
+        return Err("stash drop/clear/push/quiet and non stash@{n} refs are out of scope".into());
+    }
+    Ok(())
+}
+
+/// Soft-gated stash apply/pop: empty / unapproved never mutates; approved via port.
+fn perform_git_write_stash(
+    write: &dyn GitWritePort,
+    repo: &str,
+    stash: &str,
+    approved: bool,
+    pop: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_stash_scope(stash)?;
+    let op = if pop { "stash-pop" } else { "stash-apply" };
+    if stash.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: op.into(),
+            message: "empty stash ref".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: op.into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    let selector = stash.trim();
+    let result = if pop {
+        write.stash_pop(repo, selector, GitWriteApproval::granted())
+    } else {
+        write.stash_apply(repo, selector, GitWriteApproval::granted())
+    };
+    match result {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: op.into(),
+            message: format!("{op} ok"),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: op.into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated `git stash apply -- stash@{n}`. Never quiet; never drop.
+#[tauri::command]
+pub fn git_write_stash_apply(
+    state: State<'_, HostState>,
+    args: GitWriteStashArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_stash_apply").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "stash-apply".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_stash(root.git_write(), &repo, &args.stash, args.approved, false)
+}
+
+/// Approval-gated `git stash pop -- stash@{n}`. Conflict keeps the stash.
+#[tauri::command]
+pub fn git_write_stash_pop(
+    state: State<'_, HostState>,
+    args: GitWriteStashArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_stash_pop").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "stash-pop".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_stash(root.git_write(), &repo, &args.stash, args.approved, true)
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -3155,6 +3267,48 @@ mod git_ui_tests {
         assert!(ok_ig.ok);
         assert_eq!(ok_ig.op, "ignore");
         assert_eq!(w.last_ignore("/r").as_deref(), Some("target/\n"));
+    }
+
+    #[test]
+    fn git_write_stash_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_stash_apply"));
+        assert!(is_allowed("git_write_stash_pop"));
+        assert!(!is_allowed("git_stash"));
+        assert!(!is_allowed("git_stash_drop"));
+        assert!(!is_allowed("git_stash_clear"));
+        assert!(!is_allowed("git_stash_push"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_stash(&w, "/r", "stash@{0}", false, false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_stash_apply("/r").is_none());
+        let empty = perform_git_write_stash(&w, "/r", "", true, false).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_stash_apply("/r").is_none());
+        let quiet = perform_git_write_stash(&w, "/r", "-q", true, false).unwrap_err();
+        assert!(quiet.contains("out of scope"));
+        assert!(w.last_stash_apply("/r").is_none());
+        let drop = perform_git_write_stash(&w, "/r", "drop", true, true).unwrap_err();
+        assert!(drop.contains("out of scope"));
+        assert!(w.last_stash_pop("/r").is_none());
+
+        let ok_apply = perform_git_write_stash(&w, "/r", "stash@{0}", true, false).unwrap();
+        assert!(ok_apply.ok);
+        assert_eq!(ok_apply.op, "stash-apply");
+        assert_eq!(w.last_stash_apply("/r").as_deref(), Some("stash@{0}"));
+        let ok_pop = perform_git_write_stash(&w, "/r", "stash@{1}", true, true).unwrap();
+        assert!(ok_pop.ok);
+        assert_eq!(ok_pop.op, "stash-pop");
+        assert_eq!(w.last_stash_pop("/r").as_deref(), Some("stash@{1}"));
+
+        w.fail_next_stash("/r", "CONFLICT (content): merge conflict in a.txt");
+        let conflict = perform_git_write_stash(&w, "/r", "stash@{0}", true, true).unwrap();
+        assert!(!conflict.ok);
+        assert!(conflict.local_preserved);
+        assert!(conflict.message.to_ascii_lowercase().contains("conflict"));
+        assert_eq!(w.last_stash_pop("/r").as_deref(), Some("stash@{1}"));
     }
 
     #[test]

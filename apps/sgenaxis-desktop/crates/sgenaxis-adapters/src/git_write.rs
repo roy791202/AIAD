@@ -70,6 +70,24 @@ impl GitWritePort for GatedGitWrite {
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
+
+    fn stash_apply(
+        &self,
+        _repo: &str,
+        _stash_ref: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn stash_pop(
+        &self,
+        _repo: &str,
+        _stash_ref: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
 }
 
 /// Redact credentials / tokens from git or auth error text (BDD-PD-GIT-02).

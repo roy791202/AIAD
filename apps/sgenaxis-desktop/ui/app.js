@@ -2488,7 +2488,7 @@
       return;
     }
     const payload = extra && typeof extra === "object" ? extra : { branch: extra };
-    pendingGitWrite = { op: op, branch: payload.branch };
+    pendingGitWrite = { op: op, branch: payload.branch, stash: payload.stash };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
     const lede = document.getElementById("git-approve-lede");
@@ -2508,6 +2508,10 @@
           ? "審核提交作者"
           : op === "ignore"
           ? "審核 .gitignore"
+          : op === "stash-apply"
+          ? "審核 Stash Apply"
+          : op === "stash-pop"
+          ? "審核 Stash Pop"
           : "審核 Commit";
     }
     if (lede) {
@@ -2522,6 +2526,14 @@
           ? "核准後經 git_write_identity → GitWritePort；只寫本儲存庫 user.name／user.email。拒絕則無突變。"
           : op === "ignore"
           ? "核准後經 git_write_ignore → GitWritePort；只寫根目錄 .gitignore，不停止追蹤既有檔案。拒絕則無突變。"
+          : op === "stash-apply"
+          ? "核准後經 git_write_stash_apply → GitWritePort；套用 " +
+            (payload.stash || "") +
+            " 並保留 Stash。衝突時不假裝成功。拒絕則無突變。"
+          : op === "stash-pop"
+          ? "核准後經 git_write_stash_pop → GitWritePort；套用並移除 " +
+            (payload.stash || "") +
+            "。衝突時保留 Stash，不假裝成功。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) msgWrap.hidden = op !== "commit";
@@ -2689,6 +2701,36 @@
             true
           );
           toast(".gitignore 失敗");
+        }
+      } else if (op === "stash-apply" || op === "stash-pop") {
+        const stash = pendingGitWrite.stash;
+        const cmd = op === "stash-pop" ? "git_write_stash_pop" : "git_write_stash_apply";
+        if (!stash) {
+          hideGitApprove();
+          setGitStatusLine("未指定 Stash，未執行", true);
+          return;
+        }
+        const dto = await invoke(cmd, {
+          args: { repo: repo, stash: stash, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            (op === "stash-pop" ? "已 pop " : "已 apply ") + stash + "（經 GitWritePort）",
+            false
+          );
+          toast(op === "stash-pop" ? "Stash pop 完成" : "Stash apply 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            (op === "stash-pop" ? "pop" : "apply") +
+              " 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（Stash／工作樹依 Git 真實結果保留）",
+            true
+          );
+          toast(op === "stash-pop" ? "Stash pop 失敗（未假裝成功）" : "Stash apply 失敗（未假裝成功）");
+          await cmdGitRefresh();
         }
       } else {
         hideGitApprove();
@@ -3207,6 +3249,8 @@
             ignore: ignoreEl ? ignoreEl.value : "",
           });
         },
+        stashApply: function (stash) { showGitApprove("stash-apply", { stash: stash }); },
+        stashPop: function (stash) { showGitApprove("stash-pop", { stash: stash }); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

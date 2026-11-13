@@ -31,6 +31,9 @@ assert "tested 來自本機 refs/remotes" in js
 assert "liveHooks.saveIdentity" in js
 assert "liveHooks.saveIgnore" in js
 assert "git_write_identity／git_write_ignore" in js
+assert "liveHooks.stashApply" in js
+assert "liveHooks.stashPop" in js
+assert "git_write_stash_apply／git_write_stash_pop" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

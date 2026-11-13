@@ -214,6 +214,8 @@ pub trait GitPort: Send + Sync {
 /// - No force push.
 /// - Settings writes are local-only: never `--global` / `--system`, never
 ///   credential helpers, never `git rm --cached` / untrack existing files.
+/// - Stash apply/pop require approval (no skip default). Never quiet.
+///   Conflicts surface as errors; pop must not invent success or drop.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -255,6 +257,25 @@ pub trait GitWritePort: Send + Sync {
         &self,
         repo: &str,
         contents: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Apply an existing stash (`git stash apply -- stash@{n}`). Requires approval.
+    /// Never `-q` / `--quiet` (conflicts must not be hidden). Never drop/clear/push.
+    fn stash_apply(
+        &self,
+        repo: &str,
+        stash_ref: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Pop an existing stash (`git stash pop -- stash@{n}`). Requires approval.
+    /// On conflict git keeps the stash; adapters must not invent success.
+    /// Never drop/clear/push as a separate step.
+    fn stash_pop(
+        &self,
+        repo: &str,
+        stash_ref: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

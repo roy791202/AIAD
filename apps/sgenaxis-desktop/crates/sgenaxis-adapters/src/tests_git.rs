@@ -445,6 +445,29 @@ fn fake_git_write_settings_record_when_approved() {
 }
 
 #[test]
+fn fake_git_write_stash_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied_apply = w.stash_apply("/r", "stash@{0}", GitWriteApproval::denied());
+    assert!(matches!(denied_apply, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stash_apply("/r").is_none());
+    let denied_pop = w.stash_pop("/r", "stash@{0}", GitWriteApproval::denied());
+    assert!(matches!(denied_pop, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stash_pop("/r").is_none());
+
+    w.stash_apply("/r", "stash@{0}", GitWriteApproval::granted())
+        .expect("apply");
+    assert_eq!(w.last_stash_apply("/r").as_deref(), Some("stash@{0}"));
+    w.stash_pop("/r", "stash@{1}", GitWriteApproval::granted())
+        .expect("pop");
+    assert_eq!(w.last_stash_pop("/r").as_deref(), Some("stash@{1}"));
+
+    w.fail_next_stash("/r", "CONFLICT (content): merge conflict in a.txt");
+    let conflict = w.stash_pop("/r", "stash@{0}", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(_))));
+    assert_eq!(w.last_stash_pop("/r").as_deref(), Some("stash@{1}"));
+}
+
+#[test]
 fn gated_git_write_blocks_commit_and_push() {
     let w = GatedGitWrite::new();
     let c = w.commit("/any", "msg", GitWriteApproval::denied());
@@ -465,6 +488,15 @@ fn gated_git_write_blocks_settings_even_when_approved() {
     assert!(matches!(id, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let ig = w.set_ignore("/any", "target/\n", GitWriteApproval::granted());
     assert!(matches!(ig, Err(PortError::PermissionDenied(_))));
+}
+
+#[test]
+fn gated_git_write_blocks_stash_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let apply = w.stash_apply("/any", "stash@{0}", GitWriteApproval::granted());
+    assert!(matches!(apply, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let pop = w.stash_pop("/any", "stash@{0}", GitWriteApproval::granted());
+    assert!(matches!(pop, Err(PortError::PermissionDenied(_))));
 }
 
 #[test]
