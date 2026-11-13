@@ -533,6 +533,25 @@ pub struct GitWriteSwitchArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local identity (`git config --local user.name` / `user.email`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteIdentityArgs {
+    pub repo: Option<String>,
+    pub author: String,
+    pub email: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
+/// Args for approval-gated root `.gitignore` write (never untrack existing files).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteIgnoreArgs {
+    pub repo: Option<String>,
+    pub ignore: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

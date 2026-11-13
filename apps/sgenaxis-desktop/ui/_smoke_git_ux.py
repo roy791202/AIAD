@@ -28,6 +28,9 @@ assert "state.remoteEntries[0].tested===true" in js
 assert "r.tested === true" in js
 assert "本機已有遠端追蹤紀錄" in js
 assert "tested 來自本機 refs/remotes" in js
+assert "liveHooks.saveIdentity" in js
+assert "liveHooks.saveIgnore" in js
+assert "git_write_identity／git_write_ignore" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

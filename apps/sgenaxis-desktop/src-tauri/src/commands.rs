@@ -52,7 +52,8 @@ use crate::dto::{
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
     GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto,
-    GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
+    GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
+    GitWriteResultDto, GitWriteSwitchArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -322,6 +323,8 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_commit",
         "git_write_push",
         "git_switch_branch",
+        "git_write_identity",
+        "git_write_ignore",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -1925,6 +1928,143 @@ pub fn git_switch_branch(
     ))
 }
 
+/// Tokens that would widen identity writes beyond local `user.name` / `user.email`.
+fn identity_scope_forbidden(value: &str) -> bool {
+    value.split_whitespace().any(|token| {
+        let t = token.to_ascii_lowercase();
+        matches!(
+            t.as_str(),
+            "--global" | "--system" | "--file" | "--worktree" | "--force" | "-f" | "--add"
+        ) || t.starts_with("--file=")
+            || t.starts_with("credential.")
+    })
+}
+
+fn reject_identity_scope(author: &str, email: &str) -> Result<(), String> {
+    if identity_scope_forbidden(author) || identity_scope_forbidden(email) {
+        return Err("force/global/credential writes are out of scope".into());
+    }
+    Ok(())
+}
+
+/// Soft-gated identity: empty / unapproved never mutates; approved writes via port.
+fn perform_git_write_identity(
+    write: &dyn GitWritePort,
+    repo: &str,
+    author: &str,
+    email: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_identity_scope(author, email)?;
+    if author.trim().is_empty() || email.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "identity".into(),
+            message: "empty user.name or user.email".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "identity".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.set_identity(repo, author, email, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "identity".into(),
+            message: "identity ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "identity".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Soft-gated ignore: unapproved never mutates; approved writes via port.
+fn perform_git_write_ignore(
+    write: &dyn GitWritePort,
+    repo: &str,
+    ignore: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "ignore".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.set_ignore(repo, ignore, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "ignore".into(),
+            message: "ignore ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "ignore".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `user.name` / `user.email`. Never `--global` / credentials.
+#[tauri::command]
+pub fn git_write_identity(
+    state: State<'_, HostState>,
+    args: GitWriteIdentityArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_identity").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "identity".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_identity(
+        root.git_write(),
+        &repo,
+        &args.author,
+        &args.email,
+        args.approved,
+    )
+}
+
+/// Approval-gated root `.gitignore`. Never stop tracking existing files.
+#[tauri::command]
+pub fn git_write_ignore(
+    state: State<'_, HostState>,
+    args: GitWriteIgnoreArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_ignore").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "ignore".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_ignore(root.git_write(), &repo, &args.ignore, args.approved)
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -2974,6 +3114,47 @@ mod git_ui_tests {
         assert!(ok.ok);
         assert_eq!(ok.op, "switch");
         assert_eq!(w.switched_branch("/r").as_deref(), Some("feature"));
+    }
+
+    #[test]
+    fn git_write_settings_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_identity"));
+        assert!(is_allowed("git_write_ignore"));
+        assert!(!is_allowed("git_config"));
+        assert!(!is_allowed("git_config_global"));
+        assert!(!is_allowed("git_credential"));
+
+        let w = FakeGitWrite::new();
+        let denied =
+            perform_git_write_identity(&w, "/r", "Ada", "ada@example.invalid", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_identity("/r").is_none());
+        let empty = perform_git_write_identity(&w, "/r", "", "ada@example.invalid", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_identity("/r").is_none());
+        let global =
+            perform_git_write_identity(&w, "/r", "--global", "ada@example.invalid", true)
+                .unwrap_err();
+        assert!(global.contains("out of scope"));
+        assert!(w.last_identity("/r").is_none());
+        let ok =
+            perform_git_write_identity(&w, "/r", "Ada", "ada@example.invalid", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "identity");
+        assert_eq!(
+            w.last_identity("/r"),
+            Some(("Ada".into(), "ada@example.invalid".into()))
+        );
+
+        let denied_ig = perform_git_write_ignore(&w, "/r", "target/\n", false).unwrap();
+        assert!(!denied_ig.ok);
+        assert!(w.last_ignore("/r").is_none());
+        let ok_ig = perform_git_write_ignore(&w, "/r", "target/\n", true).unwrap();
+        assert!(ok_ig.ok);
+        assert_eq!(ok_ig.op, "ignore");
+        assert_eq!(w.last_ignore("/r").as_deref(), Some("target/\n"));
     }
 
     #[test]

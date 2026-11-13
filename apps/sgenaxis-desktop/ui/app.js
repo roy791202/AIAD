@@ -2482,33 +2482,54 @@
     pendingGitWrite = null;
   }
 
-  function showGitApprove(op, branch) {
+  function showGitApprove(op, extra) {
     if (!gitWritesEnabled) {
       toast("寫入閘門關閉");
       return;
     }
-    pendingGitWrite = { op: op, branch: branch };
+    const payload = extra && typeof extra === "object" ? extra : { branch: extra };
+    pendingGitWrite = { op: op, branch: payload.branch };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
     const lede = document.getElementById("git-approve-lede");
     const msgWrap = document.getElementById("git-approve-msg-wrap");
     const remoteWrap = document.getElementById("git-approve-remote-wrap");
     const refWrap = document.getElementById("git-approve-refspec-wrap");
+    const authorWrap = document.getElementById("git-approve-author-wrap");
+    const emailWrap = document.getElementById("git-approve-email-wrap");
+    const ignoreWrap = document.getElementById("git-approve-ignore-wrap");
     if (title) {
       title.textContent =
-        op === "push" ? "審核 Push" : op === "switch" ? "審核 Switch" : "審核 Commit";
+        op === "push"
+          ? "審核 Push"
+          : op === "switch"
+          ? "審核 Switch"
+          : op === "identity"
+          ? "審核提交作者"
+          : op === "ignore"
+          ? "審核 .gitignore"
+          : "審核 Commit";
     }
     if (lede) {
       lede.textContent =
         op === "push"
           ? "核准後經 git_write_push → GitWritePort；拒絕則無突變。不做 force push。"
           : op === "switch"
-          ? "核准後經 git_switch_branch → GitWritePort；切換到 " + (branch || "") + "。拒絕則無突變。"
+          ? "核准後經 git_switch_branch → GitWritePort；切換到 " +
+            (payload.branch || "") +
+            "。拒絕則無突變。"
+          : op === "identity"
+          ? "核准後經 git_write_identity → GitWritePort；只寫本儲存庫 user.name／user.email。拒絕則無突變。"
+          : op === "ignore"
+          ? "核准後經 git_write_ignore → GitWritePort；只寫根目錄 .gitignore，不停止追蹤既有檔案。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) msgWrap.hidden = op !== "commit";
     if (remoteWrap) remoteWrap.hidden = op !== "push";
     if (refWrap) refWrap.hidden = op !== "push";
+    if (authorWrap) authorWrap.hidden = op !== "identity";
+    if (emailWrap) emailWrap.hidden = op !== "identity";
+    if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (box) box.hidden = false;
     if (op === "commit") {
       const msg = document.getElementById("git-approve-message");
@@ -2520,6 +2541,18 @@
       const remote = document.getElementById("git-approve-remote");
       if (remote && !remote.value.trim()) remote.value = "origin";
       if (remote) remote.focus();
+    } else if (op === "identity") {
+      const author = document.getElementById("git-approve-author");
+      const email = document.getElementById("git-approve-email");
+      if (author) author.value = payload.author || "";
+      if (email) email.value = payload.email || "";
+      if (author) author.focus();
+    } else if (op === "ignore") {
+      const ignore = document.getElementById("git-approve-ignore");
+      if (ignore) {
+        ignore.value = payload.ignore != null ? String(payload.ignore) : "";
+        ignore.focus();
+      }
     }
   }
 
@@ -2613,6 +2646,49 @@
             true
           );
           toast("切換失敗");
+        }
+      } else if (op === "identity") {
+        const authorEl = document.getElementById("git-approve-author");
+        const emailEl = document.getElementById("git-approve-email");
+        const author = authorEl && authorEl.value ? authorEl.value.trim() : "";
+        const email = emailEl && emailEl.value ? emailEl.value.trim() : "";
+        if (!author || !email) {
+          setGitStatusLine("user.name 與 user.email 不可空白", true);
+          toast("請填寫本儲存庫作者");
+          return;
+        }
+        const dto = await invoke("git_write_identity", {
+          args: { repo: repo, author: author, email: email, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已寫入本儲存庫 user.name／user.email（經 GitWritePort）", false);
+          toast("作者設定已儲存");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "作者設定失敗：" + ((dto && dto.message) || "unknown"),
+            true
+          );
+          toast("作者設定失敗");
+        }
+      } else if (op === "ignore") {
+        const ignoreEl = document.getElementById("git-approve-ignore");
+        const ignore = ignoreEl && ignoreEl.value != null ? ignoreEl.value : "";
+        const dto = await invoke("git_write_ignore", {
+          args: { repo: repo, ignore: ignore, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已寫入根目錄 .gitignore（經 GitWritePort；未停止追蹤）", false);
+          toast(".gitignore 已儲存");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            ".gitignore 失敗：" + ((dto && dto.message) || "unknown"),
+            true
+          );
+          toast(".gitignore 失敗");
         }
       } else {
         hideGitApprove();
@@ -3116,7 +3192,21 @@
     if (mockRoot && window.EluSlotGitUxMock && window.EluSlotGitUxMock.mountLive) {
       window.EluSlotGitUxMock.mountLive({
         refresh: cmdGitRefresh,
-        switchBranch: function (branch) { showGitApprove("switch", branch); },
+        switchBranch: function (branch) { showGitApprove("switch", { branch: branch }); },
+        saveIdentity: function () {
+          const authorEl = document.getElementById("git-ux-author");
+          const emailEl = document.getElementById("git-ux-email");
+          showGitApprove("identity", {
+            author: authorEl ? authorEl.value : "",
+            email: emailEl ? emailEl.value : "",
+          });
+        },
+        saveIgnore: function () {
+          const ignoreEl = document.getElementById("git-ux-ignore");
+          showGitApprove("ignore", {
+            ignore: ignoreEl ? ignoreEl.value : "",
+          });
+        },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

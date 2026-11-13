@@ -474,6 +474,10 @@ struct FakeGitWriteState {
     push_count: HashMap<String, u32>,
     /// repo → last branch switched to (approved).
     switched: HashMap<String, String>,
+    /// repo → last approved local identity (`user.name`, `user.email`).
+    identity: HashMap<String, (String, String)>,
+    /// repo → last approved root `.gitignore` contents.
+    ignore: HashMap<String, String>,
     next_hash: u64,
 }
 
@@ -522,6 +526,18 @@ impl FakeGitWrite {
     pub fn switched_branch(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.switched.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved local identity for `repo`, if any.
+    pub fn last_identity(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.identity.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved root `.gitignore` contents for `repo`, if any.
+    pub fn last_ignore(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.ignore.get(&Self::key(repo)).cloned()
     }
 }
 
@@ -582,6 +598,40 @@ impl GitWritePort for FakeGitWrite {
         }
         let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
         st.switched.insert(Self::key(repo), branch.to_string());
+        Ok(())
+    }
+
+    fn set_identity(
+        &self,
+        repo: &str,
+        name: &str,
+        email: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        st.identity
+            .insert(Self::key(repo), (name.to_string(), email.to_string()));
+        Ok(())
+    }
+
+    fn set_ignore(
+        &self,
+        repo: &str,
+        contents: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        st.ignore.insert(Self::key(repo), contents.to_string());
         Ok(())
     }
 }

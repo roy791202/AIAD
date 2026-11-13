@@ -212,6 +212,8 @@ pub trait GitPort: Send + Sync {
 /// - Push failure must not discard local commits.
 /// - Error strings must not leak credentials (adapters redact).
 /// - No force push.
+/// - Settings writes are local-only: never `--global` / `--system`, never
+///   credential helpers, never `git rm --cached` / untrack existing files.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -234,6 +236,25 @@ pub trait GitWritePort: Send + Sync {
         &self,
         repo: &str,
         branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Persist local `user.name` / `user.email`. Requires approval.
+    /// Never writes `--global` / `--system` / credential helpers.
+    fn set_identity(
+        &self,
+        repo: &str,
+        name: &str,
+        email: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Persist the repo-root `.gitignore`. Requires approval.
+    /// Never `git rm --cached`; never stop tracking existing files.
+    fn set_ignore(
+        &self,
+        repo: &str,
+        contents: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

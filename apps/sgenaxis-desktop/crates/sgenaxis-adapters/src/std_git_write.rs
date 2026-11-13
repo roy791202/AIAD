@@ -1,15 +1,22 @@
 //! Approving Git write adapter via `git` CLI (PD-GIT-02).
 //!
-//! - Commit / push only when [`GitWriteApproval`] is granted.
+//! - Commit / push / switch / local settings only when [`GitWriteApproval`] is granted.
 //! - Never force-pushes.
 //! - On push failure, does not reset / discard local commits.
+//! - Settings: `git config --local` for identity; direct `.gitignore` write.
+//!   Never `--global` / `--system`. Never `git rm --cached`.
 //! - Error text is credential-redacted.
 
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 
 use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
 
 use crate::git_write::{git_error_redacted, GIT_WRITE_NOT_APPROVED_MSG};
+
+/// Root `.gitignore` is a text file; keep a hard cap so the UI cannot dump unbounded bytes.
+const MAX_GITIGNORE_BYTES: usize = 1_048_576;
 
 /// Real Git write adapter — shells `git -C <repo> …` after approval.
 #[derive(Debug, Default, Clone)]
@@ -64,6 +71,53 @@ impl StdGitWrite {
         String::from_utf8(output.stdout)
             .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
     }
+
+    fn require_local_identity(name: &str, email: &str) -> Result<(), PortError> {
+        if name.trim().is_empty() || email.trim().is_empty() {
+            return Err(PortError::Other("empty user.name or user.email".into()));
+        }
+        if name.contains('\n')
+            || name.contains('\0')
+            || email.contains('\n')
+            || email.contains('\0')
+        {
+            return Err(PortError::Other(
+                "user.name / user.email must be a single line".into(),
+            ));
+        }
+        if identity_out_of_scope(name) || identity_out_of_scope(email) {
+            return Err(PortError::Other(
+                "force/global/credential writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn write_root_gitignore(repo: &str, contents: &str) -> Result<(), PortError> {
+        if repo.trim().is_empty() {
+            return Err(PortError::InvalidPath("empty git repo path".into()));
+        }
+        if contents.len() > MAX_GITIGNORE_BYTES {
+            return Err(PortError::Other("gitignore too large".into()));
+        }
+        if contents.contains('\0') {
+            return Err(PortError::Other("gitignore must be text".into()));
+        }
+        let path = Path::new(repo).join(".gitignore");
+        fs::write(&path, contents).map_err(|e| PortError::Io(e.to_string()))
+    }
+}
+
+/// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
+fn identity_out_of_scope(value: &str) -> bool {
+    value.split_whitespace().any(|token| {
+        let t = token.to_ascii_lowercase();
+        matches!(
+            t.as_str(),
+            "--global" | "--system" | "--file" | "--worktree" | "--force" | "-f" | "--add"
+        ) || t.starts_with("--file=")
+            || t.starts_with("credential.")
+    })
 }
 
 impl GitWritePort for StdGitWrite {
@@ -121,5 +175,53 @@ impl GitWritePort for StdGitWrite {
         // named like a flag can never be misread.
         self.run(repo, &["switch", "--", branch])?;
         Ok(())
+    }
+
+    fn set_identity(
+        &self,
+        repo: &str,
+        name: &str,
+        email: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        Self::require_local_identity(name, email)?;
+        // `--local` only. `--` stops option parse so a value like `--global`
+        // cannot widen the file scope. Never `--global` / `--system`.
+        self.run(
+            repo,
+            &[
+                "config",
+                "--local",
+                "--replace-all",
+                "--",
+                "user.name",
+                name,
+            ],
+        )?;
+        self.run(
+            repo,
+            &[
+                "config",
+                "--local",
+                "--replace-all",
+                "--",
+                "user.email",
+                email,
+            ],
+        )?;
+        Ok(())
+    }
+
+    fn set_ignore(
+        &self,
+        repo: &str,
+        contents: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        // Direct file write at `<repo>/.gitignore`. Never `git rm --cached`,
+        // never `git update-index`, never stop tracking existing files.
+        Self::write_root_gitignore(repo, contents)
     }
 }

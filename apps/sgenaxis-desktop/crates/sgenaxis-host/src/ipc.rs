@@ -50,6 +50,10 @@ pub enum AllowedIpcCommand {
     GitWritePush,
     /// PD-GIT-SWITCH-03: approval-gated switch to an existing local branch (no force／create).
     GitSwitchBranch,
+    /// Approval-gated local `user.name` / `user.email` via GitWritePort (never --global).
+    GitWriteIdentity,
+    /// Approval-gated root `.gitignore` via GitWritePort (never untrack existing files).
+    GitWriteIgnore,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -120,6 +124,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteCommit => "git_write_commit",
             AllowedIpcCommand::GitWritePush => "git_write_push",
             AllowedIpcCommand::GitSwitchBranch => "git_switch_branch",
+            AllowedIpcCommand::GitWriteIdentity => "git_write_identity",
+            AllowedIpcCommand::GitWriteIgnore => "git_write_ignore",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -168,6 +174,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteCommit,
             AllowedIpcCommand::GitWritePush,
             AllowedIpcCommand::GitSwitchBranch,
+            AllowedIpcCommand::GitWriteIdentity,
+            AllowedIpcCommand::GitWriteIgnore,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -277,6 +285,8 @@ mod tests {
         assert!(is_allowed("git_write_commit"));
         assert!(is_allowed("git_write_push"));
         assert!(is_allowed("git_switch_branch"));
+        assert!(is_allowed("git_write_identity"));
+        assert!(is_allowed("git_write_ignore"));
         assert!(is_allowed("git_index_commit_preview"));
         assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));
@@ -301,6 +311,9 @@ mod tests {
         assert!(!is_allowed("git_commit"));
         assert!(!is_allowed("git_push"));
         assert!(!is_allowed("git_force_push"));
+        assert!(!is_allowed("git_config"));
+        assert!(!is_allowed("git_config_global"));
+        assert!(!is_allowed("git_credential"));
         assert!(!is_allowed("deploy_install"));
         assert!(!is_allowed("deploy_msiexec"));
         assert!(!is_allowed("deploy_qn"));
@@ -342,8 +355,22 @@ mod tests {
             authorize("owner_classify_guard_task").unwrap(),
             AllowedIpcCommand::OwnerClassifyGuardTask
         );
-        assert_eq!(authorize("git_index_commit_preview").unwrap(), AllowedIpcCommand::GitIndexCommitPreview);
-        assert_eq!(authorize("git_index_commit_confirm").unwrap(), AllowedIpcCommand::GitIndexCommitConfirm);
+        assert_eq!(
+            authorize("git_index_commit_preview").unwrap(),
+            AllowedIpcCommand::GitIndexCommitPreview
+        );
+        assert_eq!(
+            authorize("git_index_commit_confirm").unwrap(),
+            AllowedIpcCommand::GitIndexCommitConfirm
+        );
+        assert_eq!(
+            authorize("git_write_identity").unwrap(),
+            AllowedIpcCommand::GitWriteIdentity
+        );
+        assert_eq!(
+            authorize("git_write_ignore").unwrap(),
+            AllowedIpcCommand::GitWriteIgnore
+        );
         assert!(authorize("import_apply").is_err());
         assert!(authorize("shell_execute").is_err());
     }

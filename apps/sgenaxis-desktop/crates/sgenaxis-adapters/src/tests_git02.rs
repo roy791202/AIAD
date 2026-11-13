@@ -319,4 +319,85 @@ mod std_write_temp {
         assert_eq!(head_ref(repo), "feature", "approved switch must move HEAD");
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn local_config(repo: &str, key: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "config", "--local", "--get", key])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_identity_sets_local_not_global_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let unique = format!("sgenaxis-settings-{}", SEQ.fetch_add(1, Ordering::Relaxed));
+        let email = format!("{unique}@example.invalid");
+
+        let w = StdGitWrite::new();
+        w.set_identity(
+            repo,
+            "should not land",
+            "nope@example.invalid",
+            GitWriteApproval::denied(),
+        )
+        .expect_err("denied identity must not mutate");
+        assert_ne!(local_config(repo, "user.name"), "should not land");
+
+        w.set_identity(repo, &unique, &email, GitWriteApproval::granted())
+            .expect("approved identity");
+        assert_eq!(local_config(repo, "user.name"), unique);
+        assert_eq!(local_config(repo, "user.email"), email);
+
+        let global = Command::new("git")
+            .args(["config", "--global", "--get", "user.name"])
+            .output()
+            .unwrap();
+        let global_name = String::from_utf8_lossy(&global.stdout).trim().to_string();
+        assert_ne!(
+            global_name, unique,
+            "identity write must never land in --global"
+        );
+
+        w.set_identity(repo, "--global", "x@example.invalid", GitWriteApproval::granted())
+            .expect_err("global flag as name is out of scope");
+        assert_eq!(local_config(repo, "user.name"), unique);
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_ignore_writes_root_gitignore_without_untracking() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("keep.txt"), "tracked\n").unwrap();
+        git(&work, &["add", "keep.txt"]);
+        git(&work, &["commit", "-m", "keep tracked"]);
+
+        let w = StdGitWrite::new();
+        w.set_ignore(repo, "keep.txt\n", GitWriteApproval::denied())
+            .expect_err("denied ignore must not mutate");
+        assert!(!work.join(".gitignore").exists() || {
+            let body = fs::read_to_string(work.join(".gitignore")).unwrap_or_default();
+            !body.contains("keep.txt")
+        });
+
+        w.set_ignore(repo, "keep.txt\n*.tmp\n", GitWriteApproval::granted())
+            .expect("approved ignore");
+        let body = fs::read_to_string(work.join(".gitignore")).expect("gitignore written");
+        assert_eq!(body, "keep.txt\n*.tmp\n");
+
+        let tracked = Command::new("git")
+            .args(["-C", repo, "ls-files", "--", "keep.txt"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&tracked.stdout).trim(),
+            "keep.txt",
+            "writing .gitignore must not stop tracking existing files"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

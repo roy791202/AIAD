@@ -412,6 +412,38 @@ fn fake_git_write_switch_records_when_approved() {
     assert_eq!(w.switched_branch("/r").as_deref(), Some("feature"));
 }
 
+// Settings writes: FakeGitWrite records approved identity / ignore; denies without.
+#[test]
+fn fake_git_write_settings_record_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied_id = w.set_identity(
+        "/r",
+        "Ada",
+        "ada@example.invalid",
+        GitWriteApproval::denied(),
+    );
+    assert!(matches!(denied_id, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_identity("/r").is_none());
+    let denied_ig = w.set_ignore("/r", "target/\n", GitWriteApproval::denied());
+    assert!(matches!(denied_ig, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_ignore("/r").is_none());
+
+    w.set_identity(
+        "/r",
+        "Ada",
+        "ada@example.invalid",
+        GitWriteApproval::granted(),
+    )
+    .expect("identity");
+    assert_eq!(
+        w.last_identity("/r"),
+        Some(("Ada".into(), "ada@example.invalid".into()))
+    );
+    w.set_ignore("/r", "target/\n", GitWriteApproval::granted())
+        .expect("ignore");
+    assert_eq!(w.last_ignore("/r").as_deref(), Some("target/\n"));
+}
+
 #[test]
 fn gated_git_write_blocks_commit_and_push() {
     let w = GatedGitWrite::new();
@@ -419,6 +451,20 @@ fn gated_git_write_blocks_commit_and_push() {
     assert!(matches!(c, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let p = w.push("/any", "origin", Some("main"), GitWriteApproval::granted());
     assert!(matches!(p, Err(PortError::PermissionDenied(_))));
+}
+
+#[test]
+fn gated_git_write_blocks_settings_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let id = w.set_identity(
+        "/any",
+        "Ada",
+        "ada@example.invalid",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(id, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let ig = w.set_ignore("/any", "target/\n", GitWriteApproval::granted());
+    assert!(matches!(ig, Err(PortError::PermissionDenied(_))));
 }
 
 #[test]

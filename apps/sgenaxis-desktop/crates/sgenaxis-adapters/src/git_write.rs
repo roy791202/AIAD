@@ -51,6 +51,25 @@ impl GitWritePort for GatedGitWrite {
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
+
+    fn set_identity(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _email: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn set_ignore(
+        &self,
+        _repo: &str,
+        _contents: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
 }
 
 /// Redact credentials / tokens from git or auth error text (BDD-PD-GIT-02).
