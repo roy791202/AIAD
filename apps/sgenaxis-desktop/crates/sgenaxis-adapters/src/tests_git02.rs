@@ -783,4 +783,61 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn local_branch_list(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "branch", "--list"])
+            .output()
+            .expect("git branch --list");
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    #[test]
+    fn std_write_create_branch_from_head_without_switch_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        assert_eq!(head_ref(repo), "main");
+        let w = StdGitWrite::new();
+
+        w.create_branch(repo, "feature/slot", GitWriteApproval::denied())
+            .expect_err("denied create must not mutate");
+        assert!(!local_branch_list(repo).contains("feature/slot"));
+        assert_eq!(head_ref(repo), "main");
+
+        w.create_branch(repo, "  ", GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.create_branch(repo, "-D", GitWriteApproval::granted())
+            .expect_err("delete flag name is out of scope");
+        w.create_branch(repo, "-C", GitWriteApproval::granted())
+            .expect_err("force-create flag name is out of scope");
+        w.create_branch(repo, "--set-upstream", GitWriteApproval::granted())
+            .expect_err("upstream is out of scope");
+        w.create_branch(repo, "bad..name", GitWriteApproval::granted())
+            .expect_err("invalid name must fail");
+        assert_eq!(head_ref(repo), "main");
+        assert!(!local_branch_list(repo).contains("feature/slot"));
+
+        w.create_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect("approved create");
+        let list = local_branch_list(repo);
+        assert!(list.contains("feature/slot"), "local branch missing: {list}");
+        assert_eq!(
+            head_ref(repo),
+            "main",
+            "create must not switch HEAD as a side effect"
+        );
+
+        let dup = w
+            .create_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect_err("duplicate must fail without -f/-C");
+        assert!(matches!(dup, PortError::Git(_)));
+        let msg = dup.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("already exists") || msg.contains("feature/slot"),
+            "duplicate must fail honestly: {dup}"
+        );
+        assert_eq!(head_ref(repo), "main");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

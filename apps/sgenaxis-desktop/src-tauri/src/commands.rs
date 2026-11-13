@@ -54,7 +54,7 @@ use crate::dto::{
     GitTagDto, GitWorkbenchDto,
     GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
     GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteTagArgs, GitWriteTagDeleteArgs,
+    GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteBranchCreateArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -332,6 +332,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_stash_push",
         "git_write_tag",
         "git_write_tag_delete",
+        "git_write_branch_create",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -2451,6 +2452,101 @@ pub fn git_write_tag_delete(
     perform_git_write_tag_delete(root.git_write(), &repo, &args.name, args.approved)
 }
 
+/// Names that would become flags, delete, upstream, or switch.
+fn branch_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || matches!(
+            lower.as_str(),
+            "-c" | "-C"
+                | "--force"
+                | "-f"
+                | "-d"
+                | "-D"
+                | "--delete"
+                | "--set-upstream"
+                | "--set-upstream-to"
+                | "-u"
+                | "--track"
+                | "-t"
+                | "checkout"
+                | "switch"
+        )
+        || lower.contains("..")
+}
+
+fn reject_branch_scope(name: &str) -> Result<(), String> {
+    let t = name.trim();
+    if t.is_empty() {
+        return Ok(());
+    }
+    if branch_out_of_scope(t) {
+        return Err("force/delete/upstream/switch branch writes are out of scope".into());
+    }
+    Ok(())
+}
+
+/// Soft-gated local branch create: empty / unapproved never mutates; approved via port.
+fn perform_git_write_branch_create(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_branch_scope(name)?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-create".into(),
+            message: "empty branch name".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-create".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.create_branch(repo, name.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "branch-create".into(),
+            message: "branch-create ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-create".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git branch -- name`. Never `-C` / `-D` / `--set-upstream` / switch.
+#[tauri::command]
+pub fn git_write_branch_create(
+    state: State<'_, HostState>,
+    args: GitWriteBranchCreateArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_branch_create").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-create".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_branch_create(root.git_write(), &repo, &args.name, args.approved)
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -3726,6 +3822,52 @@ mod git_ui_tests {
         assert!(missing.message.to_ascii_lowercase().contains("not found"));
         assert_eq!(w.last_tag_delete("/r").as_deref(), Some("v1.0.0"));
         assert_eq!(w.created_tags("/r"), vec!["v1.1.0".to_string()]);
+    }
+
+    #[test]
+    fn git_write_branch_create_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_branch_create"));
+        assert!(!is_allowed("git_branch"));
+        assert!(!is_allowed("git_branch_create"));
+        assert!(!is_allowed("git_checkout"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_branch_create(&w, "/r", "feature/slot", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_branch_create("/r").is_none());
+        assert!(w.switched_branch("/r").is_none());
+
+        let empty = perform_git_write_branch_create(&w, "/r", "  ", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_branch_create("/r").is_none());
+
+        let force = perform_git_write_branch_create(&w, "/r", "-D", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        let create_switch = perform_git_write_branch_create(&w, "/r", "-C", true).unwrap_err();
+        assert!(create_switch.contains("out of scope"));
+        let upstream =
+            perform_git_write_branch_create(&w, "/r", "--set-upstream", true).unwrap_err();
+        assert!(upstream.contains("out of scope"));
+        assert!(w.last_branch_create("/r").is_none());
+        assert!(w.switched_branch("/r").is_none());
+
+        let ok = perform_git_write_branch_create(&w, "/r", "feature/slot", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "branch-create");
+        assert_eq!(w.last_branch_create("/r").as_deref(), Some("feature/slot"));
+        assert!(w.switched_branch("/r").is_none());
+
+        let dup = perform_git_write_branch_create(&w, "/r", "feature/slot", true).unwrap();
+        assert!(!dup.ok);
+        assert!(dup.local_preserved);
+        assert!(dup.message.to_ascii_lowercase().contains("already exists"));
+        assert_eq!(
+            w.created_branches("/r"),
+            vec!["feature/slot".to_string()]
+        );
+        assert!(w.switched_branch("/r").is_none());
     }
 
     #[test]

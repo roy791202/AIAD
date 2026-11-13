@@ -225,6 +225,10 @@ pub trait GitPort: Send + Sync {
 /// - Tag delete requires approval (no skip default). Local only:
 ///   `git tag -d -- <name>` (or `git tag --delete -- <name>`). Never `-f`.
 ///   Never push. Never `git push --delete`. Missing tag must fail honestly.
+/// - Branch create requires approval (no skip default). Local only:
+///   `git branch -- <name>` from current HEAD. Never `-C` / `--force` / `-D` /
+///   `-d`. Never remote create, never `--set-upstream`. Never checkout/switch
+///   as a hidden side effect. Duplicate and invalid names fail honestly.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -323,6 +327,17 @@ pub trait GitWritePort: Send + Sync {
     /// Never `-f` / `--force`. Never push. Never remote `-d`.
     /// Missing tag must fail honestly.
     fn delete_tag(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Create a new local branch at current HEAD. Requires approval.
+    /// `git branch -- <name>`. Never `-C` / `--force` / `-D` / `-d`.
+    /// Never remote create. Never `--set-upstream`. Never switch/checkout.
+    /// Duplicate and invalid names fail honestly.
+    fn create_branch(
         &self,
         repo: &str,
         name: &str,

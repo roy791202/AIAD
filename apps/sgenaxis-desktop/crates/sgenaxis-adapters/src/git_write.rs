@@ -12,6 +12,41 @@ pub const GIT_WRITE_GATED_MSG: &str =
 /// Returned when approval was not granted for this mutation.
 pub const GIT_WRITE_NOT_APPROVED_MSG: &str = "git write requires approval";
 
+/// Names that would become flags or mutate remotes / switch HEAD.
+pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || t.ends_with('/')
+        || t.contains('\\')
+        || t.contains('~')
+        || t.contains('^')
+        || t.contains(':')
+        || t.contains('?')
+        || t.contains('*')
+        || t.contains('[')
+        || lower.contains("..")
+        || matches!(
+            lower.as_str(),
+            "-c" | "-C"
+                | "--force"
+                | "-f"
+                | "-d"
+                | "-D"
+                | "--delete"
+                | "--set-upstream"
+                | "--set-upstream-to"
+                | "-u"
+                | "--track"
+                | "-t"
+                | "checkout"
+                | "switch"
+        )
+}
+
 /// Always-deny write adapter. Host boot wires this by default so write entry
 /// points exist but cannot mutate a repo until an approving adapter is chosen.
 #[derive(Debug, Default, Clone, Copy)]
@@ -118,6 +153,15 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn delete_tag(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn create_branch(
         &self,
         _repo: &str,
         _name: &str,

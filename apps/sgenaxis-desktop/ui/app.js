@@ -2505,6 +2505,7 @@
     const emailWrap = document.getElementById("git-approve-email-wrap");
     const ignoreWrap = document.getElementById("git-approve-ignore-wrap");
     const tagWrap = document.getElementById("git-approve-tag-wrap");
+    const branchWrap = document.getElementById("git-approve-branch-wrap");
     if (title) {
       title.textContent =
         op === "push"
@@ -2527,6 +2528,8 @@
           ? "審核 Tag Create"
           : op === "tag-delete"
           ? "審核 Tag Delete"
+          : op === "branch-create"
+          ? "審核 Branch Create"
           : "審核 Commit";
     }
     if (lede) {
@@ -2561,6 +2564,8 @@
           ? "核准後經 git_write_tag_delete → GitWritePort；只刪本機標籤 " +
             (payload.name || "") +
             "。缺漏的標籤會誠實失敗。不推送、不加 -f、不刪遠端。拒絕則無突變。"
+          : op === "branch-create"
+          ? "核准後經 git_write_branch_create → GitWritePort；本機建立分支（git branch -- name），不切換、不設 upstream、不加 -C／-D。重名與無效名稱誠實失敗。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -2592,6 +2597,7 @@
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
+    if (branchWrap) branchWrap.hidden = op !== "branch-create";
     if (box) box.hidden = false;
     if (op === "commit" || op === "stash-create") {
       const msg = document.getElementById("git-approve-message");
@@ -2612,6 +2618,12 @@
       }
       if (msg) {
         msg.value = payload.message != null ? String(payload.message) : "";
+      }
+    } else if (op === "branch-create") {
+      const branch = document.getElementById("git-approve-branch");
+      if (branch) {
+        branch.value = payload.name != null ? String(payload.name) : "";
+        branch.focus();
       }
     } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
@@ -2876,6 +2888,35 @@
             true
           );
           toast("Tag delete 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "branch-create") {
+        const branchEl = document.getElementById("git-approve-branch");
+        const name = branchEl && branchEl.value ? branchEl.value.trim() : "";
+        if (!name) {
+          setGitStatusLine("分支名稱不可空白", true);
+          toast("請填寫本機分支名稱");
+          return;
+        }
+        const dto = await invoke("git_write_branch_create", {
+          args: { repo: repo, name: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已建立本機分支 " + name + "（經 GitWritePort；未切換）",
+            false
+          );
+          toast("Branch create 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "branch 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（目前 HEAD 與本機分支依 Git 真實結果保留）",
+            true
+          );
+          toast("Branch create 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3401,6 +3442,7 @@
         stashCreate: function () { showGitApprove("stash-create", {}); },
         tagCreate: function () { showGitApprove("tag-create", {}); },
         tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
+        branchCreate: function () { showGitApprove("branch-create", {}); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

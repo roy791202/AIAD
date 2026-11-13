@@ -494,6 +494,10 @@ struct FakeGitWriteState {
     tag_delete: HashMap<String, String>,
     /// repo → created tag names (duplicate create fails honestly; delete removes).
     tags: HashMap<String, Vec<String>>,
+    /// repo → last approved local branch create name.
+    branch_create: HashMap<String, String>,
+    /// repo → created local branch names (duplicate create fails honestly).
+    branches: HashMap<String, Vec<String>>,
     next_hash: u64,
 }
 
@@ -596,6 +600,21 @@ impl FakeGitWrite {
     pub fn last_tag_delete(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.tag_delete.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved local branch create name for `repo`, if any.
+    pub fn last_branch_create(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.branch_create.get(&Self::key(repo)).cloned()
+    }
+
+    /// Local branch names recorded for `repo` (creation order).
+    pub fn created_branches(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.branches
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Inject a one-shot stash apply/pop/drop/push failure; do not record success.
@@ -834,6 +853,37 @@ impl GitWritePort for FakeGitWrite {
         }
         existing.retain(|t| t != tag);
         st.tag_delete.insert(key, tag.to_string());
+        Ok(())
+    }
+
+    fn create_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let branch = name.trim();
+        if branch.is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if crate::git_write::branch_name_out_of_scope(branch) {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.branches.entry(key.clone()).or_default();
+        if existing.iter().any(|b| b == branch) {
+            return Err(PortError::Git(format!("branch '{branch}' already exists")));
+        }
+        existing.push(branch.to_string());
+        st.branch_create.insert(key, branch.to_string());
         Ok(())
     }
 }

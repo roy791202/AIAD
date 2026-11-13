@@ -595,6 +595,16 @@ pub struct GitWriteTagDeleteArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local branch create (`git branch -- name`). Never switch.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteBranchCreateArgs {
+    pub repo: Option<String>,
+    /// Local branch name. Never flags (`-C`, `-D`, `--set-upstream`).
+    pub name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

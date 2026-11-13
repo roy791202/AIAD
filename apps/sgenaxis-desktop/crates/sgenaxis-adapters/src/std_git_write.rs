@@ -12,6 +12,9 @@
 //! - Tag: `git tag -- <name>` (lightweight) or `git tag -a -m <msg> -- <name>`
 //!   (annotated). Local delete: `git tag -d -- <name>`. Never `-f` / `--force`.
 //!   Never push. Never `git push --delete`. Missing tag fails honestly.
+//! - Branch create: `git branch -- <name>` from current HEAD. Never `-C` /
+//!   `--force` / `-D` / `-d`. Never remote create. Never `--set-upstream`.
+//!   Never checkout/switch. Duplicate / invalid names fail honestly.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -136,6 +139,21 @@ impl StdGitWrite {
         if tag_out_of_scope(name) {
             return Err(PortError::Other(
                 "force/delete/push tag writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_branch_name(name: &str) -> Result<(), PortError> {
+        if name.trim().is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if name.contains('\n') || name.contains('\0') {
+            return Err(PortError::Other("branch name must be a single line".into()));
+        }
+        if crate::git_write::branch_name_out_of_scope(name) {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
             ));
         }
         Ok(())
@@ -385,6 +403,23 @@ impl GitWritePort for StdGitWrite {
         // Never `git push` / `git push --delete`. `--` stops option parse
         // so a name cannot be read as a flag. Missing tags fail honestly.
         self.run(repo, &["tag", "-d", "--", tag])?;
+        Ok(())
+    }
+
+    fn create_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let branch = name.trim();
+        Self::require_branch_name(branch)?;
+        // Create only: `git branch -- <name>` from current HEAD.
+        // Never `-C` / `-c` (would create+switch or overwrite). Never `-D`/`-d`.
+        // Never `--force`. Never `--set-upstream`. Never checkout/switch.
+        // `--` stops option parse so a name cannot be read as a flag.
+        self.run(repo, &["branch", "--", branch])?;
         Ok(())
     }
 }

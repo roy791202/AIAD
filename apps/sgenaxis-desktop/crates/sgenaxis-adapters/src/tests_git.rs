@@ -602,6 +602,42 @@ fn gated_git_write_blocks_tag_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_create_branch_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.create_branch("/r", "feature/slot", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_branch_create("/r").is_none());
+    assert!(w.created_branches("/r").is_empty());
+    assert!(w.switched_branch("/r").is_none());
+
+    w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("create");
+    assert_eq!(w.last_branch_create("/r").as_deref(), Some("feature/slot"));
+    assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+    assert!(
+        w.switched_branch("/r").is_none(),
+        "create must not switch HEAD"
+    );
+
+    let dup = w.create_branch("/r", "feature/slot", GitWriteApproval::granted());
+    assert!(matches!(dup, Err(PortError::Git(ref m)) if m.contains("already exists")));
+    assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+
+    let force = w.create_branch("/r", "-D", GitWriteApproval::granted());
+    assert!(matches!(force, Err(PortError::Other(_))));
+    let invalid = w.create_branch("/r", "bad..name", GitWriteApproval::granted());
+    assert!(matches!(invalid, Err(PortError::Other(_))));
+    assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+}
+
+#[test]
+fn gated_git_write_blocks_branch_create_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.create_branch("/any", "feature/slot", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn boxed_ports_exposes_gated_write() {
     let ports = BoxedPorts::fake();
     let err = ports
