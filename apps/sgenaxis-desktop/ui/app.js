@@ -2495,6 +2495,8 @@
       message: payload.message,
       name: payload.name,
       url: payload.url,
+      path: payload.path,
+      contents: payload.contents,
     };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
@@ -2537,6 +2539,12 @@
           ? "審核 Remote Add"
           : op === "remote-remove"
           ? "審核 Remote Remove"
+          : op === "conflict-save"
+          ? "審核 Conflict Save"
+          : op === "conflict-continue"
+          ? "審核 Conflict Continue"
+          : op === "conflict-abort"
+          ? "審核 Conflict Abort"
           : "審核 Commit";
     }
     if (lede) {
@@ -2579,6 +2587,14 @@
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
             "（git remote remove -- name）。缺漏的遠端會誠實失敗。不 prune、不 fetch。拒絕則無突變。"
+          : op === "conflict-save"
+          ? "核准後經 git_write_conflict_save → GitWritePort；寫入 " +
+            (payload.path || "") +
+            " 後 git add -- path。殘留衝突標記會誠實失敗。不加 -A／.。拒絕則無突變。"
+          : op === "conflict-continue"
+          ? "核准後經 git_write_conflict_continue → GitWritePort；依偵測狀態執行 merge／rebase／cherry-pick --continue。不加 --skip、不加 -X theirs／ours。拒絕則無突變。"
+          : op === "conflict-abort"
+          ? "核准後經 git_write_conflict_abort → GitWritePort；依偵測狀態執行 --abort。不做 reset --hard。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -2998,6 +3014,74 @@
             true
           );
           toast("Remote remove 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "conflict-save") {
+        const path = pendingGitWrite.path;
+        if (!path) {
+          hideGitApprove();
+          setGitStatusLine("未指定衝突路徑，未儲存", true);
+          return;
+        }
+        const dto = await invoke("git_write_conflict_save", {
+          args: {
+            repo: repo,
+            path: path,
+            contents: pendingGitWrite.contents || "",
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已儲存並暫存 " + path + "（經 GitWritePort；git add -- path）", false);
+          toast("Conflict save 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "conflict save 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（衝突狀態依 Git 真實結果保留）",
+            true
+          );
+          toast("Conflict save 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "conflict-continue") {
+        const dto = await invoke("git_write_conflict_continue", {
+          args: { repo: repo, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已繼續目前衝突操作（經 GitWritePort；未 --skip）", false);
+          toast("Conflict continue 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "conflict continue 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（操作狀態依 Git 真實結果保留）",
+            true
+          );
+          toast("Conflict continue 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "conflict-abort") {
+        const dto = await invoke("git_write_conflict_abort", {
+          args: { repo: repo, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已中止目前衝突操作（經 GitWritePort；--abort）", false);
+          toast("Conflict abort 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "conflict abort 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（操作狀態依 Git 真實結果保留）",
+            true
+          );
+          toast("Conflict abort 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3536,6 +3620,18 @@
           showGitApprove("remote-remove", {
             name: name || (picker && picker.value) || "",
           });
+        },
+        conflictSave: function (path, contents) {
+          showGitApprove("conflict-save", {
+            path: path || "",
+            contents: contents || "",
+          });
+        },
+        conflictContinue: function () {
+          showGitApprove("conflict-continue", {});
+        },
+        conflictAbort: function () {
+          showGitApprove("conflict-abort", {});
         },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {

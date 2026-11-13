@@ -733,6 +733,79 @@ fn gated_git_write_blocks_remote_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_conflict_save("/r").is_none());
+
+    let missing = w.conflict_save("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(missing, Err(PortError::Git(ref m)) if m.contains("no in-progress")));
+    assert!(w.last_conflict_save("/r").is_none());
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs", "src/b.rs"]);
+    w.set_conflict_file_text(
+        "/r",
+        "src/a.rs",
+        "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n",
+    );
+    let markers = w.conflict_save("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(markers, Err(PortError::Git(ref m)) if m.contains("markers")));
+    assert!(w.last_conflict_save("/r").is_none());
+    assert_eq!(w.remaining_conflict_files("/r").len(), 2);
+
+    let widen = w.conflict_save("/r", ".", GitWriteApproval::granted());
+    assert!(matches!(widen, Err(PortError::Other(_))));
+    let all = w.conflict_save("/r", "-A", GitWriteApproval::granted());
+    assert!(matches!(all, Err(PortError::Other(_))));
+
+    w.set_conflict_file_text("/r", "src/a.rs", "resolved a\n");
+    w.conflict_save("/r", "src/a.rs", GitWriteApproval::granted())
+        .expect("save a");
+    assert_eq!(w.last_conflict_save("/r").as_deref(), Some("src/a.rs"));
+    assert_eq!(
+        w.remaining_conflict_files("/r"),
+        vec!["src/b.rs".to_string()]
+    );
+
+    let early = w.conflict_continue("/r", GitWriteApproval::granted());
+    assert!(matches!(early, Err(PortError::Git(ref m)) if m.contains("unmerged")));
+    assert!(w.last_conflict_continue("/r").is_none());
+    assert_eq!(w.conflict_kind("/r").as_deref(), Some("Merge"));
+
+    w.set_conflict_file_text("/r", "src/b.rs", "resolved b\n");
+    w.conflict_save("/r", "src/b.rs", GitWriteApproval::granted())
+        .expect("save b");
+    w.conflict_continue("/r", GitWriteApproval::granted())
+        .expect("continue");
+    assert_eq!(w.last_conflict_continue("/r").as_deref(), Some("Merge"));
+    assert!(w.conflict_kind("/r").is_none());
+
+    let no_state = w.conflict_abort("/r", GitWriteApproval::granted());
+    assert!(matches!(no_state, Err(PortError::Git(ref m)) if m.contains("no in-progress")));
+
+    w.set_conflict_in_progress("/r", "Rebase", &["src/c.rs"]);
+    let denied_abort = w.conflict_abort("/r", GitWriteApproval::denied());
+    assert!(matches!(denied_abort, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_conflict_abort("/r").is_none());
+    w.conflict_abort("/r", GitWriteApproval::granted())
+        .expect("abort");
+    assert_eq!(w.last_conflict_abort("/r").as_deref(), Some("Rebase"));
+    assert!(w.conflict_kind("/r").is_none());
+}
+
+#[test]
+fn gated_git_write_blocks_conflict_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let save = w.conflict_save("/any", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(save, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let cont = w.conflict_continue("/any", GitWriteApproval::granted());
+    assert!(matches!(cont, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let abort = w.conflict_abort("/any", GitWriteApproval::granted());
+    assert!(matches!(abort, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn boxed_ports_exposes_gated_write() {
     let ports = BoxedPorts::fake();
     let err = ports

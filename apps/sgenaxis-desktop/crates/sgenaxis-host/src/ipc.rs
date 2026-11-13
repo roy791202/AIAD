@@ -72,6 +72,12 @@ pub enum AllowedIpcCommand {
     GitWriteRemoteAdd,
     /// Approval-gated local `git remote remove -- name` via GitWritePort (never prune/fetch).
     GitWriteRemoteRemove,
+    /// Approval-gated `git add -- path` for one resolved conflict (never -A / .).
+    GitWriteConflictSave,
+    /// Approval-gated merge/rebase/cherry-pick continue (never --skip / -X).
+    GitWriteConflictContinue,
+    /// Approval-gated merge/rebase/cherry-pick abort (never reset --hard).
+    GitWriteConflictAbort,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -153,6 +159,9 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteBranchCreate => "git_write_branch_create",
             AllowedIpcCommand::GitWriteRemoteAdd => "git_write_remote_add",
             AllowedIpcCommand::GitWriteRemoteRemove => "git_write_remote_remove",
+            AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
+            AllowedIpcCommand::GitWriteConflictContinue => "git_write_conflict_continue",
+            AllowedIpcCommand::GitWriteConflictAbort => "git_write_conflict_abort",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -212,6 +221,9 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteBranchCreate,
             AllowedIpcCommand::GitWriteRemoteAdd,
             AllowedIpcCommand::GitWriteRemoteRemove,
+            AllowedIpcCommand::GitWriteConflictSave,
+            AllowedIpcCommand::GitWriteConflictContinue,
+            AllowedIpcCommand::GitWriteConflictAbort,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -332,6 +344,9 @@ mod tests {
         assert!(is_allowed("git_write_branch_create"));
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
+        assert!(is_allowed("git_write_conflict_save"));
+        assert!(is_allowed("git_write_conflict_continue"));
+        assert!(is_allowed("git_write_conflict_abort"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -346,6 +361,10 @@ mod tests {
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_remove"));
         assert!(!is_allowed("git_remote_set_url"));
+        assert!(!is_allowed("git_conflict_save"));
+        assert!(!is_allowed("git_merge_continue"));
+        assert!(!is_allowed("git_rebase_skip"));
+        assert!(!is_allowed("git_reset_hard"));
         assert!(is_allowed("git_index_commit_preview"));
         assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));
@@ -466,6 +485,18 @@ mod tests {
             authorize("git_write_remote_remove").unwrap(),
             AllowedIpcCommand::GitWriteRemoteRemove
         );
+        assert_eq!(
+            authorize("git_write_conflict_save").unwrap(),
+            AllowedIpcCommand::GitWriteConflictSave
+        );
+        assert_eq!(
+            authorize("git_write_conflict_continue").unwrap(),
+            AllowedIpcCommand::GitWriteConflictContinue
+        );
+        assert_eq!(
+            authorize("git_write_conflict_abort").unwrap(),
+            AllowedIpcCommand::GitWriteConflictAbort
+        );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());
         assert!(authorize("git_stash_clear").is_err());
@@ -478,6 +509,9 @@ mod tests {
         assert!(authorize("git_remote").is_err());
         assert!(authorize("git_remote_add").is_err());
         assert!(authorize("git_remote_set_url").is_err());
+        assert!(authorize("git_conflict_save").is_err());
+        assert!(authorize("git_rebase_skip").is_err());
+        assert!(authorize("git_reset_hard").is_err());
         assert!(authorize("import_apply").is_err());
         assert!(authorize("shell_execute").is_err());
     }

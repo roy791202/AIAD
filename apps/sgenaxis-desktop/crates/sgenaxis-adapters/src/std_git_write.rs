@@ -19,6 +19,11 @@
 //!   Never `set-url`. Never `git push`. Duplicate names fail honestly.
 //! - Remote remove: `git remote remove -- <name>`. Never prune/fetch.
 //!   Missing remotes fail honestly.
+//! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
+//!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
+//!   state. Never `--skip`. Never `-X theirs/ours`.
+//!   Abort: matching `--abort` family. Never `reset --hard`.
+//!   Missing in-progress state fails honestly.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -188,6 +193,123 @@ impl StdGitWrite {
         if crate::git_write::remote_url_out_of_scope(url) {
             return Err(PortError::Other(
                 "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_conflict_path(path: &str) -> Result<(), PortError> {
+        if path.trim().is_empty() {
+            return Err(PortError::Other("empty conflict path".into()));
+        }
+        if path.contains('\n') || path.contains('\0') {
+            return Err(PortError::Other(
+                "conflict path must be a single line".into(),
+            ));
+        }
+        if crate::git_write::conflict_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "add-all/force/flag conflict paths are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn rev_exists(&self, repo: &str, rev: &str) -> bool {
+        if repo.trim().is_empty() {
+            return false;
+        }
+        Command::new(&self.program)
+            .arg("-C")
+            .arg(repo)
+            .args(["rev-parse", "--verify", "--quiet", rev])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    fn git_dir_has(&self, repo: &str, relative: &str) -> bool {
+        Path::new(repo).join(".git").join(relative).exists()
+    }
+
+    /// Detect merge / rebase / cherry-pick / revert. Missing state is an error.
+    fn require_conflict_kind(&self, repo: &str) -> Result<&'static str, PortError> {
+        // Prefer rebase-merge / rebase-apply. A leftover REBASE_HEAD file can
+        // remain after a successful rebase on some Git versions.
+        if self.git_dir_has(repo, "rebase-merge") || self.git_dir_has(repo, "rebase-apply") {
+            return Ok("Rebase");
+        }
+        if self.rev_exists(repo, "CHERRY_PICK_HEAD") {
+            return Ok("CherryPick");
+        }
+        if self.rev_exists(repo, "REVERT_HEAD") {
+            return Ok("Revert");
+        }
+        if self.rev_exists(repo, "MERGE_HEAD") {
+            return Ok("Merge");
+        }
+        Err(PortError::Git("no in-progress conflict".into()))
+    }
+
+    fn continue_args(kind: &str) -> Result<&'static [&'static str], PortError> {
+        match kind {
+            "Rebase" => Ok(&["rebase", "--continue"]),
+            "CherryPick" => Ok(&["cherry-pick", "--continue"]),
+            "Revert" => Ok(&["revert", "--continue"]),
+            "Merge" => Ok(&["merge", "--continue"]),
+            _ => Err(PortError::Git("no in-progress conflict".into())),
+        }
+    }
+
+    fn abort_args(kind: &str) -> Result<&'static [&'static str], PortError> {
+        match kind {
+            "Rebase" => Ok(&["rebase", "--abort"]),
+            "CherryPick" => Ok(&["cherry-pick", "--abort"]),
+            "Revert" => Ok(&["revert", "--abort"]),
+            "Merge" => Ok(&["merge", "--abort"]),
+            _ => Err(PortError::Git("no in-progress conflict".into())),
+        }
+    }
+
+    fn run_with_editor(&self, repo: &str, args: &[&str]) -> Result<String, PortError> {
+        if repo.trim().is_empty() {
+            return Err(PortError::InvalidPath("empty git repo path".into()));
+        }
+        let output = Command::new(&self.program)
+            .arg("-C")
+            .arg(repo)
+            .args([
+                "-c",
+                "core.editor=/bin/true",
+                "-c",
+                "sequence.editor=/bin/true",
+            ])
+            .args(args)
+            .env("GIT_EDITOR", "/bin/true")
+            .env("GIT_SEQUENCE_EDITOR", "/bin/true")
+            .env("EDITOR", "/bin/true")
+            .output()
+            .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let code = output.status.code().unwrap_or(-1);
+            return Err(git_error_redacted(
+                &format!("git {:?} exit {code}", args),
+                &stderr,
+            ));
+        }
+
+        String::from_utf8(output.stdout)
+            .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn reject_unresolved_markers(repo: &str, rel: &str) -> Result<(), PortError> {
+        let path = Path::new(repo).join(rel);
+        let text = fs::read_to_string(&path).map_err(|e| PortError::Io(e.to_string()))?;
+        if crate::git_write::conflict_markers_present(&text) {
+            return Err(PortError::Git(
+                "conflict markers still present; not staged".into(),
             ));
         }
         Ok(())
@@ -489,6 +611,41 @@ impl GitWritePort for StdGitWrite {
         // Never prune/fetch. `--` stops option parse.
         // Missing remotes fail honestly (git exits non-zero).
         self.run(repo, &["remote", "remove", "--", remote])?;
+        Ok(())
+    }
+
+    fn conflict_save(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        Self::require_conflict_path(rel)?;
+        self.require_conflict_kind(repo)?;
+        Self::reject_unresolved_markers(repo, rel)?;
+        // One path only: `git add -- <path>`. Never `-A` / `.` / `--all`.
+        self.run(repo, &["add", "--", rel])?;
+        Ok(())
+    }
+
+    fn conflict_continue(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let kind = self.require_conflict_kind(repo)?;
+        let args = Self::continue_args(kind)?;
+        // Never `--skip`. Never `-X theirs` / `-X ours`.
+        // GIT_EDITOR=true finishes the existing commit message without a TTY.
+        self.run_with_editor(repo, args)?;
+        Ok(())
+    }
+
+    fn conflict_abort(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let kind = self.require_conflict_kind(repo)?;
+        let args = Self::abort_args(kind)?;
+        // Prefer `--abort`. Never `reset --hard`.
+        self.run(repo, args)?;
         Ok(())
     }
 }

@@ -138,6 +138,9 @@ pub fn run() {
             commands::git_write_branch_create,
             commands::git_write_remote_add,
             commands::git_write_remote_remove,
+            commands::git_write_conflict_save,
+            commands::git_write_conflict_continue,
+            commands::git_write_conflict_abort,
             commands::deploy_status,
             commands::deploy_check,
             commands::list_artifacts,
@@ -199,6 +202,9 @@ mod host_ipc_integration {
             "git_write_branch_create",
             "git_write_remote_add",
             "git_write_remote_remove",
+            "git_write_conflict_save",
+            "git_write_conflict_continue",
+            "git_write_conflict_abort",
             "deploy_status",
             "deploy_check",
             "list_artifacts",
@@ -227,6 +233,9 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_remote"));
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));
+        assert!(!is_allowed("git_conflict_save"));
+        assert!(!is_allowed("git_rebase_skip"));
+        assert!(!is_allowed("git_reset_hard"));
         assert!(!is_allowed("deploy_install"));
         assert!(!is_allowed("deploy_msiexec"));
         assert!(!is_allowed("list_os_devices"));

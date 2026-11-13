@@ -5,10 +5,10 @@ use std::sync::{Arc, Mutex};
 
 use sgenaxis_ports::{
     unsupported_platform_reason, windows_wix_supported, DeployCapability, DeployPlatform,
-    DeployPort, DeploySupport, FileSystemPort, GitBranch, GitCommit, GitPort, GitRemote,
-    GitConflictState, GitSettings, GitStash, GitStatus, GitStatusEntry, GitTag,
-    GitStatusKind, GitWriteApproval, GitWritePort, PathPort, PortError, ProcessId, ProcessOutput,
-    ProcessPort, WINDOWS_WIX_PRODUCT_VERSION,
+    DeployPort, DeploySupport, FileSystemPort, GitBranch, GitCommit, GitConflictState, GitPort,
+    GitRemote, GitSettings, GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
+    GitWriteApproval, GitWritePort, PathPort, PortError, ProcessId, ProcessOutput, ProcessPort,
+    WINDOWS_WIX_PRODUCT_VERSION,
 };
 
 use crate::git_write::{git_error_redacted, GIT_WRITE_NOT_APPROVED_MSG};
@@ -31,9 +31,7 @@ impl FakeFileSystem {
     }
 
     fn key(path: &str) -> String {
-        path.replace('\\', "/")
-            .trim_end_matches('/')
-            .to_string()
+        path.replace('\\', "/").trim_end_matches('/').to_string()
     }
 
     /// Seed a file for tests (does **not** count as a write op).
@@ -55,7 +53,10 @@ impl FakeFileSystem {
 
 impl FileSystemPort for FakeFileSystem {
     fn exists(&self, path: &str) -> Result<bool, PortError> {
-        let map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let k = Self::key(path);
         if map.contains_key(&k) {
             return Ok(true);
@@ -71,7 +72,10 @@ impl FileSystemPort for FakeFileSystem {
     }
 
     fn read(&self, path: &str) -> Result<Vec<u8>, PortError> {
-        let map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         map.get(&Self::key(path))
             .cloned()
             .ok_or_else(|| PortError::NotFound(path.into()))
@@ -85,7 +89,10 @@ impl FileSystemPort for FakeFileSystem {
                 .map_err(|e| PortError::Other(e.to_string()))?;
             *n = n.saturating_add(1);
         }
-        let mut map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         map.insert(Self::key(path), contents.to_vec());
         Ok(())
     }
@@ -99,14 +106,20 @@ impl FileSystemPort for FakeFileSystem {
             *n = n.saturating_add(1);
         }
         // Directory marker: empty key with trailing convention — store a sentinel.
-        let mut map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let marker = format!("{}/.dir", Self::key(path));
         map.entry(marker).or_insert_with(Vec::new);
         Ok(())
     }
 
     fn is_file(&self, path: &str) -> Result<bool, PortError> {
-        let map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let k = Self::key(path);
         if k.ends_with("/.dir") {
             return Ok(false);
@@ -115,7 +128,10 @@ impl FileSystemPort for FakeFileSystem {
     }
 
     fn remove_file(&self, path: &str) -> Result<(), PortError> {
-        let mut map = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut map = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let k = Self::key(path);
         if map.remove(&k).is_some() {
             Ok(())
@@ -179,7 +195,10 @@ impl PathPort for FakePath {
     fn normalize(&self, path: &str) -> String {
         let sep = self.sep;
         let other = if sep == '/' { '\\' } else { '/' };
-        let mut s: String = path.chars().map(|c| if c == other { sep } else { c }).collect();
+        let mut s: String = path
+            .chars()
+            .map(|c| if c == other { sep } else { c })
+            .collect();
         while s.ends_with(sep) && s.len() > 1 {
             s.pop();
         }
@@ -235,7 +254,10 @@ impl FakeProcess {
 
     /// Append stdout text available to the next [`ProcessPort::try_read`].
     pub fn push_stdout(&self, id: ProcessId, text: impl Into<String>) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let entry = st
             .procs
             .get_mut(&id.0)
@@ -246,7 +268,10 @@ impl FakeProcess {
 
     /// Append stderr text available to the next [`ProcessPort::try_read`].
     pub fn push_stderr(&self, id: ProcessId, text: impl Into<String>) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let entry = st
             .procs
             .get_mut(&id.0)
@@ -257,7 +282,10 @@ impl FakeProcess {
 
     /// Mark a started process as exited with `code` (for tests).
     pub fn finish(&self, id: ProcessId, code: i32) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         match st.procs.get_mut(&id.0) {
             Some(entry) => {
                 entry.exit = Some(code);
@@ -275,7 +303,10 @@ impl ProcessPort for FakeProcess {
         _args: &[&str],
         _cwd: Option<&str>,
     ) -> Result<ProcessId, PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let id = st.next_id;
         st.next_id = st.next_id.saturating_add(1);
         st.procs.insert(id, FakeProcEntry::default());
@@ -284,7 +315,10 @@ impl ProcessPort for FakeProcess {
     }
 
     fn try_wait(&mut self, id: ProcessId) -> Result<Option<i32>, PortError> {
-        let st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         match st.procs.get(&id.0) {
             Some(entry) => Ok(entry.exit),
             None => Err(PortError::NotFound(format!("process {}", id.0))),
@@ -292,7 +326,10 @@ impl ProcessPort for FakeProcess {
     }
 
     fn cancel(&mut self, id: ProcessId) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         match st.procs.get_mut(&id.0) {
             Some(entry) => {
                 if entry.exit.is_none() {
@@ -305,7 +342,10 @@ impl ProcessPort for FakeProcess {
     }
 
     fn try_read(&mut self, id: ProcessId) -> Result<ProcessOutput, PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let entry = st
             .procs
             .get_mut(&id.0)
@@ -313,8 +353,16 @@ impl ProcessPort for FakeProcess {
         Ok(ProcessOutput {
             stdout: std::mem::take(&mut entry.stdout),
             stderr: std::mem::take(&mut entry.stderr),
-            stdout_completion: if entry.exit.is_some() { sgenaxis_ports::StreamCompletion::Eof } else { Default::default() },
-            stderr_completion: if entry.exit.is_some() { sgenaxis_ports::StreamCompletion::Eof } else { Default::default() },
+            stdout_completion: if entry.exit.is_some() {
+                sgenaxis_ports::StreamCompletion::Eof
+            } else {
+                Default::default()
+            },
+            stderr_completion: if entry.exit.is_some() {
+                sgenaxis_ports::StreamCompletion::Eof
+            } else {
+                Default::default()
+            },
         })
     }
 }
@@ -388,7 +436,10 @@ impl FakeGit {
 
 impl GitPort for FakeGit {
     fn status(&self, repo: &str) -> Result<GitStatus, PortError> {
-        let m = self.statuses.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .statuses
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         m.get(&key)
             .cloned()
@@ -396,7 +447,10 @@ impl GitPort for FakeGit {
     }
 
     fn log(&self, repo: &str, limit: usize) -> Result<Vec<GitCommit>, PortError> {
-        let m = self.logs.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .logs
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         let all = m
             .get(&key)
@@ -406,7 +460,10 @@ impl GitPort for FakeGit {
     }
 
     fn diff(&self, repo: &str, _pathspec: Option<&str>) -> Result<String, PortError> {
-        let m = self.diffs.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .diffs
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         m.get(&key)
             .cloned()
@@ -414,37 +471,55 @@ impl GitPort for FakeGit {
     }
 
     fn branches(&self, repo: &str) -> Result<Vec<GitBranch>, PortError> {
-        let m = self.branches.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .branches
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
 
     fn remotes(&self, repo: &str) -> Result<Vec<GitRemote>, PortError> {
-        let m = self.remotes.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .remotes
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
 
     fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
-        let m = self.tags.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .tags
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
 
     fn stashes(&self, repo: &str) -> Result<Vec<GitStash>, PortError> {
-        let m = self.stashes.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .stashes
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
 
     fn conflicts(&self, repo: &str) -> Result<GitConflictState, PortError> {
-        let m = self.conflicts.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .conflicts
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
 
     fn settings(&self, repo: &str) -> Result<GitSettings, PortError> {
-        let m = self.settings.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let m = self
+            .settings
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = repo.replace('\\', "/");
         Ok(m.get(&key).cloned().unwrap_or_default())
     }
@@ -504,6 +579,18 @@ struct FakeGitWriteState {
     remote_remove: HashMap<String, String>,
     /// repo → local remotes `(name, url)` (duplicate add fails; missing remove fails).
     remotes: HashMap<String, Vec<(String, String)>>,
+    /// repo → in-progress conflict kind (`Merge` / `Rebase` / `CherryPick` / `Revert`).
+    conflict_kind: HashMap<String, String>,
+    /// repo → remaining unmerged paths.
+    conflict_files: HashMap<String, Vec<String>>,
+    /// repo → path → worktree text (marker check; optional).
+    conflict_text: HashMap<String, HashMap<String, String>>,
+    /// repo → last approved conflict save path.
+    conflict_save: HashMap<String, String>,
+    /// repo → last approved continue kind.
+    conflict_continue: HashMap<String, String>,
+    /// repo → last approved abort kind.
+    conflict_abort: HashMap<String, String>,
     next_hash: u64,
 }
 
@@ -649,6 +736,52 @@ impl FakeGitWrite {
         let mut st = self.inner.lock().expect("fake git write lock");
         st.stash_fail.insert(Self::key(repo), raw_error.into());
     }
+
+    /// Seed an in-progress conflict so Fake save/continue/abort can succeed.
+    pub fn set_conflict_in_progress(&self, repo: &str, kind: &str, files: &[&str]) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        let key = Self::key(repo);
+        st.conflict_kind.insert(key.clone(), kind.to_string());
+        st.conflict_files
+            .insert(key, files.iter().map(|p| (*p).to_string()).collect());
+    }
+
+    /// Optional worktree text used to fail honestly on remaining conflict markers.
+    pub fn set_conflict_file_text(&self, repo: &str, path: &str, text: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.conflict_text
+            .entry(Self::key(repo))
+            .or_default()
+            .insert(path.to_string(), text.into());
+    }
+
+    pub fn last_conflict_save(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_save.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn last_conflict_continue(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_continue.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn last_conflict_abort(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_abort.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn conflict_kind(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_kind.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn remaining_conflict_files(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_files
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
+    }
 }
 
 impl GitWritePort for FakeGitWrite {
@@ -663,7 +796,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.next_hash = st.next_hash.saturating_add(1);
         let hash = format!("{:012x}", st.next_hash);
         st.commits
@@ -685,7 +821,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         if let Some(raw) = st.push_fail.remove(&key) {
             // Do not clear commits — preserve local state on remote failure.
@@ -706,7 +845,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.switched.insert(Self::key(repo), branch.to_string());
         Ok(())
     }
@@ -723,7 +865,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.identity
             .insert(Self::key(repo), (name.to_string(), email.to_string()));
         Ok(())
@@ -740,7 +885,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.ignore.insert(Self::key(repo), contents.to_string());
         Ok(())
     }
@@ -756,7 +904,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         if let Some(raw) = st.stash_fail.remove(&key) {
             return Err(git_error_redacted("stash apply conflict", &raw));
@@ -776,7 +927,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         if let Some(raw) = st.stash_fail.remove(&key) {
             // Conflict: do not record pop (stash remains).
@@ -797,7 +951,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         if let Some(raw) = st.stash_fail.remove(&key) {
             // Missing / invalid stash: do not record drop (list unchanged).
@@ -818,7 +975,10 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         if let Some(raw) = st.stash_fail.remove(&key) {
             return Err(git_error_redacted("stash push failed", &raw));
@@ -843,7 +1003,10 @@ impl GitWritePort for FakeGitWrite {
         if tag.is_empty() {
             return Err(PortError::Other("empty tag name".into()));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         let existing = st.tags.entry(key.clone()).or_default();
         if existing.iter().any(|t| t == tag) {
@@ -871,7 +1034,10 @@ impl GitWritePort for FakeGitWrite {
         if tag.is_empty() {
             return Err(PortError::Other("empty tag name".into()));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         let existing = st.tags.entry(key.clone()).or_default();
         if !existing.iter().any(|t| t == tag) {
@@ -903,7 +1069,10 @@ impl GitWritePort for FakeGitWrite {
                 "force/delete/upstream/switch branch writes are out of scope".into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         let existing = st.branches.entry(key.clone()).or_default();
         if existing.iter().any(|b| b == branch) {
@@ -944,7 +1113,10 @@ impl GitWritePort for FakeGitWrite {
                 "fetch/force/set-url/push remote writes are out of scope".into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         let existing = st.remotes.entry(key.clone()).or_default();
         if existing.iter().any(|(n, _)| n == remote) {
@@ -976,7 +1148,10 @@ impl GitWritePort for FakeGitWrite {
                 "fetch/force/set-url/push remote writes are out of scope".into(),
             ));
         }
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let key = Self::key(repo);
         let existing = st.remotes.entry(key.clone()).or_default();
         if !existing.iter().any(|(n, _)| n == remote) {
@@ -984,6 +1159,102 @@ impl GitWritePort for FakeGitWrite {
         }
         existing.retain(|(n, _)| n != remote);
         st.remote_remove.insert(key, remote.to_string());
+        Ok(())
+    }
+
+    fn conflict_save(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty conflict path".into()));
+        }
+        if crate::git_write::conflict_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "add-all/force/flag conflict paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if !st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git("no in-progress conflict".into()));
+        }
+        if let Some(text) = st.conflict_text.get(&key).and_then(|m| m.get(rel)) {
+            if crate::git_write::conflict_markers_present(text) {
+                return Err(PortError::Git(
+                    "conflict markers still present; not staged".into(),
+                ));
+            }
+        }
+        let files = st.conflict_files.entry(key.clone()).or_default();
+        if !files.iter().any(|p| p == rel) {
+            return Err(PortError::Git(format!(
+                "path '{rel}' is not an unmerged conflict"
+            )));
+        }
+        files.retain(|p| p != rel);
+        st.conflict_save.insert(key, rel.to_string());
+        Ok(())
+    }
+
+    fn conflict_continue(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let kind = st
+            .conflict_kind
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| PortError::Git("no in-progress conflict".into()))?;
+        let remaining = st.conflict_files.get(&key).map(|v| v.len()).unwrap_or(0);
+        if remaining > 0 {
+            return Err(PortError::Git(
+                "unmerged paths remain; cannot continue".into(),
+            ));
+        }
+        st.conflict_continue.insert(key.clone(), kind);
+        st.conflict_kind.remove(&key);
+        st.conflict_files.remove(&key);
+        Ok(())
+    }
+
+    fn conflict_abort(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let kind = st
+            .conflict_kind
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| PortError::Git("no in-progress conflict".into()))?;
+        st.conflict_abort.insert(key.clone(), kind);
+        st.conflict_kind.remove(&key);
+        st.conflict_files.remove(&key);
         Ok(())
     }
 }
@@ -1023,14 +1294,20 @@ impl FakeDeploy {
     }
 
     pub fn set_last_artifact_path(&self, path: Option<String>) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.last_artifact_path = path;
         Ok(())
     }
 
     /// Force Windows to Unsupported (optional negative fixture).
     pub fn force_windows_unsupported(&self, reason: impl Into<String>) -> Result<(), PortError> {
-        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         st.force_windows_unsupported = Some(reason.into());
         Ok(())
     }
@@ -1038,7 +1315,10 @@ impl FakeDeploy {
 
 impl DeployPort for FakeDeploy {
     fn capability(&self, platform: DeployPlatform) -> Result<DeployCapability, PortError> {
-        let st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         let support = match platform {
             DeployPlatform::Windows => {
                 if let Some(reason) = st.force_windows_unsupported.as_ref() {
@@ -1057,7 +1337,10 @@ impl DeployPort for FakeDeploy {
     }
 
     fn last_artifact_path(&self) -> Result<Option<String>, PortError> {
-        let st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
         Ok(st.last_artifact_path.clone())
     }
 }

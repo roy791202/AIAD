@@ -79,6 +79,31 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
     t.starts_with('-') || t.contains('\0') || t.contains('\n') || t.contains(' ')
 }
 
+/// Paths that would become flags or widen `git add` beyond one conflicted file.
+pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.is_empty()
+        || t == "."
+        || t == ".."
+        || t == "*"
+        || t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\\')
+        || t.split('/').any(|part| part == ".." || part == ".")
+        || matches!(
+            lower.as_str(),
+            "-a" | "-u" | "--all" | "--force" | "-f" | "--"
+        )
+}
+
+pub(crate) fn conflict_markers_present(text: &str) -> bool {
+    text.lines().any(|line| {
+        line.starts_with("<<<<<<<") || line.starts_with(">>>>>>>") || line.starts_with("=======")
+    })
+}
+
 /// Always-deny write adapter. Host boot wires this by default so write entry
 /// points exist but cannot mutate a repo until an approving adapter is chosen.
 #[derive(Debug, Default, Clone, Copy)]
@@ -218,6 +243,23 @@ impl GitWritePort for GatedGitWrite {
         _name: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn conflict_save(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn conflict_continue(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn conflict_abort(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 }

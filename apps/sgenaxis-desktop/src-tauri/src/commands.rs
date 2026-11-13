@@ -25,6 +25,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 use serde::{Deserialize, Serialize};
 use sgenaxis_adapters::{summarize_worktree, GitWorkbenchSummary};
 use sgenaxis_core::{TaskRecord, Zone};
@@ -36,31 +37,29 @@ use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, save_design_file, save_scene_text, CompositionRoot, DeployArtifactView,
     DeployCheckView, DeployStatusView, DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto,
-    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL,
-    DEFAULT_SGS_REL,
+    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
-use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 
-use crate::dispatch::DispatchHost;
 use crate::code_import::{preview_selected, ImportPreview, ImportPreviewRequest};
-use crate::git_index_commit::{IndexCommitErrorDto, IndexCommitOutcomeDto,
-    IndexCommitPreviewDto, IndexCommitRequestDto};
+use crate::dispatch::DispatchHost;
 use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
-    EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
-    GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
-    GitTagDto, GitWorkbenchDto,
-    GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
-    GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteBranchCreateArgs,
-    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
-    ListenProjectionDto,
-    LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
-    SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
+    EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
+    GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
+    GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteCommitArgs,
+    GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
+    GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteResultDto,
+    GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
+    GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
+    OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
+    SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
     SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
-    WorkItemGateArgs, OwnerClassifyGuardTaskArgs,
+    WorkItemGateArgs,
+};
+use crate::git_index_commit::{
+    IndexCommitErrorDto, IndexCommitOutcomeDto, IndexCommitPreviewDto, IndexCommitRequestDto,
 };
 
 /// Shared CMD dispatch state for IPC.
@@ -119,11 +118,28 @@ pub fn project_document_prepare(
     use crate::dto::DocumentPrepareErrorDto as E;
     authorize("project_document_prepare").map_err(|_| E::UnauthorizedCaller)?;
     let url = window.url().map_err(|_| E::UnauthorizedCaller)?;
-    let local = guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port());
-    if !local { return Err(E::UnauthorizedCaller); }
-    let root = state.inner.lock().map_err(|_| E::WorkspaceRejected { reason: "HostStateUnavailable".into() })?;
-    let mut dispatch = app.host.lock().map_err(|_| E::WorkspaceRejected { reason: "DispatchStateUnavailable".into() })?;
-    dispatch.project_document_prepare(root.fs(), &root.host_settings().project_root, &args, window.label(), local)
+    let local = guard_owner_caller_allowed(
+        window.label(),
+        url.scheme(),
+        url.host_str().unwrap_or_default(),
+        url.port(),
+    );
+    if !local {
+        return Err(E::UnauthorizedCaller);
+    }
+    let root = state.inner.lock().map_err(|_| E::WorkspaceRejected {
+        reason: "HostStateUnavailable".into(),
+    })?;
+    let mut dispatch = app.host.lock().map_err(|_| E::WorkspaceRejected {
+        reason: "DispatchStateUnavailable".into(),
+    })?;
+    dispatch.project_document_prepare(
+        root.fs(),
+        &root.host_settings().project_root,
+        &args,
+        window.label(),
+        local,
+    )
 }
 
 /// DOC-ENTRY-01 explicit adoption; no automatic registration.
@@ -137,15 +153,28 @@ pub fn project_document_adopt(
     use crate::dto::DocumentAdoptErrorDto as E;
     authorize("project_document_adopt").map_err(|_| E::UnauthorizedCaller)?;
     let url = window.url().map_err(|_| E::UnauthorizedCaller)?;
-    let local = guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port());
-    if !local { return Err(E::UnauthorizedCaller); }
+    let local = guard_owner_caller_allowed(
+        window.label(),
+        url.scheme(),
+        url.host_str().unwrap_or_default(),
+        url.port(),
+    );
+    if !local {
+        return Err(E::UnauthorizedCaller);
+    }
     // Keep the trusted settings binding stable until the existing manifest
     // operation completes; use the existing HostState -> AppState lock order.
     let root = state.inner.lock().map_err(|_| E::ProjectNotBound)?;
     let mut dispatch = app.host.lock().map_err(|_| E::ProjectNotBound)?;
     let candidate = crate::document_identity::new_document_id_candidate();
-    dispatch.project_document_adopt(root.fs(), &root.host_settings().project_root,
-        &args, &candidate, window.label(), local)
+    dispatch.project_document_adopt(
+        root.fs(),
+        &root.host_settings().project_root,
+        &args,
+        &candidate,
+        window.label(),
+        local,
+    )
 }
 
 #[cfg(test)]
@@ -160,8 +189,15 @@ mod guard_owner_caller_tests {
 
     #[test]
     fn guard_owner_caller_accepts_only_main_local_origins() {
-        for (scheme, host) in [("tauri", "localhost"), ("http", "tauri.localhost"), ("https", "tauri.localhost")] {
-            assert!(guard_owner_caller_allowed("main", scheme, host, None), "{scheme}://{host}");
+        for (scheme, host) in [
+            ("tauri", "localhost"),
+            ("http", "tauri.localhost"),
+            ("https", "tauri.localhost"),
+        ] {
+            assert!(
+                guard_owner_caller_allowed("main", scheme, host, None),
+                "{scheme}://{host}"
+            );
         }
         for (label, scheme, host, port) in [
             ("settings", "tauri", "localhost", None),
@@ -169,15 +205,27 @@ mod guard_owner_caller_tests {
             ("main", "http", "localhost", Some(1420)),
             ("main", "http", "tauri.localhost", Some(1420)),
         ] {
-            assert!(!guard_owner_caller_allowed(label, scheme, host, port), "{label} {scheme}://{host}:{port:?}");
+            assert!(
+                !guard_owner_caller_allowed(label, scheme, host, port),
+                "{label} {scheme}://{host}:{port:?}"
+            );
         }
     }
 
     #[test]
     fn guard_native_dialog_result_preserves_yes_no_cancel_semantics() {
-        assert_eq!(guard_native_observation(MessageDialogResult::Yes), GuardNativeObservation::Yes);
-        assert_eq!(guard_native_observation(MessageDialogResult::No), GuardNativeObservation::No);
-        assert_eq!(guard_native_observation(MessageDialogResult::Cancel), GuardNativeObservation::Cancel);
+        assert_eq!(
+            guard_native_observation(MessageDialogResult::Yes),
+            GuardNativeObservation::Yes
+        );
+        assert_eq!(
+            guard_native_observation(MessageDialogResult::No),
+            GuardNativeObservation::No
+        );
+        assert_eq!(
+            guard_native_observation(MessageDialogResult::Cancel),
+            GuardNativeObservation::Cancel
+        );
     }
 
     #[test]
@@ -195,30 +243,75 @@ mod guard_owner_caller_tests {
 
         let capability: serde_json::Value = serde_json::from_str(MAIN_CAPABILITY).unwrap();
         assert_eq!(capability["windows"], serde_json::json!(["main"]));
-        assert!(capability["permissions"].as_array().unwrap().iter().any(|item| {
-            item.as_str() == Some("guard-owner-default")
-        }));
+        assert!(capability["permissions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| { item.as_str() == Some("guard-owner-default") }));
         let uidesign: serde_json::Value = serde_json::from_str(UIDESIGN_CAPABILITY).unwrap();
-        assert_eq!(uidesign["windows"], serde_json::json!(["ui-editor", "ui-viewer"]));
-        assert!(!uidesign["permissions"].as_array().unwrap().iter().any(|item| {
-            item.as_str() == Some("guard-owner-default")
-        }));
+        assert_eq!(
+            uidesign["windows"],
+            serde_json::json!(["ui-editor", "ui-viewer"])
+        );
+        assert!(!uidesign["permissions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| { item.as_str() == Some("guard-owner-default") }));
     }
 
     #[test]
     fn guard_owner_errors_use_the_approved_stable_codes() {
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::UnknownTask), "INTENT_UNKNOWN");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::InvalidCandidate), "APPROVAL_NOT_READY");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::MissingRecord)), "APPROVAL_NOT_FOUND");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Stale("input_fp"))), "APPROVAL_STALE:input_fp");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Revoked)), "APPROVAL_REVOKED");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Consumed)), "APPROVAL_CONSUMED");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::RedUnqualified)), "RED_UNQUALIFIED");
-        assert_eq!(guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::RequiresApproval)), "IMPLEMENTATION_REQUIRES_APPROVAL");
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::UnknownTask),
+            "INTENT_UNKNOWN"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::InvalidCandidate),
+            "APPROVAL_NOT_READY"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(
+                GuardAuthorityError::MissingRecord
+            )),
+            "APPROVAL_NOT_FOUND"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(GuardAuthorityError::Stale(
+                "input_fp"
+            ))),
+            "APPROVAL_STALE:input_fp"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(
+                GuardAuthorityError::Revoked
+            )),
+            "APPROVAL_REVOKED"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(
+                GuardAuthorityError::Consumed
+            )),
+            "APPROVAL_CONSUMED"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(
+                GuardAuthorityError::RedUnqualified
+            )),
+            "RED_UNQUALIFIED"
+        );
+        assert_eq!(
+            guard_owner_public_error(&GuardCandidateError::Authority(
+                GuardAuthorityError::RequiresApproval
+            )),
+            "IMPLEMENTATION_REQUIRES_APPROVAL"
+        );
     }
 }
 
-fn guard_native_observation(result: MessageDialogResult) -> crate::dispatch::GuardNativeObservation {
+fn guard_native_observation(
+    result: MessageDialogResult,
+) -> crate::dispatch::GuardNativeObservation {
     match result {
         MessageDialogResult::Yes => crate::dispatch::GuardNativeObservation::Yes,
         MessageDialogResult::No => crate::dispatch::GuardNativeObservation::No,
@@ -258,9 +351,7 @@ fn guard_owner_caller_allowed(label: &str, scheme: &str, host: &str, port: Optio
         && port.is_none()
         && matches!(
             (scheme, host),
-            ("tauri", "localhost")
-                | ("http", "tauri.localhost")
-                | ("https", "tauri.localhost")
+            ("tauri", "localhost") | ("http", "tauri.localhost") | ("https", "tauri.localhost")
         )
 }
 
@@ -336,6 +427,9 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_branch_create",
         "git_write_remote_add",
         "git_write_remote_remove",
+        "git_write_conflict_save",
+        "git_write_conflict_continue",
+        "git_write_conflict_abort",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -389,25 +483,23 @@ pub fn load_local_board(
     let args = args.unwrap_or_default();
     let mut root = host.inner.lock().map_err(|_| poison_host())?;
 
-    let project_root = match resolve_bound_project_root(
-        args.project_root.as_deref(),
-        root.host_settings(),
-    ) {
-        Ok(r) => r,
-        Err(msg) => {
-            let empty = {
-                let mut dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
-                dispatch.replace_projection_tasks(Vec::new())
-            };
-            return Ok(LoadLocalBoardResult {
-                status: "error".into(),
-                path: String::new(),
-                message: Some(msg),
-                write_back: false,
-                board: empty,
-            });
-        }
-    };
+    let project_root =
+        match resolve_bound_project_root(args.project_root.as_deref(), root.host_settings()) {
+            Ok(r) => r,
+            Err(msg) => {
+                let empty = {
+                    let mut dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+                    dispatch.replace_projection_tasks(Vec::new())
+                };
+                return Ok(LoadLocalBoardResult {
+                    status: "error".into(),
+                    path: String::new(),
+                    message: Some(msg),
+                    write_back: false,
+                    board: empty,
+                });
+            }
+        };
 
     let path_raw = args
         .path
@@ -442,11 +534,7 @@ pub fn load_local_board(
                 dispatch.replace_projection_tasks(records)
             };
             Ok(LoadLocalBoardResult {
-                status: if empty {
-                    "empty".into()
-                } else {
-                    "ok".into()
-                },
+                status: if empty { "empty".into() } else { "ok".into() },
                 path,
                 message: if empty {
                     Some("board file loaded but has no tasks".into())
@@ -478,19 +566,13 @@ pub fn load_local_board(
 }
 
 #[tauri::command]
-pub fn upsert_task(
-    state: State<'_, AppState>,
-    args: UpsertTaskArgs,
-) -> Result<BoardView, String> {
+pub fn upsert_task(state: State<'_, AppState>, args: UpsertTaskArgs) -> Result<BoardView, String> {
     let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
     host.upsert_task(args)
 }
 
 #[tauri::command]
-pub fn set_task_zone(
-    state: State<'_, AppState>,
-    args: SetZoneArgs,
-) -> Result<BoardView, String> {
+pub fn set_task_zone(state: State<'_, AppState>, args: SetZoneArgs) -> Result<BoardView, String> {
     let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
     host.set_task_zone(&args.id, &args.zone)
 }
@@ -606,7 +688,12 @@ pub async fn owner_classify_guard_task(
 ) -> Result<u64, String> {
     authorize("owner_classify_guard_task").map_err(|error| error.to_string())?;
     let url = window.url().map_err(|error| error.to_string())?;
-    if !guard_owner_caller_allowed(window.label(), url.scheme(), url.host_str().unwrap_or_default(), url.port()) {
+    if !guard_owner_caller_allowed(
+        window.label(),
+        url.scheme(),
+        url.host_str().unwrap_or_default(),
+        url.port(),
+    ) {
         return Err("GUARD_OWNER_CALLER_NOT_TRUSTED".into());
     }
     let (candidate_ref, summary) = match args.intent.as_str() {
@@ -628,7 +715,9 @@ pub async fn owner_classify_guard_task(
             )
         }
         "implementation" => {
-            let draft = args.candidate.ok_or_else(|| "GUARD_CANDIDATE_REQUIRED".to_string())?;
+            let draft = args
+                .candidate
+                .ok_or_else(|| "GUARD_CANDIDATE_REQUIRED".to_string())?;
             let candidate_ref = {
                 let mut host = state.host.lock().map_err(|_| poison_dispatch())?;
                 host.guard_prepare_candidate(&args.task_id, &draft)
@@ -969,12 +1058,18 @@ fn parse_transport(s: &str) -> Result<McpTransportKind, String> {
     }
 }
 
-fn apply_agent_args(doc: &mut AgentSettingsDocument, args: &SetAgentSettingsArgs) -> Result<(), String> {
+fn apply_agent_args(
+    doc: &mut AgentSettingsDocument,
+    args: &SetAgentSettingsArgs,
+) -> Result<(), String> {
     let live_approved = doc.cli.live_approved;
     doc.cli = CliAgentSettings {
         selected: parse_cli_kind(&args.selected)?,
         claude: CliToolConfig::new(&args.claude_path, doc.cli.claude.args.clone()),
-        cursor_agent: CliToolConfig::new(&args.cursor_agent_path, doc.cli.cursor_agent.args.clone()),
+        cursor_agent: CliToolConfig::new(
+            &args.cursor_agent_path,
+            doc.cli.cursor_agent.args.clone(),
+        ),
         codex: CliToolConfig::new(&args.codex_path, doc.cli.codex.args.clone()),
         antigravity: CliToolConfig::new(&args.antigravity_path, doc.cli.antigravity.args.clone()),
         live_approved,
@@ -1060,9 +1155,7 @@ fn merge_file_save_settings(
             || trimmed.contains(":8788")
             || trimmed.contains(":8787")
         {
-            return Err(
-                "board_path must be a local file path (not http / :8788 / :8787)".into(),
-            );
+            return Err("board_path must be a local file path (not http / :8788 / :8787)".into());
         }
         next.board_path = trimmed;
     }
@@ -1079,9 +1172,7 @@ fn merge_file_save_settings(
             || trimmed.contains(":8788")
             || trimmed.contains(":8787")
         {
-            return Err(
-                "project_root must be a local directory path (not URL / cloud)".into(),
-            );
+            return Err("project_root must be a local directory path (not URL / cloud)".into());
         }
         next.project_root = trimmed;
     }
@@ -1147,9 +1238,7 @@ pub struct PickProjectDirectoryResult {
 #[tauri::command]
 pub fn host_pick_project_directory() -> Result<PickProjectDirectoryResult, String> {
     authorize("host_pick_project_directory").map_err(|e| e.to_string())?;
-    let picked = rfd::FileDialog::new()
-        .set_title("開啟專案")
-        .pick_folder();
+    let picked = rfd::FileDialog::new().set_title("開啟專案").pick_folder();
     let Some(path) = picked else {
         return Ok(PickProjectDirectoryResult {
             status: "cancelled".into(),
@@ -1162,9 +1251,7 @@ pub fn host_pick_project_directory() -> Result<PickProjectDirectoryResult, Strin
         return Ok(PickProjectDirectoryResult {
             status: "error".into(),
             path: String::new(),
-            message: Some(
-                "不可綁定 /demo/root — 請選擇真實本機專案目錄".into(),
-            ),
+            message: Some("不可綁定 /demo/root — 請選擇真實本機專案目錄".into()),
         });
     }
     if !path.is_dir() {
@@ -1205,9 +1292,7 @@ pub fn host_new_project_directory(
         Ok(created) => Ok(PickProjectDirectoryResult {
             status: "ok".into(),
             path: created,
-            message: Some(
-                "已建立專案目錄（尚未持久化 — 由 host_set_settings 寫入）".into(),
-            ),
+            message: Some("已建立專案目錄（尚未持久化 — 由 host_set_settings 寫入）".into()),
         }),
         Err(e) => Ok(PickProjectDirectoryResult {
             status: "error".into(),
@@ -1237,9 +1322,7 @@ pub fn host_create_project_directory(
         Ok(created) => Ok(PickProjectDirectoryResult {
             status: "ok".into(),
             path: created,
-            message: Some(
-                "已建立專案目錄（尚未持久化 — 由 host_set_settings 寫入）".into(),
-            ),
+            message: Some("已建立專案目錄（尚未持久化 — 由 host_set_settings 寫入）".into()),
         }),
         Err(e) => Ok(PickProjectDirectoryResult {
             status: "error".into(),
@@ -1251,37 +1334,76 @@ pub fn host_create_project_directory(
 
 /// PD-SET-01／PD-SET-UI-01: persist CLI／MCP via host settings.
 #[tauri::command]
-pub fn host_project_preferences_load(state:State<'_,HostState>,expected_project_root:String)->Result<serde_json::Value,String>{
-    authorize("host_project_preferences_load").map_err(|e|e.to_string())?;
-    let root=state.inner.lock().map_err(|_|poison_host())?;
-    DispatchHost::project_policy_load(root.fs(),&root.host_settings().project_root,&expected_project_root)
+pub fn host_project_preferences_load(
+    state: State<'_, HostState>,
+    expected_project_root: String,
+) -> Result<serde_json::Value, String> {
+    authorize("host_project_preferences_load").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    DispatchHost::project_policy_load(
+        root.fs(),
+        &root.host_settings().project_root,
+        &expected_project_root,
+    )
 }
 #[tauri::command]
-pub fn host_project_preferences_save(state:State<'_,HostState>,expected_project_root:String,expected_digest:Option<String>,draft_json:String)->Result<serde_json::Value,String>{
-    authorize("host_project_preferences_save").map_err(|e|e.to_string())?;
-    let root=state.inner.lock().map_err(|_|poison_host())?;
-    DispatchHost::project_policy_save(root.fs(),&root.host_settings().project_root,&expected_project_root,expected_digest.as_deref(),draft_json.as_bytes())
+pub fn host_project_preferences_save(
+    state: State<'_, HostState>,
+    expected_project_root: String,
+    expected_digest: Option<String>,
+    draft_json: String,
+) -> Result<serde_json::Value, String> {
+    authorize("host_project_preferences_save").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    DispatchHost::project_policy_save(
+        root.fs(),
+        &root.host_settings().project_root,
+        &expected_project_root,
+        expected_digest.as_deref(),
+        draft_json.as_bytes(),
+    )
 }
 #[tauri::command]
-pub fn host_project_preferences_presets()->Result<serde_json::Value,String>{
-    authorize("host_project_preferences_presets").map_err(|e|e.to_string())?;
+pub fn host_project_preferences_presets() -> Result<serde_json::Value, String> {
+    authorize("host_project_preferences_presets").map_err(|e| e.to_string())?;
     DispatchHost::project_policy_presets()
 }
 #[tauri::command]
-pub fn host_project_preferences_pick_import(state:State<'_,HostState>)->Result<serde_json::Value,String>{
-    authorize("host_project_preferences_pick_import").map_err(|e|e.to_string())?;
-    let Some(path)=rfd::FileDialog::new().add_filter("專案偏好 JSON", &["json"]).pick_file() else {return Ok(serde_json::json!({"status":"cancelled"}));};
-    let root=state.inner.lock().map_err(|_|poison_host())?;
-    DispatchHost::project_policy_import(root.fs(),&path.to_string_lossy())
+pub fn host_project_preferences_pick_import(
+    state: State<'_, HostState>,
+) -> Result<serde_json::Value, String> {
+    authorize("host_project_preferences_pick_import").map_err(|e| e.to_string())?;
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("專案偏好 JSON", &["json"])
+        .pick_file()
+    else {
+        return Ok(serde_json::json!({"status":"cancelled"}));
+    };
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    DispatchHost::project_policy_import(root.fs(), &path.to_string_lossy())
 }
-#[derive(Debug,Deserialize)]
-#[serde(rename_all="camelCase",deny_unknown_fields)]
-pub struct CreateProjectPreferencesArgs {pub parent:String,pub name:String,pub preset_id:Option<String>,pub imported_json:Option<String>}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateProjectPreferencesArgs {
+    pub parent: String,
+    pub name: String,
+    pub preset_id: Option<String>,
+    pub imported_json: Option<String>,
+}
 #[tauri::command]
-pub fn host_create_project_with_preferences(state:State<'_,HostState>,args:CreateProjectPreferencesArgs)->Result<serde_json::Value,String>{
-    authorize("host_create_project_with_preferences").map_err(|e|e.to_string())?;
-    let root=state.inner.lock().map_err(|_|poison_host())?;
-    DispatchHost::project_policy_create(root.fs(),&args.parent,&args.name,args.preset_id.as_deref(),args.imported_json.as_deref())
+pub fn host_create_project_with_preferences(
+    state: State<'_, HostState>,
+    args: CreateProjectPreferencesArgs,
+) -> Result<serde_json::Value, String> {
+    authorize("host_create_project_with_preferences").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    DispatchHost::project_policy_create(
+        root.fs(),
+        &args.parent,
+        &args.name,
+        args.preset_id.as_deref(),
+        args.imported_json.as_deref(),
+    )
 }
 
 // ── M01-S3 six-step project wizard command bridge ───────────────────────────
@@ -1398,11 +1520,12 @@ pub fn wizard_prepare_preferences(
     let token = WizardToken::from_raw(&args.token);
     let choice = match args.choice.as_str() {
         "skip" => PreferenceChoice::Skip,
-        "preset" => PreferenceChoice::Preset(
-            args.preset_id.as_deref().ok_or("MISSING_PRESET_ID")?,
-        ),
+        "preset" => PreferenceChoice::Preset(args.preset_id.as_deref().ok_or("MISSING_PRESET_ID")?),
         "import" => PreferenceChoice::Imported(
-            args.imported_json.as_deref().ok_or("MISSING_IMPORT")?.as_bytes(),
+            args.imported_json
+                .as_deref()
+                .ok_or("MISSING_IMPORT")?
+                .as_bytes(),
         ),
         other => return Err(format!("UNSUPPORTED_PREFERENCE_CHOICE: {other}")),
     };
@@ -1444,10 +1567,7 @@ pub fn wizard_commit(
 }
 
 #[tauri::command]
-pub fn wizard_cancel(
-    state: State<'_, HostState>,
-    args: WizardTokenArgs,
-) -> Result<(), String> {
+pub fn wizard_cancel(state: State<'_, HostState>, args: WizardTokenArgs) -> Result<(), String> {
     authorize("wizard_cancel").map_err(|e| e.to_string())?;
     let token = WizardToken::from_raw(&args.token);
     let mut store = state.wizard.lock().map_err(|_| poison_host())?;
@@ -1626,7 +1746,9 @@ fn workbench_not_run(repo: &str, message: impl Into<String>) -> GitWorkbenchDto 
 fn reject_force_push(remote: &str, refspec: Option<&str>) -> Result<(), String> {
     let remote_l = remote.to_ascii_lowercase();
     if remote_l.contains("--force")
-        || remote_l.split_whitespace().any(|t| t == "-f" || t == "--force-with-lease")
+        || remote_l
+            .split_whitespace()
+            .any(|t| t == "-f" || t == "--force-with-lease")
     {
         return Err("force push is forbidden (out of scope)".into());
     }
@@ -1637,7 +1759,9 @@ fn reject_force_push(remote: &str, refspec: Option<&str>) -> Result<(), String> 
         }
         let lower = trimmed.to_ascii_lowercase();
         if lower.contains("--force")
-            || lower.split_whitespace().any(|t| t == "-f" || t == "--force-with-lease")
+            || lower
+                .split_whitespace()
+                .any(|t| t == "-f" || t == "--force-with-lease")
         {
             return Err("force push is forbidden (out of scope)".into());
         }
@@ -1761,7 +1885,9 @@ pub fn git_workbench_diff(
     let root = state.inner.lock().map_err(|_| poison_host())?;
     let repo = resolve_repo(repo, root.host_settings())?;
     let git: &dyn GitPort = root.git();
-    let diff_text = git.diff(&repo, path.as_deref()).map_err(|e| e.to_string())?;
+    let diff_text = git
+        .diff(&repo, path.as_deref())
+        .map_err(|e| e.to_string())?;
     Ok(GitDiffDto {
         repo,
         pathspec: path,
@@ -1777,23 +1903,43 @@ pub fn git_index_commit_preview(
     repo: Option<String>,
 ) -> Result<IndexCommitPreviewDto, IndexCommitErrorDto> {
     authorize("git_index_commit_preview").map_err(|e| IndexCommitErrorDto {
-        code: "InvalidInput".into(), preview_id: None, observed: None,
-        diagnostic: e.to_string(), mutation_started: false, requires_new_preview: false,
+        code: "InvalidInput".into(),
+        preview_id: None,
+        observed: None,
+        diagnostic: e.to_string(),
+        mutation_started: false,
+        requires_new_preview: false,
     })?;
     let project_root = {
         let root = host.inner.lock().map_err(|_| IndexCommitErrorDto {
-            code: "Busy".into(), preview_id: None, observed: None,
-            diagnostic: poison_host(), mutation_started: false, requires_new_preview: false,
+            code: "Busy".into(),
+            preview_id: None,
+            observed: None,
+            diagnostic: poison_host(),
+            mutation_started: false,
+            requires_new_preview: false,
         })?;
         resolve_repo(repo, root.host_settings()).map_err(|message| IndexCommitErrorDto {
-            code: "InvalidInput".into(), preview_id: None, observed: None,
-            diagnostic: message, mutation_started: false, requires_new_preview: false,
+            code: "InvalidInput".into(),
+            preview_id: None,
+            observed: None,
+            diagnostic: message,
+            mutation_started: false,
+            requires_new_preview: false,
         })?
     };
-    let coordinator = state.host.lock().map_err(|_| IndexCommitErrorDto {
-        code: "Busy".into(), preview_id: None, observed: None,
-        diagnostic: poison_dispatch(), mutation_started: false, requires_new_preview: false,
-    })?.git_index_commit_coordinator();
+    let coordinator = state
+        .host
+        .lock()
+        .map_err(|_| IndexCommitErrorDto {
+            code: "Busy".into(),
+            preview_id: None,
+            observed: None,
+            diagnostic: poison_dispatch(),
+            mutation_started: false,
+            requires_new_preview: false,
+        })?
+        .git_index_commit_coordinator();
     coordinator.prepare(&project_root)
 }
 
@@ -1804,13 +1950,25 @@ pub fn git_index_commit_confirm(
     request: IndexCommitRequestDto,
 ) -> Result<IndexCommitOutcomeDto, IndexCommitErrorDto> {
     authorize("git_index_commit_confirm").map_err(|e| IndexCommitErrorDto {
-        code: "InvalidInput".into(), preview_id: Some(request.preview_id.clone()), observed: None,
-        diagnostic: e.to_string(), mutation_started: false, requires_new_preview: false,
+        code: "InvalidInput".into(),
+        preview_id: Some(request.preview_id.clone()),
+        observed: None,
+        diagnostic: e.to_string(),
+        mutation_started: false,
+        requires_new_preview: false,
     })?;
-    let coordinator = state.host.lock().map_err(|_| IndexCommitErrorDto {
-        code: "Busy".into(), preview_id: Some(request.preview_id.clone()), observed: None,
-        diagnostic: poison_dispatch(), mutation_started: false, requires_new_preview: false,
-    })?.git_index_commit_coordinator();
+    let coordinator = state
+        .host
+        .lock()
+        .map_err(|_| IndexCommitErrorDto {
+            code: "Busy".into(),
+            preview_id: Some(request.preview_id.clone()),
+            observed: None,
+            diagnostic: poison_dispatch(),
+            mutation_started: false,
+            requires_new_preview: false,
+        })?
+        .git_index_commit_coordinator();
     coordinator.commit(request)
 }
 
@@ -2353,7 +2511,12 @@ fn perform_git_write_tag(
             local_preserved: true,
         });
     }
-    match write.create_tag(repo, name.trim(), message.trim(), GitWriteApproval::granted()) {
+    match write.create_tag(
+        repo,
+        name.trim(),
+        message.trim(),
+        GitWriteApproval::granted(),
+    ) {
         Ok(()) => Ok(GitWriteResultDto {
             ok: true,
             op: "tag-create".into(),
@@ -2700,7 +2863,13 @@ pub fn git_write_remote_add(
             local_preserved: true,
         });
     }
-    perform_git_write_remote_add(root.git_write(), &repo, &args.name, &args.url, args.approved)
+    perform_git_write_remote_add(
+        root.git_write(),
+        &repo,
+        &args.name,
+        &args.url,
+        args.approved,
+    )
 }
 
 /// Approval-gated local `git remote remove -- name`. Never prune / fetch.
@@ -2721,6 +2890,207 @@ pub fn git_write_remote_remove(
         });
     }
     perform_git_write_remote_remove(root.git_write(), &repo, &args.name, args.approved)
+}
+
+fn conflict_path_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t == "."
+        || t == ".."
+        || t == "*"
+        || t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\\')
+        || t.split('/').any(|part| part == ".." || part == ".")
+        || matches!(
+            lower.as_str(),
+            "-a" | "-u" | "--all" | "--force" | "-f" | "--"
+        )
+}
+
+fn write_conflict_resolution(repo: &str, rel: &str, contents: &str) -> Result<(), String> {
+    if contents.is_empty() {
+        return Ok(());
+    }
+    if contents.contains('\0') {
+        return Err("conflict file must be text".into());
+    }
+    if contents.len() > 1_048_576 {
+        return Err("conflict file too large".into());
+    }
+    let path = Path::new(repo).join(rel);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
+fn perform_git_write_conflict_save(
+    write: &dyn GitWritePort,
+    repo: &str,
+    path: &str,
+    contents: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if conflict_path_out_of_scope(path) {
+        return Err("add-all/force/flag conflict paths are out of scope".into());
+    }
+    if path.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-save".into(),
+            message: "empty conflict path".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-save".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    write_conflict_resolution(repo, path.trim(), contents)?;
+    match write.conflict_save(repo, path.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "conflict-save".into(),
+            message: "conflict-save ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-save".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+fn perform_git_write_conflict_continue(
+    write: &dyn GitWritePort,
+    repo: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-continue".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.conflict_continue(repo, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "conflict-continue".into(),
+            message: "conflict-continue ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-continue".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+fn perform_git_write_conflict_abort(
+    write: &dyn GitWritePort,
+    repo: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-abort".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.conflict_abort(repo, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "conflict-abort".into(),
+            message: "conflict-abort ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-abort".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated `git add -- path` for one resolved conflict. Never `-A` / `.`.
+#[tauri::command]
+pub fn git_write_conflict_save(
+    state: State<'_, HostState>,
+    args: GitWriteConflictSaveArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_conflict_save").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-save".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_conflict_save(
+        root.git_write(),
+        &repo,
+        &args.path,
+        &args.contents,
+        args.approved,
+    )
+}
+
+/// Approval-gated merge/rebase/cherry-pick continue. Never `--skip` / `-X`.
+#[tauri::command]
+pub fn git_write_conflict_continue(
+    state: State<'_, HostState>,
+    args: GitWriteConflictOpArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_conflict_continue").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-continue".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_conflict_continue(root.git_write(), &repo, args.approved)
+}
+
+/// Approval-gated merge/rebase/cherry-pick abort. Never `reset --hard`.
+#[tauri::command]
+pub fn git_write_conflict_abort(
+    state: State<'_, HostState>,
+    args: GitWriteConflictOpArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_conflict_abort").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-abort".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_conflict_abort(root.git_write(), &repo, args.approved)
 }
 
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
@@ -2941,24 +3311,22 @@ pub fn uidesign_package_status(
 ) -> Result<UiDesignPackageDto, String> {
     let args = args.unwrap_or_default();
     let root = host.inner.lock().map_err(|_| poison_host())?;
-    let project_root = match resolve_bound_project_root(
-        args.project_root.as_deref(),
-        root.host_settings(),
-    ) {
-        Ok(r) => r,
-        Err(msg) => {
-            return Ok(UiDesignPackageDto {
-                status: "unbound".into(),
-                exists: false,
-                path: UIDESIGN_INDEX_REL.into(),
-                relative_path: UIDESIGN_INDEX_REL.into(),
-                product_evidence: false,
-                formal_acceptance_pass: false,
-                message: Some(msg),
-                embed_hint: None,
-            });
-        }
-    };
+    let project_root =
+        match resolve_bound_project_root(args.project_root.as_deref(), root.host_settings()) {
+            Ok(r) => r,
+            Err(msg) => {
+                return Ok(UiDesignPackageDto {
+                    status: "unbound".into(),
+                    exists: false,
+                    path: UIDESIGN_INDEX_REL.into(),
+                    relative_path: UIDESIGN_INDEX_REL.into(),
+                    product_evidence: false,
+                    formal_acceptance_pass: false,
+                    message: Some(msg),
+                    embed_hint: None,
+                });
+            }
+        };
     let path_buf = resolve_uidesign_index_path(&project_root);
     let path = path_buf.to_string_lossy().into_owned();
     if !uidesign_path_is_controlled(&project_root, &path_buf) {
@@ -3010,7 +3378,9 @@ pub fn uidesign_open_package(
             path: status.path,
             product_evidence: false,
             formal_acceptance_pass: false,
-            message: status.message.or_else(|| Some("design package missing".into())),
+            message: status
+                .message
+                .or_else(|| Some("design package missing".into())),
         });
     }
     let path = status.path.clone();
@@ -3178,15 +3548,13 @@ pub fn uidesign_save_design(
     let project_root =
         resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;
     let rel = uidesign_rel(args.rel_path.as_deref());
-    let path = save_design_file(root.fs(), &project_root, &rel, &args.doc)
-        .map_err(|e| e.to_string())?;
+    let path =
+        save_design_file(root.fs(), &project_root, &rel, &args.doc).map_err(|e| e.to_string())?;
     Ok(UiDesignSaveDto {
         path,
         relative_path: rel,
         product_pass: false,
-        message: Some(
-            "saved .sgendesign (設計意圖紀錄 ≠ 產品發行物／非正式 PASS)".into(),
-        ),
+        message: Some("saved .sgendesign (設計意圖紀錄 ≠ 產品發行物／非正式 PASS)".into()),
     })
 }
 
@@ -3202,8 +3570,8 @@ pub fn uidesign_load_design(
     let project_root =
         resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;
     let rel = uidesign_rel(args.rel_path.as_deref());
-    let (doc, path) = load_design_file(root.fs(), &project_root, &rel)
-        .map_err(|e| e.to_string())?;
+    let (doc, path) =
+        load_design_file(root.fs(), &project_root, &rel).map_err(|e| e.to_string())?;
     Ok(UiDesignLoadDto {
         path,
         relative_path: rel,
@@ -3224,8 +3592,8 @@ pub fn uidesign_build_preview(
     let project_root =
         resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;
     let name = args.name.as_deref().unwrap_or("main");
-    let path = build_preview_file(root.fs(), &project_root, &args.doc, name)
-        .map_err(|e| e.to_string())?;
+    let path =
+        build_preview_file(root.fs(), &project_root, &args.doc, name).map_err(|e| e.to_string())?;
     let mut opened = false;
     if args.open_after {
         // Preview HTML is under design/build — open via OS association (not product PASS).
@@ -3255,9 +3623,7 @@ pub fn uidesign_build_preview(
         path,
         opened,
         product_pass: false,
-        message: Some(
-            "built interactive preview HTML（溝通用 · 非產品／非正式 PASS）".into(),
-        ),
+        message: Some("built interactive preview HTML（溝通用 · 非產品／非正式 PASS）".into()),
     })
 }
 
@@ -3342,17 +3708,14 @@ fn scene_rel(args_rel: Option<&str>) -> String {
 }
 
 #[tauri::command]
-pub fn scene_save(
-    host: State<'_, HostState>,
-    args: SceneSaveArgs,
-) -> Result<SceneSaveDto, String> {
+pub fn scene_save(host: State<'_, HostState>, args: SceneSaveArgs) -> Result<SceneSaveDto, String> {
     authorize("scene_save").map_err(|e| e.to_string())?;
     let root = host.inner.lock().map_err(|_| poison_host())?;
     let project_root =
         resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;
     let rel = scene_rel(args.rel_path.as_deref());
-    let path = save_scene_text(root.fs(), &project_root, &rel, &args.text)
-        .map_err(|e| e.to_string())?;
+    let path =
+        save_scene_text(root.fs(), &project_root, &rel, &args.text).map_err(|e| e.to_string())?;
     Ok(SceneSaveDto {
         path,
         relative_path: rel,
@@ -3372,8 +3735,8 @@ pub fn scene_load(
     let project_root =
         resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;
     let rel = scene_rel(args.rel_path.as_deref());
-    let (text, path) = load_scene_text(root.fs(), &project_root, &rel)
-        .map_err(|e| e.to_string())?;
+    let (text, path) =
+        load_scene_text(root.fs(), &project_root, &rel).map_err(|e| e.to_string())?;
     Ok(SceneLoadDto {
         path,
         relative_path: rel,
@@ -3393,7 +3756,10 @@ pub fn import_preview(
     let root = host.inner.lock().map_err(|_| poison_host())?;
     let project_root = resolve_bound_project_root(None, root.host_settings())?;
     preview_selected(root.fs(), &project_root, &request).map_err(|error| {
-        let path = error.relative_path.map(|path| format!(" ({path})")).unwrap_or_default();
+        let path = error
+            .relative_path
+            .map(|path| format!(" ({path})"))
+            .unwrap_or_default();
         format!("{}{path}: {}", error.code, error.message)
     })
 }
@@ -3792,13 +4158,11 @@ mod git_ui_tests {
         let empty = perform_git_write_identity(&w, "/r", "", "ada@example.invalid", true).unwrap();
         assert!(!empty.ok);
         assert!(w.last_identity("/r").is_none());
-        let global =
-            perform_git_write_identity(&w, "/r", "--global", "ada@example.invalid", true)
-                .unwrap_err();
+        let global = perform_git_write_identity(&w, "/r", "--global", "ada@example.invalid", true)
+            .unwrap_err();
         assert!(global.contains("out of scope"));
         assert!(w.last_identity("/r").is_none());
-        let ok =
-            perform_git_write_identity(&w, "/r", "Ada", "ada@example.invalid", true).unwrap();
+        let ok = perform_git_write_identity(&w, "/r", "Ada", "ada@example.invalid", true).unwrap();
         assert!(ok.ok);
         assert_eq!(ok.op, "identity");
         assert_eq!(
@@ -3930,10 +4294,7 @@ mod git_ui_tests {
         let ok_light = perform_git_write_tag(&w, "/r", "v1.0.0", "", true).unwrap();
         assert!(ok_light.ok);
         assert_eq!(ok_light.op, "tag-create");
-        assert_eq!(
-            w.last_tag_create("/r"),
-            Some(("v1.0.0".into(), "".into()))
-        );
+        assert_eq!(w.last_tag_create("/r"), Some(("v1.0.0".into(), "".into())));
 
         let ok_ann = perform_git_write_tag(&w, "/r", "v1.1.0", "release", true).unwrap();
         assert!(ok_ann.ok);
@@ -4039,10 +4400,7 @@ mod git_ui_tests {
         assert!(!dup.ok);
         assert!(dup.local_preserved);
         assert!(dup.message.to_ascii_lowercase().contains("already exists"));
-        assert_eq!(
-            w.created_branches("/r"),
-            vec!["feature/slot".to_string()]
-        );
+        assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
         assert!(w.switched_branch("/r").is_none());
     }
 
@@ -4069,25 +4427,20 @@ mod git_ui_tests {
         assert!(w.last_remote_add("/r").is_none());
         assert_eq!(w.push_count("/r"), 0);
 
-        let empty = perform_git_write_remote_add(&w, "/r", "  ", "https://example.invalid/r.git", true)
-            .unwrap();
+        let empty =
+            perform_git_write_remote_add(&w, "/r", "  ", "https://example.invalid/r.git", true)
+                .unwrap();
         assert!(!empty.ok);
         assert!(w.last_remote_add("/r").is_none());
 
         let empty_url = perform_git_write_remote_add(&w, "/r", "upstream", "  ", true).unwrap();
         assert!(!empty_url.ok);
 
-        let force = perform_git_write_remote_add(
-            &w,
-            "/r",
-            "-f",
-            "https://example.invalid/r.git",
-            true,
-        )
-        .unwrap_err();
+        let force =
+            perform_git_write_remote_add(&w, "/r", "-f", "https://example.invalid/r.git", true)
+                .unwrap_err();
         assert!(force.contains("out of scope"));
-        let flag_url =
-            perform_git_write_remote_add(&w, "/r", "upstream", "-u", true).unwrap_err();
+        let flag_url = perform_git_write_remote_add(&w, "/r", "upstream", "-u", true).unwrap_err();
         assert!(flag_url.contains("out of scope"));
         assert!(w.last_remote_add("/r").is_none());
 
@@ -4129,7 +4482,10 @@ mod git_ui_tests {
 
         let missing = perform_git_write_remote_remove(&w, "/r", "ghost", true).unwrap();
         assert!(!missing.ok);
-        assert!(missing.message.to_ascii_lowercase().contains("no such remote"));
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
         assert_eq!(w.configured_remotes("/r").len(), 1);
 
         let rm = perform_git_write_remote_remove(&w, "/r", "upstream", true).unwrap();
@@ -4138,6 +4494,58 @@ mod git_ui_tests {
         assert_eq!(w.last_remote_remove("/r").as_deref(), Some("upstream"));
         assert!(w.configured_remotes("/r").is_empty());
         assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_conflict_save_continue_abort_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_conflict_save"));
+        assert!(is_allowed("git_write_conflict_continue"));
+        assert!(is_allowed("git_write_conflict_abort"));
+        assert!(!is_allowed("git_conflict_save"));
+        assert!(!is_allowed("git_rebase_skip"));
+        assert!(!is_allowed("git_reset_hard"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_conflict_save(&w, "/r", "src/a.rs", "ok\n", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_conflict_save("/r").is_none());
+
+        let empty = perform_git_write_conflict_save(&w, "/r", "  ", "ok\n", true).unwrap();
+        assert!(!empty.ok);
+        let widen = perform_git_write_conflict_save(&w, "/r", ".", "ok\n", true).unwrap_err();
+        assert!(widen.contains("out of scope"));
+        let all = perform_git_write_conflict_save(&w, "/r", "-A", "ok\n", true).unwrap_err();
+        assert!(all.contains("out of scope"));
+
+        let missing = perform_git_write_conflict_save(&w, "/r", "src/a.rs", "ok\n", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing.message.contains("no in-progress"));
+
+        w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+        let saved = perform_git_write_conflict_save(&w, "/r", "src/a.rs", "", true).unwrap();
+        assert!(saved.ok);
+        assert_eq!(saved.op, "conflict-save");
+        assert_eq!(w.last_conflict_save("/r").as_deref(), Some("src/a.rs"));
+
+        let cont_denied = perform_git_write_conflict_continue(&w, "/r", false).unwrap();
+        assert!(!cont_denied.ok);
+        let cont = perform_git_write_conflict_continue(&w, "/r", true).unwrap();
+        assert!(cont.ok);
+        assert_eq!(cont.op, "conflict-continue");
+        assert_eq!(w.last_conflict_continue("/r").as_deref(), Some("Merge"));
+
+        let abort_missing = perform_git_write_conflict_abort(&w, "/r", true).unwrap();
+        assert!(!abort_missing.ok);
+        w.set_conflict_in_progress("/r", "Rebase", &["src/b.rs"]);
+        let abort_denied = perform_git_write_conflict_abort(&w, "/r", false).unwrap();
+        assert!(!abort_denied.ok);
+        assert_eq!(w.conflict_kind("/r").as_deref(), Some("Rebase"));
+        let abort = perform_git_write_conflict_abort(&w, "/r", true).unwrap();
+        assert!(abort.ok);
+        assert_eq!(abort.op, "conflict-abort");
+        assert_eq!(w.last_conflict_abort("/r").as_deref(), Some("Rebase"));
     }
 
     #[test]
@@ -4247,8 +4655,8 @@ mod deploy_cmd_tests {
         )
         .unwrap();
         // Force Windows view via port directly for deterministic CI on any OS.
-        let st_view = sgenaxis_host::status_view(root.deploy_port(), DeployPlatform::Windows)
-            .unwrap();
+        let st_view =
+            sgenaxis_host::status_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
         let st = DeployStatusDto::from(&st_view);
         assert!(st.supported);
         assert!(!st.elevated_qn_auto);
@@ -4256,14 +4664,12 @@ mod deploy_cmd_tests {
             sgenaxis_host::check_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
         let check = DeployCheckDto::from(&check_view);
         assert!(check.needs_manual_elevated);
-        let arts: Vec<_> = sgenaxis_host::list_artifact_views(
-            root.deploy_port(),
-            DeployPlatform::Windows,
-        )
-        .unwrap()
-        .iter()
-        .map(DeployArtifactDto::from)
-        .collect();
+        let arts: Vec<_> =
+            sgenaxis_host::list_artifact_views(root.deploy_port(), DeployPlatform::Windows)
+                .unwrap()
+                .iter()
+                .map(DeployArtifactDto::from)
+                .collect();
         assert!(!arts.is_empty());
     }
 
@@ -4307,8 +4713,8 @@ mod wire_root_tests {
         s.project_root = "/demo/root".into();
         let err = resolve_bound_project_root(None, &s).unwrap_err();
         assert!(err.contains("/demo/root"), "{err}");
-        let err2 = resolve_bound_project_root(Some("/demo/root"), &HostSettings::defaults())
-            .unwrap_err();
+        let err2 =
+            resolve_bound_project_root(Some("/demo/root"), &HostSettings::defaults()).unwrap_err();
         assert!(err2.contains("/demo/root"), "{err2}");
     }
 
@@ -4316,10 +4722,7 @@ mod wire_root_tests {
     fn settings_project_root_used_when_arg_empty() {
         let mut s = HostSettings::defaults();
         s.project_root = "/work/real".into();
-        assert_eq!(
-            resolve_bound_project_root(None, &s).unwrap(),
-            "/work/real"
-        );
+        assert_eq!(resolve_bound_project_root(None, &s).unwrap(), "/work/real");
         assert_eq!(
             resolve_bound_project_root(Some("  "), &s).unwrap(),
             "/work/real"
@@ -4334,7 +4737,9 @@ mod wire_root_tests {
     fn board_path_resolves_under_project_root() {
         let joined = resolve_board_path_under_root("/work/repo", "docs/PROJECT-BOARD.html");
         assert!(
-            joined.replace('\\', "/").ends_with("/work/repo/docs/PROJECT-BOARD.html"),
+            joined
+                .replace('\\', "/")
+                .ends_with("/work/repo/docs/PROJECT-BOARD.html"),
             "{joined}"
         );
         let abs = if cfg!(windows) {
@@ -4353,10 +4758,7 @@ mod wire_root_tests {
         let mut s = HostSettings::defaults();
         s.project_root = "/git/repo".into();
         assert_eq!(resolve_repo(None, &s).unwrap(), "/git/repo");
-        assert_eq!(
-            resolve_repo(Some("/other".into()), &s).unwrap(),
-            "/other"
-        );
+        assert_eq!(resolve_repo(Some("/other".into()), &s).unwrap(), "/other");
     }
 }
 
@@ -4410,10 +4812,7 @@ mod wire_agent_tests {
         let fs = FakeFileSystem::new();
         fs.seed("/bin/claude", b"x");
         let err = preflight_live_agent_dispatch(&s, &fs, false, ProviderDto::Mcp).unwrap_err();
-        assert!(
-            err.contains("路徑無效") || err.contains("NOT RUN"),
-            "{err}"
-        );
+        assert!(err.contains("路徑無效") || err.contains("NOT RUN"), "{err}");
         assert!(err.contains("MCP"), "{err}");
         assert!(err.contains("8788") || err.contains("禁"), "{err}");
     }
@@ -4493,14 +4892,8 @@ mod file_save_tests {
     #[test]
     fn rejects_demo_root_and_http_board() {
         let cur = HostSettings::defaults();
-        let err = merge_file_save_settings(
-            &cur,
-            None,
-            None,
-            None,
-            Some("/demo/root".into()),
-        )
-        .unwrap_err();
+        let err = merge_file_save_settings(&cur, None, None, None, Some("/demo/root".into()))
+            .unwrap_err();
         assert!(err.contains("/demo/root"), "{err}");
         let err2 = merge_file_save_settings(
             &cur,

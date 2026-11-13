@@ -236,6 +236,15 @@ pub trait GitPort: Send + Sync {
 /// - Remote remove requires approval (no skip default). Local config only:
 ///   `git remote remove -- <name>` (or `git remote rm`). Never prune/fetch.
 ///   Missing remotes fail honestly.
+/// - Conflict save/continue/abort require approval (no skip default).
+///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
+///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
+///   markers (`<<<<<<<` / `=======` / `>>>>>>>`) fail honestly.
+///   Continue uses `git rebase --continue` / `git merge --continue` /
+///   `git cherry-pick --continue` (or `git revert --continue`) matching the
+///   detected in-progress state. Never `--skip`. Never `-X theirs/ours`.
+///   Abort uses the matching `--abort` family. Never `reset --hard`.
+///   Missing conflict state fails honestly.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -371,4 +380,23 @@ pub trait GitWritePort: Send + Sync {
         name: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
+    /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
+    /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.
+    fn conflict_save(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Continue the in-progress merge/rebase/cherry-pick/revert.
+    /// Requires approval. Never `--skip`. Never `-X theirs/ours`.
+    /// Missing conflict state fails honestly.
+    fn conflict_continue(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Abort the in-progress merge/rebase/cherry-pick/revert (`--abort`).
+    /// Requires approval. Never `reset --hard`. Missing state fails honestly.
+    fn conflict_abort(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 }

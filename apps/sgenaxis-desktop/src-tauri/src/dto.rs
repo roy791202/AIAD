@@ -627,6 +627,27 @@ pub struct GitWriteRemoteRemoveArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteConflictSaveArgs {
+    pub repo: Option<String>,
+    /// Conflicted relative path. Never `.` / `-A` / flags.
+    pub path: String,
+    /// Optional resolution body. Host writes this path then the port stages it.
+    #[serde(default)]
+    pub contents: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
+/// Args for approval-gated conflict continue / abort.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteConflictOpArgs {
+    pub repo: Option<String>,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

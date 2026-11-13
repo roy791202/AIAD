@@ -14,13 +14,23 @@ use crate::StdGitWrite;
 
 #[test]
 fn redact_credentials_strips_url_userinfo_and_tokens() {
-    let raw = "fatal: Authentication failed for 'https://alice:s3cretTOKEN@github.com/org/repo.git'\n\
+    let raw =
+        "fatal: Authentication failed for 'https://alice:s3cretTOKEN@github.com/org/repo.git'\n\
                Authorization: Bearer leaky-jwt-value\n\
                password=hunter2 token=abc123";
     let clean = redact_credentials(raw);
-    assert!(!clean.contains("s3cretTOKEN"), "password must not leak: {clean}");
-    assert!(!clean.contains("leaky-jwt-value"), "bearer must not leak: {clean}");
-    assert!(!clean.contains("hunter2"), "password= must not leak: {clean}");
+    assert!(
+        !clean.contains("s3cretTOKEN"),
+        "password must not leak: {clean}"
+    );
+    assert!(
+        !clean.contains("leaky-jwt-value"),
+        "bearer must not leak: {clean}"
+    );
+    assert!(
+        !clean.contains("hunter2"),
+        "password= must not leak: {clean}"
+    );
     assert!(!clean.contains("abc123"), "token= must not leak: {clean}");
     assert!(
         clean.contains("***") || clean.contains("[REDACTED]"),
@@ -43,9 +53,7 @@ fn fake_write_denies_without_approval() {
     let err = w
         .commit("/r", "x", GitWriteApproval::denied())
         .expect_err("must deny");
-    assert!(
-        matches!(err, PortError::PermissionDenied(ref m) if m == GIT_WRITE_NOT_APPROVED_MSG)
-    );
+    assert!(matches!(err, PortError::PermissionDenied(ref m) if m == GIT_WRITE_NOT_APPROVED_MSG));
     assert!(w.local_commit_count("/r") == 0);
     let err = w
         .push("/r", "origin", None, GitWriteApproval::denied())
@@ -96,8 +104,13 @@ fn fake_push_failure_preserves_local_commits_and_redacts() {
 fn fake_approved_push_clears_fail_flag() {
     let w = FakeGitWrite::new();
     w.commit("/r", "ok", GitWriteApproval::granted()).unwrap();
-    w.push("/r", "origin", Some("HEAD:main"), GitWriteApproval::granted())
-        .expect("push ok");
+    w.push(
+        "/r",
+        "origin",
+        Some("HEAD:main"),
+        GitWriteApproval::granted(),
+    )
+    .expect("push ok");
     assert_eq!(w.push_count("/r"), 1);
 }
 
@@ -166,12 +179,7 @@ mod std_write_temp {
         git(&work, &["commit", "-m", "seed"]);
         git(
             &work,
-            &[
-                "remote",
-                "add",
-                "origin",
-                bare.to_str().expect("utf8 path"),
-            ],
+            &["remote", "add", "origin", bare.to_str().expect("utf8 path")],
         );
         git(&work, &["push", "-u", "origin", "main"]);
         (work, bare)
@@ -219,10 +227,7 @@ mod std_write_temp {
             .args(["-C", repo, "log", "-1", "--pretty=%s"])
             .output()
             .unwrap();
-        assert_eq!(
-            String::from_utf8_lossy(&log.stdout).trim(),
-            "feat: v2"
-        );
+        assert_eq!(String::from_utf8_lossy(&log.stdout).trim(), "feat: v2");
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
 
@@ -235,11 +240,7 @@ mod std_write_temp {
         // Advance remote independently (fixture may force-push; StdGitWrite never does).
         let other = root.join("other");
         let clone = Command::new("git")
-            .args([
-                "clone",
-                bare.to_str().unwrap(),
-                other.to_str().unwrap(),
-            ])
+            .args(["clone", bare.to_str().unwrap(), other.to_str().unwrap()])
             .current_dir(root)
             .output()
             .expect("spawn clone");
@@ -283,10 +284,7 @@ mod std_write_temp {
             .args(["-C", repo, "log", "-1", "--pretty=%s"])
             .output()
             .unwrap();
-        assert_eq!(
-            String::from_utf8_lossy(&subj.stdout).trim(),
-            "local only"
-        );
+        assert_eq!(String::from_utf8_lossy(&subj.stdout).trim(), "local only");
         let _ = fs::remove_dir_all(root);
     }
 
@@ -364,8 +362,13 @@ mod std_write_temp {
             "identity write must never land in --global"
         );
 
-        w.set_identity(repo, "--global", "x@example.invalid", GitWriteApproval::granted())
-            .expect_err("global flag as name is out of scope");
+        w.set_identity(
+            repo,
+            "--global",
+            "x@example.invalid",
+            GitWriteApproval::granted(),
+        )
+        .expect_err("global flag as name is out of scope");
         assert_eq!(local_config(repo, "user.name"), unique);
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
@@ -382,10 +385,12 @@ mod std_write_temp {
         let w = StdGitWrite::new();
         w.set_ignore(repo, "keep.txt\n", GitWriteApproval::denied())
             .expect_err("denied ignore must not mutate");
-        assert!(!work.join(".gitignore").exists() || {
-            let body = fs::read_to_string(work.join(".gitignore")).unwrap_or_default();
-            !body.contains("keep.txt")
-        });
+        assert!(
+            !work.join(".gitignore").exists() || {
+                let body = fs::read_to_string(work.join(".gitignore")).unwrap_or_default();
+                !body.contains("keep.txt")
+            }
+        );
 
         w.set_ignore(repo, "keep.txt\n*.tmp\n", GitWriteApproval::granted())
             .expect("approved ignore");
@@ -744,11 +749,11 @@ mod std_write_temp {
         w.delete_tag(repo, "v1.0.0", GitWriteApproval::granted())
             .expect("approved local delete");
         let list = tag_list(repo);
+        assert!(!list.contains("v1.0.0"), "local tag must be gone: {list}");
         assert!(
-            !list.contains("v1.0.0"),
-            "local tag must be gone: {list}"
+            list.contains("v1.1.0"),
+            "other local tags must remain: {list}"
         );
-        assert!(list.contains("v1.1.0"), "other local tags must remain: {list}");
         assert!(
             remote_tag_list(&bare).contains("v1.0.0"),
             "local delete must never push --delete: {}",
@@ -820,7 +825,10 @@ mod std_write_temp {
         w.create_branch(repo, "feature/slot", GitWriteApproval::granted())
             .expect("approved create");
         let list = local_branch_list(repo);
-        assert!(list.contains("feature/slot"), "local branch missing: {list}");
+        assert!(
+            list.contains("feature/slot"),
+            "local branch missing: {list}"
+        );
         assert_eq!(
             head_ref(repo),
             "main",
@@ -920,5 +928,168 @@ mod std_write_temp {
         assert!(remote_list(repo).contains("origin"));
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    fn make_merge_conflict() -> PathBuf {
+        let root = unique_temp("merge-conflict");
+        fs::create_dir_all(&root).unwrap();
+        git(&root, &["init", "-b", "main"]);
+        init_identity(&root);
+        fs::write(root.join("a.txt"), "base\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "base"]);
+        git(&root, &["checkout", "-b", "other"]);
+        fs::write(root.join("a.txt"), "theirs\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "theirs"]);
+        git(&root, &["checkout", "main"]);
+        fs::write(root.join("a.txt"), "ours\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "ours"]);
+        let merge = Command::new("git")
+            .args(["merge", "other"])
+            .current_dir(&root)
+            .output()
+            .expect("merge");
+        assert!(
+            !merge.status.success(),
+            "expected conflict: {}",
+            String::from_utf8_lossy(&merge.stderr)
+        );
+        root
+    }
+
+    fn merge_head_exists(repo: &Path) -> bool {
+        repo.join(".git").join("MERGE_HEAD").exists()
+    }
+
+    #[test]
+    fn std_write_conflict_save_continue_abort_when_approved() {
+        let work = make_merge_conflict();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.conflict_save(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied save must not stage");
+        assert!(merge_head_exists(&work));
+        let unmerged = Command::new("git")
+            .args(["-C", repo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&unmerged.stdout).contains("a.txt"),
+            "denied save must leave the path unmerged"
+        );
+
+        w.conflict_save(repo, "a.txt", GitWriteApproval::granted())
+            .expect_err("markers must fail honestly");
+        w.conflict_save(repo, ".", GitWriteApproval::granted())
+            .expect_err("dot add is out of scope");
+        w.conflict_save(repo, "-A", GitWriteApproval::granted())
+            .expect_err("add -A is out of scope");
+        w.conflict_continue(repo, GitWriteApproval::granted())
+            .expect_err("unmerged continue must fail");
+
+        fs::write(work.join("a.txt"), "resolved\n").unwrap();
+        w.conflict_save(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved save");
+        let staged = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--name-only"])
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&staged.stdout).contains("a.txt"),
+            "resolved path must be staged"
+        );
+        assert!(merge_head_exists(&work), "save must not finish the merge");
+
+        w.conflict_continue(repo, GitWriteApproval::denied())
+            .expect_err("denied continue must not mutate");
+        assert!(merge_head_exists(&work));
+
+        w.conflict_continue(repo, GitWriteApproval::granted())
+            .expect("approved continue");
+        assert!(
+            !merge_head_exists(&work),
+            "merge --continue must clear MERGE_HEAD"
+        );
+        let log = Command::new("git")
+            .args(["-C", repo, "log", "-1", "--pretty=%s"])
+            .output()
+            .unwrap();
+        let subject = String::from_utf8_lossy(&log.stdout);
+        assert!(
+            subject.to_ascii_lowercase().contains("merge"),
+            "continue should create merge commit: {subject}"
+        );
+
+        w.conflict_abort(repo, GitWriteApproval::granted())
+            .expect_err("missing conflict state must fail honestly");
+
+        let work2 = make_merge_conflict();
+        let repo2 = work2.to_str().unwrap();
+        w.conflict_abort(repo2, GitWriteApproval::denied())
+            .expect_err("denied abort must not mutate");
+        assert!(merge_head_exists(&work2));
+        w.conflict_abort(repo2, GitWriteApproval::granted())
+            .expect("approved abort");
+        assert!(
+            !merge_head_exists(&work2),
+            "merge --abort must clear MERGE_HEAD"
+        );
+        let body = fs::read_to_string(work2.join("a.txt")).unwrap();
+        assert_eq!(body, "ours\n");
+
+        let _ = fs::remove_dir_all(&work);
+        let _ = fs::remove_dir_all(&work2);
+    }
+
+    #[test]
+    fn std_write_conflict_continue_rebase_without_skip() {
+        let root = unique_temp("rebase-conflict");
+        fs::create_dir_all(&root).unwrap();
+        git(&root, &["init", "-b", "main"]);
+        init_identity(&root);
+        fs::write(root.join("a.txt"), "base\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "base"]);
+        git(&root, &["checkout", "-b", "topic"]);
+        fs::write(root.join("a.txt"), "topic\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "topic"]);
+        git(&root, &["checkout", "main"]);
+        fs::write(root.join("a.txt"), "mainline\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "mainline"]);
+        git(&root, &["checkout", "topic"]);
+        let rebase = Command::new("git")
+            .args(["rebase", "main"])
+            .current_dir(&root)
+            .output()
+            .expect("rebase");
+        assert!(!rebase.status.success(), "expected rebase conflict");
+
+        let repo = root.to_str().unwrap();
+        let w = StdGitWrite::new();
+        fs::write(root.join("a.txt"), "rebased\n").unwrap();
+        w.conflict_save(repo, "a.txt", GitWriteApproval::granted())
+            .expect("save rebase path");
+        w.conflict_continue(repo, GitWriteApproval::granted())
+            .expect("rebase --continue");
+        assert!(
+            !root.join(".git").join("rebase-merge").exists()
+                && !root.join(".git").join("rebase-apply").exists(),
+            "rebase --continue must finish without --skip"
+        );
+        let st = Command::new("git")
+            .args(["-C", repo, "status", "--porcelain"])
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&st.stdout).trim().is_empty(),
+            "rebase continue should leave a clean worktree"
+        );
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

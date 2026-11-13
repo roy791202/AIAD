@@ -44,6 +44,12 @@ assert "liveHooks.remoteAdd" in js
 assert "liveHooks.remoteRemove" in js
 assert "git_write_remote_add" in js
 assert "git_write_remote_remove" in js
+assert "liveHooks.conflictSave" in js
+assert "liveHooks.conflictContinue" in js
+assert "liveHooks.conflictAbort" in js
+assert "git_write_conflict_save" in js
+assert "git_write_conflict_continue" in js
+assert "git_write_conflict_abort" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65
