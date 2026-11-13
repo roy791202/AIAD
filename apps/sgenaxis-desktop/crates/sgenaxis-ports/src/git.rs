@@ -54,9 +54,14 @@ pub struct GitRemote {
 }
 
 /// One tag for the tags view (read-only).
+///
+/// `peeled` is the commit OID the tag points at. Empty when the adapter
+/// could not peel (degrade, never invent).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GitTag {
     pub name: String,
+    /// Peeled commit OID. Empty when unavailable.
+    pub peeled: String,
 }
 
 /// One stash entry for the stash view (read-only).

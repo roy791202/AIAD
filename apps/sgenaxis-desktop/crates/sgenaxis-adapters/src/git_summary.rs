@@ -29,7 +29,7 @@ pub struct GitWorkbenchSummary {
     pub branches: Vec<GitBranch>,
     /// Configured remotes (name-sorted); empty when the port read fails (degrade, not blank).
     pub remotes: Vec<GitRemote>,
-    /// Tags (name-sorted); empty when the port read fails (degrade, not blank).
+    /// Tags (name-sorted, with peeled OID); empty when the port read fails (degrade, not blank).
     pub tags: Vec<GitTag>,
     /// Stashes (newest-first); empty when the port read fails (degrade, not blank).
     pub stashes: Vec<GitStash>,

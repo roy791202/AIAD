@@ -104,7 +104,18 @@ impl GitPort for StdGit {
     }
 
     fn tags(&self, repo: &str) -> Result<Vec<GitTag>, PortError> {
-        let out = self.run(repo, &["tag", "--list"])?;
+        // `for-each-ref` exits 0 with empty output when there are no tags
+        // (`show-ref --tags` exits 1). `%(*objectname)` peels annotated tags
+        // to the commit; lightweight tags leave it empty and use `%(objectname)`.
+        let out = self.run(
+            repo,
+            &[
+                "for-each-ref",
+                "--format=%(refname:short)%09%(*objectname)%09%(objectname)",
+                "--sort=refname",
+                "refs/tags",
+            ],
+        )?;
         Ok(parse_tags(&out))
     }
 
@@ -320,19 +331,69 @@ fn parse_remotes(text: &str) -> Vec<GitRemote> {
         .collect()
 }
 
-/// Parse `git tag --list` output: one tag per line. Trims blanks,
-/// sorts by name.
+/// Parse tag listing from `git for-each-ref` (tab: name, *object, object),
+/// `git show-ref --tags --dereference` (`<oid> refs/tags/<name>` / `^{}`),
+/// or name-only `git tag --list` (peeled stays empty — never invent).
 fn parse_tags(text: &str) -> Vec<GitTag> {
-    let mut items: Vec<GitTag> = text
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .map(|name| GitTag {
-            name: name.to_string(),
-        })
-        .collect();
-    items.sort_by(|a, b| a.name.cmp(&b.name));
-    items
+    use std::collections::BTreeMap;
+    let mut map: BTreeMap<String, String> = BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Some((name, peeled, overwrite)) = parse_tag_line(line) else {
+            continue;
+        };
+        let entry = map.entry(name).or_default();
+        if overwrite || entry.is_empty() {
+            *entry = peeled;
+        }
+    }
+    map.into_iter()
+        .map(|(name, peeled)| GitTag { name, peeled })
+        .collect()
+}
+
+fn parse_tag_line(line: &str) -> Option<(String, String, bool)> {
+    if line.contains(" refs/tags/") {
+        return parse_show_ref_tag(line);
+    }
+    if line.contains('\t') {
+        return parse_for_each_ref_tag(line);
+    }
+    Some((line.to_string(), String::new(), false))
+}
+
+/// `<oid> refs/tags/<name>` or `<oid> refs/tags/<name>^{}` (peeled).
+fn parse_show_ref_tag(line: &str) -> Option<(String, String, bool)> {
+    let (oid, rest) = line.split_once(" refs/tags/")?;
+    let oid = oid.trim();
+    if oid.is_empty() {
+        return None;
+    }
+    let (name, is_peeled) = match rest.strip_suffix("^{}") {
+        Some(n) => (n, true),
+        None => (rest, false),
+    };
+    let name = name.trim();
+    if name.is_empty() {
+        return None;
+    }
+    Some((name.to_string(), oid.to_string(), is_peeled))
+}
+
+/// `name\\t%(*objectname)\\t%(objectname)` — starred field is the peel.
+fn parse_for_each_ref_tag(line: &str) -> Option<(String, String, bool)> {
+    let mut parts = line.splitn(3, '\t');
+    let name = parts.next()?.trim();
+    if name.is_empty() {
+        return None;
+    }
+    let starred = parts.next().unwrap_or("").trim();
+    let object = parts.next().unwrap_or("").trim();
+    let peeled = if starred.is_empty() { object } else { starred };
+    Some((name.to_string(), peeled.to_string(), true))
 }
 
 /// Parse `git stash list` output: one `stash@{N}: <desc>` per line.
@@ -609,7 +670,7 @@ origin\thttps://github.com/roy/AIAD.git (push)\n";
     }
 
     // PD-GIT-TAGS-01 RED: `git tag --list` → one tag per line; parser trims
-    // blanks and sorts by name.
+    // blanks and sorts by name. Name-only lines must not invent a peeled OID.
     #[test]
     fn parse_tags_sorts_names() {
         let tags = parse_tags("v2\nv1\n\nv10\n");
@@ -617,6 +678,41 @@ origin\thttps://github.com/roy/AIAD.git (push)\n";
         assert_eq!(tags[0].name, "v1");
         assert_eq!(tags[1].name, "v10");
         assert_eq!(tags[2].name, "v2");
+        assert!(
+            tags.iter().all(|t| t.peeled.is_empty()),
+            "name-only listing must not invent peeled OIDs"
+        );
+    }
+
+    // PD-GIT-TAGS-01: `git show-ref --tags --dereference` peels annotated
+    // tags to the commit OID; lightweight tags already are the commit.
+    #[test]
+    fn parse_tags_peels_show_ref_dereference() {
+        let text = "\
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refs/tags/v1\n\
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb refs/tags/v1^{}\n\
+cccccccccccccccccccccccccccccccccccccccc refs/tags/v2\n";
+        let tags = parse_tags(text);
+        assert_eq!(tags.len(), 2);
+        assert_eq!(tags[0].name, "v1");
+        assert_eq!(tags[0].peeled, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        assert_eq!(tags[1].name, "v2");
+        assert_eq!(tags[1].peeled, "cccccccccccccccccccccccccccccccccccccccc");
+    }
+
+    // PD-GIT-TAGS-01: `git for-each-ref` tab format — `%(*objectname)` for
+    // annotated, `%(objectname)` for lightweight.
+    #[test]
+    fn parse_tags_peels_for_each_ref_format() {
+        let text = "\
+v1\tbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\taaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\
+v2\t\tcccccccccccccccccccccccccccccccccccccccc\n";
+        let tags = parse_tags(text);
+        assert_eq!(tags.len(), 2);
+        assert_eq!(tags[0].name, "v1");
+        assert_eq!(tags[0].peeled, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        assert_eq!(tags[1].name, "v2");
+        assert_eq!(tags[1].peeled, "cccccccccccccccccccccccccccccccccccccccc");
     }
 
     // PD-GIT-STASH-01 RED: `git stash list` → "stash@{N}: <desc>" per line;

@@ -51,7 +51,7 @@ use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitDiffDto,
     GitConflictDto, GitConflictFileDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
-    GitWorkbenchDto,
+    GitTagDto, GitWorkbenchDto,
     GitWriteCommitArgs, GitWritePushArgs, GitWriteResultDto, GitWriteSwitchArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
@@ -1533,7 +1533,14 @@ fn workbench_dto(summary: &GitWorkbenchSummary, writes_enabled: bool) -> GitWork
                 url: r.url.clone(),
             })
             .collect(),
-        tags: summary.tags.iter().map(|t| t.name.clone()).collect(),
+        tags: summary
+            .tags
+            .iter()
+            .map(|t| GitTagDto {
+                name: t.name.clone(),
+                peeled: t.peeled.clone(),
+            })
+            .collect(),
         stashes: summary
             .stashes
             .iter()
@@ -2731,7 +2738,7 @@ mod git_ui_tests {
         assert_eq!(dto.remotes[1].name, "upstream");
     }
 
-    // PD-GIT-TAGS-01 RED: DTO must surface tag names (flattened to Vec<String>).
+    // PD-GIT-TAGS-01 RED: DTO must surface tag names + peeled commit OIDs.
     #[test]
     fn workbench_dto_surfaces_tags() {
         let git = FakeGit::new();
@@ -2750,15 +2757,27 @@ mod git_ui_tests {
             vec![
                 GitTag {
                     name: "v0.1.0".into(),
+                    peeled: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
                 },
                 GitTag {
                     name: "v0.2.0".into(),
+                    peeled: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
                 },
             ],
         );
         let summary = summarize_worktree(&git, "/r", 5).unwrap();
         let dto = workbench_dto(&summary, false);
-        assert_eq!(dto.tags, vec!["v0.1.0".to_string(), "v0.2.0".to_string()]);
+        assert_eq!(dto.tags.len(), 2);
+        assert_eq!(dto.tags[0].name, "v0.1.0");
+        assert_eq!(
+            dto.tags[0].peeled,
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        );
+        assert_eq!(dto.tags[1].name, "v0.2.0");
+        assert_eq!(
+            dto.tags[1].peeled,
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        );
     }
 
     // PD-GIT-STASH-01 RED: DTO must surface stashes (id + message).

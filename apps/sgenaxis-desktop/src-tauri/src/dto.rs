@@ -376,6 +376,15 @@ pub struct GitRemoteDto {
     pub url: String,
 }
 
+/// One tag for the tags view (read-only).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitTagDto {
+    pub name: String,
+    /// Peeled commit OID; empty when unavailable (degrade, never invent).
+    #[serde(default)]
+    pub peeled: String,
+}
+
 /// One stash entry for the stash view (read-only).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitStashDto {
@@ -458,9 +467,9 @@ pub struct GitWorkbenchDto {
     /// Configured remotes (name-sorted); empty when unavailable.
     #[serde(default)]
     pub remotes: Vec<GitRemoteDto>,
-    /// Tag names (sorted); empty when unavailable.
+    /// Tags (name + peeled OID, name-sorted); empty when unavailable.
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub tags: Vec<GitTagDto>,
     /// Stashes (newest-first); empty when unavailable.
     #[serde(default)]
     pub stashes: Vec<GitStashDto>,

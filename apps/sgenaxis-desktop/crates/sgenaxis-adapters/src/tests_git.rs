@@ -161,7 +161,8 @@ fn summarize_worktree_surfaces_remotes() {
     assert_eq!(summary.remotes[1].name, "upstream");
 }
 
-// PD-GIT-TAGS-01 RED: summary must surface tags (name-sorted) from the port.
+// PD-GIT-TAGS-01 RED: summary must surface tags (name-sorted) from the port,
+// including peeled commit OIDs set by the adapter (never invented here).
 #[test]
 fn summarize_worktree_surfaces_tags() {
     let git = FakeGit::new();
@@ -180,16 +181,26 @@ fn summarize_worktree_surfaces_tags() {
         vec![
             GitTag {
                 name: "v0.1.0".into(),
+                peeled: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
             },
             GitTag {
                 name: "v0.2.0".into(),
+                peeled: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".into(),
             },
         ],
     );
     let summary = summarize_worktree(&git, "/proj", 1).expect("summary");
     assert_eq!(summary.tags.len(), 2);
     assert_eq!(summary.tags[0].name, "v0.1.0");
+    assert_eq!(
+        summary.tags[0].peeled,
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    );
     assert_eq!(summary.tags[1].name, "v0.2.0");
+    assert_eq!(
+        summary.tags[1].peeled,
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    );
 }
 
 // PD-GIT-STASH-01 RED: summary must surface stashes (newest-first) from the port.
