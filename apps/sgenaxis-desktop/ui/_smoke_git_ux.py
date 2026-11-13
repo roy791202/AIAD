@@ -51,12 +51,14 @@ assert "git_write_remote_set_url" in js
 assert "liveHooks.conflictSave" in js
 assert "liveHooks.conflictContinue" in js
 assert "liveHooks.conflictAbort" in js
+assert "liveHooks.conflictSkip" in js
 assert "git_write_conflict_save" in js
 assert "git_write_conflict_continue" in js
 assert "git_write_conflict_abort" in js
+assert "git_write_conflict_skip" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
-assert len(set(ids)) == 65
+assert len(set(ids)) == 66
 for need in (
     "git-ux-scenario",
     "git-ux-rail",

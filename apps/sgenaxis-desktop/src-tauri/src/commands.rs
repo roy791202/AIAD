@@ -432,6 +432,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
+        "git_write_conflict_skip",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -3174,6 +3175,35 @@ fn perform_git_write_conflict_abort(
     }
 }
 
+fn perform_git_write_conflict_skip(
+    write: &dyn GitWritePort,
+    repo: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-skip".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.conflict_skip(repo, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "conflict-skip".into(),
+            message: "conflict-skip ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-skip".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
 /// Approval-gated `git add -- path` for one resolved conflict. Never `-A` / `.`.
 #[tauri::command]
 pub fn git_write_conflict_save(
@@ -3238,6 +3268,26 @@ pub fn git_write_conflict_abort(
         });
     }
     perform_git_write_conflict_abort(root.git_write(), &repo, args.approved)
+}
+
+/// Approval-gated rebase/cherry-pick skip. Never `--continue` / `--abort` fallback.
+#[tauri::command]
+pub fn git_write_conflict_skip(
+    state: State<'_, HostState>,
+    args: GitWriteConflictOpArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_conflict_skip").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "conflict-skip".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_conflict_skip(root.git_write(), &repo, args.approved)
 }
 
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
@@ -4822,6 +4872,7 @@ mod git_ui_tests {
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
         assert!(is_allowed("git_write_conflict_abort"));
+        assert!(is_allowed("git_write_conflict_skip"));
         assert!(!is_allowed("git_conflict_save"));
         assert!(!is_allowed("git_rebase_skip"));
         assert!(!is_allowed("git_reset_hard"));
@@ -4866,6 +4917,27 @@ mod git_ui_tests {
         assert!(abort.ok);
         assert_eq!(abort.op, "conflict-abort");
         assert_eq!(w.last_conflict_abort("/r").as_deref(), Some("Rebase"));
+
+        let skip_missing = perform_git_write_conflict_skip(&w, "/r", true).unwrap();
+        assert!(!skip_missing.ok);
+        assert!(skip_missing.message.contains("no in-progress"));
+        w.set_conflict_in_progress("/r", "Merge", &["src/m.rs"]);
+        let skip_merge = perform_git_write_conflict_skip(&w, "/r", true).unwrap();
+        assert!(!skip_merge.ok);
+        assert!(skip_merge.message.contains("cannot be skipped"));
+        assert_eq!(w.conflict_kind("/r").as_deref(), Some("Merge"));
+        w.conflict_abort("/r", sgenaxis_ports::GitWriteApproval::granted())
+            .unwrap();
+
+        w.set_conflict_in_progress("/r", "Rebase", &["src/skip.rs"]);
+        let skip_denied = perform_git_write_conflict_skip(&w, "/r", false).unwrap();
+        assert!(!skip_denied.ok);
+        assert!(w.last_conflict_skip("/r").is_none());
+        let skip = perform_git_write_conflict_skip(&w, "/r", true).unwrap();
+        assert!(skip.ok);
+        assert_eq!(skip.op, "conflict-skip");
+        assert_eq!(w.last_conflict_skip("/r").as_deref(), Some("Rebase"));
+        assert!(w.conflict_kind("/r").is_none());
     }
 
     #[test]

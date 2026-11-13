@@ -2549,6 +2549,8 @@
           ? "審核 Conflict Continue"
           : op === "conflict-abort"
           ? "審核 Conflict Abort"
+          : op === "conflict-skip"
+          ? "審核 Conflict Skip"
           : "審核 Commit";
     }
     if (lede) {
@@ -2605,6 +2607,8 @@
           ? "核准後經 git_write_conflict_continue → GitWritePort；依偵測狀態執行 merge／rebase／cherry-pick --continue。不加 --skip、不加 -X theirs／ours。拒絕則無突變。"
           : op === "conflict-abort"
           ? "核准後經 git_write_conflict_abort → GitWritePort；依偵測狀態執行 --abort。不做 reset --hard。拒絕則無突變。"
+          : op === "conflict-skip"
+          ? "核准後經 git_write_conflict_skip → GitWritePort；僅在 Git 允許時執行 rebase／cherry-pick --skip。Merge 等無法 skip 的狀態會誠實失敗，不會改跑 continue／abort。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -3152,6 +3156,25 @@
             true
           );
           toast("Conflict abort 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "conflict-skip") {
+        const dto = await invoke("git_write_conflict_skip", {
+          args: { repo: repo, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已略過目前衝突修補（經 GitWritePort；rebase／cherry-pick --skip）", false);
+          toast("Conflict skip 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "conflict skip 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（操作狀態依 Git 真實結果保留；未改跑 continue／abort）",
+            true
+          );
+          toast("Conflict skip 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3711,6 +3734,9 @@
         },
         conflictAbort: function () {
           showGitApprove("conflict-abort", {});
+        },
+        conflictSkip: function () {
+          showGitApprove("conflict-skip", {});
         },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {

@@ -1223,4 +1223,111 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(&root);
     }
+
+    fn make_rebase_conflict() -> PathBuf {
+        let root = unique_temp("rebase-skip-conflict");
+        fs::create_dir_all(&root).unwrap();
+        git(&root, &["init", "-b", "main"]);
+        init_identity(&root);
+        fs::write(root.join("a.txt"), "base\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "base"]);
+        git(&root, &["checkout", "-b", "topic"]);
+        fs::write(root.join("a.txt"), "topic\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "topic"]);
+        git(&root, &["checkout", "main"]);
+        fs::write(root.join("a.txt"), "mainline\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "mainline"]);
+        git(&root, &["checkout", "topic"]);
+        let rebase = Command::new("git")
+            .args(["rebase", "main"])
+            .current_dir(&root)
+            .output()
+            .expect("rebase");
+        assert!(!rebase.status.success(), "expected rebase conflict");
+        root
+    }
+
+    fn rebase_in_progress(repo: &Path) -> bool {
+        repo.join(".git").join("rebase-merge").exists()
+            || repo.join(".git").join("rebase-apply").exists()
+    }
+
+    #[test]
+    fn std_write_conflict_skip_rebase_when_approved() {
+        let root = make_rebase_conflict();
+        let repo = root.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.conflict_skip(repo, GitWriteApproval::denied())
+            .expect_err("denied skip must not mutate");
+        assert!(rebase_in_progress(&root));
+
+        w.conflict_skip(repo, GitWriteApproval::granted())
+            .expect("approved rebase --skip");
+        assert!(
+            !rebase_in_progress(&root),
+            "rebase --skip must finish the in-progress rebase"
+        );
+        let body = fs::read_to_string(root.join("a.txt")).unwrap();
+        assert_eq!(
+            body, "mainline\n",
+            "skip must drop the topic patch, not add+continue it"
+        );
+        let log = Command::new("git")
+            .args(["-C", repo, "log", "--oneline"])
+            .output()
+            .unwrap();
+        let history = String::from_utf8_lossy(&log.stdout);
+        assert!(
+            !history.contains("topic"),
+            "skipped commit must not remain: {history}"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn std_write_conflict_skip_refuses_when_not_skippable() {
+        let w = StdGitWrite::new();
+        let clean = unique_temp("skip-clean");
+        fs::create_dir_all(&clean).unwrap();
+        git(&clean, &["init", "-b", "main"]);
+        init_identity(&clean);
+        fs::write(clean.join("a.txt"), "ok\n").unwrap();
+        git(&clean, &["add", "a.txt"]);
+        git(&clean, &["commit", "-m", "ok"]);
+        let clean_repo = clean.to_str().unwrap();
+        let missing = w
+            .conflict_skip(clean_repo, GitWriteApproval::granted())
+            .expect_err("skip without in-progress must fail");
+        assert!(
+            missing.to_string().contains("no in-progress")
+                || missing.to_string().contains("cannot be skipped"),
+            "missing skip must fail honestly: {missing}"
+        );
+
+        let merge = make_merge_conflict();
+        let merge_repo = merge.to_str().unwrap();
+        let refused = w
+            .conflict_skip(merge_repo, GitWriteApproval::granted())
+            .expect_err("merge skip must fail");
+        assert!(
+            refused.to_string().contains("cannot be skipped"),
+            "merge skip must not fall back to continue/abort: {refused}"
+        );
+        assert!(
+            merge_head_exists(&merge),
+            "refused skip must leave MERGE_HEAD"
+        );
+
+        w.conflict_abort(merge_repo, GitWriteApproval::granted())
+            .expect("abort still works after refused skip");
+        assert!(!merge_head_exists(&merge));
+
+        let _ = fs::remove_dir_all(&clean);
+        let _ = fs::remove_dir_all(&merge);
+    }
 }

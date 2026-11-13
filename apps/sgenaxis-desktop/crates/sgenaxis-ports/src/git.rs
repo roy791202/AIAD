@@ -253,6 +253,10 @@ pub trait GitPort: Send + Sync {
 ///   Continue uses `git rebase --continue` / `git merge --continue` /
 ///   `git cherry-pick --continue` (or `git revert --continue`) matching the
 ///   detected in-progress state. Never `--skip`. Never `-X theirs/ours`.
+///   Skip uses `git rebase --skip` / `git cherry-pick --skip` only when Git
+///   itself allows skipping. Merge (and other non-skippable states) fail
+///   honestly. Never fall back to `--continue` / `--abort`. Never skip by
+///   deleting files or `git add` + continue.
 ///   Abort uses the matching `--abort` family. Never `reset --hard`.
 ///   Missing conflict state fails honestly.
 pub trait GitWritePort: Send + Sync {
@@ -431,4 +435,9 @@ pub trait GitWritePort: Send + Sync {
     /// Abort the in-progress merge/rebase/cherry-pick/revert (`--abort`).
     /// Requires approval. Never `reset --hard`. Missing state fails honestly.
     fn conflict_abort(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Skip the current patch of an in-progress rebase or cherry-pick (`--skip`).
+    /// Requires approval. Never `--continue` / `--abort` as a fallback.
+    /// Merge (and other operations Git cannot `--skip`) fail honestly.
+    fn conflict_skip(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 }

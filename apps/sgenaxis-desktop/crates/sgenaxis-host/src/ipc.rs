@@ -82,6 +82,8 @@ pub enum AllowedIpcCommand {
     GitWriteConflictContinue,
     /// Approval-gated merge/rebase/cherry-pick abort (never reset --hard).
     GitWriteConflictAbort,
+    /// Approval-gated rebase/cherry-pick skip (never continue/abort fallback).
+    GitWriteConflictSkip,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -168,6 +170,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
             AllowedIpcCommand::GitWriteConflictContinue => "git_write_conflict_continue",
             AllowedIpcCommand::GitWriteConflictAbort => "git_write_conflict_abort",
+            AllowedIpcCommand::GitWriteConflictSkip => "git_write_conflict_skip",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -232,6 +235,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictSave,
             AllowedIpcCommand::GitWriteConflictContinue,
             AllowedIpcCommand::GitWriteConflictAbort,
+            AllowedIpcCommand::GitWriteConflictSkip,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -357,6 +361,7 @@ mod tests {
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
         assert!(is_allowed("git_write_conflict_abort"));
+        assert!(is_allowed("git_write_conflict_skip"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -516,6 +521,10 @@ mod tests {
         assert_eq!(
             authorize("git_write_conflict_abort").unwrap(),
             AllowedIpcCommand::GitWriteConflictAbort
+        );
+        assert_eq!(
+            authorize("git_write_conflict_skip").unwrap(),
+            AllowedIpcCommand::GitWriteConflictSkip
         );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());

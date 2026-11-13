@@ -662,7 +662,7 @@ pub struct GitWriteConflictSaveArgs {
     pub approved: bool,
 }
 
-/// Args for approval-gated conflict continue / abort.
+/// Args for approval-gated conflict continue / abort / skip.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictOpArgs {
     pub repo: Option<String>,

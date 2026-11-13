@@ -597,6 +597,8 @@ struct FakeGitWriteState {
     conflict_continue: HashMap<String, String>,
     /// repo → last approved abort kind.
     conflict_abort: HashMap<String, String>,
+    /// repo → last approved skip kind.
+    conflict_skip: HashMap<String, String>,
     next_hash: u64,
 }
 
@@ -795,6 +797,11 @@ impl FakeGitWrite {
     pub fn last_conflict_abort(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.conflict_abort.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn last_conflict_skip(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.conflict_skip.get(&Self::key(repo)).cloned()
     }
 
     pub fn conflict_kind(&self, repo: &str) -> Option<String> {
@@ -1389,6 +1396,33 @@ impl GitWritePort for FakeGitWrite {
             .cloned()
             .ok_or_else(|| PortError::Git("no in-progress conflict".into()))?;
         st.conflict_abort.insert(key.clone(), kind);
+        st.conflict_kind.remove(&key);
+        st.conflict_files.remove(&key);
+        Ok(())
+    }
+
+    fn conflict_skip(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let kind = st
+            .conflict_kind
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| PortError::Git("no in-progress conflict".into()))?;
+        if kind != "Rebase" && kind != "CherryPick" {
+            return Err(PortError::Git(
+                "conflict cannot be skipped (no skippable rebase/cherry-pick in progress)".into(),
+            ));
+        }
+        st.conflict_skip.insert(key.clone(), kind);
         st.conflict_kind.remove(&key);
         st.conflict_files.remove(&key);
         Ok(())

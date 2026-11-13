@@ -277,6 +277,16 @@ impl StdGitWrite {
         }
     }
 
+    fn skip_args(kind: &str) -> Result<&'static [&'static str], PortError> {
+        match kind {
+            "Rebase" => Ok(&["rebase", "--skip"]),
+            "CherryPick" => Ok(&["cherry-pick", "--skip"]),
+            _ => Err(PortError::Git(
+                "conflict cannot be skipped (no skippable rebase/cherry-pick in progress)".into(),
+            )),
+        }
+    }
+
     fn run_with_editor(&self, repo: &str, args: &[&str]) -> Result<String, PortError> {
         if repo.trim().is_empty() {
             return Err(PortError::InvalidPath("empty git repo path".into()));
@@ -692,6 +702,16 @@ impl GitWritePort for StdGitWrite {
         let kind = self.require_conflict_kind(repo)?;
         let args = Self::abort_args(kind)?;
         // Prefer `--abort`. Never `reset --hard`.
+        self.run(repo, args)?;
+        Ok(())
+    }
+
+    fn conflict_skip(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let kind = self.require_conflict_kind(repo)?;
+        let args = Self::skip_args(kind)?;
+        // Real `git rebase --skip` / `git cherry-pick --skip` only.
+        // Never `--continue` / `--abort` as a fallback. Never delete files.
         self.run(repo, args)?;
         Ok(())
     }

@@ -962,6 +962,33 @@ fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
         .expect("abort");
     assert_eq!(w.last_conflict_abort("/r").as_deref(), Some("Rebase"));
     assert!(w.conflict_kind("/r").is_none());
+
+    let skip_missing = w.conflict_skip("/r", GitWriteApproval::granted());
+    assert!(matches!(
+        skip_missing,
+        Err(PortError::Git(ref m)) if m.contains("no in-progress")
+    ));
+    w.set_conflict_in_progress("/r", "Merge", &["src/m.rs"]);
+    let skip_merge = w.conflict_skip("/r", GitWriteApproval::granted());
+    assert!(matches!(
+        skip_merge,
+        Err(PortError::Git(ref m)) if m.contains("cannot be skipped")
+    ));
+    assert_eq!(w.conflict_kind("/r").as_deref(), Some("Merge"));
+    assert!(w.last_conflict_skip("/r").is_none());
+    w.conflict_abort("/r", GitWriteApproval::granted())
+        .expect("abort merge after refused skip");
+    assert_eq!(w.last_conflict_abort("/r").as_deref(), Some("Merge"));
+
+    w.set_conflict_in_progress("/r", "Rebase", &["src/skip.rs"]);
+    let denied_skip = w.conflict_skip("/r", GitWriteApproval::denied());
+    assert!(matches!(denied_skip, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_conflict_skip("/r").is_none());
+    assert_eq!(w.conflict_kind("/r").as_deref(), Some("Rebase"));
+    w.conflict_skip("/r", GitWriteApproval::granted())
+        .expect("skip rebase");
+    assert_eq!(w.last_conflict_skip("/r").as_deref(), Some("Rebase"));
+    assert!(w.conflict_kind("/r").is_none());
 }
 
 #[test]
@@ -973,6 +1000,8 @@ fn gated_git_write_blocks_conflict_even_when_approved() {
     assert!(matches!(cont, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let abort = w.conflict_abort("/any", GitWriteApproval::granted());
     assert!(matches!(abort, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let skip = w.conflict_skip("/any", GitWriteApproval::granted());
+    assert!(matches!(skip, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
 #[test]
