@@ -565,27 +565,43 @@ mod tests {
         }
     }
 
+    fn helper_program() -> PathBuf {
+        static HELPER: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+        HELPER
+            .get_or_init(|| {
+                let dir = std::env::temp_dir()
+                    .join(format!("elu-mcp-stdio-helper-{}", std::process::id()));
+                fs::create_dir_all(&dir).expect("create shared fixture helper directory");
+                let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/fixtures/mcp_stdio_helper.rs");
+                let program = dir.join(if cfg!(windows) {
+                    "mcp_stdio_helper.exe"
+                } else {
+                    "mcp_stdio_helper"
+                });
+                let rustc = std::env::var_os("RUSTC")
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| PathBuf::from("rustc"));
+                let output = Command::new(rustc)
+                    .arg("--edition=2021")
+                    .arg(&source)
+                    .arg("-o")
+                    .arg(&program)
+                    .output()
+                    .expect("compile test-owned stdio helper");
+                assert!(
+                    output.status.success(),
+                    "rustc helper failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                program
+            })
+            .clone()
+    }
+
     fn fixture(mode: &str) -> (TestTemp, StdioTarget) {
         let temp = TestTemp::new();
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let source = root.join("tests/fixtures/mcp_stdio_helper.rs");
-        let program = temp.path().join(if cfg!(windows) {
-            "mcp_stdio_helper.exe"
-        } else {
-            "mcp_stdio_helper"
-        });
-        let output = Command::new("rustc")
-            .arg("--edition=2021")
-            .arg(&source)
-            .arg("-o")
-            .arg(&program)
-            .output()
-            .expect("compile test-owned stdio helper");
-        assert!(
-            output.status.success(),
-            "rustc helper failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let program = helper_program();
         let target = StdioTarget {
             program,
             argv: vec![mode.to_owned()],

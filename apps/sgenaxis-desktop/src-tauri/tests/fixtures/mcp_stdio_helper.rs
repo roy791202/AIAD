@@ -39,8 +39,7 @@ fn main() {
         }
         if line.contains("\"method\":\"initialize\"") {
             if mode == "hang_init" {
-                thread::sleep(Duration::from_secs(10));
-                return;
+                continue; // no response; exit on client stdin close
             }
             let id = if mode == "wrong_id" { 99 } else { 1 };
             let version = if mode == "wrong_version" {
