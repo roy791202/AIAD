@@ -704,4 +704,79 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn remote_tag_list(bare: &Path) -> String {
+        let out = Command::new("git")
+            .args(["-C", bare.to_str().unwrap(), "tag", "-l"])
+            .output()
+            .expect("git tag -l remote");
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    #[test]
+    fn std_write_delete_tag_local_only_when_approved() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["tag", "v1.0.0"]);
+        git(&work, &["tag", "-a", "-m", "keep", "v1.1.0"]);
+        git(&work, &["push", "origin", "v1.0.0"]);
+        assert!(tag_list(repo).contains("v1.0.0"));
+        assert!(remote_tag_list(&bare).contains("v1.0.0"));
+
+        let w = StdGitWrite::new();
+        w.delete_tag(repo, "v1.0.0", GitWriteApproval::denied())
+            .expect_err("denied delete must not mutate");
+        assert!(tag_list(repo).contains("v1.0.0"));
+        assert!(remote_tag_list(&bare).contains("v1.0.0"));
+
+        w.delete_tag(repo, "  ", GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.delete_tag(repo, "-f", GitWriteApproval::granted())
+            .expect_err("force flag name is out of scope");
+        w.delete_tag(repo, "--delete", GitWriteApproval::granted())
+            .expect_err("delete flag as name is out of scope");
+        assert!(tag_list(repo).contains("v1.0.0"));
+
+        w.delete_tag(repo, "v1.0.0", GitWriteApproval::granted())
+            .expect("approved local delete");
+        let list = tag_list(repo);
+        assert!(
+            !list.contains("v1.0.0"),
+            "local tag must be gone: {list}"
+        );
+        assert!(list.contains("v1.1.0"), "other local tags must remain: {list}");
+        assert!(
+            remote_tag_list(&bare).contains("v1.0.0"),
+            "local delete must never push --delete: {}",
+            remote_tag_list(&bare)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn std_write_delete_tag_missing_fails_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["tag", "v1.0.0"]);
+        assert!(tag_list(repo).contains("v1.0.0"));
+
+        let w = StdGitWrite::new();
+        let err = w
+            .delete_tag(repo, "v9.9.9", GitWriteApproval::granted())
+            .expect_err("missing tag must fail");
+        assert!(matches!(err, PortError::Git(_)));
+        let msg = err.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("v9.9.9") || msg.contains("not found") || msg.contains("not exist"),
+            "missing delete must fail honestly: {err}"
+        );
+        assert!(
+            tag_list(repo).contains("v1.0.0"),
+            "failed delete must leave existing tags: {}",
+            tag_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

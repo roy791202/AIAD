@@ -490,7 +490,9 @@ struct FakeGitWriteState {
     stash_fail: HashMap<String, String>,
     /// repo → last approved tag create `(name, message)`. Empty message = lightweight.
     tag_create: HashMap<String, (String, String)>,
-    /// repo → created tag names (duplicate create fails honestly).
+    /// repo → last approved local tag delete name.
+    tag_delete: HashMap<String, String>,
+    /// repo → created tag names (duplicate create fails honestly; delete removes).
     tags: HashMap<String, Vec<String>>,
     next_hash: u64,
 }
@@ -584,10 +586,16 @@ impl FakeGitWrite {
         st.tag_create.get(&Self::key(repo)).cloned()
     }
 
-    /// Tag names recorded for `repo` (creation order).
+    /// Tag names recorded for `repo` (creation order; deletes remove entries).
     pub fn created_tags(&self, repo: &str) -> Vec<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.tags.get(&Self::key(repo)).cloned().unwrap_or_default()
+    }
+
+    /// Last approved local tag delete name for `repo`, if any.
+    pub fn last_tag_delete(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.tag_delete.get(&Self::key(repo)).cloned()
     }
 
     /// Inject a one-shot stash apply/pop/drop/push failure; do not record success.
@@ -799,6 +807,33 @@ impl GitWritePort for FakeGitWrite {
         existing.push(tag.to_string());
         st.tag_create
             .insert(key, (tag.to_string(), message.to_string()));
+        Ok(())
+    }
+
+    fn delete_tag(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let tag = name.trim();
+        if tag.is_empty() {
+            return Err(PortError::Other("empty tag name".into()));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.tags.entry(key.clone()).or_default();
+        if !existing.iter().any(|t| t == tag) {
+            // Missing: do not record delete; fail honestly (no `-f`, no push).
+            return Err(PortError::Git(format!("tag '{tag}' not found")));
+        }
+        existing.retain(|t| t != tag);
+        st.tag_delete.insert(key, tag.to_string());
         Ok(())
     }
 }

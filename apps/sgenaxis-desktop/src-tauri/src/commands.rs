@@ -54,7 +54,7 @@ use crate::dto::{
     GitTagDto, GitWorkbenchDto,
     GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
     GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteTagArgs,
+    GitWriteTagArgs, GitWriteTagDeleteArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -331,6 +331,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_stash_drop",
         "git_write_stash_push",
         "git_write_tag",
+        "git_write_tag_delete",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -2390,6 +2391,66 @@ pub fn git_write_tag(
     )
 }
 
+/// Soft-gated local tag delete: empty / unapproved never mutates; approved via port.
+fn perform_git_write_tag_delete(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_tag_scope(name)?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-delete".into(),
+            message: "empty tag name".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-delete".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.delete_tag(repo, name.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "tag-delete".into(),
+            message: "tag-delete ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-delete".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git tag -d -- name`. Never `-f` / push / remote delete.
+#[tauri::command]
+pub fn git_write_tag_delete(
+    state: State<'_, HostState>,
+    args: GitWriteTagDeleteArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_tag_delete").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-delete".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_tag_delete(root.git_write(), &repo, &args.name, args.approved)
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -3621,6 +3682,50 @@ mod git_ui_tests {
             w.created_tags("/r"),
             vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
         );
+    }
+
+    #[test]
+    fn git_write_tag_delete_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_tag_delete"));
+        assert!(!is_allowed("git_tag_delete"));
+        assert!(!is_allowed("git_tag_push"));
+
+        let w = FakeGitWrite::new();
+        w.create_tag("/r", "v1.0.0", "", GitWriteApproval::granted())
+            .expect("seed");
+        w.create_tag("/r", "v1.1.0", "keep", GitWriteApproval::granted())
+            .expect("seed keep");
+
+        let denied = perform_git_write_tag_delete(&w, "/r", "v1.0.0", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_tag_delete("/r").is_none());
+        assert_eq!(
+            w.created_tags("/r"),
+            vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+        );
+
+        let empty = perform_git_write_tag_delete(&w, "/r", "  ", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_tag_delete("/r").is_none());
+
+        let force = perform_git_write_tag_delete(&w, "/r", "-f", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        assert!(w.last_tag_delete("/r").is_none());
+
+        let ok = perform_git_write_tag_delete(&w, "/r", "v1.0.0", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "tag-delete");
+        assert_eq!(w.last_tag_delete("/r").as_deref(), Some("v1.0.0"));
+        assert_eq!(w.created_tags("/r"), vec!["v1.1.0".to_string()]);
+
+        let missing = perform_git_write_tag_delete(&w, "/r", "v9.9.9", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing.local_preserved);
+        assert!(missing.message.to_ascii_lowercase().contains("not found"));
+        assert_eq!(w.last_tag_delete("/r").as_deref(), Some("v1.0.0"));
+        assert_eq!(w.created_tags("/r"), vec!["v1.1.0".to_string()]);
     }
 
     #[test]

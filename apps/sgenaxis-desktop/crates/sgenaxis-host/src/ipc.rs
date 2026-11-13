@@ -64,6 +64,8 @@ pub enum AllowedIpcCommand {
     GitWriteStashPush,
     /// Approval-gated local `git tag -- name` / `git tag -a -m` via GitWritePort (never -f/--delete/push).
     GitWriteTag,
+    /// Approval-gated local `git tag -d -- name` via GitWritePort (never -f/push/--delete on remotes).
+    GitWriteTagDelete,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -141,6 +143,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashDrop => "git_write_stash_drop",
             AllowedIpcCommand::GitWriteStashPush => "git_write_stash_push",
             AllowedIpcCommand::GitWriteTag => "git_write_tag",
+            AllowedIpcCommand::GitWriteTagDelete => "git_write_tag_delete",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -196,6 +199,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashDrop,
             AllowedIpcCommand::GitWriteStashPush,
             AllowedIpcCommand::GitWriteTag,
+            AllowedIpcCommand::GitWriteTagDelete,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -312,6 +316,7 @@ mod tests {
         assert!(is_allowed("git_write_stash_drop"));
         assert!(is_allowed("git_write_stash_push"));
         assert!(is_allowed("git_write_tag"));
+        assert!(is_allowed("git_write_tag_delete"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -422,6 +427,10 @@ mod tests {
         assert_eq!(
             authorize("git_write_tag").unwrap(),
             AllowedIpcCommand::GitWriteTag
+        );
+        assert_eq!(
+            authorize("git_write_tag_delete").unwrap(),
+            AllowedIpcCommand::GitWriteTagDelete
         );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());

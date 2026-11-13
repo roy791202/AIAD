@@ -522,6 +522,41 @@ fn fake_git_write_tag_records_when_approved() {
 }
 
 #[test]
+fn fake_git_write_tag_delete_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.create_tag("/r", "v1.0.0", "", GitWriteApproval::granted())
+        .expect("seed");
+    w.create_tag("/r", "v1.1.0", "release", GitWriteApproval::granted())
+        .expect("seed annotated");
+    assert_eq!(
+        w.created_tags("/r"),
+        vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+    );
+
+    let denied = w.delete_tag("/r", "v1.0.0", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_tag_delete("/r").is_none());
+    assert_eq!(
+        w.created_tags("/r"),
+        vec!["v1.0.0".to_string(), "v1.1.0".to_string()]
+    );
+
+    w.delete_tag("/r", "v1.0.0", GitWriteApproval::granted())
+        .expect("delete");
+    assert_eq!(w.last_tag_delete("/r").as_deref(), Some("v1.0.0"));
+    assert_eq!(w.created_tags("/r"), vec!["v1.1.0".to_string()]);
+    assert_eq!(
+        w.last_tag_create("/r"),
+        Some(("v1.1.0".into(), "release".into()))
+    );
+
+    let missing = w.delete_tag("/r", "v9.9.9", GitWriteApproval::granted());
+    assert!(matches!(missing, Err(PortError::Git(ref m)) if m.contains("not found")));
+    assert_eq!(w.last_tag_delete("/r").as_deref(), Some("v1.0.0"));
+    assert_eq!(w.created_tags("/r"), vec!["v1.1.0".to_string()]);
+}
+
+#[test]
 fn gated_git_write_blocks_commit_and_push() {
     let w = GatedGitWrite::new();
     let c = w.commit("/any", "msg", GitWriteApproval::denied());
@@ -562,6 +597,8 @@ fn gated_git_write_blocks_tag_even_when_approved() {
     let w = GatedGitWrite::new();
     let tag = w.create_tag("/any", "v1.0.0", "msg", GitWriteApproval::granted());
     assert!(matches!(tag, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let del = w.delete_tag("/any", "v1.0.0", GitWriteApproval::granted());
+    assert!(matches!(del, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
 #[test]

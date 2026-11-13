@@ -585,6 +585,16 @@ pub struct GitWriteTagArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local tag delete (`git tag -d -- name`). Never push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteTagDeleteArgs {
+    pub repo: Option<String>,
+    /// Tag name. Never flags (`-f`, `--delete`) and never a remote refspec.
+    pub name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

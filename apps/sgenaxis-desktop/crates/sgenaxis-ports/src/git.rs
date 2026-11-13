@@ -222,6 +222,9 @@ pub trait GitPort: Send + Sync {
 ///   `git tag -- <name>`. Annotated: `git tag -a -m <msg> -- <name>`.
 ///   Never `-f` / `--force`. Never `--delete`. Never push. Duplicate names
 ///   must fail honestly.
+/// - Tag delete requires approval (no skip default). Local only:
+///   `git tag -d -- <name>` (or `git tag --delete -- <name>`). Never `-f`.
+///   Never push. Never `git push --delete`. Missing tag must fail honestly.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -312,6 +315,17 @@ pub trait GitWritePort: Send + Sync {
         repo: &str,
         name: &str,
         message: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Delete a local tag. Requires approval.
+    /// `git tag -d -- <name>` (or `git tag --delete -- <name>`).
+    /// Never `-f` / `--force`. Never push. Never remote `-d`.
+    /// Missing tag must fail honestly.
+    fn delete_tag(
+        &self,
+        repo: &str,
+        name: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

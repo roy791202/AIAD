@@ -2525,6 +2525,8 @@
           ? "審核 Stash Create"
           : op === "tag-create"
           ? "審核 Tag Create"
+          : op === "tag-delete"
+          ? "審核 Tag Delete"
           : "審核 Commit";
     }
     if (lede) {
@@ -2555,6 +2557,10 @@
           ? "核准後經 git_write_stash_push → GitWritePort；只保存已追蹤變更（不加 -u／--all）。拒絕則無突變。"
           : op === "tag-create"
           ? "核准後經 git_write_tag → GitWritePort；本機建立標籤。空白訊息＝lightweight；有訊息＝annotated。重名誠實失敗。不刪除、不推送、不加 -f。拒絕則無突變。"
+          : op === "tag-delete"
+          ? "核准後經 git_write_tag_delete → GitWritePort；只刪本機標籤 " +
+            (payload.name || "") +
+            "。缺漏的標籤會誠實失敗。不推送、不加 -f、不刪遠端。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -2845,6 +2851,31 @@
             true
           );
           toast("Tag create 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "tag-delete") {
+        const name = pendingGitWrite.name;
+        if (!name) {
+          hideGitApprove();
+          setGitStatusLine("未指定標籤，未刪除", true);
+          return;
+        }
+        const dto = await invoke("git_write_tag_delete", {
+          args: { repo: repo, name: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已刪除本機標籤 " + name + "（經 GitWritePort；未推送）", false);
+          toast("Tag delete 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "tag delete 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機標籤依 Git 真實結果保留）",
+            true
+          );
+          toast("Tag delete 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3369,6 +3400,7 @@
         stashDrop: function (stash) { showGitApprove("stash-drop", { stash: stash }); },
         stashCreate: function () { showGitApprove("stash-create", {}); },
         tagCreate: function () { showGitApprove("tag-create", {}); },
+        tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),

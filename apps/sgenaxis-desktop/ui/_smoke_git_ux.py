@@ -36,6 +36,8 @@ assert "liveHooks.stashPop" in js
 assert "git_write_stash_apply／git_write_stash_pop" in js
 assert "liveHooks.tagCreate" in js
 assert "git_write_tag" in js
+assert "liveHooks.tagDelete" in js
+assert "git_write_tag_delete" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

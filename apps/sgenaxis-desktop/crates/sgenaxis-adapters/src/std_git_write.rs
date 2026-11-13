@@ -10,7 +10,8 @@
 //!   `git stash push -m <message>` (tracked-only). Never `-q` / `--quiet`.
 //!   Never `-u` / `--all`. Never `stash clear`. Never force.
 //! - Tag: `git tag -- <name>` (lightweight) or `git tag -a -m <msg> -- <name>`
-//!   (annotated). Never `-f` / `--force`. Never `--delete`. Never push.
+//!   (annotated). Local delete: `git tag -d -- <name>`. Never `-f` / `--force`.
+//!   Never push. Never `git push --delete`. Missing tag fails honestly.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -368,6 +369,22 @@ impl GitWritePort for StdGitWrite {
         } else {
             self.run(repo, &["tag", "-a", "-m", msg, "--", tag])?;
         }
+        Ok(())
+    }
+
+    fn delete_tag(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let tag = name.trim();
+        Self::require_tag_name(tag)?;
+        // Local only: `git tag -d -- <name>`. Never `-f` / `--force`.
+        // Never `git push` / `git push --delete`. `--` stops option parse
+        // so a name cannot be read as a flag. Missing tags fail honestly.
+        self.run(repo, &["tag", "-d", "--", tag])?;
         Ok(())
     }
 }
