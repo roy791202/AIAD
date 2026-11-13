@@ -2535,6 +2535,8 @@
           ? "審核 Tag Delete"
           : op === "branch-create"
           ? "審核 Branch Create"
+          : op === "branch-delete"
+          ? "審核 Branch Delete"
           : op === "remote-add"
           ? "審核 Remote Add"
           : op === "remote-remove"
@@ -2581,6 +2583,10 @@
             "。缺漏的標籤會誠實失敗。不推送、不加 -f、不刪遠端。拒絕則無突變。"
           : op === "branch-create"
           ? "核准後經 git_write_branch_create → GitWritePort；本機建立分支（git branch -- name），不切換、不設 upstream、不加 -C／-D。重名與無效名稱誠實失敗。拒絕則無突變。"
+          : op === "branch-delete"
+          ? "核准後經 git_write_branch_delete → GitWritePort；只刪本機分支 " +
+            (payload.name || "") +
+            "（git branch -d -- name）。不刪目前 HEAD。未合併會誠實失敗，不加 -D／--force／-r，不刪遠端。拒絕則無突變。"
           : op === "remote-add"
           ? "核准後經 git_write_remote_add → GitWritePort；只新增本機遠端設定（git remote add -- name url），不 fetch、不加 -f、不 set-url、不 push。重名與無效名稱／URL 誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
@@ -2958,6 +2964,34 @@
             true
           );
           toast("Branch create 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "branch-delete") {
+        const name = pendingGitWrite.name;
+        if (!name) {
+          hideGitApprove();
+          setGitStatusLine("未指定分支，未刪除", true);
+          return;
+        }
+        const dto = await invoke("git_write_branch_delete", {
+          args: { repo: repo, name: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已刪除本機分支 " + name + "（經 GitWritePort；git branch -d；未切換）",
+            false
+          );
+          toast("Branch delete 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "branch delete 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（目前 HEAD 與本機分支依 Git 真實結果保留）",
+            true
+          );
+          toast("Branch delete 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-add") {
@@ -3608,6 +3642,7 @@
         tagCreate: function () { showGitApprove("tag-create", {}); },
         tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
         branchCreate: function () { showGitApprove("branch-create", {}); },
+        branchDelete: function (name) { showGitApprove("branch-delete", { name: name }); },
         remoteAdd: function () {
           const urlEl = document.getElementById("git-ux-remote-url");
           showGitApprove("remote-add", {

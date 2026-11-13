@@ -136,6 +136,7 @@ pub fn run() {
             commands::git_write_tag,
             commands::git_write_tag_delete,
             commands::git_write_branch_create,
+            commands::git_write_branch_delete,
             commands::git_write_remote_add,
             commands::git_write_remote_remove,
             commands::git_write_conflict_save,
@@ -200,6 +201,7 @@ mod host_ipc_integration {
             "git_write_tag",
             "git_write_tag_delete",
             "git_write_branch_create",
+            "git_write_branch_delete",
             "git_write_remote_add",
             "git_write_remote_remove",
             "git_write_conflict_save",
@@ -230,6 +232,7 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_force_push"));
         assert!(!is_allowed("git_tag"));
         assert!(!is_allowed("git_tag_delete"));
+        assert!(!is_allowed("git_branch_delete"));
         assert!(!is_allowed("git_remote"));
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));

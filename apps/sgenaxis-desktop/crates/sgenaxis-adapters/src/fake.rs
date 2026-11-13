@@ -571,8 +571,12 @@ struct FakeGitWriteState {
     tags: HashMap<String, Vec<String>>,
     /// repo → last approved local branch create name.
     branch_create: HashMap<String, String>,
+    /// repo → last approved local branch delete name.
+    branch_delete: HashMap<String, String>,
     /// repo → created local branch names (duplicate create fails honestly).
     branches: HashMap<String, Vec<String>>,
+    /// repo → local branches that must fail `-d` as unmerged (no force).
+    unmerged_branches: HashMap<String, Vec<String>>,
     /// repo → last approved remote add `(name, url)`.
     remote_add: HashMap<String, (String, String)>,
     /// repo → last approved remote remove name.
@@ -708,6 +712,21 @@ impl FakeGitWrite {
             .get(&Self::key(repo))
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// Last approved local branch delete name for `repo`, if any.
+    pub fn last_branch_delete(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.branch_delete.get(&Self::key(repo)).cloned()
+    }
+
+    /// Mark `branch` as unmerged for `repo` so safe delete fails honestly.
+    pub fn mark_unmerged(&self, repo: &str, branch: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.unmerged_branches
+            .entry(Self::key(repo))
+            .or_default()
+            .push(branch.into());
     }
 
     /// Last approved remote add for `repo` as `(name, url)`.
@@ -1080,6 +1099,66 @@ impl GitWritePort for FakeGitWrite {
         }
         existing.push(branch.to_string());
         st.branch_create.insert(key, branch.to_string());
+        Ok(())
+    }
+
+    fn delete_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let branch = name.trim();
+        if branch.is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if crate::git_write::branch_name_out_of_scope(branch) {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let current = st
+            .switched
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(|| "main".to_string());
+        if current == branch {
+            return Err(PortError::Other(
+                "cannot delete the current HEAD branch".into(),
+            ));
+        }
+        let exists = st
+            .branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == branch))
+            .unwrap_or(false);
+        if !exists {
+            return Err(PortError::Git(format!("branch '{branch}' not found")));
+        }
+        let is_unmerged = st
+            .unmerged_branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == branch))
+            .unwrap_or(false);
+        if is_unmerged {
+            return Err(PortError::Git(format!(
+                "branch '{branch}' is not fully merged"
+            )));
+        }
+        if let Some(existing) = st.branches.get_mut(&key) {
+            existing.retain(|b| b != branch);
+        }
+        st.branch_delete.insert(key, branch.to_string());
         Ok(())
     }
 

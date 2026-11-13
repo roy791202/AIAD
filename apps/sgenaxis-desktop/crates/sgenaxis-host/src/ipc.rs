@@ -68,6 +68,8 @@ pub enum AllowedIpcCommand {
     GitWriteTagDelete,
     /// Approval-gated local `git branch -- name` via GitWritePort (never -C/-D/--set-upstream/switch).
     GitWriteBranchCreate,
+    /// Approval-gated local `git branch -d -- name` via GitWritePort (never -D/--force/-r/switch).
+    GitWriteBranchDelete,
     /// Approval-gated local `git remote add -- name url` via GitWritePort (never -f/fetch/set-url/push).
     GitWriteRemoteAdd,
     /// Approval-gated local `git remote remove -- name` via GitWritePort (never prune/fetch).
@@ -157,6 +159,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteTag => "git_write_tag",
             AllowedIpcCommand::GitWriteTagDelete => "git_write_tag_delete",
             AllowedIpcCommand::GitWriteBranchCreate => "git_write_branch_create",
+            AllowedIpcCommand::GitWriteBranchDelete => "git_write_branch_delete",
             AllowedIpcCommand::GitWriteRemoteAdd => "git_write_remote_add",
             AllowedIpcCommand::GitWriteRemoteRemove => "git_write_remote_remove",
             AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
@@ -219,6 +222,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteTag,
             AllowedIpcCommand::GitWriteTagDelete,
             AllowedIpcCommand::GitWriteBranchCreate,
+            AllowedIpcCommand::GitWriteBranchDelete,
             AllowedIpcCommand::GitWriteRemoteAdd,
             AllowedIpcCommand::GitWriteRemoteRemove,
             AllowedIpcCommand::GitWriteConflictSave,
@@ -342,6 +346,7 @@ mod tests {
         assert!(is_allowed("git_write_tag"));
         assert!(is_allowed("git_write_tag_delete"));
         assert!(is_allowed("git_write_branch_create"));
+        assert!(is_allowed("git_write_branch_delete"));
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
         assert!(is_allowed("git_write_conflict_save"));
@@ -356,6 +361,8 @@ mod tests {
         assert!(!is_allowed("git_tag_push"));
         assert!(!is_allowed("git_branch"));
         assert!(!is_allowed("git_branch_create"));
+        assert!(!is_allowed("git_branch_delete"));
+        assert!(!is_allowed("git_branch_force_delete"));
         assert!(!is_allowed("git_checkout"));
         assert!(!is_allowed("git_remote"));
         assert!(!is_allowed("git_remote_add"));
@@ -478,6 +485,10 @@ mod tests {
             AllowedIpcCommand::GitWriteBranchCreate
         );
         assert_eq!(
+            authorize("git_write_branch_delete").unwrap(),
+            AllowedIpcCommand::GitWriteBranchDelete
+        );
+        assert_eq!(
             authorize("git_write_remote_add").unwrap(),
             AllowedIpcCommand::GitWriteRemoteAdd
         );
@@ -505,6 +516,7 @@ mod tests {
         assert!(authorize("git_tag_push").is_err());
         assert!(authorize("git_branch").is_err());
         assert!(authorize("git_branch_create").is_err());
+        assert!(authorize("git_branch_delete").is_err());
         assert!(authorize("git_checkout").is_err());
         assert!(authorize("git_remote").is_err());
         assert!(authorize("git_remote_add").is_err());

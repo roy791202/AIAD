@@ -15,6 +15,9 @@
 //! - Branch create: `git branch -- <name>` from current HEAD. Never `-C` /
 //!   `--force` / `-D` / `-d`. Never remote create. Never `--set-upstream`.
 //!   Never checkout/switch. Duplicate / invalid names fail honestly.
+//! - Branch delete: `git branch -d -- <name>` (safe). Never `-D` / `--force` /
+//!   `-f`. Never `-r`. Never remote delete. Never checkout/switch.
+//!   Current HEAD / missing / unmerged names fail honestly.
 //! - Remote add: `git remote add -- <name> <url>`. Never `-f`. Never fetch.
 //!   Never `set-url`. Never `git push`. Duplicate names fail honestly.
 //! - Remote remove: `git remote remove -- <name>`. Never prune/fetch.
@@ -576,6 +579,28 @@ impl GitWritePort for StdGitWrite {
         // Never `--force`. Never `--set-upstream`. Never checkout/switch.
         // `--` stops option parse so a name cannot be read as a flag.
         self.run(repo, &["branch", "--", branch])?;
+        Ok(())
+    }
+
+    fn delete_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let branch = name.trim();
+        Self::require_branch_name(branch)?;
+        let head = self.run(repo, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        if head.trim() == branch {
+            return Err(PortError::Other(
+                "cannot delete the current HEAD branch".into(),
+            ));
+        }
+        // Safe delete only: `git branch -d -- <name>`. Never `-D` / `--force` /
+        // `-f`. Never `-r` (remote-tracking). Never checkout/switch.
+        // Unmerged branches fail honestly (git `-d`); no force fallback.
+        self.run(repo, &["branch", "-d", "--", branch])?;
         Ok(())
     }
 

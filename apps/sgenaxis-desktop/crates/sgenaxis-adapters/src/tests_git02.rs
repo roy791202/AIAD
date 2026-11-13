@@ -849,6 +849,75 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
 
+    #[test]
+    fn std_write_delete_branch_safe_only_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["branch", "--", "feature/slot"]);
+        git(&work, &["checkout", "-b", "unmerged"]);
+        fs::write(work.join("a.txt"), "v2-unmerged\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "unmerged"]);
+        git(&work, &["checkout", "main"]);
+        assert_eq!(head_ref(repo), "main");
+        let w = StdGitWrite::new();
+
+        w.delete_branch(repo, "feature/slot", GitWriteApproval::denied())
+            .expect_err("denied delete must not mutate");
+        assert!(local_branch_list(repo).contains("feature/slot"));
+        assert_eq!(head_ref(repo), "main");
+
+        w.delete_branch(repo, "  ", GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.delete_branch(repo, "-D", GitWriteApproval::granted())
+            .expect_err("force-delete flag name is out of scope");
+        w.delete_branch(repo, "-r", GitWriteApproval::granted())
+            .expect_err("remote-tracking flag name is out of scope");
+        w.delete_branch(repo, "../evil", GitWriteApproval::granted())
+            .expect_err("path traversal name is out of scope");
+        w.delete_branch(repo, "main", GitWriteApproval::granted())
+            .expect_err("current HEAD must not be deleted");
+        assert_eq!(head_ref(repo), "main");
+        assert!(local_branch_list(repo).contains("feature/slot"));
+        assert!(local_branch_list(repo).contains("unmerged"));
+
+        let unmerged = w
+            .delete_branch(repo, "unmerged", GitWriteApproval::granted())
+            .expect_err("unmerged must fail without -D");
+        assert!(matches!(unmerged, PortError::Git(_)));
+        let umsg = unmerged.to_string().to_ascii_lowercase();
+        assert!(
+            umsg.contains("not fully merged") || umsg.contains("unmerged"),
+            "unmerged must fail honestly: {unmerged}"
+        );
+        assert!(
+            local_branch_list(repo).contains("unmerged"),
+            "failed -d must leave the unmerged branch"
+        );
+        assert_eq!(head_ref(repo), "main");
+
+        let missing = w
+            .delete_branch(repo, "ghost", GitWriteApproval::granted())
+            .expect_err("missing branch must fail");
+        assert!(matches!(missing, PortError::Git(_)));
+
+        w.delete_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect("approved safe delete");
+        let list = local_branch_list(repo);
+        assert!(
+            !list.contains("feature/slot"),
+            "merged local branch should be gone: {list}"
+        );
+        assert!(list.contains("unmerged"), "unmerged branch must remain");
+        assert_eq!(
+            head_ref(repo),
+            "main",
+            "delete must not switch HEAD as a side effect"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     fn remote_list(repo: &str) -> String {
         let out = Command::new("git")
             .args(["-C", repo, "remote", "-v"])

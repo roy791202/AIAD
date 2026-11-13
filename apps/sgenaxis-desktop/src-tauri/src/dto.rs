@@ -605,6 +605,16 @@ pub struct GitWriteBranchCreateArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local branch delete (`git branch -d -- name`). Never `-D`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteBranchDeleteArgs {
+    pub repo: Option<String>,
+    /// Local branch name. Never flags (`-D`, `--force`, `-r`) and never current HEAD.
+    pub name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote add -- name url`. Never fetch/`-f`/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteAddArgs {

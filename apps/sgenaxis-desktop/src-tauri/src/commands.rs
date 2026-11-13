@@ -48,7 +48,8 @@ use crate::dto::{
     ArchProjectionDto, BatchWorkTagsArgs, BoardView, CommandDescriptor, EditProjectionDto,
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
-    GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteCommitArgs,
+    GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
+    GitWriteCommitArgs,
     GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
     GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteResultDto,
     GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
@@ -425,6 +426,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_tag",
         "git_write_tag_delete",
         "git_write_branch_create",
+        "git_write_branch_delete",
         "git_write_remote_add",
         "git_write_remote_remove",
         "git_write_conflict_save",
@@ -2713,6 +2715,66 @@ pub fn git_write_branch_create(
     perform_git_write_branch_create(root.git_write(), &repo, &args.name, args.approved)
 }
 
+/// Soft-gated local branch delete: empty / unapproved never mutates; approved via port.
+fn perform_git_write_branch_delete(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_branch_scope(name)?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-delete".into(),
+            message: "empty branch name".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-delete".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.delete_branch(repo, name.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "branch-delete".into(),
+            message: "branch-delete ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-delete".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git branch -d -- name`. Never `-D` / `--force` / `-r` / switch.
+#[tauri::command]
+pub fn git_write_branch_delete(
+    state: State<'_, HostState>,
+    args: GitWriteBranchDeleteArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_branch_delete").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-delete".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_branch_delete(root.git_write(), &repo, &args.name, args.approved)
+}
+
 /// Names / URLs that would become flags or widen remote mutations.
 fn remote_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -4401,6 +4463,73 @@ mod git_ui_tests {
         assert!(dup.local_preserved);
         assert!(dup.message.to_ascii_lowercase().contains("already exists"));
         assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+        assert!(w.switched_branch("/r").is_none());
+    }
+
+    #[test]
+    fn git_write_branch_delete_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_branch_delete"));
+        assert!(!is_allowed("git_branch_delete"));
+        assert!(!is_allowed("git_branch_force_delete"));
+        assert!(!is_allowed("git_checkout"));
+
+        let w = FakeGitWrite::new();
+        w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+            .expect("seed");
+        w.create_branch("/r", "unmerged", GitWriteApproval::granted())
+            .expect("seed unmerged");
+        w.mark_unmerged("/r", "unmerged");
+
+        let denied = perform_git_write_branch_delete(&w, "/r", "feature/slot", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_branch_delete("/r").is_none());
+        assert_eq!(
+            w.created_branches("/r"),
+            vec!["feature/slot".to_string(), "unmerged".to_string()]
+        );
+        assert!(w.switched_branch("/r").is_none());
+
+        let empty = perform_git_write_branch_delete(&w, "/r", "  ", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_branch_delete("/r").is_none());
+
+        let force = perform_git_write_branch_delete(&w, "/r", "-D", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        let remote_flag = perform_git_write_branch_delete(&w, "/r", "-r", true).unwrap_err();
+        assert!(remote_flag.contains("out of scope"));
+        let traversal = perform_git_write_branch_delete(&w, "/r", "../evil", true).unwrap_err();
+        assert!(traversal.contains("out of scope"));
+        assert!(w.last_branch_delete("/r").is_none());
+
+        let head = perform_git_write_branch_delete(&w, "/r", "main", true).unwrap();
+        assert!(!head.ok);
+        assert!(head.local_preserved);
+        assert!(head.message.to_ascii_lowercase().contains("head"));
+        assert!(w.last_branch_delete("/r").is_none());
+
+        let missing = perform_git_write_branch_delete(&w, "/r", "ghost", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing.message.to_ascii_lowercase().contains("not found"));
+
+        let unmerged = perform_git_write_branch_delete(&w, "/r", "unmerged", true).unwrap();
+        assert!(!unmerged.ok);
+        assert!(unmerged.local_preserved);
+        assert!(unmerged
+            .message
+            .to_ascii_lowercase()
+            .contains("not fully merged"));
+        assert_eq!(
+            w.created_branches("/r"),
+            vec!["feature/slot".to_string(), "unmerged".to_string()]
+        );
+
+        let ok = perform_git_write_branch_delete(&w, "/r", "feature/slot", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "branch-delete");
+        assert_eq!(w.last_branch_delete("/r").as_deref(), Some("feature/slot"));
+        assert_eq!(w.created_branches("/r"), vec!["unmerged".to_string()]);
         assert!(w.switched_branch("/r").is_none());
     }
 

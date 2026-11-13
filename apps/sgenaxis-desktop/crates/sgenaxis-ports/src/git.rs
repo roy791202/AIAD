@@ -229,6 +229,11 @@ pub trait GitPort: Send + Sync {
 ///   `git branch -- <name>` from current HEAD. Never `-C` / `--force` / `-D` /
 ///   `-d`. Never remote create, never `--set-upstream`. Never checkout/switch
 ///   as a hidden side effect. Duplicate and invalid names fail honestly.
+/// - Branch delete requires approval (no skip default). Local only:
+///   `git branch -d -- <name>` (safe delete). Never `-D` / `--force` / `-f`.
+///   Never `-r` / remote tracking delete / `push :branch`. Never checkout/switch.
+///   Current HEAD, missing names, empty names, and option-like names fail
+///   honestly. Unmerged branches fail as git `-d` (no force fallback).
 /// - Remote add requires approval (no skip default). Local config only:
 ///   `git remote add -- <name> <url>`. Never `-f`. Never fetch as a hidden
 ///   side effect. Never `remote set-url`. Never `git push`. Duplicate names
@@ -354,6 +359,17 @@ pub trait GitWritePort: Send + Sync {
     /// Never remote create. Never `--set-upstream`. Never switch/checkout.
     /// Duplicate and invalid names fail honestly.
     fn create_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Delete a local branch. Requires approval.
+    /// `git branch -d -- <name>`. Never `-D` / `--force` / `-f`.
+    /// Never `-r`. Never remote delete. Never switch/checkout.
+    /// Current HEAD, missing names, and unmerged branches fail honestly.
+    fn delete_branch(
         &self,
         repo: &str,
         name: &str,

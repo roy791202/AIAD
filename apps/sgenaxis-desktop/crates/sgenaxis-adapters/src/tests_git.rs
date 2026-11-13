@@ -638,6 +638,64 @@ fn gated_git_write_blocks_branch_create_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_delete_branch_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("seed");
+    w.create_branch("/r", "unmerged", GitWriteApproval::granted())
+        .expect("seed unmerged");
+    w.mark_unmerged("/r", "unmerged");
+
+    let denied = w.delete_branch("/r", "feature/slot", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_branch_delete("/r").is_none());
+    assert_eq!(
+        w.created_branches("/r"),
+        vec!["feature/slot".to_string(), "unmerged".to_string()]
+    );
+    assert!(w.switched_branch("/r").is_none());
+
+    let head = w.delete_branch("/r", "main", GitWriteApproval::granted());
+    assert!(matches!(head, Err(PortError::Other(ref m)) if m.contains("HEAD")));
+    let empty = w.delete_branch("/r", "  ", GitWriteApproval::granted());
+    assert!(matches!(empty, Err(PortError::Other(_))));
+    let force = w.delete_branch("/r", "-D", GitWriteApproval::granted());
+    assert!(matches!(force, Err(PortError::Other(_))));
+    let traversal = w.delete_branch("/r", "../evil", GitWriteApproval::granted());
+    assert!(matches!(traversal, Err(PortError::Other(_))));
+    let missing = w.delete_branch("/r", "ghost", GitWriteApproval::granted());
+    assert!(matches!(missing, Err(PortError::Git(ref m)) if m.contains("not found")));
+    let unmerged = w.delete_branch("/r", "unmerged", GitWriteApproval::granted());
+    assert!(matches!(unmerged, Err(PortError::Git(ref m)) if m.contains("not fully merged")));
+    assert_eq!(
+        w.created_branches("/r"),
+        vec!["feature/slot".to_string(), "unmerged".to_string()]
+    );
+
+    w.delete_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("delete");
+    assert_eq!(w.last_branch_delete("/r").as_deref(), Some("feature/slot"));
+    assert_eq!(w.created_branches("/r"), vec!["unmerged".to_string()]);
+    assert!(
+        w.switched_branch("/r").is_none(),
+        "delete must not switch HEAD"
+    );
+
+    w.switch_branch("/r", "unmerged", GitWriteApproval::granted())
+        .expect("switch");
+    let current = w.delete_branch("/r", "unmerged", GitWriteApproval::granted());
+    assert!(matches!(current, Err(PortError::Other(ref m)) if m.contains("HEAD")));
+    assert_eq!(w.created_branches("/r"), vec!["unmerged".to_string()]);
+}
+
+#[test]
+fn gated_git_write_blocks_branch_delete_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.delete_branch("/any", "feature/slot", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_add_and_remove_remote_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.add_remote(

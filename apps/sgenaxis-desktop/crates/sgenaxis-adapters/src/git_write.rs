@@ -227,6 +227,15 @@ impl GitWritePort for GatedGitWrite {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
+    fn delete_branch(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
     fn add_remote(
         &self,
         _repo: &str,
