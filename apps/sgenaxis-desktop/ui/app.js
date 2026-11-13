@@ -2543,6 +2543,8 @@
           ? "審核 Remote Set URL"
           : op === "remote-remove"
           ? "審核 Remote Remove"
+          : op === "fetch"
+          ? "審核 Fetch"
           : op === "conflict-save"
           ? "審核 Conflict Save"
           : op === "conflict-continue"
@@ -2599,6 +2601,8 @@
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
             "（git remote remove -- name）。缺漏的遠端會誠實失敗。不 prune、不 fetch。拒絕則無突變。"
+          : op === "fetch"
+          ? "核准後經 git_write_fetch → GitWritePort；只更新遠端追蹤 refs（git fetch -- remote），不 merge／pull／rebase／checkout、不加 --force／+refspec／--prune。未知遠端誠實失敗且不建立遠端。拒絕則無突變。"
           : op === "conflict-save"
           ? "核准後經 git_write_conflict_save → GitWritePort；寫入 " +
             (payload.path || "") +
@@ -2634,8 +2638,8 @@
         );
       }
     }
-    if (remoteWrap) remoteWrap.hidden = op !== "push";
-    if (refWrap) refWrap.hidden = op !== "push";
+    if (remoteWrap) remoteWrap.hidden = op !== "push" && op !== "fetch";
+    if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
@@ -2681,10 +2685,20 @@
         urlEl.value = payload.url != null ? String(payload.url) : "";
         if (op === "remote-set-url") urlEl.focus();
       }
-    } else if (op === "push") {
+    } else if (op === "push" || op === "fetch") {
       const remote = document.getElementById("git-approve-remote");
-      if (remote && !remote.value.trim()) remote.value = "origin";
-      if (remote) remote.focus();
+      if (remote) {
+        if (payload.remote != null && String(payload.remote).trim()) {
+          remote.value = String(payload.remote);
+        } else if (!remote.value.trim()) {
+          remote.value = "origin";
+        }
+        remote.focus();
+      }
+      const refEl = document.getElementById("git-approve-refspec");
+      if (refEl && op === "fetch") {
+        refEl.value = payload.refspec != null ? String(payload.refspec) : "";
+      }
     } else if (op === "identity") {
       const author = document.getElementById("git-approve-author");
       const email = document.getElementById("git-approve-email");
@@ -3088,6 +3102,46 @@
             true
           );
           toast("Remote remove 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "fetch") {
+        const remoteEl = document.getElementById("git-approve-remote");
+        const refEl = document.getElementById("git-approve-refspec");
+        const remote =
+          remoteEl && remoteEl.value && remoteEl.value.trim()
+            ? remoteEl.value.trim()
+            : "origin";
+        const refspec =
+          refEl && refEl.value && refEl.value.trim() ? refEl.value.trim() : null;
+        if (refspec && (refspec.charAt(0) === "+" || refspec.indexOf("--force") === 0)) {
+          setGitStatusLine("force fetch 不在範圍內", true);
+          toast("禁止 force fetch");
+          return;
+        }
+        const dto = await invoke("git_write_fetch", {
+          args: {
+            repo: repo,
+            remote: remote,
+            refspec: refspec,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已 fetch " + remote + "（經 GitWritePort；僅更新 refs/remotes；未 merge／未 pull）",
+            false
+          );
+          toast("Fetch 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "fetch 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（HEAD 與工作區依 Git 真實結果保留）",
+            true
+          );
+          toast("Fetch 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "conflict-save") {
@@ -3721,6 +3775,12 @@
           const picker = document.getElementById("git-ux-remote-picker");
           showGitApprove("remote-remove", {
             name: name || (picker && picker.value) || "",
+          });
+        },
+        remoteFetch: function (remote) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          showGitApprove("fetch", {
+            remote: remote || (picker && picker.value) || "origin",
           });
         },
         conflictSave: function (path, contents) {

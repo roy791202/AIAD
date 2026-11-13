@@ -246,6 +246,11 @@ pub trait GitPort: Send + Sync {
 ///   `--push` / `--mirror`. Never fetch. Never `git push`. Unknown names
 ///   and invalid name/url (including leading `-` and shell metacharacters)
 ///   fail honestly.
+/// - Fetch requires approval (no skip default). Updates remote-tracking
+///   refs only: `git fetch -- <remote>` with an optional non-force refspec.
+///   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
+///   `--update-head-ok`. Never prune in this slice. Unknown remotes fail
+///   honestly and must not be created. HEAD and the worktree stay unchanged.
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -440,4 +445,16 @@ pub trait GitWritePort: Send + Sync {
     /// Requires approval. Never `--continue` / `--abort` as a fallback.
     /// Merge (and other operations Git cannot `--skip`) fail honestly.
     fn conflict_skip(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Update remote-tracking refs only. Requires approval.
+    /// `git fetch -- <remote>` with an optional non-force refspec.
+    /// Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
+    /// `--update-head-ok`. Never prune. Unknown remotes fail honestly.
+    fn fetch(
+        &self,
+        repo: &str,
+        remote: &str,
+        refspec: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 }

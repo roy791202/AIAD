@@ -1061,6 +1061,87 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(&next);
     }
 
+    fn rev_parse(repo: &str, rev: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "rev-parse", rev])
+            .output()
+            .expect("git rev-parse");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_fetch_updates_remote_tracking_without_moving_head() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let root = work.parent().unwrap();
+        let other = root.join("other");
+        git(
+            root,
+            &["clone", bare.to_str().unwrap(), other.to_str().unwrap()],
+        );
+        init_identity(&other);
+        fs::write(other.join("a.txt"), "v2-remote\n").unwrap();
+        git(&other, &["add", "a.txt"]);
+        git(&other, &["commit", "-m", "remote tip"]);
+        git(&other, &["push", "origin", "main"]);
+
+        let head_before = rev_parse(repo, "HEAD");
+        let tracking_before = rev_parse(repo, "refs/remotes/origin/main");
+        let worktree_before = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert_eq!(head_before, tracking_before);
+        assert_eq!(worktree_before, "v1\n");
+
+        let w = StdGitWrite::new();
+        w.fetch(repo, "origin", None, GitWriteApproval::denied())
+            .expect_err("denied fetch must not mutate");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert_eq!(rev_parse(repo, "refs/remotes/origin/main"), tracking_before);
+
+        let missing = w
+            .fetch(repo, "ghost", None, GitWriteApproval::granted())
+            .expect_err("unknown remote must fail honestly");
+        assert!(matches!(missing, PortError::Git(_)));
+        let msg = missing.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("no such remote") || msg.contains("ghost"),
+            "missing remote must fail honestly: {missing}"
+        );
+        assert!(!remote_list(repo).contains("ghost"));
+
+        w.fetch(
+            repo,
+            "origin",
+            Some("+refs/heads/main:refs/remotes/origin/main"),
+            GitWriteApproval::granted(),
+        )
+        .expect_err("force refspec is out of scope");
+        assert_eq!(rev_parse(repo, "refs/remotes/origin/main"), tracking_before);
+
+        w.fetch(repo, "origin", None, GitWriteApproval::granted())
+            .expect("approved fetch");
+        let tracking_after = rev_parse(repo, "refs/remotes/origin/main");
+        assert_ne!(
+            tracking_after, tracking_before,
+            "fetch must update remote-tracking refs"
+        );
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            worktree_before,
+            "fetch must not merge into the worktree"
+        );
+        assert_eq!(
+            Command::new("git")
+                .args(["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap(),
+            "main"
+        );
+
+        let _ = fs::remove_dir_all(root);
+    }
+
     fn make_merge_conflict() -> PathBuf {
         let root = unique_temp("merge-conflict");
         fs::create_dir_all(&root).unwrap();

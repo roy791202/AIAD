@@ -25,6 +25,9 @@
 //! - Remote set-url: `git remote set-url -- <name> <url>`. Never `--add` /
 //!   `--delete` / `--push` / `--mirror`. Never fetch. Never `git push`.
 //!   Unknown remotes fail honestly.
+//! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
+//!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
+//!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -199,6 +202,18 @@ impl StdGitWrite {
         if crate::git_write::remote_url_out_of_scope(url) {
             return Err(PortError::Other(
                 "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_fetch_refspec(refspec: &str) -> Result<(), PortError> {
+        if refspec.trim().is_empty() {
+            return Ok(());
+        }
+        if crate::git_write::fetch_refspec_out_of_scope(refspec) {
+            return Err(PortError::Other(
+                "force/prune/update-head-ok fetch refspecs are out of scope".into(),
             ));
         }
         Ok(())
@@ -713,6 +728,36 @@ impl GitWritePort for StdGitWrite {
         // Real `git rebase --skip` / `git cherry-pick --skip` only.
         // Never `--continue` / `--abort` as a fallback. Never delete files.
         self.run(repo, args)?;
+        Ok(())
+    }
+
+    fn fetch(
+        &self,
+        repo: &str,
+        remote: &str,
+        refspec: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let name = remote.trim();
+        Self::require_remote_name(name)?;
+        let spec = refspec.map(str::trim).filter(|s| !s.is_empty());
+        if let Some(s) = spec {
+            Self::require_fetch_refspec(s)?;
+        }
+        let listed = self.run(repo, &["remote"])?;
+        if !listed.lines().any(|line| line.trim() == name) {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        // Remote-tracking refs only: `git fetch -- <remote> [refspec]`.
+        // `--` stops option parse. Never `--force` / `+refspec` / prune /
+        // `--update-head-ok`. Never merge / pull / rebase / checkout.
+        let spec_owned = spec.map(str::to_string);
+        let mut args = vec!["fetch", "--", name];
+        if let Some(s) = spec_owned.as_deref() {
+            args.push(s);
+        }
+        self.run(repo, &args)?;
         Ok(())
     }
 }

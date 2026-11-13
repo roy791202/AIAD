@@ -891,6 +891,58 @@ fn fake_git_write_set_remote_url_records_when_approved() {
 }
 
 #[test]
+fn fake_git_write_fetch_updates_remote_tracking_without_moving_head() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    let head_before = w.local_head("/r");
+
+    let denied = w.fetch("/r", "origin", None, GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_fetch("/r").is_none());
+    assert!(w.remote_tracking_refs("/r").is_empty());
+    assert_eq!(w.local_head("/r"), head_before);
+    assert!(w.switched_branch("/r").is_none());
+
+    let missing = w.fetch("/r", "ghost", None, GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+    assert_eq!(w.configured_remotes("/r").len(), 1);
+
+    let force = w.fetch(
+        "/r",
+        "origin",
+        Some("+refs/heads/main:refs/remotes/origin/main"),
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(force, Err(PortError::Other(_))));
+    assert!(w.last_fetch("/r").is_none());
+
+    w.fetch("/r", "origin", None, GitWriteApproval::granted())
+        .expect("fetch");
+    assert_eq!(w.last_fetch("/r"), Some(("origin".to_string(), None)));
+    let refs = w.remote_tracking_refs("/r");
+    assert_eq!(refs.len(), 1);
+    assert_eq!(refs[0].0, "refs/remotes/origin/main");
+    assert_eq!(w.local_head("/r"), head_before);
+    assert!(w.switched_branch("/r").is_none());
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn gated_git_write_blocks_fetch_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.fetch("/any", "origin", None, GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn gated_git_write_blocks_remote_set_url_even_when_approved() {
     let w = GatedGitWrite::new();
     let err = w.set_remote_url(

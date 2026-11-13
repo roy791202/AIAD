@@ -649,6 +649,20 @@ pub struct GitWriteRemoteSetUrlArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git fetch -- remote` (optional non-force refspec). Never merge/pull/prune.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteFetchArgs {
+    pub repo: Option<String>,
+    /// Remote name. Empty → `origin`. Never flags (`--force`, `--prune`, `--update-head-ok`).
+    #[serde(default)]
+    pub remote: String,
+    /// Optional non-force refspec. Never `+refspec` / `--force`.
+    #[serde(default)]
+    pub refspec: Option<String>,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictSaveArgs {

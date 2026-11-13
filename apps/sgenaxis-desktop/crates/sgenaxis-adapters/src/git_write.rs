@@ -74,6 +74,31 @@ pub(crate) fn remote_name_out_of_scope(value: &str) -> bool {
         )
 }
 
+/// Refspecs that would force-update, prune, or move HEAD during fetch.
+pub(crate) fn fetch_refspec_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('+')
+        || t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || lower.contains("+refs/")
+        || matches!(
+            lower.as_str(),
+            "--force"
+                | "-f"
+                | "--force-with-lease"
+                | "--update-head-ok"
+                | "--prune"
+                | "-p"
+                | "--prune-tags"
+                | "--all"
+                | "--mirror"
+                | "--recurse-submodules"
+        )
+}
+
 pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     t.starts_with('-')
@@ -294,6 +319,16 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn conflict_skip(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn fetch(
+        &self,
+        _repo: &str,
+        _remote: &str,
+        _refspec: Option<&str>,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 }

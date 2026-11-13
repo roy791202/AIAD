@@ -583,6 +583,12 @@ struct FakeGitWriteState {
     remote_remove: HashMap<String, String>,
     /// repo → last approved remote set-url `(name, url)`.
     remote_set_url: HashMap<String, (String, String)>,
+    /// repo → last approved fetch `(remote, optional refspec)`.
+    last_fetch: HashMap<String, (String, Option<String>)>,
+    /// repo → remote-tracking refs `(refs/remotes/…, oid)`. Fetch updates these only.
+    remote_tracking: HashMap<String, Vec<(String, String)>>,
+    /// repo → synthetic local HEAD oid (fetch must not move this).
+    local_head: HashMap<String, String>,
     /// repo → local remotes `(name, url)` (duplicate add fails; missing remove fails).
     remotes: HashMap<String, Vec<(String, String)>>,
     /// repo → in-progress conflict kind (`Merge` / `Rebase` / `CherryPick` / `Revert`).
@@ -749,6 +755,30 @@ impl FakeGitWrite {
     pub fn last_remote_set_url(&self, repo: &str) -> Option<(String, String)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.remote_set_url.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved fetch for `repo` as `(remote, optional refspec)`.
+    pub fn last_fetch(&self, repo: &str) -> Option<(String, Option<String>)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_fetch.get(&Self::key(repo)).cloned()
+    }
+
+    /// Remote-tracking refs recorded for `repo` as `(name, oid)`.
+    pub fn remote_tracking_refs(&self, repo: &str) -> Vec<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_tracking
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Synthetic local HEAD oid for `repo` (fetch must leave this unchanged).
+    pub fn local_head(&self, repo: &str) -> String {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.local_head
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_else(|| "local-head".into())
     }
 
     /// Local remotes recorded for `repo` as `(name, url)` (add order).
@@ -1425,6 +1455,64 @@ impl GitWritePort for FakeGitWrite {
         st.conflict_skip.insert(key.clone(), kind);
         st.conflict_kind.remove(&key);
         st.conflict_files.remove(&key);
+        Ok(())
+    }
+
+    fn fetch(
+        &self,
+        repo: &str,
+        remote: &str,
+        refspec: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let name = remote.trim();
+        if name.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(name) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let spec = refspec.map(str::trim).filter(|s| !s.is_empty());
+        if let Some(s) = spec {
+            if crate::git_write::fetch_refspec_out_of_scope(s) {
+                return Err(PortError::Other(
+                    "force/prune/update-head-ok fetch refspecs are out of scope".into(),
+                ));
+            }
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        let has_remote = {
+            let remotes = st.remotes.entry(key.clone()).or_default();
+            remotes.iter().any(|(n, _)| n == name)
+        };
+        if !has_remote {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        st.next_hash = st.next_hash.saturating_add(1);
+        let oid = format!("{:012x}", st.next_hash);
+        let tracking = format!("refs/remotes/{name}/main");
+        let refs = st.remote_tracking.entry(key.clone()).or_default();
+        if let Some(existing) = refs.iter_mut().find(|(r, _)| r == &tracking) {
+            existing.1 = oid;
+        } else {
+            refs.push((tracking, oid));
+        }
+        st.last_fetch
+            .insert(key, (name.to_string(), spec.map(str::to_string)));
         Ok(())
     }
 }
