@@ -638,6 +638,101 @@ fn gated_git_write_blocks_branch_create_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_add_and_remove_remote_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/r.git",
+        GitWriteApproval::denied(),
+    );
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_add("/r").is_none());
+    assert!(w.configured_remotes("/r").is_empty());
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("add");
+    assert_eq!(
+        w.last_remote_add("/r"),
+        Some((
+            "upstream".to_string(),
+            "https://example.invalid/r.git".to_string()
+        ))
+    );
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "upstream".to_string(),
+            "https://example.invalid/r.git".to_string()
+        )]
+    );
+    assert_eq!(w.push_count("/r"), 0);
+
+    let dup = w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/other.git",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(dup, Err(PortError::Git(ref m)) if m.contains("already exists")));
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "upstream".to_string(),
+            "https://example.invalid/r.git".to_string()
+        )]
+    );
+
+    let force = w.add_remote(
+        "/r",
+        "-f",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(force, Err(PortError::Other(_))));
+    let flag_url = w.add_remote("/r", "mirror", "-u", GitWriteApproval::granted());
+    assert!(matches!(flag_url, Err(PortError::Other(_))));
+    assert_eq!(w.configured_remotes("/r").len(), 1);
+
+    let denied_rm = w.remove_remote("/r", "upstream", GitWriteApproval::denied());
+    assert!(matches!(denied_rm, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_remove("/r").is_none());
+    assert_eq!(w.configured_remotes("/r").len(), 1);
+
+    let missing = w.remove_remote("/r", "ghost", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+    assert!(w.last_remote_remove("/r").is_none());
+
+    w.remove_remote("/r", "upstream", GitWriteApproval::granted())
+        .expect("remove");
+    assert_eq!(w.last_remote_remove("/r").as_deref(), Some("upstream"));
+    assert!(w.configured_remotes("/r").is_empty());
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn gated_git_write_blocks_remote_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let add = w.add_remote(
+        "/any",
+        "upstream",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(add, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let rm = w.remove_remote("/any", "origin", GitWriteApproval::granted());
+    assert!(matches!(rm, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn boxed_ports_exposes_gated_write() {
     let ports = BoxedPorts::fake();
     let err = ports

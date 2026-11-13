@@ -605,6 +605,28 @@ pub struct GitWriteBranchCreateArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local `git remote add -- name url`. Never fetch/`-f`/set-url/push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteRemoteAddArgs {
+    pub repo: Option<String>,
+    /// Remote name. Never flags (`-f`, `--mirror`, `set-url`).
+    pub name: String,
+    /// Remote URL. Never flags; never `set-url`.
+    pub url: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
+/// Args for approval-gated local `git remote remove -- name`. Never prune/fetch.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteRemoteRemoveArgs {
+    pub repo: Option<String>,
+    /// Remote name. Never flags (`-f`, `prune`, `push`).
+    pub name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Result of a gated write attempt (commit／push).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitWriteResultDto {

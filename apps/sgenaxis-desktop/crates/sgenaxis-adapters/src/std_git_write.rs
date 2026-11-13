@@ -15,6 +15,10 @@
 //! - Branch create: `git branch -- <name>` from current HEAD. Never `-C` /
 //!   `--force` / `-D` / `-d`. Never remote create. Never `--set-upstream`.
 //!   Never checkout/switch. Duplicate / invalid names fail honestly.
+//! - Remote add: `git remote add -- <name> <url>`. Never `-f`. Never fetch.
+//!   Never `set-url`. Never `git push`. Duplicate names fail honestly.
+//! - Remote remove: `git remote remove -- <name>`. Never prune/fetch.
+//!   Missing remotes fail honestly.
 //! - Error text is credential-redacted.
 
 use std::fs;
@@ -154,6 +158,36 @@ impl StdGitWrite {
         if crate::git_write::branch_name_out_of_scope(name) {
             return Err(PortError::Other(
                 "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_remote_name(name: &str) -> Result<(), PortError> {
+        if name.trim().is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if name.contains('\n') || name.contains('\0') {
+            return Err(PortError::Other("remote name must be a single line".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(name) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_remote_url(url: &str) -> Result<(), PortError> {
+        if url.trim().is_empty() {
+            return Err(PortError::Other("empty remote url".into()));
+        }
+        if url.contains('\n') || url.contains('\0') {
+            return Err(PortError::Other("remote url must be a single line".into()));
+        }
+        if crate::git_write::remote_url_out_of_scope(url) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
             ));
         }
         Ok(())
@@ -420,6 +454,41 @@ impl GitWritePort for StdGitWrite {
         // Never `--force`. Never `--set-upstream`. Never checkout/switch.
         // `--` stops option parse so a name cannot be read as a flag.
         self.run(repo, &["branch", "--", branch])?;
+        Ok(())
+    }
+
+    fn add_remote(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let remote = name.trim();
+        let remote_url = url.trim();
+        Self::require_remote_name(remote)?;
+        Self::require_remote_url(remote_url)?;
+        // Local config only: `git remote add -- <name> <url>`.
+        // Never `-f` (would fetch). Never `set-url`. Never `git push`.
+        // `--` stops option parse so name/url cannot be read as flags.
+        self.run(repo, &["remote", "add", "--", remote, remote_url])?;
+        Ok(())
+    }
+
+    fn remove_remote(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let remote = name.trim();
+        Self::require_remote_name(remote)?;
+        // Local config only: `git remote remove -- <name>`.
+        // Never prune/fetch. `--` stops option parse.
+        // Missing remotes fail honestly (git exits non-zero).
+        self.run(repo, &["remote", "remove", "--", remote])?;
         Ok(())
     }
 }

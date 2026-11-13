@@ -229,6 +229,13 @@ pub trait GitPort: Send + Sync {
 ///   `git branch -- <name>` from current HEAD. Never `-C` / `--force` / `-D` /
 ///   `-d`. Never remote create, never `--set-upstream`. Never checkout/switch
 ///   as a hidden side effect. Duplicate and invalid names fail honestly.
+/// - Remote add requires approval (no skip default). Local config only:
+///   `git remote add -- <name> <url>`. Never `-f`. Never fetch as a hidden
+///   side effect. Never `remote set-url`. Never `git push`. Duplicate names
+///   and invalid name/url (including leading `-`) fail honestly.
+/// - Remote remove requires approval (no skip default). Local config only:
+///   `git remote remove -- <name>` (or `git remote rm`). Never prune/fetch.
+///   Missing remotes fail honestly.
 pub trait GitWritePort: Send + Sync {
     fn commit(
         &self,
@@ -338,6 +345,27 @@ pub trait GitWritePort: Send + Sync {
     /// Never remote create. Never `--set-upstream`. Never switch/checkout.
     /// Duplicate and invalid names fail honestly.
     fn create_branch(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Add a local remote. Requires approval.
+    /// `git remote add -- <name> <url>`. Never `-f`. Never fetch. Never
+    /// `set-url`. Never push. Duplicate names fail honestly.
+    fn add_remote(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Remove a local remote. Requires approval.
+    /// `git remote remove -- <name>` (or `git remote rm`). Never prune/fetch.
+    /// Missing remotes fail honestly.
+    fn remove_remote(
         &self,
         repo: &str,
         name: &str,

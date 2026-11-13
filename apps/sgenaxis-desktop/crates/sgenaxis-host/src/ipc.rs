@@ -68,6 +68,10 @@ pub enum AllowedIpcCommand {
     GitWriteTagDelete,
     /// Approval-gated local `git branch -- name` via GitWritePort (never -C/-D/--set-upstream/switch).
     GitWriteBranchCreate,
+    /// Approval-gated local `git remote add -- name url` via GitWritePort (never -f/fetch/set-url/push).
+    GitWriteRemoteAdd,
+    /// Approval-gated local `git remote remove -- name` via GitWritePort (never prune/fetch).
+    GitWriteRemoteRemove,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -147,6 +151,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteTag => "git_write_tag",
             AllowedIpcCommand::GitWriteTagDelete => "git_write_tag_delete",
             AllowedIpcCommand::GitWriteBranchCreate => "git_write_branch_create",
+            AllowedIpcCommand::GitWriteRemoteAdd => "git_write_remote_add",
+            AllowedIpcCommand::GitWriteRemoteRemove => "git_write_remote_remove",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -204,6 +210,8 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteTag,
             AllowedIpcCommand::GitWriteTagDelete,
             AllowedIpcCommand::GitWriteBranchCreate,
+            AllowedIpcCommand::GitWriteRemoteAdd,
+            AllowedIpcCommand::GitWriteRemoteRemove,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -322,6 +330,8 @@ mod tests {
         assert!(is_allowed("git_write_tag"));
         assert!(is_allowed("git_write_tag_delete"));
         assert!(is_allowed("git_write_branch_create"));
+        assert!(is_allowed("git_write_remote_add"));
+        assert!(is_allowed("git_write_remote_remove"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -332,6 +342,10 @@ mod tests {
         assert!(!is_allowed("git_branch"));
         assert!(!is_allowed("git_branch_create"));
         assert!(!is_allowed("git_checkout"));
+        assert!(!is_allowed("git_remote"));
+        assert!(!is_allowed("git_remote_add"));
+        assert!(!is_allowed("git_remote_remove"));
+        assert!(!is_allowed("git_remote_set_url"));
         assert!(is_allowed("git_index_commit_preview"));
         assert!(is_allowed("git_index_commit_confirm"));
         assert!(is_allowed("deploy_status"));
@@ -444,6 +458,14 @@ mod tests {
             authorize("git_write_branch_create").unwrap(),
             AllowedIpcCommand::GitWriteBranchCreate
         );
+        assert_eq!(
+            authorize("git_write_remote_add").unwrap(),
+            AllowedIpcCommand::GitWriteRemoteAdd
+        );
+        assert_eq!(
+            authorize("git_write_remote_remove").unwrap(),
+            AllowedIpcCommand::GitWriteRemoteRemove
+        );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());
         assert!(authorize("git_stash_clear").is_err());
@@ -453,6 +475,9 @@ mod tests {
         assert!(authorize("git_branch").is_err());
         assert!(authorize("git_branch_create").is_err());
         assert!(authorize("git_checkout").is_err());
+        assert!(authorize("git_remote").is_err());
+        assert!(authorize("git_remote_add").is_err());
+        assert!(authorize("git_remote_set_url").is_err());
         assert!(authorize("import_apply").is_err());
         assert!(authorize("shell_execute").is_err());
     }

@@ -47,6 +47,38 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
         )
 }
 
+/// Names / URLs that would become flags or widen remote mutations.
+pub(crate) fn remote_name_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || t.contains('\\')
+        || t.contains(':')
+        || matches!(
+            lower.as_str(),
+            "-f" | "--force"
+                | "--fetch"
+                | "-t"
+                | "--tags"
+                | "--no-tags"
+                | "--mirror"
+                | "set-url"
+                | "prune"
+                | "push"
+                | "rm"
+                | "remove"
+                | "update"
+        )
+}
+
+pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    t.starts_with('-') || t.contains('\0') || t.contains('\n') || t.contains(' ')
+}
+
 /// Always-deny write adapter. Host boot wires this by default so write entry
 /// points exist but cannot mutate a repo until an approving adapter is chosen.
 #[derive(Debug, Default, Clone, Copy)]
@@ -162,6 +194,25 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn create_branch(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn add_remote(
+        &self,
+        _repo: &str,
+        _name: &str,
+        _url: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn remove_remote(
         &self,
         _repo: &str,
         _name: &str,

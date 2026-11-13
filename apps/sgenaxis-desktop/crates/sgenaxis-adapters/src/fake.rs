@@ -498,6 +498,12 @@ struct FakeGitWriteState {
     branch_create: HashMap<String, String>,
     /// repo → created local branch names (duplicate create fails honestly).
     branches: HashMap<String, Vec<String>>,
+    /// repo → last approved remote add `(name, url)`.
+    remote_add: HashMap<String, (String, String)>,
+    /// repo → last approved remote remove name.
+    remote_remove: HashMap<String, String>,
+    /// repo → local remotes `(name, url)` (duplicate add fails; missing remove fails).
+    remotes: HashMap<String, Vec<(String, String)>>,
     next_hash: u64,
 }
 
@@ -612,6 +618,27 @@ impl FakeGitWrite {
     pub fn created_branches(&self, repo: &str) -> Vec<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.branches
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Last approved remote add for `repo` as `(name, url)`.
+    pub fn last_remote_add(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_add.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved remote remove name for `repo`, if any.
+    pub fn last_remote_remove(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_remove.get(&Self::key(repo)).cloned()
+    }
+
+    /// Local remotes recorded for `repo` as `(name, url)` (add order).
+    pub fn configured_remotes(&self, repo: &str) -> Vec<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remotes
             .get(&Self::key(repo))
             .cloned()
             .unwrap_or_default()
@@ -884,6 +911,79 @@ impl GitWritePort for FakeGitWrite {
         }
         existing.push(branch.to_string());
         st.branch_create.insert(key, branch.to_string());
+        Ok(())
+    }
+
+    fn add_remote(
+        &self,
+        repo: &str,
+        name: &str,
+        url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let remote = name.trim();
+        let remote_url = url.trim();
+        if remote.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if remote_url.is_empty() {
+            return Err(PortError::Other("empty remote url".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(remote) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        if crate::git_write::remote_url_out_of_scope(remote_url) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.remotes.entry(key.clone()).or_default();
+        if existing.iter().any(|(n, _)| n == remote) {
+            return Err(PortError::Git(format!("remote '{remote}' already exists")));
+        }
+        existing.push((remote.to_string(), remote_url.to_string()));
+        st.remote_add
+            .insert(key, (remote.to_string(), remote_url.to_string()));
+        Ok(())
+    }
+
+    fn remove_remote(
+        &self,
+        repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let remote = name.trim();
+        if remote.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(remote) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self.inner.lock().map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.remotes.entry(key.clone()).or_default();
+        if !existing.iter().any(|(n, _)| n == remote) {
+            return Err(PortError::Git(format!("No such remote: '{remote}'")));
+        }
+        existing.retain(|(n, _)| n != remote);
+        st.remote_remove.insert(key, remote.to_string());
         Ok(())
     }
 }

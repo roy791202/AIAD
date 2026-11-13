@@ -23,15 +23,15 @@
 //! UI design package (PD-SHELL-UIDESIGN-VIEW-01): `uidesign_package_status`／`uidesign_open_package`
 //! (controlled docs/ui-design/index.html only; ≠ product evidence / not formal acceptance PASS).
 
-mod commands;
 mod code_import;
+mod commands;
 mod dispatch;
-mod dto;
 mod document_identity;
+mod dto;
 mod git_index_commit;
-mod pd_report_call;
 #[cfg(test)]
 mod mcp_stdio;
+mod pd_report_call;
 
 /// Pure Property + Dirty + Evaluation core (no OS).
 pub use sgenaxis_core as core;
@@ -136,6 +136,8 @@ pub fn run() {
             commands::git_write_tag,
             commands::git_write_tag_delete,
             commands::git_write_branch_create,
+            commands::git_write_remote_add,
+            commands::git_write_remote_remove,
             commands::deploy_status,
             commands::deploy_check,
             commands::list_artifacts,
@@ -195,6 +197,8 @@ mod host_ipc_integration {
             "git_write_tag",
             "git_write_tag_delete",
             "git_write_branch_create",
+            "git_write_remote_add",
+            "git_write_remote_remove",
             "deploy_status",
             "deploy_check",
             "list_artifacts",
@@ -220,6 +224,9 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_force_push"));
         assert!(!is_allowed("git_tag"));
         assert!(!is_allowed("git_tag_delete"));
+        assert!(!is_allowed("git_remote"));
+        assert!(!is_allowed("git_remote_add"));
+        assert!(!is_allowed("git_remote_set_url"));
         assert!(!is_allowed("deploy_install"));
         assert!(!is_allowed("deploy_msiexec"));
         assert!(!is_allowed("list_os_devices"));

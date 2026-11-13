@@ -40,6 +40,10 @@ assert "liveHooks.tagDelete" in js
 assert "git_write_tag_delete" in js
 assert "liveHooks.branchCreate" in js
 assert "git_write_branch_create" in js
+assert "liveHooks.remoteAdd" in js
+assert "liveHooks.remoteRemove" in js
+assert "git_write_remote_add" in js
+assert "git_write_remote_remove" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
 assert len(set(ids)) == 65

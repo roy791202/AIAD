@@ -55,6 +55,7 @@ use crate::dto::{
     GitWriteCommitArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
     GitWriteResultDto, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
     GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteBranchCreateArgs,
+    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
     ListenProjectionDto,
     LoadLocalBoardArgs, LoadLocalBoardResult, PollResult, ProviderDto, SetZoneArgs,
     SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
@@ -333,6 +334,8 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_tag",
         "git_write_tag_delete",
         "git_write_branch_create",
+        "git_write_remote_add",
+        "git_write_remote_remove",
         "git_index_commit_preview",
         "git_index_commit_confirm",
         "load_local_board",
@@ -2547,6 +2550,179 @@ pub fn git_write_branch_create(
     perform_git_write_branch_create(root.git_write(), &repo, &args.name, args.approved)
 }
 
+/// Names / URLs that would become flags or widen remote mutations.
+fn remote_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || t.contains('\\')
+        || t.contains(':')
+        || matches!(
+            lower.as_str(),
+            "-f" | "--force"
+                | "--fetch"
+                | "-t"
+                | "--tags"
+                | "--no-tags"
+                | "--mirror"
+                | "set-url"
+                | "prune"
+                | "push"
+                | "rm"
+                | "remove"
+                | "update"
+        )
+}
+
+fn remote_url_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    t.starts_with('-') || t.contains('\0') || t.contains('\n') || t.contains(' ')
+}
+
+fn reject_remote_scope(name: &str, url: Option<&str>) -> Result<(), String> {
+    let n = name.trim();
+    if !n.is_empty() && remote_out_of_scope(n) {
+        return Err("fetch/force/set-url/push remote writes are out of scope".into());
+    }
+    if let Some(u) = url {
+        let t = u.trim();
+        if !t.is_empty() && remote_url_out_of_scope(t) {
+            return Err("fetch/force/set-url/push remote writes are out of scope".into());
+        }
+    }
+    Ok(())
+}
+
+fn perform_git_write_remote_add(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    url: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_remote_scope(name, Some(url))?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-add".into(),
+            message: "empty remote name".into(),
+            local_preserved: true,
+        });
+    }
+    if url.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-add".into(),
+            message: "empty remote url".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-add".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.add_remote(repo, name.trim(), url.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "remote-add".into(),
+            message: "remote-add ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-add".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+fn perform_git_write_remote_remove(
+    write: &dyn GitWritePort,
+    repo: &str,
+    name: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_remote_scope(name, None)?;
+    if name.trim().is_empty() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-remove".into(),
+            message: "empty remote name".into(),
+            local_preserved: true,
+        });
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-remove".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.remove_remote(repo, name.trim(), GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "remote-remove".into(),
+            message: "remote-remove ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-remove".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated local `git remote add -- name url`. Never `-f` / fetch / set-url / push.
+#[tauri::command]
+pub fn git_write_remote_add(
+    state: State<'_, HostState>,
+    args: GitWriteRemoteAddArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_remote_add").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-add".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_remote_add(root.git_write(), &repo, &args.name, &args.url, args.approved)
+}
+
+/// Approval-gated local `git remote remove -- name`. Never prune / fetch.
+#[tauri::command]
+pub fn git_write_remote_remove(
+    state: State<'_, HostState>,
+    args: GitWriteRemoteRemoveArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_remote_remove").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-remove".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_remote_remove(root.git_write(), &repo, &args.name, args.approved)
+}
+
 // ── PD-DEPLOY-CMD-01 (read-only; DeployPort façade) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -3868,6 +4044,100 @@ mod git_ui_tests {
             vec!["feature/slot".to_string()]
         );
         assert!(w.switched_branch("/r").is_none());
+    }
+
+    #[test]
+    fn git_write_remote_add_remove_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_remote_add"));
+        assert!(is_allowed("git_write_remote_remove"));
+        assert!(!is_allowed("git_remote"));
+        assert!(!is_allowed("git_remote_add"));
+        assert!(!is_allowed("git_remote_set_url"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_remote_add(
+            &w,
+            "/r",
+            "upstream",
+            "https://example.invalid/r.git",
+            false,
+        )
+        .unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_remote_add("/r").is_none());
+        assert_eq!(w.push_count("/r"), 0);
+
+        let empty = perform_git_write_remote_add(&w, "/r", "  ", "https://example.invalid/r.git", true)
+            .unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_remote_add("/r").is_none());
+
+        let empty_url = perform_git_write_remote_add(&w, "/r", "upstream", "  ", true).unwrap();
+        assert!(!empty_url.ok);
+
+        let force = perform_git_write_remote_add(
+            &w,
+            "/r",
+            "-f",
+            "https://example.invalid/r.git",
+            true,
+        )
+        .unwrap_err();
+        assert!(force.contains("out of scope"));
+        let flag_url =
+            perform_git_write_remote_add(&w, "/r", "upstream", "-u", true).unwrap_err();
+        assert!(flag_url.contains("out of scope"));
+        assert!(w.last_remote_add("/r").is_none());
+
+        let ok = perform_git_write_remote_add(
+            &w,
+            "/r",
+            "upstream",
+            "https://example.invalid/r.git",
+            true,
+        )
+        .unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "remote-add");
+        assert_eq!(
+            w.last_remote_add("/r"),
+            Some((
+                "upstream".to_string(),
+                "https://example.invalid/r.git".to_string()
+            ))
+        );
+        assert_eq!(w.push_count("/r"), 0);
+
+        let dup = perform_git_write_remote_add(
+            &w,
+            "/r",
+            "upstream",
+            "https://example.invalid/other.git",
+            true,
+        )
+        .unwrap();
+        assert!(!dup.ok);
+        assert!(dup.local_preserved);
+        assert!(dup.message.to_ascii_lowercase().contains("already exists"));
+
+        let denied_rm = perform_git_write_remote_remove(&w, "/r", "upstream", false).unwrap();
+        assert!(!denied_rm.ok);
+        assert!(w.last_remote_remove("/r").is_none());
+        assert_eq!(w.configured_remotes("/r").len(), 1);
+
+        let missing = perform_git_write_remote_remove(&w, "/r", "ghost", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing.message.to_ascii_lowercase().contains("no such remote"));
+        assert_eq!(w.configured_remotes("/r").len(), 1);
+
+        let rm = perform_git_write_remote_remove(&w, "/r", "upstream", true).unwrap();
+        assert!(rm.ok);
+        assert_eq!(rm.op, "remote-remove");
+        assert_eq!(w.last_remote_remove("/r").as_deref(), Some("upstream"));
+        assert!(w.configured_remotes("/r").is_empty());
+        assert_eq!(w.push_count("/r"), 0);
     }
 
     #[test]

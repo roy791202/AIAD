@@ -2494,6 +2494,7 @@
       stash: payload.stash,
       message: payload.message,
       name: payload.name,
+      url: payload.url,
     };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
@@ -2506,6 +2507,8 @@
     const ignoreWrap = document.getElementById("git-approve-ignore-wrap");
     const tagWrap = document.getElementById("git-approve-tag-wrap");
     const branchWrap = document.getElementById("git-approve-branch-wrap");
+    const remoteNameWrap = document.getElementById("git-approve-remote-name-wrap");
+    const remoteUrlWrap = document.getElementById("git-approve-remote-url-wrap");
     if (title) {
       title.textContent =
         op === "push"
@@ -2530,6 +2533,10 @@
           ? "審核 Tag Delete"
           : op === "branch-create"
           ? "審核 Branch Create"
+          : op === "remote-add"
+          ? "審核 Remote Add"
+          : op === "remote-remove"
+          ? "審核 Remote Remove"
           : "審核 Commit";
     }
     if (lede) {
@@ -2566,6 +2573,12 @@
             "。缺漏的標籤會誠實失敗。不推送、不加 -f、不刪遠端。拒絕則無突變。"
           : op === "branch-create"
           ? "核准後經 git_write_branch_create → GitWritePort；本機建立分支（git branch -- name），不切換、不設 upstream、不加 -C／-D。重名與無效名稱誠實失敗。拒絕則無突變。"
+          : op === "remote-add"
+          ? "核准後經 git_write_remote_add → GitWritePort；只新增本機遠端設定（git remote add -- name url），不 fetch、不加 -f、不 set-url、不 push。重名與無效名稱／URL 誠實失敗。拒絕則無突變。"
+          : op === "remote-remove"
+          ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
+            (payload.name || "") +
+            "（git remote remove -- name）。缺漏的遠端會誠實失敗。不 prune、不 fetch。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -2598,6 +2611,8 @@
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
     if (branchWrap) branchWrap.hidden = op !== "branch-create";
+    if (remoteNameWrap) remoteNameWrap.hidden = op !== "remote-add";
+    if (remoteUrlWrap) remoteUrlWrap.hidden = op !== "remote-add";
     if (box) box.hidden = false;
     if (op === "commit" || op === "stash-create") {
       const msg = document.getElementById("git-approve-message");
@@ -2624,6 +2639,16 @@
       if (branch) {
         branch.value = payload.name != null ? String(payload.name) : "";
         branch.focus();
+      }
+    } else if (op === "remote-add") {
+      const nameEl = document.getElementById("git-approve-remote-name");
+      const urlEl = document.getElementById("git-approve-remote-url");
+      if (nameEl) {
+        nameEl.value = payload.name != null ? String(payload.name) : "";
+        nameEl.focus();
+      }
+      if (urlEl) {
+        urlEl.value = payload.url != null ? String(payload.url) : "";
       }
     } else if (op === "push") {
       const remote = document.getElementById("git-approve-remote");
@@ -2917,6 +2942,62 @@
             true
           );
           toast("Branch create 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "remote-add") {
+        const nameEl = document.getElementById("git-approve-remote-name");
+        const urlEl = document.getElementById("git-approve-remote-url");
+        const name = nameEl && nameEl.value ? nameEl.value.trim() : "";
+        const url = urlEl && urlEl.value ? urlEl.value.trim() : "";
+        if (!name || !url) {
+          setGitStatusLine("遠端名稱與 URL 不可空白", true);
+          toast("請填寫遠端名稱與 URL");
+          return;
+        }
+        const dto = await invoke("git_write_remote_add", {
+          args: { repo: repo, name: name, url: url, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已新增本機遠端 " + name + "（經 GitWritePort；未 fetch／未 push）",
+            false
+          );
+          toast("Remote add 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "remote add 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Remote add 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "remote-remove") {
+        const name = pendingGitWrite.name;
+        if (!name) {
+          hideGitApprove();
+          setGitStatusLine("未指定遠端，未移除", true);
+          return;
+        }
+        const dto = await invoke("git_write_remote_remove", {
+          args: { repo: repo, name: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine("已移除本機遠端 " + name + "（經 GitWritePort；未 prune／未 fetch）", false);
+          toast("Remote remove 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "remote remove 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Remote remove 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else {
@@ -3443,6 +3524,19 @@
         tagCreate: function () { showGitApprove("tag-create", {}); },
         tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
         branchCreate: function () { showGitApprove("branch-create", {}); },
+        remoteAdd: function () {
+          const urlEl = document.getElementById("git-ux-remote-url");
+          showGitApprove("remote-add", {
+            name: "",
+            url: urlEl && urlEl.value ? urlEl.value : "",
+          });
+        },
+        remoteRemove: function (name) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          showGitApprove("remote-remove", {
+            name: name || (picker && picker.value) || "",
+          });
+        },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {
             repo: gitRepoArg(),
