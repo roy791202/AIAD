@@ -1,20 +1,70 @@
 # PD-GIT-UNSTAGE-PATH-01 high-tier review (section B)
 
-**Verdict (re-review @ `ee3eb30`): FAIL** — process only. Do **not** merge product PR #17. Card stays **In Review** (not Done / not Blue).
+**Verdict (re-review @ `f69e229`): PASS** — process blocker cleared. Product FILE-UNSTAGE remains **PASS**. This reviewer does **not** merge product PR #17 and does **not** set Done/Blue.
 
-Product FILE-UNSTAGE behavior remains **PASS**. Independent re-TDD **TDD_PASS** (adapters 10, host 2, ipc 3) SHA `ee3eb30`; evidence `reports/dispatch-pd/PD-GIT-UNSTAGE-PATH-01-tdd-review.md` @ `7eea279`.
+Independent TDD **TDD_PASS** (adapters 10, host 2, ipc 3) on earlier SHA; evidence `reports/dispatch-pd/PD-GIT-UNSTAGE-PATH-01-tdd-review.md` @ `7eea279`. Drop of `docs/bdd/S-GIT-WRITE-P2.feature` did not change Port/TDD assertions.
 
 | Role | Identity |
 |---|---|
-| Implementer | `bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca` |
+| Original implementer | `bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca` |
+| Process-fix implementer (feature drop) | `bc-84ba8488-b5ad-5ff7-8ee9-2b64df7505ff` |
 | Independent TDD verifier | `bc-ec1eadff-734d-5728-a1bf-9fba29d3f770` |
-| High-tier reviewer (this document) | `bc-5ef9421f-530e-5fd5-bf7f-7a0d35879b9a` |
+| Prior high-tier reviewer (FAIL @ `ee3eb30`) | `bc-5ef9421f-530e-5fd5-bf7f-7a0d35879b9a` |
+| High-tier re-reviewer (this section @ `f69e229`) | `bc-6d8d62bc-baac-5199-a346-b0e02119546b` |
 
-This reviewer did not modify product code or TDD.
+This reviewer is not the implementer. Product code and TDD were not modified in this docs-only PR.
 
 ---
 
-## Re-review @ `ee3eb309d88d8f60c286b97b3db7cd378b1cab17` (2026-11-14)
+## Re-review @ `f69e229d7f8485ca6b72922769cdda1294edd3d7` (2026-11-14)
+
+Product: https://github.com/roy791202/AIAD/pull/17  
+HEAD: `f69e229d7f8485ca6b72922769cdda1294edd3d7` (`fix(git): drop WRITE-P2 feature file from FILE-UNSTAGE PR`)  
+Branch: `feature/PD-GIT-UNSTAGE-PATH-01-unstage-path` vs `main` (`98355b1`).
+
+### 1. Diff vs main — no `.feature` files
+
+`git diff --name-only origin/main...origin/feature/PD-GIT-UNSTAGE-PATH-01-unstage-path` (10 files):
+
+- `apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/{fake,git_write,std_git_write,tests_git,tests_git02}.rs`
+- `apps/sgenaxis-desktop/crates/sgenaxis-host/src/{git_unstage_path.rs,ipc.rs,lib.rs}`
+- `apps/sgenaxis-desktop/crates/sgenaxis-ports/src/git.rs`
+- `docs/board.json`
+
+**No `*.feature` paths.** GitHub PR files count = 10. Prior Guard `spec-change` item cannot apply.
+
+### 2. GitHub Actions @ `f69e229` (honest)
+
+| Check | Status | Conclusion | Run |
+|---|---|---|---|
+| **guard** (AI Dev Guard) | completed | **success / PASS** | https://github.com/roy791202/AIAD/actions/runs/43619974011 |
+| **tests** (AI Dev Guard) | completed | **success / PASS** | same run |
+| lint + test subset (PR gate) | completed | success | https://github.com/roy791202/AIAD/actions/runs/43619973996 |
+| rust-windows | completed | **failure** | https://github.com/roy791202/AIAD/actions/runs/43619974009 |
+
+**Guard conclusion: PASS.** Not `unterminated JavaScript template`. The previous FAIL (`spec-change` on `S-GIT-WRITE-P2.feature`) is gone after the feature drop.
+
+`rust-windows` **FAIL** is the same pre-existing Windows baseline (`/bin/true` merge/rebase continue; remote-url scope). Prior review recorded FILE-UNSTAGE tests still passing on that job. **Not this Task**; do not expand FILE-UNSTAGE to fix it. Board `ci: Red` + Yellow remains honest while rust-windows fails.
+
+### 3. Prior must-fix disposition
+
+| Prior item | Status @ `f69e229` |
+|---|---|
+| scenarioIds ≤40 + Story `bdd[]` | Still **fixed** (`S-GIT-WP2-FU-1`..`5` on Story `S-GIT-WP2`, `status: Green`). |
+| Board `prUrl` / Yellow / not Done | Still OK. `prUrl` = PR #17; **In Review**; Yellow; `ci: Red` (rust-windows). Not Done/Blue. |
+| `.feature` `spec-change` | **Fixed** by dropping the file from the product PR. Guard **PASS**. |
+
+### 4. Product (unchanged from prior PASS)
+
+Gated `GitWritePort::unstage_path`: mixed `git reset -- <path>`, approval deny, path guards, `OPERATION_IN_PROGRESS`, deny-by-default IPC `git_write_unstage_path`. No unstage-all / hunk / discard creep. `src-tauri` still not wired (edition2024 NOT RUN) — acceptable for this Port slice.
+
+### 5. Merge / Done
+
+This high-tier agent **does not merge PR #17** and **does not set Done/Blue**. Pipeline/human may merge after their own policy on rust-windows. Card stays In Review until merge by an authorized non-dev role.
+
+---
+
+## Re-review @ `ee3eb309d88d8f60c286b97b3db7cd378b1cab17` (2026-11-14) — superseded FAIL
 
 Follow-up commit: `fix(board): shorten FILE-UNSTAGE scenario ids for AI Dev Guard`. Test **renames only** (`s_git_wp2_fu_*`); assertions kept. Independent TDD re-ran Green.
 
