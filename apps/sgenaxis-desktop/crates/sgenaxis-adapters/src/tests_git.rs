@@ -1548,6 +1548,162 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_stage_file_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.stage_file("/r", "a.txt", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stage_file("/r").is_none());
+
+    w.stage_file("/r", "a.txt", GitWriteApproval::granted())
+        .expect("already-staged path is success no-op");
+    assert_eq!(w.last_stage_file("/r").as_deref(), Some("a.txt"));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    for path in ["", "-", "-A", "../secret", "a/../b", "."] {
+        let err = w.stage_file("/r", path, GitWriteApproval::granted());
+        assert!(err.is_err(), "{path}");
+        assert_eq!(w.last_stage_file("/r").as_deref(), Some("a.txt"));
+    }
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.stage_file("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(w.last_stage_file("/r").as_deref(), Some("a.txt"));
+}
+
+#[test]
+fn gated_git_write_blocks_stage_file_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.stage_file("/any", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
+fn fake_git_write_unstage_file_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.unstage_file("/r", "a.txt", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_unstage_file("/r").is_none());
+
+    w.unstage_file("/r", "a.txt", GitWriteApproval::granted())
+        .expect("already-unstaged path is success no-op");
+    assert_eq!(w.last_unstage_file("/r").as_deref(), Some("a.txt"));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    for path in ["", "-", "-A", "../secret", "a/../b", "."] {
+        let err = w.unstage_file("/r", path, GitWriteApproval::granted());
+        assert!(err.is_err(), "{path}");
+        assert_eq!(w.last_unstage_file("/r").as_deref(), Some("a.txt"));
+    }
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.unstage_file("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(w.last_unstage_file("/r").as_deref(), Some("a.txt"));
+}
+
+#[test]
+fn gated_git_write_blocks_unstage_file_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.unstage_file("/any", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+const TEXT_HUNK: &str =
+    "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n";
+
+#[test]
+fn fake_git_write_stage_hunk_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.stage_hunk("/r", "a.txt", TEXT_HUNK, "abc", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stage_hunk("/r").is_none());
+
+    w.stage_hunk("/r", "a.txt", TEXT_HUNK, "abc", GitWriteApproval::granted())
+        .expect("approved stage-hunk records");
+    let recorded = w.last_stage_hunk("/r").expect("recorded");
+    assert_eq!(recorded.0, "a.txt");
+    assert_eq!(recorded.2, "abc");
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.stage_hunk("/r", "a.txt", TEXT_HUNK, "abc", GitWriteApproval::granted())
+        .expect("already-applied matching hunk is success no-op");
+    assert_eq!(w.local_commit_count("/r"), 0);
+
+    for path in ["", "-", "-A", "../secret", "a/../b", "."] {
+        let err = w.stage_hunk("/r", path, TEXT_HUNK, "abc", GitWriteApproval::granted());
+        assert!(err.is_err(), "{path}");
+        assert_eq!(
+            w.last_stage_hunk("/r").as_ref().map(|t| t.0.as_str()),
+            Some("a.txt")
+        );
+    }
+
+    let empty_patch = w.stage_hunk("/r", "a.txt", "", "abc", GitWriteApproval::granted());
+    assert!(empty_patch.is_err());
+    let binary = w.stage_hunk(
+        "/r",
+        "a.txt",
+        "GIT binary patch\nliteral 1\n",
+        "abc",
+        GitWriteApproval::granted(),
+    );
+    assert!(binary.is_err(), "binary must refuse");
+    let rename = w.stage_hunk(
+        "/r",
+        "a.txt",
+        "diff --git a/a.txt b/b.txt\nrename from a.txt\nrename to b.txt\n@@ -1 +1 @@\n-old\n+new\n",
+        "abc",
+        GitWriteApproval::granted(),
+    );
+    assert!(rename.is_err(), "rename must refuse");
+    let truncated = w.stage_hunk(
+        "/r",
+        "a.txt",
+        "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,3 @@\n-old\n",
+        "abc",
+        GitWriteApproval::granted(),
+    );
+    assert!(truncated.is_err(), "truncated hunk must refuse");
+    let empty_hash = w.stage_hunk("/r", "a.txt", TEXT_HUNK, "", GitWriteApproval::granted());
+    assert!(empty_hash.is_err());
+    assert_eq!(
+        w.last_stage_hunk("/r").as_ref().map(|t| t.0.as_str()),
+        Some("a.txt")
+    );
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.stage_hunk(
+        "/r",
+        "src/a.rs",
+        TEXT_HUNK,
+        "abc",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(
+        w.last_stage_hunk("/r").as_ref().map(|t| t.0.as_str()),
+        Some("a.txt")
+    );
+}
+
+#[test]
+fn gated_git_write_blocks_stage_hunk_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.stage_hunk(
+        "/any",
+        "a.txt",
+        TEXT_HUNK,
+        "abc",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());

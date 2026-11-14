@@ -147,6 +147,9 @@ pub fn run() {
             commands::git_write_unset_upstream,
             commands::git_write_stage_all,
             commands::git_write_unstage_all,
+            commands::git_write_stage_file,
+            commands::git_write_unstage_file,
+            commands::git_write_stage_hunk,
             commands::git_write_conflict_save,
             commands::git_write_conflict_continue,
             commands::git_write_conflict_abort,
@@ -224,6 +227,9 @@ mod host_ipc_integration {
             "git_write_unset_upstream",
             "git_write_stage_all",
             "git_write_unstage_all",
+            "git_write_stage_file",
+            "git_write_unstage_file",
+            "git_write_stage_hunk",
             "git_write_conflict_save",
             "git_write_conflict_continue",
             "git_write_conflict_abort",
@@ -266,6 +272,9 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_set_upstream"));
         assert!(!is_allowed("git_unset_upstream"));
         assert!(!is_allowed("git_unstage_all"));
+        assert!(!is_allowed("git_stage_file"));
+        assert!(!is_allowed("git_unstage_file"));
+        assert!(!is_allowed("git_stage_hunk"));
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
