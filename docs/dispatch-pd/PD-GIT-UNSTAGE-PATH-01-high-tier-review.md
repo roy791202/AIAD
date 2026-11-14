@@ -1,6 +1,8 @@
 # PD-GIT-UNSTAGE-PATH-01 high-tier review (section B)
 
-**Verdict: FAIL** — return to implementer. Do **not** merge product PR #17. Card stays **In Review** (not Done / not Blue).
+**Verdict (re-review @ `ee3eb30`): FAIL** — process only. Do **not** merge product PR #17. Card stays **In Review** (not Done / not Blue).
+
+Product FILE-UNSTAGE behavior remains **PASS**. Independent re-TDD **TDD_PASS** (adapters 10, host 2, ipc 3) SHA `ee3eb30`; evidence `reports/dispatch-pd/PD-GIT-UNSTAGE-PATH-01-tdd-review.md` @ `7eea279`.
 
 | Role | Identity |
 |---|---|
@@ -8,9 +10,39 @@
 | Independent TDD verifier | `bc-ec1eadff-734d-5728-a1bf-9fba29d3f770` |
 | High-tier reviewer (this document) | `bc-5ef9421f-530e-5fd5-bf7f-7a0d35879b9a` |
 
+This reviewer did not modify product code or TDD.
+
+---
+
+## Re-review @ `ee3eb309d88d8f60c286b97b3db7cd378b1cab17` (2026-11-14)
+
+Follow-up commit: `fix(board): shorten FILE-UNSTAGE scenario ids for AI Dev Guard`. Test **renames only** (`s_git_wp2_fu_*`); assertions kept. Independent TDD re-ran Green.
+
+### Prior must-fix disposition
+
+| Prior item | Status |
+|---|---|
+| scenarioIds ≤40 + Story `bdd[]` | **Fixed.** Task ids `S-GIT-WP2-FU-1`..`5` (all ≤40). New Story `S-GIT-WP2` holds matching `bdd[].id` with `status: Green`. Guard no longer reports length/missing/not-Green. Task parent now `S-GIT-WP2`. |
+| Board `prUrl` / Yellow / `ci` | **Fixed.** `prUrl` = https://github.com/roy791202/AIAD/pull/17 ; Task `light: Yellow` + `lightReason`; `ci: Red`. Status **In Review**. Not Done/Blue. |
+| `.feature` `spec-change` | **Still open (process, not product regression).** PR labels still `[]`. Guard on `ee3eb30`: **1 item** — `修改了 BDD 情境（docs/bdd/S-GIT-WRITE-P2.feature），需要核准者加上 spec-change 標籤，並經 CODEOWNERS 審查`. `PR_LABELS` empty. Implementer cannot add the label. |
+
+### Remaining must-fix
+
+1. **Approver adds GitHub label `spec-change` on PR #17 and CODEOWNERS reviews `docs/bdd/S-GIT-WRITE-P2.feature`.** Then re-run Guard. Until Guard is green, **do not merge**. This is the only remaining section-B blocker.
+
+CI snapshot @ `ee3eb30`: `tests` success, `lint + test subset` success, `guard` failure (spec-change only), `rust-windows` failure (same pre-existing `/bin/true` + remote-url tests; FILE-UNSTAGE tests still pass). Yellow + `ci: Red` remains correct. Do not expand this Task to fix rust-windows.
+
+Section B.8: independent TDD_PASS; Given/When/Then unchanged; tags shortened. Weakening assertions: **not found**.
+
+---
+
+## Historical review @ `eadf562` (superseded)
+
+**Verdict then: FAIL.** Kept below for audit. Do **not** merge product PR #17. Card stays **In Review** (not Done / not Blue).
+
 Roles are three distinct agents. This reviewer did not modify product code or TDD.
 
-- Product PR: https://github.com/roy791202/AIAD/pull/17 @ `eadf562`
+- Product PR: https://github.com/roy791202/AIAD/pull/17 @ `eadf562` (superseded head `ee3eb30`)
 - Branch: `feature/PD-GIT-UNSTAGE-PATH-01-unstage-path`
 - Independent TDD: **TDD_PASS** (adapters 10, host 2, ipc 3). `src-tauri` **NOT RUN** (`edition2024`).
 - Conventional commit: `feat(git): gated single-path unstage via GitWritePort` — OK.
@@ -87,6 +119,6 @@ FILE-UNSTAGE tests on that job **passed** (Fake + Std grant/deny/conflict/traver
 
 ## Outcome
 
-**FAIL.** Product FILE-UNSTAGE logic is acceptable and independently TDD_PASS on adapters/host/ipc. Merge is blocked by Guard (scenario id length + unregistered BDD + `.feature` without `spec-change`) and board/CI mismatch.
+**FAIL (process).** Product FILE-UNSTAGE logic and independent TDD remain acceptable. After `ee3eb30`, merge is blocked **only** by missing `spec-change` + CODEOWNERS on the `.feature` (Guard 1 item). Board/scenario-id must-fixes are done.
 
-Card: **not Done, not Blue.**
+Card: **not Done, not Blue.** Do not merge PR #17.
