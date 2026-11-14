@@ -276,6 +276,12 @@ pub trait GitPort: Send + Sync {
 ///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
 ///   branches and dirty overwrites fail honestly; local commits and files stay
 ///   intact. Unknown remotes fail honestly.
+/// - Discard-file requires approval (no skip default). Distinct from
+///   unstage-all and from conflict abort: restores **one tracked path**
+///   in the worktree to the index (`git restore --worktree -- <path>` or
+///   `git checkout -- <path>`). Never `reset --hard`. Never `--force`.
+///   Never deletes untracked files. Paths outside the repo, option-like
+///   paths, and unmerged conflict paths fail honestly.
 /// - Stage-all requires approval (no skip default). Distinct from conflict
 ///   save and from commit: `git add -- .` from the repo root only. Never
 ///   `git add -A` as a bulk conflict resolve. Never commit / push /
@@ -540,6 +546,18 @@ pub trait GitWritePort: Send + Sync {
     /// (`OPERATION_IN_PROGRESS`). A clean index relative to HEAD succeeds as
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Restore one tracked path's worktree contents to the index. Requires approval.
+    /// `git restore --worktree -- <path>` (or `git checkout -- <path>`).
+    /// Never `reset --hard` / `--force` / `-f`. Never delete untracked files.
+    /// Paths outside the repo, option-like paths, and unmerged conflict paths
+    /// fail honestly.
+    fn discard_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.

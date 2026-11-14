@@ -601,6 +601,10 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved discard-file path.
+    last_discard_file: HashMap<String, String>,
+    /// repo → untracked paths that must not be deleted by discard-file.
+    untracked_files: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +852,30 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Last approved discard-file path for `repo`, if any.
+    pub fn last_discard_file(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_discard_file.get(&Self::key(repo)).cloned()
+    }
+
+    /// Mark paths as untracked so discard-file must refuse without deleting them.
+    pub fn mark_untracked(&self, repo: &str, paths: &[&str]) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.untracked_files.insert(
+            Self::key(repo),
+            paths.iter().map(|p| (*p).to_string()).collect(),
+        );
+    }
+
+    /// Whether `path` is still recorded as untracked for `repo`.
+    pub fn untracked_still_present(&self, repo: &str, path: &str) -> bool {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.untracked_files
+            .get(&Self::key(repo))
+            .map(|files| files.iter().any(|p| p == path))
+            .unwrap_or(false)
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1918,52 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn discard_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if crate::git_write::conflict_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "force/flag/outside discard paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let untracked = st
+            .untracked_files
+            .get(&key)
+            .map(|files| files.iter().any(|p| p == rel))
+            .unwrap_or(false);
+        if untracked {
+            return Err(PortError::Git(
+                "untracked path is not discarded or deleted".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| files.iter().any(|p| p == rel))
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "unmerged conflict path; discard-file refused".into(),
+            ));
+        }
+        st.last_discard_file.insert(key, rel.to_string());
         Ok(())
     }
 

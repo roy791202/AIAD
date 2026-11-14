@@ -1548,6 +1548,53 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
+fn s_git_write_p2_3_discard_file() {
+    let w = FakeGitWrite::new();
+    w.discard_file("/r", "a.txt", GitWriteApproval::granted())
+        .expect("approved discard of a tracked path");
+    assert_eq!(w.last_discard_file("/r").as_deref(), Some("a.txt"));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.mark_untracked("/r", &["scratch.txt"]);
+    let untracked = w.discard_file("/r", "scratch.txt", GitWriteApproval::granted());
+    assert!(
+        matches!(untracked, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("untracked")),
+        "untracked must not be deleted: {untracked:?}"
+    );
+    assert!(w.untracked_still_present("/r", "scratch.txt"));
+}
+
+#[test]
+fn s_git_write_p2_4_discard_reject() {
+    let w = FakeGitWrite::new();
+    let denied = w.discard_file("/r", "a.txt", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_discard_file("/r").is_none());
+
+    let flag = w.discard_file("/r", "-f", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    assert!(w.last_discard_file("/r").is_none());
+
+    let outside = w.discard_file("/r", "../secret", GitWriteApproval::granted());
+    assert!(matches!(outside, Err(PortError::Other(_))));
+    assert!(w.last_discard_file("/r").is_none());
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.discard_file("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("unmerged") || m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(w.remaining_conflict_files("/r").len(), 1);
+    assert!(w.last_discard_file("/r").is_none());
+}
+
+#[test]
+fn gated_git_write_blocks_discard_file_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.discard_file("/any", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());
