@@ -601,6 +601,12 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved restore-path.
+    last_restore_path: HashMap<String, String>,
+    /// repo → paths that fail restore as missing in the index.
+    restore_missing: HashMap<String, Vec<String>>,
+    /// repo → paths that fail restore as untracked (never delete).
+    restore_untracked: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +854,27 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    pub fn last_restore_path(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_restore_path.get(&Self::key(repo)).cloned()
+    }
+
+    pub fn mark_restore_missing(&self, repo: &str, path: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.restore_missing
+            .entry(Self::key(repo))
+            .or_default()
+            .push(path.to_string());
+    }
+
+    pub fn mark_restore_untracked(&self, repo: &str, path: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.restore_untracked
+            .entry(Self::key(repo))
+            .or_default()
+            .push(path.to_string());
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -2204,6 +2231,67 @@ impl GitWritePort for FakeGitWrite {
         st.local_head.insert(key.clone(), remote_oid);
         st.last_pull_ff_only
             .insert(key, (name.to_string(), branch_record));
+        Ok(())
+    }
+
+    fn restore_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty restore path".into()));
+        }
+        if crate::git_write::conflict_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "add-all/force/flag restore paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before restore-path".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use restore-path during conflicts"
+                    .into(),
+            ));
+        }
+        if st
+            .restore_missing
+            .get(&key)
+            .is_some_and(|paths| paths.iter().any(|p| p == rel))
+        {
+            return Err(PortError::Git(format!(
+                "path '{rel}' did not match any file(s) known to git"
+            )));
+        }
+        if st
+            .restore_untracked
+            .get(&key)
+            .is_some_and(|paths| paths.iter().any(|p| p == rel))
+        {
+            return Err(PortError::Git(format!("path '{rel}' is untracked")));
+        }
+        st.last_restore_path.insert(key, rel.to_string());
         Ok(())
     }
 }

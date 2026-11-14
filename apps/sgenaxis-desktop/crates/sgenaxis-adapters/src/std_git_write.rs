@@ -1060,4 +1060,39 @@ impl GitWritePort for StdGitWrite {
         self.run(repo, &args)?;
         Ok(())
     }
+
+    fn restore_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        Self::require_conflict_path(rel)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before restore-path".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use restore-path during conflicts"
+                    .into(),
+            ));
+        }
+        if self
+            .run(repo, &["ls-files", "--error-unmatch", "--", rel])
+            .is_err()
+        {
+            return Err(PortError::Git(format!(
+                "path '{rel}' did not match any file(s) known to git"
+            )));
+        }
+        // Worktree-only restore from HEAD for one path. Never `reset --hard`.
+        // Never `-A` / `.`. Index stays as-is (except pre-existing staging).
+        self.run(repo, &["restore", "--source=HEAD", "--worktree", "--", rel])?;
+        Ok(())
+    }
 }
