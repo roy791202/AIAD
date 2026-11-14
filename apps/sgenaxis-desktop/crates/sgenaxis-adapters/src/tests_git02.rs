@@ -1121,7 +1121,11 @@ mod std_write_temp {
     fn std_write_add_and_remove_remote_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
-        let url = bare.to_str().unwrap();
+        // Local-path remote URL: git accepts forward slashes on every platform,
+        // and the adapter rejects backslashes as out-of-scope, so a Windows
+        // temp path (C:\...) must be given slash-normalized.
+        let url_buf = bare.to_str().unwrap().replace('\\', "/");
+        let url = url_buf.as_str();
         let w = StdGitWrite::new();
 
         w.add_remote(repo, "upstream", url, GitWriteApproval::denied())
@@ -1199,7 +1203,9 @@ mod std_write_temp {
         let next = unique_temp("set-url-bare");
         fs::create_dir_all(&next).unwrap();
         git(&next, &["init", "--bare"]);
-        let new_url = next.to_str().unwrap();
+        // Slash-normalized: adapter rejects backslashes; git accepts `/` on Windows.
+        let new_url_buf = next.to_str().unwrap().replace('\\', "/");
+        let new_url = new_url_buf.as_str();
 
         w.set_remote_url(repo, "origin", new_url, GitWriteApproval::denied())
             .expect_err("denied set-url must not mutate");

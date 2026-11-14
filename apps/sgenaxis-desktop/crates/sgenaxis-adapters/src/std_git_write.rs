@@ -398,14 +398,14 @@ impl StdGitWrite {
             .arg(repo)
             .args([
                 "-c",
-                "core.editor=/bin/true",
+                "core.editor=true",
                 "-c",
-                "sequence.editor=/bin/true",
+                "sequence.editor=true",
             ])
             .args(args)
-            .env("GIT_EDITOR", "/bin/true")
-            .env("GIT_SEQUENCE_EDITOR", "/bin/true")
-            .env("EDITOR", "/bin/true")
+            .env("GIT_EDITOR", "true")
+            .env("GIT_SEQUENCE_EDITOR", "true")
+            .env("EDITOR", "true")
             .output()
             .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
 
