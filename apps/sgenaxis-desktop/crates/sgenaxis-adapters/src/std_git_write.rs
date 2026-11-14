@@ -46,6 +46,10 @@
 //!   `-A` / `.`; this path is the explicit ALL-STAGE exception for `.` only).
 //!   In-progress merge/rebase/cherry-pick/revert fails with
 //!   `OPERATION_IN_PROGRESS`. Clean worktree → success no-op.
+//! - File-stage: `git add -- <path>` from the repo root. Never `-A` / `.`.
+//!   Never commit / push / `reset --hard` / `--force`. Rejects `..`,
+//!   absolute escapes, and option-like paths. In-progress merge/rebase/
+//!   cherry-pick/revert fails with `OPERATION_IN_PROGRESS`.
 //! - Unstage-all: `git reset -- .` from the repo root (mixed pathspec reset).
 //!   Never commit / push / `git add -A` / `reset --hard` / `--force`.
 //!   In-progress merge/rebase/cherry-pick/revert fails with
@@ -934,6 +938,39 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn stage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty stage path".into()));
+        }
+        if crate::git_write::stage_file_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "option-like, traversal, absolute, or add-all paths are out of scope".into(),
+            ));
+        }
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before file-stage".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use file-stage to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        // One path only: `git add -- <path>`. Never `-A` / `.` / `--all`.
+        self.run(repo, &["add", "--", rel])?;
         Ok(())
     }
 

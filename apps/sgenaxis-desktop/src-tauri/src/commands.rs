@@ -37,11 +37,12 @@ use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
     perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
-    perform_git_unstage_all,
+    perform_git_stage_file, perform_git_unstage_all,
     perform_git_unset_upstream, save_design_file, save_scene_text, CompositionRoot,
     DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
     GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitStageAllResult,
-    GitSwitchResult, GitTagPushResult, GitUnstageAllResult, GitUnsetUpstreamResult,
+    GitStageFileResult, GitSwitchResult, GitTagPushResult, GitUnstageAllResult,
+    GitUnsetUpstreamResult,
     GuardDecisionView, GuardPacketDto,
     HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
@@ -59,8 +60,8 @@ use crate::dto::{
     GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
     GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
     GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
-    GitWriteStageAllArgs, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteUnstageAllArgs,
+    GitWriteStageAllArgs, GitWriteStageFileArgs, GitWriteStashArgs, GitWriteStashPushArgs,
+    GitWriteSwitchArgs, GitWriteUnstageAllArgs,
     GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteTagPushArgs, GitWriteUnsetUpstreamArgs,
     ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs,
     PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto,
@@ -3369,6 +3370,54 @@ pub fn git_write_stage_all(
     perform_git_write_stage_all(root.git_write(), &repo, args.approved)
 }
 
+fn git_stage_file_result_dto(r: GitStageFileResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_stage_file(
+    write: &dyn GitWritePort,
+    repo: &str,
+    path: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    if conflict_path_out_of_scope(path) || std::path::Path::new(path.trim()).is_absolute() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "stage-file".into(),
+            message: "option-like, traversal, absolute, or add-all paths are out of scope".into(),
+            local_preserved: true,
+        });
+    }
+    Ok(git_stage_file_result_dto(perform_git_stage_file(
+        write, repo, path, approved,
+    )))
+}
+
+/// Approval-gated `git add -- path` (FILE-STAGE). Never commit/push/-A/force/`git add -- .`.
+#[tauri::command]
+pub fn git_write_stage_file(
+    state: State<'_, HostState>,
+    args: GitWriteStageFileArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_stage_file").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "stage-file".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_stage_file(root.git_write(), &repo, &args.path, args.approved)
+}
+
 fn git_unstage_all_result_dto(r: GitUnstageAllResult) -> GitWriteResultDto {
     GitWriteResultDto {
         ok: r.ok,
@@ -5891,6 +5940,38 @@ mod git_ui_tests {
         assert!(ok.ok);
         assert_eq!(ok.op, "stage-all");
         assert_eq!(w.last_stage_all("/r"), Some(true));
+        assert_eq!(w.local_commit_count("/r"), 0);
+        assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_stage_file_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_stage_file"));
+        assert!(!is_allowed("git_stage_file"));
+        assert!(!is_allowed("git_add"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_stage_file(&w, "/r", "a.txt", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_stage_file("/r").is_none());
+
+        let bad = perform_git_write_stage_file(&w, "/r", "-A", true).unwrap();
+        assert!(!bad.ok);
+        assert!(w.last_stage_file("/r").is_none());
+
+        w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+        let conflict = perform_git_write_stage_file(&w, "/r", "a.txt", true).unwrap();
+        assert!(!conflict.ok);
+        assert!(conflict.message.contains("OPERATION_IN_PROGRESS"));
+        assert!(w.last_stage_file("/r").is_none());
+
+        let w = FakeGitWrite::new();
+        let ok = perform_git_write_stage_file(&w, "/r", "a.txt", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "stage-file");
+        assert_eq!(w.last_stage_file("/r").as_deref(), Some("a.txt"));
         assert_eq!(w.local_commit_count("/r"), 0);
         assert_eq!(w.push_count("/r"), 0);
     }
