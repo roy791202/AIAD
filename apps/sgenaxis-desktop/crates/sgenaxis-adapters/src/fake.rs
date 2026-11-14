@@ -601,6 +601,10 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved file-stage path.
+    last_stage_file: HashMap<String, String>,
+    /// repo → paths staged via FILE-STAGE (never add -A / .).
+    staged_files: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +852,21 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Last approved FILE-STAGE path for `repo`.
+    pub fn last_stage_file(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_stage_file.get(&Self::key(repo)).cloned()
+    }
+
+    /// Paths recorded by approved FILE-STAGE for `repo` (order preserved).
+    pub fn staged_files(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.staged_files
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1909,55 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn stage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty stage path".into()));
+        }
+        if crate::git_write::stage_file_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "option-like, traversal, absolute, or add-all paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before file-stage".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use file-stage to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        st.last_stage_file.insert(key.clone(), rel.to_string());
+        st.staged_files
+            .entry(key)
+            .or_default()
+            .push(rel.to_string());
         Ok(())
     }
 
