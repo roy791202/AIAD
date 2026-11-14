@@ -64,6 +64,15 @@
 //!   revert fails with `OPERATION_IN_PROGRESS`. Empty / `-flag` / `..` / `.`
 //!   paths fail honestly. Already-unstaged path → success no-op. Untracked
 //!   files remain untracked. Missing path fails honestly.
+//! - Stage-hunk: `git apply --cached --check -` then `git apply --cached -`
+//!   with a text hunk on stdin. Never commit / push / `git add -A` /
+//!   `git add -- .` / `reset --hard` / `--force`. Distinct from stage-file
+//!   and conflict-save. Empty / `-flag` / `..` paths fail honestly. Empty /
+//!   truncated / binary / rename patches fail honestly. Content-hash
+//!   mismatch or apply `--check` failure is patch drift (no mutation; do not
+//!   guess positions). In-progress merge/rebase/cherry-pick/revert fails
+//!   with `OPERATION_IN_PROGRESS`. Already-applied matching hunk → success
+//!   no-op when reverse `--check` succeeds.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -80,8 +89,9 @@
 //! - Error text is credential-redacted.
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
 
@@ -140,6 +150,39 @@ impl StdGitWrite {
             ));
         }
 
+        String::from_utf8(output.stdout)
+            .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn run_stdin(&self, repo: &str, args: &[&str], stdin: &str) -> Result<String, PortError> {
+        if repo.trim().is_empty() {
+            return Err(PortError::InvalidPath("empty git repo path".into()));
+        }
+        let mut child = Command::new(&self.program)
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
+        if let Some(mut sin) = child.stdin.take() {
+            sin.write_all(stdin.as_bytes()).map_err(|e| {
+                git_error_redacted(&format!("git {:?} stdin", args), &e.to_string())
+            })?;
+        }
+        let output = child
+            .wait_with_output()
+            .map_err(|e| git_error_redacted(&format!("git {:?} wait", args), &e.to_string()))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let code = output.status.code().unwrap_or(-1);
+            return Err(git_error_redacted(
+                &format!("git {:?} exit {code}", args),
+                &stderr,
+            ));
+        }
         String::from_utf8(output.stdout)
             .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
     }
@@ -1025,6 +1068,85 @@ impl GitWritePort for StdGitWrite {
         Ok(())
     }
 
+    fn stage_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        patch: &str,
+        content_hash: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty stage path".into()));
+        }
+        if crate::git_write::stage_file_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "flag/traversal/all stage paths are out of scope".into(),
+            ));
+        }
+        if content_hash.trim().is_empty() {
+            return Err(PortError::Other("empty content hash".into()));
+        }
+        if let Some(reason) = crate::git_write::stage_hunk_patch_refused(patch) {
+            return Err(PortError::Git(reason.into()));
+        }
+        if patch_targets_other_path(patch, rel) {
+            return Err(PortError::Git(
+                "patch path does not match selected file".into(),
+            ));
+        }
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before stage-hunk".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use stage-hunk to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        let worktree = Path::new(repo).join(rel);
+        let bytes = fs::read(&worktree)
+            .map_err(|e| PortError::Git(format!("cannot read worktree path '{rel}': {e}")))?;
+        if bytes.contains(&0) {
+            return Err(PortError::Git("binary hunks are disabled".into()));
+        }
+        let sha = sgenaxis_spec::packet::source_sha256(&bytes);
+        let oid = self
+            .run(repo, &["hash-object", "--", rel])
+            .ok()
+            .unwrap_or_default();
+        let hash_ok = content_hash.eq_ignore_ascii_case(&sha) || content_hash.trim() == oid.trim();
+        if !hash_ok {
+            return Err(PortError::Git(
+                "patch drift: content hash mismatch; no mutation".into(),
+            ));
+        }
+        match self.run_stdin(repo, &["apply", "--cached", "--check", "-"], patch) {
+            Ok(_) => {}
+            Err(_) => {
+                // Already-applied matching hunk: reverse check succeeds → no-op.
+                if self
+                    .run_stdin(
+                        repo,
+                        &["apply", "--cached", "--reverse", "--check", "-"],
+                        patch,
+                    )
+                    .is_ok()
+                {
+                    return Ok(());
+                }
+                return Err(PortError::Git("patch drift refused; no mutation".into()));
+            }
+        }
+        self.run_stdin(repo, &["apply", "--cached", "-"], patch)?;
+        Ok(())
+    }
+
     fn conflict_save(
         &self,
         repo: &str,
@@ -1148,4 +1270,40 @@ impl GitWritePort for StdGitWrite {
         self.run(repo, &args)?;
         Ok(())
     }
+}
+
+fn patch_targets_other_path(patch: &str, rel: &str) -> bool {
+    let mut saw_path = false;
+    for line in patch.lines() {
+        if let Some(rest) = line.strip_prefix("diff --git ") {
+            saw_path = true;
+            let parts: Vec<&str> = rest.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let a = parts[0].trim_start_matches("a/");
+                let b = parts[1].trim_start_matches("b/");
+                if a != rel || b != rel {
+                    return true;
+                }
+            }
+        }
+        if let Some(rest) = line.strip_prefix("--- ") {
+            if rest != "/dev/null" {
+                saw_path = true;
+                let p = rest.trim_start_matches("a/");
+                if p != rel {
+                    return true;
+                }
+            }
+        }
+        if let Some(rest) = line.strip_prefix("+++ ") {
+            if rest != "/dev/null" {
+                saw_path = true;
+                let p = rest.trim_start_matches("b/");
+                if p != rel {
+                    return true;
+                }
+            }
+        }
+    }
+    !saw_path
 }

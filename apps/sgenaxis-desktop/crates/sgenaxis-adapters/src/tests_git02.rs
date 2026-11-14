@@ -2454,4 +2454,215 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    fn first_hunk_patch(full: &str) -> String {
+        let mut out = String::new();
+        let mut hunks = 0;
+        for line in full.lines() {
+            if line.starts_with("@@") {
+                hunks += 1;
+                if hunks > 1 {
+                    break;
+                }
+            }
+            if hunks <= 1 {
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn std_write_stage_hunk_applies_only_selected_hunk_without_commit() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = head_of(repo);
+        let committed = (1..=40)
+            .map(|n| format!("line-{n}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        fs::write(work.join("a.txt"), &committed).unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "lines"]);
+        let head_seed = head_of(repo);
+        let dirty = committed
+            .replace("line-2\n", "LINE-2\n")
+            .replace("line-35\n", "LINE-35\n");
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let full = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        let patch = first_hunk_patch(&full);
+        assert!(patch.contains("LINE-2"), "expected first hunk: {patch}");
+        assert!(
+            !patch.contains("LINE-35"),
+            "first hunk must not include second change: {patch}"
+        );
+        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let w = StdGitWrite::new();
+
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::denied())
+            .expect_err("denied stage-hunk must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains(" M a.txt") || denied_st.contains("M a.txt"),
+            "denied must leave dirty a.txt: {denied_st}"
+        );
+
+        for path in ["", "-", "-A", "--force", "../x", "a/../b", ".", "-u"] {
+            w.stage_hunk(repo, path, &patch, &hash, GitWriteApproval::granted())
+                .expect_err("invalid path must refuse");
+        }
+
+        w.stage_hunk(repo, "a.txt", "", &hash, GitWriteApproval::granted())
+            .expect_err("empty patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "GIT binary patch\nliteral 1\nMc$`\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("binary patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "diff --git a/a.txt b/b.txt\nrename from a.txt\nrename to b.txt\n@@ -1 +1 @@\n-old\n+new\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("rename patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,8 +1,8 @@\n-one\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("truncated hunk");
+
+        let drifted_hash = "0".repeat(64);
+        let drift_hash = w
+            .stage_hunk(
+                repo,
+                "a.txt",
+                &patch,
+                &drifted_hash,
+                GitWriteApproval::granted(),
+            )
+            .expect_err("hash mismatch is drift");
+        assert!(
+            drift_hash
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("drift")
+                || drift_hash.to_string().contains("hash"),
+            "expected hash drift, got {drift_hash}"
+        );
+
+        let index_drift = dirty.replace("LINE-2\n", "YYY\n");
+        fs::write(work.join("a.txt"), &index_drift).unwrap();
+        git(&work, &["add", "a.txt"]);
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let hash_now = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let index_before_drift = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        let drift_apply = w
+            .stage_hunk(
+                repo,
+                "a.txt",
+                &patch,
+                &hash_now,
+                GitWriteApproval::granted(),
+            )
+            .expect_err("apply check fail is drift");
+        assert!(
+            drift_apply
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("drift"),
+            "expected patch drift refused, got {drift_apply}"
+        );
+        let index_after_drift = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        assert_eq!(
+            index_after_drift, index_before_drift,
+            "drift must not mutate index"
+        );
+        git(&work, &["reset", "--", "a.txt"]);
+
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::granted())
+            .expect("approved git apply --cached");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("MM a.txt")
+                || (staged.contains("M  a.txt") && staged.contains(" M a.txt"))
+                || staged.contains("MM"),
+            "partial stage leaves both index and worktree dirty: {staged}"
+        );
+        let cached = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        assert!(
+            cached.contains("LINE-2"),
+            "first hunk must be in index: {cached}"
+        );
+        assert!(
+            !cached.contains("LINE-35"),
+            "second hunk must stay unstaged: {cached}"
+        );
+        let wt = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert!(wt.contains("LINE-35"), "worktree must remain dirty");
+        assert_eq!(head_of(repo), head_seed, "stage-hunk must never commit");
+        assert_ne!(head_seed, head_before);
+
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::granted())
+            .expect("already-applied matching hunk is success no-op");
+        assert_eq!(head_of(repo), head_seed);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .stage_hunk(
+                crepo,
+                "a.txt",
+                TEXT_HUNK_FALLBACK,
+                "deadbeef",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    const TEXT_HUNK_FALLBACK: &str =
+        "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n";
 }

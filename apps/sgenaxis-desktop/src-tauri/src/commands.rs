@@ -37,11 +37,11 @@ use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
     perform_git_set_upstream, perform_git_stage_all, perform_git_stage_file, perform_git_switch,
-    perform_git_unstage_all, perform_git_unstage_file,
+    perform_git_stage_hunk, perform_git_unstage_all, perform_git_unstage_file,
     perform_git_unset_upstream, save_design_file, save_scene_text, CompositionRoot,
     DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
     GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitStageAllResult,
-    GitStageFileResult, GitSwitchResult, GitTagPushResult, GitUnstageAllResult,
+    GitStageFileResult, GitStageHunkResult, GitSwitchResult, GitTagPushResult, GitUnstageAllResult,
     GitUnstageFileResult,
     GitUnsetUpstreamResult,
     GuardDecisionView, GuardPacketDto,
@@ -61,8 +61,8 @@ use crate::dto::{
     GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
     GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
     GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
-    GitWriteStageAllArgs, GitWriteStageFileArgs, GitWriteStashArgs, GitWriteStashPushArgs,
-    GitWriteUnstageFileArgs,
+    GitWriteStageAllArgs, GitWriteStageFileArgs, GitWriteStageHunkArgs, GitWriteStashArgs,
+    GitWriteStashPushArgs, GitWriteUnstageFileArgs,
     GitWriteSwitchArgs, GitWriteUnstageAllArgs,
     GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteTagPushArgs, GitWriteUnsetUpstreamArgs,
     ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs,
@@ -450,6 +450,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_unstage_all",
         "git_write_stage_file",
         "git_write_unstage_file",
+        "git_write_stage_hunk",
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
@@ -3495,6 +3496,61 @@ pub fn git_write_unstage_file(
     perform_git_write_unstage_file(root.git_write(), &repo, &args.path, args.approved)
 }
 
+fn git_stage_hunk_result_dto(r: GitStageHunkResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_stage_hunk(
+    write: &dyn GitWritePort,
+    repo: &str,
+    path: &str,
+    patch: &str,
+    content_hash: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    Ok(git_stage_hunk_result_dto(perform_git_stage_hunk(
+        write,
+        repo,
+        path,
+        patch,
+        content_hash,
+        approved,
+    )))
+}
+
+/// Approval-gated `git apply --cached` (HUNK-STAGE). Never commit/push/-A/`.`/force/reset --hard.
+/// Distinct from stage-file and conflict-save. Binary / rename / truncated / drift refuse.
+#[tauri::command]
+pub fn git_write_stage_hunk(
+    state: State<'_, HostState>,
+    args: GitWriteStageHunkArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_stage_hunk").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "stage-hunk".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_stage_hunk(
+        root.git_write(),
+        &repo,
+        &args.path,
+        &args.patch,
+        &args.content_hash,
+        args.approved,
+    )
+}
+
 fn fetch_refspec_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -6070,6 +6126,47 @@ mod git_ui_tests {
         assert!(ok.ok);
         assert_eq!(ok.op, "unstage-file");
         assert_eq!(w.last_unstage_file("/r").as_deref(), Some("a.txt"));
+        assert_eq!(w.local_commit_count("/r"), 0);
+        assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_stage_hunk_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_stage_hunk"));
+        assert!(!is_allowed("git_stage_hunk"));
+        assert!(!is_allowed("git_apply"));
+
+        const TEXT_HUNK: &str =
+            "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n";
+
+        let w = FakeGitWrite::new();
+        let denied =
+            perform_git_write_stage_hunk(&w, "/r", "a.txt", TEXT_HUNK, "abc", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_stage_hunk("/r").is_none());
+
+        w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+        let conflict =
+            perform_git_write_stage_hunk(&w, "/r", "src/a.rs", TEXT_HUNK, "abc", true).unwrap();
+        assert!(!conflict.ok);
+        assert!(conflict.message.contains("OPERATION_IN_PROGRESS"));
+        assert!(w.last_stage_hunk("/r").is_none());
+
+        let w = FakeGitWrite::new();
+        let invalid =
+            perform_git_write_stage_hunk(&w, "/r", "../x", TEXT_HUNK, "abc", true).unwrap();
+        assert!(!invalid.ok);
+        assert!(w.last_stage_hunk("/r").is_none());
+
+        let ok = perform_git_write_stage_hunk(&w, "/r", "a.txt", TEXT_HUNK, "abc", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "stage-hunk");
+        assert_eq!(
+            w.last_stage_hunk("/r").as_ref().map(|t| t.0.as_str()),
+            Some("a.txt")
+        );
         assert_eq!(w.local_commit_count("/r"), 0);
         assert_eq!(w.push_count("/r"), 0);
     }

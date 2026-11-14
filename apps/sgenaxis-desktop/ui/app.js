@@ -2499,6 +2499,8 @@
       url: payload.url,
       path: payload.path,
       contents: payload.contents,
+      patch: payload.patch,
+      contentHash: payload.contentHash,
     };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
@@ -2561,6 +2563,8 @@
           ? "審核暫存檔案"
           : op === "unstage-file"
           ? "審核取消暫存檔案"
+          : op === "stage-hunk"
+          ? "審核暫存區塊"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2649,6 +2653,8 @@
           ? "核准後經 git_write_unstage_file → GitWritePort；於儲存庫根執行 git reset -- " +
             (payload.path || "") +
             "（單一 pathspec，mixed reset：該路徑索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不加 -- .、不做 reset --hard／--force。與全部取消暫存／衝突中止分開。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以取消暫存清除衝突。已取消暫存路徑為成功 no-op。拒絕則無突變。"
+          : op === "stage-hunk"
+          ? "核准後經 git_write_stage_hunk → GitWritePort；stdin 執行 git apply --cached --check 再 git apply --cached。只處理核對的文字 Hunk 與內容 hash。不提交、不推送、不加 -A、不加 -- .、不做 reset --hard／--force。binary／rename／截斷 Hunk 與 patch drift 誠實拒絕（不猜測位置）。進行中 merge／rebase／cherry-pick／revert 誠實失敗（OPERATION_IN_PROGRESS）。已套用的相同 Hunk 為成功 no-op。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -3422,6 +3428,39 @@
             true
           );
           toast("暫存失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "stage-hunk") {
+        const path = pendingGitWrite.path || "";
+        const patch = pendingGitWrite.patch || "";
+        const contentHash = pendingGitWrite.contentHash || "";
+        const dto = await invoke("git_write_stage_hunk", {
+          args: {
+            repo: repo,
+            path: path,
+            patch: patch,
+            contentHash: contentHash,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已暫存區塊 " +
+              path +
+              "（經 GitWritePort；git apply --cached；未提交／未推送）",
+            false
+          );
+          toast("暫存區塊完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "暫存區塊失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（工作區依 Git 真實結果保留；未猜測 Hunk 位置）",
+            true
+          );
+          toast("暫存區塊失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "unstage-file") {
@@ -4308,6 +4347,25 @@
         },
         unstageFile: function (path) {
           showGitApprove("unstage-file", { path: path || "" });
+        },
+        stageHunk: async function (path, patch, contentHash) {
+          let hunkPatch = patch || "";
+          if (!hunkPatch && path) {
+            try {
+              const d = await invoke("git_workbench_diff", {
+                repo: gitRepoArg(),
+                pathspec: path,
+              });
+              hunkPatch = d && d.diff_text != null ? d.diff_text : "";
+            } catch (_e) {
+              hunkPatch = "";
+            }
+          }
+          showGitApprove("stage-hunk", {
+            path: path || "",
+            patch: hunkPatch,
+            contentHash: contentHash || "",
+          });
         },
         unsetUpstream: function (local) {
           const branchEl = document.getElementById("git-ux-branch");

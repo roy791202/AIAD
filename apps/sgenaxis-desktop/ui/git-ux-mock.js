@@ -279,6 +279,7 @@ function handle(el){const id=el.dataset.op;if($('#git-ux-inspect')?.checked){spe
  if(id==='ALL-UNSTAGE'&&state&&state.live){if(liveHooks&&liveHooks.unstageAll){Promise.resolve(liveHooks.unstageAll()).catch(function(){});return}}
  if(id==='FILE-STAGE'&&state&&state.live){if(liveHooks&&liveHooks.stageFile){Promise.resolve(liveHooks.stageFile(el.dataset.path||state.selected)).catch(function(){});return}}
  if(id==='FILE-UNSTAGE'&&state&&state.live){if(liveHooks&&liveHooks.unstageFile){Promise.resolve(liveHooks.unstageFile(el.dataset.path||state.selected)).catch(function(){});return}}
+ if(id==='HUNK-STAGE'&&state&&state.live){if(liveHooks&&liveHooks.stageHunk){Promise.resolve(liveHooks.stageHunk(el.dataset.path||state.selected,el.dataset.patch||'',el.dataset.hash||'')).catch(function(){});return}}
  if(id==='BRANCH-DELETE'&&state&&state.live){if(liveHooks&&liveHooks.branchDelete){Promise.resolve(liveHooks.branchDelete(el.dataset.value)).catch(function(){});return}}
  if(id==='BRANCH-RENAME'&&state&&state.live){if(liveHooks&&liveHooks.branchRename){Promise.resolve(liveHooks.branchRename(el.dataset.value)).catch(function(){});return}}
  if(id==='TAG-DELETE'&&state&&state.live){if(liveHooks&&liveHooks.tagDelete){Promise.resolve(liveHooks.tagDelete(el.dataset.value)).catch(function(){});return}}
