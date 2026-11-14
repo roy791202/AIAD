@@ -2188,4 +2188,116 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    #[test]
+    fn s_git_write_p2_3_discard_file() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+
+        fs::write(work.join("a.txt"), "staged\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+
+        w.discard_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved restore --worktree of one tracked path");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            "staged\n",
+            "worktree must match index, not HEAD and not dirty"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("new.txt")).unwrap(),
+            "untracked\n",
+            "untracked files must not be deleted"
+        );
+        let after = porcelain(repo);
+        assert!(
+            after.contains("?? new.txt"),
+            "untracked must remain untracked: {after}"
+        );
+        let staged = Command::new("git")
+            .args(["-C", repo, "show", ":a.txt"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&staged.stdout),
+            "staged\n",
+            "index must be unchanged by discard-file"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "discard-file must never commit");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn s_git_write_p2_4_discard_reject() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+
+        w.discard_file(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied discard must not mutate");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "dirty\n");
+        assert_eq!(
+            fs::read_to_string(work.join("new.txt")).unwrap(),
+            "untracked\n"
+        );
+
+        w.discard_file(repo, "-f", GitWriteApproval::granted())
+            .expect_err("option-like path must fail");
+        w.discard_file(repo, "--force", GitWriteApproval::granted())
+            .expect_err("force flag path must fail");
+        w.discard_file(repo, "../outside.txt", GitWriteApproval::granted())
+            .expect_err("path outside repo must fail");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "dirty\n");
+
+        w.discard_file(repo, "new.txt", GitWriteApproval::granted())
+            .expect_err("untracked must not be deleted");
+        assert_eq!(
+            fs::read_to_string(work.join("new.txt")).unwrap(),
+            "untracked\n"
+        );
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .discard_file(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("unmerged path must fail honestly");
+        let msg = fail.to_string();
+        assert!(
+            msg.to_ascii_lowercase().contains("unmerged")
+                || msg.contains("OPERATION_IN_PROGRESS"),
+            "expected unmerged failure, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "discard-file must not reset --hard conflict state"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }

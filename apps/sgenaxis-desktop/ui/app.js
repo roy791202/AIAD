@@ -2557,6 +2557,8 @@
           ? "審核全部暫存"
           : op === "unstage-all"
           ? "審核全部取消暫存"
+          : op === "discard-file"
+          ? "審核放棄工作區檔案"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2637,6 +2639,10 @@
           ? "核准後經 git_write_stage_all → GitWritePort；於儲存庫根執行 git add -- .。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部暫存標記衝突已解決。乾淨工作區為成功 no-op。拒絕則無突變。"
           : op === "unstage-all"
           ? "核准後經 git_write_unstage_all → GitWritePort；於儲存庫根執行 git reset -- .（mixed pathspec，索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部取消暫存清除衝突。乾淨索引為成功 no-op。拒絕則無突變。"
+          : op === "discard-file"
+          ? "核准後經 git_write_discard_file → GitWritePort；將 " +
+            (payload.path || "") +
+            " 的工作區內容還原至索引（git restore --worktree -- path）。不刪未追蹤檔、不做 reset --hard／--force。儲存庫外路徑、旗標路徑與未合併衝突路徑誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -3381,6 +3387,40 @@
             true
           );
           toast("全部取消暫存失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "discard-file") {
+        const path = pendingGitWrite.path || "";
+        if (!path) {
+          setGitStatusLine("放棄路徑不可空白", true);
+          toast("請指定檔案路徑");
+          return;
+        }
+        const dto = await invoke("git_write_discard_file", {
+          args: {
+            repo: repo,
+            path: path,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已放棄工作區 " +
+              path +
+              "（經 GitWritePort；git restore --worktree；未刪未追蹤／未 hard reset）",
+            false
+          );
+          toast("已還原至索引");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "放棄檔案失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（工作區依 Git 真實結果保留；未刪未追蹤檔）",
+            true
+          );
+          toast("放棄檔案失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-rename") {
@@ -4232,6 +4272,9 @@
         },
         unstageAll: function () {
           showGitApprove("unstage-all", {});
+        },
+        discardFile: function (path) {
+          showGitApprove("discard-file", { path: path || "" });
         },
         unsetUpstream: function (local) {
           const branchEl = document.getElementById("git-ux-branch");

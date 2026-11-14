@@ -46,6 +46,9 @@
 //!   `-A` / `.`; this path is the explicit ALL-STAGE exception for `.` only).
 //!   In-progress merge/rebase/cherry-pick/revert fails with
 //!   `OPERATION_IN_PROGRESS`. Clean worktree → success no-op.
+//! - Discard-file: `git restore --worktree -- <path>` (or `git checkout -- <path>`).
+//!   Never `reset --hard` / `--force`. Untracked files are not deleted.
+//!   Paths outside the repo, option-like paths, and unmerged paths fail honestly.
 //! - Unstage-all: `git reset -- .` from the repo root (mixed pathspec reset).
 //!   Never commit / push / `git add -A` / `reset --hard` / `--force`.
 //!   In-progress merge/rebase/cherry-pick/revert fails with
@@ -250,6 +253,29 @@ impl StdGitWrite {
         Ok(())
     }
 
+    fn require_discard_path(repo: &str, path: &str) -> Result<String, PortError> {
+        if path.trim().is_empty() {
+            return Err(PortError::Other("empty discard path".into()));
+        }
+        if path.contains('\n') || path.contains('\0') {
+            return Err(PortError::Other(
+                "discard path must be a single line".into(),
+            ));
+        }
+        let rel = path.trim();
+        if crate::git_write::conflict_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "force/flag/outside discard paths are out of scope".into(),
+            ));
+        }
+        if discard_path_escapes_repo(repo, rel) {
+            return Err(PortError::Other(
+                "force/flag/outside discard paths are out of scope".into(),
+            ));
+        }
+        Ok(rel.to_string())
+    }
+
     fn require_conflict_path(path: &str) -> Result<(), PortError> {
         if path.trim().is_empty() {
             return Err(PortError::Other("empty conflict path".into()));
@@ -390,6 +416,43 @@ fn is_stash_selector(value: &str) -> bool {
 }
 
 /// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
+fn discard_path_escapes_repo(repo: &str, rel: &str) -> bool {
+    use std::path::{Component, PathBuf};
+    let root = Path::new(repo);
+    let joined = if Path::new(rel).is_absolute() {
+        PathBuf::from(rel)
+    } else {
+        root.join(rel)
+    };
+    let mut acc = PathBuf::new();
+    for component in joined.components() {
+        match component {
+            Component::ParentDir => {
+                if !acc.pop() {
+                    return true;
+                }
+            }
+            Component::CurDir => {}
+            Component::Prefix(p) => acc.push(p.as_os_str()),
+            Component::RootDir => acc.push(component),
+            Component::Normal(p) => acc.push(p),
+        }
+    }
+    let mut root_acc = PathBuf::new();
+    for component in root.components() {
+        match component {
+            Component::ParentDir => {
+                let _ = root_acc.pop();
+            }
+            Component::CurDir => {}
+            Component::Prefix(p) => root_acc.push(p.as_os_str()),
+            Component::RootDir => root_acc.push(component),
+            Component::Normal(p) => root_acc.push(p),
+        }
+    }
+    !acc.starts_with(&root_acc)
+}
+
 fn identity_out_of_scope(value: &str) -> bool {
     value.split_whitespace().any(|token| {
         let t = token.to_ascii_lowercase();
@@ -934,6 +997,34 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn discard_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = Self::require_discard_path(repo, path)?;
+        let unmerged = self.run(repo, &["ls-files", "-u", "--", &rel])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "unmerged conflict path; discard-file refused".into(),
+            ));
+        }
+        if self
+            .run(repo, &["ls-files", "--error-unmatch", "--", &rel])
+            .is_err()
+        {
+            return Err(PortError::Git(
+                "untracked path is not discarded or deleted".into(),
+            ));
+        }
+        // One path only. Worktree ← index. Never --hard / --force / -f.
+        // `--` stops option parse so a path cannot be read as a flag.
+        self.run(repo, &["restore", "--worktree", "--", &rel])?;
         Ok(())
     }
 
