@@ -156,7 +156,7 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
         })
 }
 
-/// Paths that would become flags or widen `git add` beyond one selected file.
+/// Paths that would become flags or widen `git add` / `git reset` beyond one selected file.
 pub(crate) fn stage_file_path_out_of_scope(value: &str) -> bool {
     conflict_path_out_of_scope(value)
 }
@@ -406,6 +406,15 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn stage_file(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn unstage_file(
         &self,
         _repo: &str,
         _path: &str,

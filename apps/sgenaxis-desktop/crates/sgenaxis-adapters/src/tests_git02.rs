@@ -2240,9 +2240,15 @@ mod std_write_temp {
             .stage_file(repo, "missing.txt", GitWriteApproval::granted())
             .expect_err("missing path must fail honestly");
         assert!(
-            missing.to_string().to_ascii_lowercase().contains("pathspec")
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("pathspec")
                 || missing.to_string().contains("missing.txt")
-                || missing.to_string().to_ascii_lowercase().contains("did not match"),
+                || missing
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains("did not match"),
             "expected missing pathspec error, got {missing}"
         );
         let after_missing = porcelain(repo);
@@ -2304,6 +2310,145 @@ mod std_write_temp {
         assert!(
             !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
             "stage-file must not mark conflicts resolved"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    #[test]
+    fn std_write_unstage_file_resets_only_selected_path_without_commit_or_hard() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = head_of(repo);
+        let w = StdGitWrite::new();
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-unstaged selected path is success no-op");
+        assert!(porcelain(repo).trim().is_empty());
+
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        fs::write(work.join("b.txt"), "dirty-b\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+        w.stage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("stage a.txt for unstage fixture");
+        w.stage_file(repo, "b.txt", GitWriteApproval::granted())
+            .expect("stage b.txt to prove single-path unstage");
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied unstage-file must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains("M  a.txt"),
+            "denied must leave staged a.txt: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("A  b.txt") || denied_st.contains("M  b.txt"),
+            "denied must leave staged b.txt: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("?? new.txt"),
+            "denied must leave untracked: {denied_st}"
+        );
+
+        for path in ["", "-", "-A", "--force", "../x", "a/../b", ".", "-u"] {
+            w.unstage_file(repo, path, GitWriteApproval::granted())
+                .expect_err("invalid path must refuse");
+        }
+        let after_invalid = porcelain(repo);
+        assert!(
+            after_invalid.contains("M  a.txt"),
+            "invalid path must not unstage a.txt: {after_invalid}"
+        );
+        assert!(
+            after_invalid.contains("?? new.txt"),
+            "invalid path must not mutate untracked: {after_invalid}"
+        );
+
+        let missing = w
+            .unstage_file(repo, "missing.txt", GitWriteApproval::granted())
+            .expect_err("missing path must fail honestly");
+        assert!(
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("pathspec")
+                || missing.to_string().contains("missing.txt")
+                || missing
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains("did not match"),
+            "expected missing pathspec error, got {missing}"
+        );
+        let after_missing = porcelain(repo);
+        assert!(
+            after_missing.contains("M  a.txt"),
+            "missing path must not mutate other files: {after_missing}"
+        );
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved git reset -- a.txt");
+        let unstaged = porcelain(repo);
+        assert!(
+            unstaged.contains(" M a.txt")
+                || unstaged.contains("M a.txt")
+                || unstaged.contains(" a.txt"),
+            "selected staged path must become unstaged: {unstaged}"
+        );
+        assert!(
+            !unstaged.contains("M  a.txt"),
+            "index must not keep staged a.txt: {unstaged}"
+        );
+        assert!(
+            unstaged.contains("A  b.txt") || unstaged.contains("M  b.txt"),
+            "other staged file must stay staged: {unstaged}"
+        );
+        assert!(
+            unstaged.contains("?? new.txt"),
+            "untracked other file must stay untracked: {unstaged}"
+        );
+        let worktree_a = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert_eq!(
+            worktree_a, "dirty-a\n",
+            "unstage-file must never reset --hard worktree contents"
+        );
+        assert_eq!(head_of(repo), head_before, "unstage-file must never commit");
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-unstaged path is success no-op");
+        assert_eq!(head_of(repo), head_before);
+
+        w.unstage_file(repo, "new.txt", GitWriteApproval::granted())
+            .expect("untracked selected path is success no-op");
+        let after_untracked = porcelain(repo);
+        assert!(
+            after_untracked.contains("?? new.txt"),
+            "untracked file must remain untracked: {after_untracked}"
+        );
+        let worktree_new = fs::read_to_string(work.join("new.txt")).unwrap();
+        assert_eq!(
+            worktree_new, "untracked\n",
+            "reset of a never-added file must not delete worktree"
+        );
+        assert_eq!(head_of(repo), head_before);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .unstage_file(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "unstage-file must not clear conflict state"
         );
 
         let _ = fs::remove_dir_all(work.parent().unwrap());

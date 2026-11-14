@@ -56,6 +56,14 @@
 //!   from conflict-save. In-progress merge/rebase/cherry-pick/revert fails
 //!   with `OPERATION_IN_PROGRESS`. Empty / `-flag` / `..` paths fail honestly.
 //!   Already-staged path → success no-op. Missing path fails honestly.
+//! - Unstage-file: `git reset -- <path>` from the repo root (exactly one
+//!   pathspec; mixed reset: that path's index → HEAD). Worktree unchanged.
+//!   Never `.` / commit / push / `git add -A` / `git add -- .` /
+//!   `reset --hard` / `--force`. Distinct from unstage-all (`git reset -- .`)
+//!   and conflict-abort (`--abort`). In-progress merge/rebase/cherry-pick/
+//!   revert fails with `OPERATION_IN_PROGRESS`. Empty / `-flag` / `..` / `.`
+//!   paths fail honestly. Already-unstaged path → success no-op. Untracked
+//!   files remain untracked. Missing path fails honestly.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -973,6 +981,47 @@ impl GitWritePort for StdGitWrite {
         // Worktree-only: exactly one pathspec. Never `.` / `-A`.
         // Never commit / push / reset --hard / --force.
         self.run(repo, &["add", "--", rel])?;
+        Ok(())
+    }
+
+    fn unstage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty unstage path".into()));
+        }
+        if crate::git_write::stage_file_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "flag/traversal/all unstage paths are out of scope".into(),
+            ));
+        }
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before unstage-file".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use unstage-file to clear conflict state"
+                    .into(),
+            ));
+        }
+        let present = Path::new(repo).join(rel).exists()
+            || !self.run(repo, &["ls-files", "--", rel])?.trim().is_empty();
+        if !present {
+            return Err(PortError::Git(format!(
+                "pathspec '{rel}' did not match any files"
+            )));
+        }
+        // Mixed pathspec reset: that path's index → HEAD. Worktree unchanged.
+        // Never `--hard`. Never commit / push / add -A / `.` / --force.
+        self.run(repo, &["reset", "--", rel])?;
         Ok(())
     }
 

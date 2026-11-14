@@ -557,6 +557,23 @@ pub trait GitWritePort: Send + Sync {
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 
+    /// Unstage one selected path without touching worktree contents. Requires approval.
+    /// `git reset -- <path>` from the repo root (mixed pathspec reset: that path's
+    /// index → HEAD). Exactly one pathspec. Never `.` / commit / push /
+    /// `git add -A` / `git add -- .` / `reset --hard` / `--force` / `-f` / `-D`.
+    /// Never merge / rebase / pull / fetch. Distinct from [`Self::unstage_all`]
+    /// (`git reset -- .`) and from [`Self::conflict_abort`] (`--abort`). Empty,
+    /// option-like (`-…`), `..`, and `.` paths fail honestly with no mutation.
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`). An already-unstaged path succeeds as
+    /// a no-op. Untracked files remain untracked. Missing paths fail honestly.
+    fn unstage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.

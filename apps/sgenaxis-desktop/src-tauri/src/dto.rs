@@ -715,6 +715,16 @@ pub struct GitWriteStageFileArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git reset -- path` (FILE-UNSTAGE). Never commit/push/hard/`.`/force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteUnstageFileArgs {
+    pub repo: Option<String>,
+    /// Single selected staged path. Never `.` / flags / `..`.
+    pub path: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {
