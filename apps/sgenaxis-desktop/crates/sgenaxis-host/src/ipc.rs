@@ -88,6 +88,8 @@ pub enum AllowedIpcCommand {
     GitWriteUnsetUpstream,
     /// Approval-gated `git add -- .` via GitWritePort (never commit/push/-A/force).
     GitWriteStageAll,
+    /// Approval-gated `git add -- path` via GitWritePort (FILE-STAGE; never -A / .).
+    GitWriteStageFile,
     /// Approval-gated `git reset -- .` via GitWritePort (never commit/push/hard/force).
     GitWriteUnstageAll,
     /// Approval-gated `git add -- path` for one resolved conflict (never -A / .).
@@ -193,6 +195,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteSetUpstream => "git_write_set_upstream",
             AllowedIpcCommand::GitWriteUnsetUpstream => "git_write_unset_upstream",
             AllowedIpcCommand::GitWriteStageAll => "git_write_stage_all",
+            AllowedIpcCommand::GitWriteStageFile => "git_write_stage_file",
             AllowedIpcCommand::GitWriteUnstageAll => "git_write_unstage_all",
             AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
             AllowedIpcCommand::GitWriteConflictContinue => "git_write_conflict_continue",
@@ -268,6 +271,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteSetUpstream,
             AllowedIpcCommand::GitWriteUnsetUpstream,
             AllowedIpcCommand::GitWriteStageAll,
+            AllowedIpcCommand::GitWriteStageFile,
             AllowedIpcCommand::GitWriteUnstageAll,
             AllowedIpcCommand::GitWriteConflictSave,
             AllowedIpcCommand::GitWriteConflictContinue,
@@ -404,6 +408,7 @@ mod tests {
         assert!(is_allowed("git_write_set_upstream"));
         assert!(is_allowed("git_write_unset_upstream"));
         assert!(is_allowed("git_write_stage_all"));
+        assert!(is_allowed("git_write_stage_file"));
         assert!(is_allowed("git_write_unstage_all"));
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
@@ -435,6 +440,7 @@ mod tests {
         assert!(!is_allowed("git_unset_upstream"));
         assert!(!is_allowed("git_branch_unset_upstream"));
         assert!(!is_allowed("git_stage_all"));
+        assert!(!is_allowed("git_stage_file"));
         assert!(!is_allowed("git_unstage_all"));
         assert!(!is_allowed("git_add"));
         assert!(!is_allowed("git_fetch"));
@@ -597,6 +603,10 @@ mod tests {
             AllowedIpcCommand::GitWriteStageAll
         );
         assert_eq!(
+            authorize("git_write_stage_file").unwrap(),
+            AllowedIpcCommand::GitWriteStageFile
+        );
+        assert_eq!(
             authorize("git_write_unstage_all").unwrap(),
             AllowedIpcCommand::GitWriteUnstageAll
         );
@@ -648,6 +658,7 @@ mod tests {
         assert!(authorize("git_unset_upstream").is_err());
         assert!(authorize("git_branch_unset_upstream").is_err());
         assert!(authorize("git_stage_all").is_err());
+        assert!(authorize("git_stage_file").is_err());
         assert!(authorize("git_unstage_all").is_err());
         assert!(authorize("git_add").is_err());
         assert!(authorize("git_fetch").is_err());

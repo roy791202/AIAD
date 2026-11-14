@@ -2555,6 +2555,8 @@
           ? "審核 Unset Upstream"
           : op === "stage-all"
           ? "審核全部暫存"
+          : op === "stage-file"
+          ? "審核暫存檔案"
           : op === "unstage-all"
           ? "審核全部取消暫存"
           : op === "remote-remove"
@@ -2635,6 +2637,8 @@
           ? "核准後經 git_write_unset_upstream → GitWritePort；清除本機分支追蹤（git branch --unset-upstream -- local）。空白本機＝目前分支。不建立遠端／追蹤 refs／本機分支，不加 --set-upstream-to／-u／-M／-C／--force，不 fetch／pull／push。缺本機分支或沒有 upstream 誠實失敗。拒絕則無突變。"
           : op === "stage-all"
           ? "核准後經 git_write_stage_all → GitWritePort；於儲存庫根執行 git add -- .。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部暫存標記衝突已解決。乾淨工作區為成功 no-op。拒絕則無突變。"
+          : op === "stage-file"
+          ? "核准後經 git_write_stage_file → GitWritePort；於儲存庫根執行 git add -- <path>。不提交、不推送、不加 -A、不做 git add -- .、不做 reset --hard／--force。路徑須在儲存庫內（拒絕 ..、絕對路徑、以 - 開頭的選項型路徑）。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS）。拒絕則無突變。"
           : op === "unstage-all"
           ? "核准後經 git_write_unstage_all → GitWritePort；於儲存庫根執行 git reset -- .（mixed pathspec，索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部取消暫存清除衝突。乾淨索引為成功 no-op。拒絕則無突變。"
           : op === "remote-remove"
@@ -3331,6 +3335,35 @@
             true
           );
           toast("Unset upstream 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "stage-file") {
+        const path = pendingGitWrite.path || "";
+        const dto = await invoke("git_write_stage_file", {
+          args: {
+            repo: repo,
+            path: path,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已暫存 " +
+              path +
+              "（經 GitWritePort；git add -- path；未提交／未推送／未 add -A）",
+            false
+          );
+          toast("暫存檔案完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "暫存檔案失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（工作區依 Git 真實結果保留；未標記衝突已解決）",
+            true
+          );
+          toast("暫存檔案失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "stage-all") {
@@ -4229,6 +4262,9 @@
         },
         stageAll: function () {
           showGitApprove("stage-all", {});
+        },
+        stageFile: function (path) {
+          showGitApprove("stage-file", { path: path || "" });
         },
         unstageAll: function () {
           showGitApprove("unstage-all", {});

@@ -1548,6 +1548,49 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_stage_file_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.stage_file("/r", "a.txt", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stage_file("/r").is_none());
+
+    w.stage_file("/r", "a.txt", GitWriteApproval::granted())
+        .expect("approved single-path stage");
+    assert_eq!(w.last_stage_file("/r").as_deref(), Some("a.txt"));
+    assert_eq!(w.staged_files("/r"), vec!["a.txt".to_string()]);
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.stage_file("/r", "b.txt", GitWriteApproval::granted())
+        .expect("second path is additive, not add -A");
+    assert_eq!(w.last_stage_file("/r").as_deref(), Some("b.txt"));
+    assert_eq!(
+        w.staged_files("/r"),
+        vec!["a.txt".to_string(), "b.txt".to_string()]
+    );
+
+    let opt = w.stage_file("/r", "-A", GitWriteApproval::granted());
+    assert!(opt.is_err(), "option-like path must be rejected");
+    let dots = w.stage_file("/r", "../secret", GitWriteApproval::granted());
+    assert!(dots.is_err(), "traversal must be rejected");
+    let abs = w.stage_file("/r", "/tmp/escape", GitWriteApproval::granted());
+    assert!(abs.is_err(), "absolute escape must be rejected");
+    let dot = w.stage_file("/r", ".", GitWriteApproval::granted());
+    assert!(dot.is_err(), "git add -- . is out of scope for FILE-STAGE");
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.stage_file("/r", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+}
+
+#[test]
+fn gated_git_write_blocks_stage_file_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.stage_file("/any", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());
