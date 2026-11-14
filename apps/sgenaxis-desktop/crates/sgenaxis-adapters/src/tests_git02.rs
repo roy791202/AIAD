@@ -1986,6 +1986,42 @@ mod std_write_temp {
     }
 
     #[test]
+    fn bdd_pd_git_stage_path_01_std_write_stage_path_adds_one_file() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+        fs::write(work.join("one.txt"), "dirty\n").unwrap();
+        fs::write(work.join("two.txt"), "stay dirty\n").unwrap();
+
+        w.stage_path(repo, "one.txt", GitWriteApproval::denied())
+            .expect_err("denied must not stage");
+        let mid = porcelain(repo);
+        assert!(
+            mid.contains("one.txt") && mid.contains("two.txt"),
+            "denied must not change index: {mid}"
+        );
+
+        w.stage_path(repo, "one.txt", GitWriteApproval::granted())
+            .expect("approved single-path stage");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("A  one.txt") || staged.contains("A one.txt"),
+            "one.txt staged only: {staged}"
+        );
+        assert!(
+            staged.contains("?? two.txt") || staged.contains(" two.txt"),
+            "two.txt must remain unstaged: {staged}"
+        );
+
+        let bad = w
+            .stage_path(repo, "-A", GitWriteApproval::granted())
+            .expect_err("flag path");
+        assert!(bad.to_string().contains("out of scope"), "got {bad}");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
     fn std_write_stage_all_adds_without_commit() {
         let (work, _bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
