@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>M06 exchange CX v3 獨立唯讀複驗</title>
+<style>
+body{max-width:1100px;margin:40px auto;font:16px/1.65 system-ui;line-height:1.6;color:#183047}
+section{background:#f3f6fa;padding:18px 22px;margin:16px 0;border-radius:8px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff;padding:14px;border:1px solid #d8dee6}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #ccc;padding:8px;text-align:left}
+.status-warn{background:#fff0bd;padding:14px;border-radius:6px}
+a{color:#12629b}
+</style>
+<h1>M06 exchange CX v3 獨立唯讀複驗</h1>
+<p class="status-warn"><b>CHANGES_REQUIRED_ARTIFACT_SEAL</b>：語意／文件交叉一致通過，但 <code>artifact-hashes.json</code> 與現況檔案位元組 7/7 不一致，需重封簽後再交 Owner。未改產品、未建 Skeleton、未標 module PASS。</p>
+<p>審查者：<code>independent-reaccept-exchange-v3</code>（與封包作者分離）。<a href="../index.html">v3 候選包</a> · <a href="../../cx-exchange-revision-v2/index.html">v2 基線</a></p>
+
+<section>
+  <h2>封包摘要</h2>
+  <table>
+    <tr><th>revision_sha256</th><td><code>0987262a2db899de500ac80021236fcca25eadfc0dec7d25b8e44d1c6b7c7285</code></td></tr>
+    <tr><th>previous (v2)</th><td><code>10105a6e673c87c249647ff489fd45e45061775d1ce2699a9ecdca3a911efdbd</code></td></tr>
+    <tr><th>common_sha256</th><td><code>dfa917135150858c26030ba6575f899102d21b20b92c8b4ceede939b217c5681</code></td></tr>
+    <tr><th>原始案例</th><td>100（case-trace 全為 AMENDED_PROTOCOL_ONLY；與 v2 列內容 0 差異）</td></tr>
+    <tr><th>未授權語意變異</th><td>0（<code>new_semantic_mutations_rejected</code>）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>檢查項</h2>
+  <table>
+    <tr><th>artifact-hashes</th><td>FAIL：7/7 封簽與磁碟不符；revision_sha256 與 artifact-hashes 對照圖自洽</td></tr>
+    <tr><th>envelope</th><td>PASS：與 v2 相同 25 路徑候選</td></tr>
+    <tr><th>case-trace</th><td>PASS：100/100 協定修訂 only</td></tr>
+    <tr><th>differences</th><td>PASS：4 指標（shared_contract / replay_protocol / v3_schema_roots / wire_schema）</td></tr>
+    <tr><th>module-spec</th><td>PASS：index 內嵌與 JSON 一致</td></tr>
+    <tr><th>shared-contract</th><td>PASS_CROSSREF：與 differences after.model 一致；common_sha256 跨檔一致</td></tr>
+    <tr><th>test-plan</th><td>PASS：100 保留案例 then 無漂移；新增 v3/CX/RR 案例未改寫原 oracle</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>仍待 Owner／實作</h2>
+  <ul>
+    <li>R1–R4、一次 Owner 採納、Skeleton、valid RED、產品／native</li>
+    <li>修復 artifact 位元組封簽後，方可視為封包完整性 PASS</li>
+  </ul>
+  <p>產品測試、compile、RED、GREEN、build、native、jsonschema 驗證器：NOT RUN</p>
+</section>
+
+<section>
+  <h2>完整 review.json</h2>
+  <pre>{
+  "task": "PD-M06-CX-EXCHANGE-V3-REACCEPT-01",
+  "module": "M06",
+  "slice": "M06-EXCHANGE-INTEGRATION",
+  "author": "independent-reaccept-exchange-v3",
+  "reviewer": "independent-reaccept-exchange-v3",
+  "developer_author": "packet author (not verifier)",
+  "at": "2026-11-14T14:12:55.483643+00:00",
+  "verdict": "CHANGES_REQUIRED_ARTIFACT_SEAL",
+  "status": "CHANGES_REQUIRED_ARTIFACT_SEAL",
+  "scope": "Readonly independent reacceptance of cx-exchange-revision-v3 vs v2; artifact/envelope/case-trace/differences/module-spec/shared-contract/test-plan cross-check only. Not Owner adoption, R1-R4, Skeleton, product RED/GREEN, or module PASS.",
+  "packet": {
+    "revision_sha256": "0987262a2db899de500ac80021236fcca25eadfc0dec7d25b8e44d1c6b7c7285",
+    "previous_revision": "10105a6e673c87c249647ff489fd45e45061775d1ce2699a9ecdca3a911efdbd",
+    "common_sha256": "dfa917135150858c26030ba6575f899102d21b20b92c8b4ceede939b217c5681",
+    "review_request_status": "PENDING_REACCEPTANCE_AND_OWNER"
+  },
+  "comparison": {
+    "baseline": "cx-exchange-revision-v2",
+    "v2_revision_sha256": "10105a6e673c87c249647ff489fd45e45061775d1ce2699a9ecdca3a911efdbd",
+    "difference_pointers_v3": [
+      "/shared_contract",
+      "/replay_protocol",
+      "/v3_schema_roots",
+      "/wire_schema"
+    ],
+    "difference_pointers_v2_count": 12,
+    "envelope_unchanged_vs_v2": true,
+    "case_trace_rows": 100,
+    "case_trace_changed_vs_v2": 0
+  },
+  "new_semantic_mutations_rejected": 0,
+  "checks": [
+    {
+      "id": "artifact-hashes",
+      "result": "FAIL_BYTE_SEAL_DRIFT",
+      "detail": "7/7 sealed file digests mismatch on-disk bytes; revision_sha256 self-consistent via artifact-hashes.json (PASS)"
+    },
+    {
+      "id": "envelope",
+      "result": "PASS",
+      "detail": "25-path candidate envelope identical to v2; matches module-spec envelope references"
+    },
+    {
+      "id": "case-trace",
+      "result": "PASS",
+      "detail": "100/100 AMENDED_PROTOCOL_ONLY; zero rows differ from v2; no BEHAVIOR disposition"
+    },
+    {
+      "id": "differences",
+      "result": "PASS",
+      "detail": "4 scoped v3 deltas; shared-contract.json equals /shared_contract after.model"
+    },
+    {
+      "id": "module-spec",
+      "result": "PASS",
+      "detail": "index.html embedded module-spec equals module-spec.json; differences field equals differences.json"
+    },
+    {
+      "id": "shared-contract",
+      "result": "PASS_CROSSREF",
+      "detail": "common_sha256 consistent across review-request/module-spec/differences; file-byte SHA256 differs from common_sha256 by design of integration digest"
+    },
+    {
+      "id": "test-plan",
+      "result": "PASS",
+      "detail": "100 preserved original cases; 0 then/oracle drift vs preserved list; additive v3_cases=7 cx_cases=27 rr_cases=3"
+    }
+  ],
+  "findings": [
+    {
+      "id": "SEAL-DRIFT",
+      "severity": "P1",
+      "status": "OPEN",
+      "summary": "artifact-hashes.json sealed digests do not match current packet file bytes (7/7); revision_sha256 still matches serialized artifact-hashes map"
+    }
+  ],
+  "owner_gates_pending": [
+    "R1-R4 exact adoption",
+    "ONE_OWNER_CONFIRMATION",
+    "Skeleton",
+    "valid RED",
+    "product/native"
+  ],
+  "module_pass": false,
+  "architecture_pass": false,
+  "not_run": [
+    "product tests",
+    "build",
+    "valid RED",
+    "GREEN",
+    "native UI",
+    "Windows11 durability",
+    "jsonschema validator"
+  ],
+  "source": {
+    "branch": "feature/PD-M06-CX-EXCHANGE-V3-REACCEPT-01",
+    "head": "3fd41f3472f77fb0a4506df96ca5037321f86969",
+    "product_files_changed": 0
+  },
+  "next": "Seal drift should be repaired or re-sealed before Owner adoption. v3 document cross-consistency acceptable for readonly reacceptance scope only; await Owner for R1-R4 and implementation gates."
+}</pre>
+</section>
+
+<script type="application/json" id="review-spec">{"task": "PD-M06-CX-EXCHANGE-V3-REACCEPT-01", "module": "M06", "slice": "M06-EXCHANGE-INTEGRATION", "author": "independent-reaccept-exchange-v3", "reviewer": "independent-reaccept-exchange-v3", "developer_author": "packet author (not verifier)", "at": "2026-11-14T14:12:55.483643+00:00", "verdict": "CHANGES_REQUIRED_ARTIFACT_SEAL", "status": "CHANGES_REQUIRED_ARTIFACT_SEAL", "scope": "Readonly independent reacceptance of cx-exchange-revision-v3 vs v2; artifact/envelope/case-trace/differences/module-spec/shared-contract/test-plan cross-check only. Not Owner adoption, R1-R4, Skeleton, product RED/GREEN, or module PASS.", "packet": {"revision_sha256": "0987262a2db899de500ac80021236fcca25eadfc0dec7d25b8e44d1c6b7c7285", "previous_revision": "10105a6e673c87c249647ff489fd45e45061775d1ce2699a9ecdca3a911efdbd", "common_sha256": "dfa917135150858c26030ba6575f899102d21b20b92c8b4ceede939b217c5681", "review_request_status": "PENDING_REACCEPTANCE_AND_OWNER"}, "comparison": {"baseline": "cx-exchange-revision-v2", "v2_revision_sha256": "10105a6e673c87c249647ff489fd45e45061775d1ce2699a9ecdca3a911efdbd", "difference_pointers_v3": ["/shared_contract", "/replay_protocol", "/v3_schema_roots", "/wire_schema"], "difference_pointers_v2_count": 12, "envelope_unchanged_vs_v2": true, "case_trace_rows": 100, "case_trace_changed_vs_v2": 0}, "new_semantic_mutations_rejected": 0, "checks": [{"id": "artifact-hashes", "result": "FAIL_BYTE_SEAL_DRIFT", "detail": "7/7 sealed file digests mismatch on-disk bytes; revision_sha256 self-consistent via artifact-hashes.json (PASS)"}, {"id": "envelope", "result": "PASS", "detail": "25-path candidate envelope identical to v2; matches module-spec envelope references"}, {"id": "case-trace", "result": "PASS", "detail": "100/100 AMENDED_PROTOCOL_ONLY; zero rows differ from v2; no BEHAVIOR disposition"}, {"id": "differences", "result": "PASS", "detail": "4 scoped v3 deltas; shared-contract.json equals /shared_contract after.model"}, {"id": "module-spec", "result": "PASS", "detail": "index.html embedded module-spec equals module-spec.json; differences field equals differences.json"}, {"id": "shared-contract", "result": "PASS_CROSSREF", "detail": "common_sha256 consistent across review-request/module-spec/differences; file-byte SHA256 differs from common_sha256 by design of integration digest"}, {"id": "test-plan", "result": "PASS", "detail": "100 preserved original cases; 0 then/oracle drift vs preserved list; additive v3_cases=7 cx_cases=27 rr_cases=3"}], "findings": [{"id": "SEAL-DRIFT", "severity": "P1", "status": "OPEN", "summary": "artifact-hashes.json sealed digests do not match current packet file bytes (7/7); revision_sha256 still matches serialized artifact-hashes map"}], "owner_gates_pending": ["R1-R4 exact adoption", "ONE_OWNER_CONFIRMATION", "Skeleton", "valid RED", "product/native"], "module_pass": false, "architecture_pass": false, "not_run": ["product tests", "build", "valid RED", "GREEN", "native UI", "Windows11 durability", "jsonschema validator"], "source": {"branch": "feature/PD-M06-CX-EXCHANGE-V3-REACCEPT-01", "head": "3fd41f3472f77fb0a4506df96ca5037321f86969", "product_files_changed": 0}, "next": "Seal drift should be repaired or re-sealed before Owner adoption. v3 document cross-consistency acceptable for readonly reacceptance scope only; await Owner for R1-R4 and implementation gates."}</script>
+</html>
