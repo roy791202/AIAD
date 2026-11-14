@@ -59,6 +59,9 @@
 //!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
 //! - Pull (ff-only): `git pull --ff-only -- <remote> [<branch>]`. Never
 //!   `--rebase` / `--no-ff` / `--force` / `+refspec` / `--update-head-ok`.
+//! - Revert commit: `git revert --no-edit -- <sha>`. Never `--no-commit` /
+//!   `-n`. Never `--force` / `reset --hard`. Merge commits fail honestly
+//!   (no invented `-m 1`). Missing `sha` fails honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -375,6 +378,27 @@ impl StdGitWrite {
             ));
         }
         Ok(())
+    }
+
+    fn require_commit_sha(sha: &str) -> Result<&str, PortError> {
+        let rev = sha.trim();
+        if rev.is_empty() {
+            return Err(PortError::Other("empty commit sha".into()));
+        }
+        if rev.contains('\n') || rev.contains('\0') {
+            return Err(PortError::Other("commit sha must be a single line".into()));
+        }
+        if crate::git_write::commit_sha_out_of_scope(rev) {
+            return Err(PortError::Other(
+                "force/no-commit/flag commit shas are out of scope".into(),
+            ));
+        }
+        Ok(rev)
+    }
+
+    fn is_merge_commit(&self, repo: &str, sha: &str) -> bool {
+        let second_parent = format!("{sha}^2");
+        self.rev_exists(repo, &second_parent)
     }
 }
 
@@ -1058,6 +1082,29 @@ impl GitWritePort for StdGitWrite {
             args.push(b);
         }
         self.run(repo, &args)?;
+        Ok(())
+    }
+
+    fn revert_commit(
+        &self,
+        repo: &str,
+        sha: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rev = Self::require_commit_sha(sha)?;
+        if !self.rev_exists(repo, rev) {
+            return Err(PortError::Git(format!("unknown commit '{rev}'")));
+        }
+        if self.is_merge_commit(repo, rev) {
+            return Err(PortError::Git(
+                "merge commit revert requires an explicit mainline parent (-m); not supported"
+                    .into(),
+            ));
+        }
+        // One commit only: `git revert --no-edit -- <sha>`.
+        // Never `--no-commit` / `-n`. Never `--force`. Never `-m`.
+        self.run(repo, &["revert", "--no-edit", "--", rev])?;
         Ok(())
     }
 }
