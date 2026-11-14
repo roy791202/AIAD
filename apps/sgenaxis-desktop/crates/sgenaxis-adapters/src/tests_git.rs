@@ -557,6 +557,89 @@ fn fake_git_write_tag_delete_records_when_approved() {
 }
 
 #[test]
+fn fake_git_write_tag_push_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    w.create_tag("/r", "v1.0.0", "", GitWriteApproval::granted())
+        .expect("seed light");
+    w.create_tag("/r", "v1.1.0", "release", GitWriteApproval::granted())
+        .expect("seed annotated");
+
+    let denied = w.push_tag("/r", "origin", "v1.0.0", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_tag_push("/r").is_none());
+
+    let empty = w.push_tag("/r", "origin", "  ", GitWriteApproval::granted());
+    assert!(matches!(empty, Err(PortError::Other(_))));
+
+    let flag = w.push_tag("/r", "origin", "-f", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    let plus = w.push_tag("/r", "origin", "+v1.0.0", GitWriteApproval::granted());
+    assert!(matches!(plus, Err(PortError::Other(_))));
+    let bulk = w.push_tag("/r", "origin", "--tags", GitWriteApproval::granted());
+    assert!(matches!(bulk, Err(PortError::Other(_))));
+    let branch = w.push_tag(
+        "/r",
+        "origin",
+        "refs/heads/main",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(branch, Err(PortError::Other(_))));
+    let url = w.push_tag(
+        "/r",
+        "https://example.invalid/r.git",
+        "v1.0.0",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(url, Err(PortError::Other(_))));
+
+    let ghost = w.push_tag("/r", "ghost", "v1.0.0", GitWriteApproval::granted());
+    assert!(
+        matches!(ghost, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+    assert!(w.configured_remotes("/r").iter().all(|(n, _)| n != "ghost"));
+
+    let missing = w.push_tag("/r", "origin", "v9.9.9", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found"))
+    );
+
+    w.push_tag("/r", "  ", "v1.0.0", GitWriteApproval::granted())
+        .expect("default origin");
+    assert_eq!(
+        w.last_tag_push("/r"),
+        Some(("origin".to_string(), "v1.0.0".to_string()))
+    );
+    assert_eq!(w.remote_tags("/r", "origin"), vec!["v1.0.0".to_string()]);
+    assert_eq!(w.push_count("/r"), 0);
+
+    let exists = w.push_tag("/r", "origin", "v1.0.0", GitWriteApproval::granted());
+    assert!(
+        matches!(exists, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("already exists"))
+    );
+
+    w.push_tag("/r", "origin", "v1.1.0", GitWriteApproval::granted())
+        .expect("annotated");
+    assert_eq!(
+        w.last_tag_push("/r"),
+        Some(("origin".to_string(), "v1.1.0".to_string()))
+    );
+}
+
+#[test]
+fn gated_git_write_blocks_tag_push_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.push_tag("/any", "origin", "v1.0.0", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn gated_git_write_blocks_commit_and_push() {
     let w = GatedGitWrite::new();
     let c = w.commit("/any", "msg", GitWriteApproval::denied());
@@ -729,12 +812,26 @@ fn fake_git_write_rename_branch_records_when_approved() {
     assert!(matches!(traversal, Err(PortError::Other(_))));
     let git_trick = w.rename_branch("/r", "feature/slot", ".git", GitWriteApproval::granted());
     assert!(matches!(git_trick, Err(PortError::Other(_))));
-    let git_seg = w.rename_branch("/r", "feature/slot", "foo/.git/bar", GitWriteApproval::granted());
+    let git_seg = w.rename_branch(
+        "/r",
+        "feature/slot",
+        "foo/.git/bar",
+        GitWriteApproval::granted(),
+    );
     assert!(matches!(git_seg, Err(PortError::Other(_))));
     let taken = w.rename_branch("/r", "feature/slot", "taken", GitWriteApproval::granted());
-    assert!(matches!(taken, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("already exists")));
-    let missing = w.rename_branch("/r", "ghost", "feature/renamed", GitWriteApproval::granted());
-    assert!(matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found")));
+    assert!(
+        matches!(taken, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("already exists"))
+    );
+    let missing = w.rename_branch(
+        "/r",
+        "ghost",
+        "feature/renamed",
+        GitWriteApproval::granted(),
+    );
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found"))
+    );
     let remote_only = w.rename_branch(
         "/r",
         "origin/main",
@@ -1124,13 +1221,8 @@ fn fake_git_write_pull_ff_only_denied_diverged_dirty_and_ff_success() {
 
     w.pull_ff_only("/r", "--rebase", None, GitWriteApproval::granted())
         .expect_err("rebase remote");
-    w.pull_ff_only(
-        "/r",
-        "origin",
-        Some("--no-ff"),
-        GitWriteApproval::granted(),
-    )
-    .expect_err("noff branch");
+    w.pull_ff_only("/r", "origin", Some("--no-ff"), GitWriteApproval::granted())
+        .expect_err("noff branch");
     assert!(w.last_pull_ff_only("/r").is_none());
 
     w.mark_pull_local_ahead("/r");
@@ -1244,12 +1336,7 @@ fn fake_git_write_remote_rename_records_when_approved() {
 #[test]
 fn gated_git_write_blocks_remote_rename_even_when_approved() {
     let w = GatedGitWrite::new();
-    let err = w.rename_remote(
-        "/any",
-        "origin",
-        "upstream",
-        GitWriteApproval::granted(),
-    );
+    let err = w.rename_remote("/any", "origin", "upstream", GitWriteApproval::granted());
     assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 

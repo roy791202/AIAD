@@ -35,11 +35,11 @@ use sgenaxis_exec::{
 };
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
-    load_scene_text, perform_git_rename_branch, perform_git_rename_remote, perform_git_switch,
-    save_design_file, save_scene_text, CompositionRoot, DeployArtifactView, DeployCheckView,
-    DeployStatusView, DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto, HostSettings,
-    LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitRemoteRenameResult,
-    GitRenameResult, GitSwitchResult,
+    load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
+    perform_git_switch, save_design_file, save_scene_text, CompositionRoot, DeployArtifactView,
+    DeployCheckView, DeployStatusView, DesignDoc, DesignNode, GitRemoteRenameResult,
+    GitRenameResult, GitSwitchResult, GitTagPushResult, GuardDecisionView, GuardPacketDto,
+    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -51,14 +51,12 @@ use crate::dto::{
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
-    GitWriteBranchRenameArgs,
-    GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteFetchArgs,
-    GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePullFfOnlyArgs,
-    GitWritePushArgs,
-    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteRemoteRenameArgs,
-    GitWriteRemoteSetUrlArgs, GitWriteResultDto,
-    GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
-    GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
+    GitWriteBranchRenameArgs, GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs,
+    GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
+    GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
+    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteStashArgs,
+    GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs,
+    GitWriteTagPushArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
     OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
     SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
     SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
@@ -430,6 +428,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_stash_push",
         "git_write_tag",
         "git_write_tag_delete",
+        "git_write_tag_push",
         "git_write_branch_create",
         "git_write_branch_delete",
         "git_write_branch_rename",
@@ -2459,9 +2458,24 @@ fn tag_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
     t.starts_with('-')
+        || t.starts_with('+')
+        || t.contains(' ')
+        || t.contains('\\')
+        || t.contains(':')
+        || lower.contains("refs/heads/")
         || matches!(
             lower.as_str(),
-            "--delete" | "-d" | "-f" | "--force" | "push" | "--points-at"
+            "--delete"
+                | "-d"
+                | "-f"
+                | "--force"
+                | "--force-with-lease"
+                | "push"
+                | "--points-at"
+                | "--tags"
+                | "--all"
+                | "--mirror"
+                | "head"
         )
         || lower.contains("..")
 }
@@ -2607,6 +2621,62 @@ pub fn git_write_tag_delete(
         });
     }
     perform_git_write_tag_delete(root.git_write(), &repo, &args.name, args.approved)
+}
+
+fn git_tag_push_result_dto(r: GitTagPushResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_tag_push(
+    write: &dyn GitWritePort,
+    repo: &str,
+    remote: &str,
+    name: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_tag_scope(name)?;
+    reject_remote_scope(
+        if remote.trim().is_empty() {
+            "origin"
+        } else {
+            remote
+        },
+        None,
+    )?;
+    Ok(git_tag_push_result_dto(perform_git_push_tag(
+        write, repo, remote, name, approved,
+    )))
+}
+
+/// Approval-gated `git push -- remote refs/tags/name`. Never force / bulk / branch.
+#[tauri::command]
+pub fn git_write_tag_push(
+    state: State<'_, HostState>,
+    args: GitWriteTagPushArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_tag_push").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "tag-push".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_tag_push(
+        root.git_write(),
+        &repo,
+        &args.remote,
+        &args.name,
+        args.approved,
+    )
 }
 
 /// Names that would become flags, delete, upstream, or switch.
@@ -4907,6 +4977,87 @@ mod git_ui_tests {
     }
 
     #[test]
+    fn git_write_tag_push_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_tag_push"));
+        assert!(!is_allowed("git_tag_push"));
+        assert!(is_allowed("git_write_push"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w.create_tag("/r", "v1.0.0", "", GitWriteApproval::granted())
+            .unwrap();
+        w.create_tag("/r", "v1.1.0", "release", GitWriteApproval::granted())
+            .unwrap();
+
+        let denied = perform_git_write_tag_push(&w, "/r", "origin", "v1.0.0", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_tag_push("/r").is_none());
+
+        let empty = perform_git_write_tag_push(&w, "/r", "origin", "  ", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_tag_push("/r").is_none());
+
+        let force = perform_git_write_tag_push(&w, "/r", "origin", "-f", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        let plus = perform_git_write_tag_push(&w, "/r", "origin", "+v1.0.0", true).unwrap_err();
+        assert!(plus.contains("out of scope"));
+        let bulk = perform_git_write_tag_push(&w, "/r", "origin", "--tags", true).unwrap_err();
+        assert!(bulk.contains("out of scope"));
+        let branch =
+            perform_git_write_tag_push(&w, "/r", "origin", "refs/heads/main", true).unwrap_err();
+        assert!(branch.contains("out of scope"));
+        let url =
+            perform_git_write_tag_push(&w, "/r", "https://example.invalid/r.git", "v1.0.0", true)
+                .unwrap_err();
+        assert!(url.contains("out of scope"));
+        assert!(w.last_tag_push("/r").is_none());
+        assert_eq!(w.push_count("/r"), 0);
+
+        let missing_remote = perform_git_write_tag_push(&w, "/r", "ghost", "v1.0.0", true).unwrap();
+        assert!(!missing_remote.ok);
+        assert!(missing_remote
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
+
+        let missing_tag = perform_git_write_tag_push(&w, "/r", "origin", "v9.9.9", true).unwrap();
+        assert!(!missing_tag.ok);
+        assert!(missing_tag
+            .message
+            .to_ascii_lowercase()
+            .contains("not found"));
+
+        let ok = perform_git_write_tag_push(&w, "/r", "  ", "v1.0.0", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "tag-push");
+        assert_eq!(
+            w.last_tag_push("/r"),
+            Some(("origin".into(), "v1.0.0".into()))
+        );
+        assert_eq!(w.remote_tags("/r", "origin"), vec!["v1.0.0".to_string()]);
+        assert_eq!(w.push_count("/r"), 0);
+
+        let exists = perform_git_write_tag_push(&w, "/r", "origin", "v1.0.0", true).unwrap();
+        assert!(!exists.ok);
+        assert!(exists
+            .message
+            .to_ascii_lowercase()
+            .contains("already exists"));
+        assert_eq!(
+            w.last_tag_push("/r"),
+            Some(("origin".into(), "v1.0.0".into()))
+        );
+    }
+
+    #[test]
     fn git_write_branch_create_gated_and_allowlisted() {
         use sgenaxis_host::is_allowed;
         assert!(is_allowed("git_write_branch_create"));
@@ -5031,30 +5182,65 @@ mod git_ui_tests {
             .expect("seed taken");
         w.mark_remote_only("/r", "origin/main");
 
-        let denied =
-            perform_git_write_branch_rename(&w, "/r", "feature/slot", "feature/renamed", false, None, Some("main"))
-                .unwrap();
+        let denied = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "feature/slot",
+            "feature/renamed",
+            false,
+            None,
+            Some("main"),
+        )
+        .unwrap();
         assert!(!denied.ok);
         assert!(denied.local_preserved);
         assert!(w.last_branch_rename("/r").is_none());
 
-        let empty =
-            perform_git_write_branch_rename(&w, "/r", "  ", "feature/renamed", true, None, Some("main"))
-                .unwrap();
+        let empty = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "  ",
+            "feature/renamed",
+            true,
+            None,
+            Some("main"),
+        )
+        .unwrap();
         assert!(!empty.ok);
         assert!(w.last_branch_rename("/r").is_none());
 
-        let force =
-            perform_git_write_branch_rename(&w, "/r", "feature/slot", "-M", true, None, Some("main"))
-                .unwrap_err();
+        let force = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "feature/slot",
+            "-M",
+            true,
+            None,
+            Some("main"),
+        )
+        .unwrap_err();
         assert!(force.contains("out of scope"));
-        let dash =
-            perform_git_write_branch_rename(&w, "/r", "-m", "feature/renamed", true, None, Some("main"))
-                .unwrap_err();
+        let dash = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "-m",
+            "feature/renamed",
+            true,
+            None,
+            Some("main"),
+        )
+        .unwrap_err();
         assert!(dash.contains("out of scope"));
-        let git_trick =
-            perform_git_write_branch_rename(&w, "/r", "feature/slot", ".git", true, None, Some("main"))
-                .unwrap_err();
+        let git_trick = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "feature/slot",
+            ".git",
+            true,
+            None,
+            Some("main"),
+        )
+        .unwrap_err();
         assert!(git_trick.contains("out of scope"));
         let traversal =
             perform_git_write_branch_rename(&w, "/r", "../evil", "ok", true, None, Some("main"))
@@ -5311,7 +5497,8 @@ mod git_ui_tests {
         )
         .unwrap();
 
-        let denied = perform_git_write_remote_rename(&w, "/r", "origin", "upstream", false).unwrap();
+        let denied =
+            perform_git_write_remote_rename(&w, "/r", "origin", "upstream", false).unwrap();
         assert!(!denied.ok);
         assert!(denied.local_preserved);
         assert!(w.last_remote_rename("/r").is_none());
@@ -5352,7 +5539,10 @@ mod git_ui_tests {
         .unwrap();
         let taken = perform_git_write_remote_rename(&w, "/r", "origin", "upstream", true).unwrap();
         assert!(!taken.ok);
-        assert!(taken.message.to_ascii_lowercase().contains("already exists"));
+        assert!(taken
+            .message
+            .to_ascii_lowercase()
+            .contains("already exists"));
 
         let ok = perform_git_write_remote_rename(&w, "/r", "origin", "vendor", true).unwrap();
         assert!(ok.ok);
@@ -5534,15 +5724,18 @@ mod git_ui_tests {
 
         let rebase = perform_git_write_pull_ff_only(&w, "/r", "--rebase", None, true).unwrap_err();
         assert!(rebase.contains("out of scope"));
-        let noff = perform_git_write_pull_ff_only(&w, "/r", "origin", Some("--no-ff"), true)
-            .unwrap_err();
+        let noff =
+            perform_git_write_pull_ff_only(&w, "/r", "origin", Some("--no-ff"), true).unwrap_err();
         assert!(noff.contains("out of scope"));
         assert!(w.last_pull_ff_only("/r").is_none());
 
         w.mark_pull_local_ahead("/r");
         let diverged = perform_git_write_pull_ff_only(&w, "/r", "origin", None, true).unwrap();
         assert!(!diverged.ok);
-        assert!(diverged.message.to_ascii_lowercase().contains("fast-forward"));
+        assert!(diverged
+            .message
+            .to_ascii_lowercase()
+            .contains("fast-forward"));
         assert_eq!(w.local_head("/r"), head_before);
 
         let w2 = FakeGitWrite::new();
@@ -5559,10 +5752,7 @@ mod git_ui_tests {
         w2.mark_pull_dirty_overwrite("/r");
         let dirty = perform_git_write_pull_ff_only(&w2, "/r", "origin", None, true).unwrap();
         assert!(!dirty.ok);
-        assert!(dirty
-            .message
-            .to_ascii_lowercase()
-            .contains("overwritten"));
+        assert!(dirty.message.to_ascii_lowercase().contains("overwritten"));
         assert_eq!(w2.local_head("/r"), head2);
 
         let w3 = FakeGitWrite::new();

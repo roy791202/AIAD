@@ -85,6 +85,35 @@ pub(crate) fn remote_name_out_of_scope(value: &str) -> bool {
         )
 }
 
+/// Tag names that would become flags, bulk push, force, or branch refspecs.
+pub(crate) fn tag_name_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || t.starts_with('+')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || t.contains('\\')
+        || t.contains(':')
+        || lower.contains("..")
+        || lower.contains("refs/heads/")
+        || matches!(
+            lower.as_str(),
+            "--delete"
+                | "-d"
+                | "-f"
+                | "--force"
+                | "--force-with-lease"
+                | "push"
+                | "--points-at"
+                | "--tags"
+                | "--all"
+                | "--mirror"
+                | "head"
+        )
+}
+
 /// Refspecs that would force-update, prune, or move HEAD during fetch.
 pub(crate) fn fetch_refspec_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -259,6 +288,16 @@ impl GitWritePort for GatedGitWrite {
     fn delete_tag(
         &self,
         _repo: &str,
+        _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn push_tag(
+        &self,
+        _repo: &str,
+        _remote: &str,
         _name: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {

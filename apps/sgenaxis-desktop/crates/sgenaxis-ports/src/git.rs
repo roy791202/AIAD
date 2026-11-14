@@ -225,6 +225,13 @@ pub trait GitPort: Send + Sync {
 /// - Tag delete requires approval (no skip default). Local only:
 ///   `git tag -d -- <name>` (or `git tag --delete -- <name>`). Never `-f`.
 ///   Never push. Never `git push --delete`. Missing tag must fail honestly.
+/// - Tag push requires approval (no skip default). Non-force only:
+///   `git push -- <remote> refs/tags/<tag>`. Empty remote defaults to
+///   `origin`. Never `--force` / `--force-with-lease` / `+refspec` /
+///   `--delete` / `--all` / `--mirror` / `--tags` (bulk) / branch refspecs.
+///   Never fetch/pull/rebase/merge/checkout. Never rewrite an existing tag.
+///   Unknown remotes, missing local tags, and existing remote tags fail
+///   honestly (no remote is created).
 /// - Branch create requires approval (no skip default). Local only:
 ///   `git branch -- <name>` from current HEAD. Never `-C` / `--force` / `-D` /
 ///   `-d`. Never remote create, never `--set-upstream`. Never checkout/switch
@@ -382,6 +389,21 @@ pub trait GitWritePort: Send + Sync {
     fn delete_tag(
         &self,
         repo: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Push one local tag. Requires approval.
+    /// `git push -- <remote> refs/tags/<tag>` (empty remote → `origin`).
+    /// Never `--force` / `--force-with-lease` / `+refspec` / `--delete` /
+    /// `--all` / `--mirror` / `--tags` (bulk). Never branch refspecs.
+    /// Never fetch / pull / rebase / merge / checkout. Never rewrite tags.
+    /// Unknown remotes, missing local tags, and existing remote tags fail
+    /// honestly.
+    fn push_tag(
+        &self,
+        repo: &str,
+        remote: &str,
         name: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;

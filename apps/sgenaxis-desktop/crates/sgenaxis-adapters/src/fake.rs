@@ -567,8 +567,12 @@ struct FakeGitWriteState {
     tag_create: HashMap<String, (String, String)>,
     /// repo → last approved local tag delete name.
     tag_delete: HashMap<String, String>,
+    /// repo → last approved tag push `(remote, name)`.
+    tag_push: HashMap<String, (String, String)>,
     /// repo → created tag names (duplicate create fails honestly; delete removes).
     tags: HashMap<String, Vec<String>>,
+    /// repo → remote → tag names already present on that remote.
+    remote_tags: HashMap<String, HashMap<String, Vec<String>>>,
     /// repo → last approved local branch create name.
     branch_create: HashMap<String, String>,
     /// repo → last approved local branch delete name.
@@ -723,6 +727,22 @@ impl FakeGitWrite {
     pub fn last_tag_delete(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.tag_delete.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved tag push for `repo` as `(remote, name)`.
+    pub fn last_tag_push(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.tag_push.get(&Self::key(repo)).cloned()
+    }
+
+    /// Tag names Fake believes exist on `remote` for `repo`.
+    pub fn remote_tags(&self, repo: &str, remote: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_tags
+            .get(&Self::key(repo))
+            .and_then(|m| m.get(remote))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Last approved local branch create name for `repo`, if any.
@@ -1197,6 +1217,73 @@ impl GitWritePort for FakeGitWrite {
         Ok(())
     }
 
+    fn push_tag(
+        &self,
+        repo: &str,
+        remote: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let remote_name = if remote.trim().is_empty() {
+            "origin"
+        } else {
+            remote.trim()
+        };
+        let tag = name.trim();
+        if tag.is_empty() {
+            return Err(PortError::Other("empty tag name".into()));
+        }
+        if crate::git_write::tag_name_out_of_scope(tag) {
+            return Err(PortError::Other(
+                "force/delete/push tag writes are out of scope".into(),
+            ));
+        }
+        if crate::git_write::remote_name_out_of_scope(remote_name) {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let has_remote = st
+            .remotes
+            .get(&key)
+            .map(|remotes| remotes.iter().any(|(n, _)| n == remote_name))
+            .unwrap_or(false);
+        if !has_remote {
+            return Err(PortError::Git(format!("No such remote: '{remote_name}'")));
+        }
+        let has_local = st
+            .tags
+            .get(&key)
+            .map(|tags| tags.iter().any(|t| t == tag))
+            .unwrap_or(false);
+        if !has_local {
+            return Err(PortError::Git(format!("tag '{tag}' not found")));
+        }
+        let on_remote = st
+            .remote_tags
+            .entry(key.clone())
+            .or_default()
+            .entry(remote_name.to_string())
+            .or_default();
+        if on_remote.iter().any(|t| t == tag) {
+            return Err(PortError::Git(format!("remote tag '{tag}' already exists")));
+        }
+        on_remote.push(tag.to_string());
+        st.tag_push
+            .insert(key, (remote_name.to_string(), tag.to_string()));
+        Ok(())
+    }
+
     fn create_branch(
         &self,
         repo: &str,
@@ -1526,7 +1613,9 @@ impl GitWritePort for FakeGitWrite {
             return Err(PortError::Git(format!("No such remote: '{old_name}'")));
         }
         if existing.iter().any(|(n, _)| n == new_name) {
-            return Err(PortError::Git(format!("remote '{new_name}' already exists")));
+            return Err(PortError::Git(format!(
+                "remote '{new_name}' already exists"
+            )));
         }
         for pair in existing.iter_mut() {
             if pair.0 == old_name {
@@ -1538,11 +1627,7 @@ impl GitWritePort for FakeGitWrite {
         if let Some(tracking) = st.remote_tracking.get_mut(&key) {
             for pair in tracking.iter_mut() {
                 if pair.0.starts_with(&prefix_old) {
-                    pair.0 = format!(
-                        "{}{}",
-                        prefix_new,
-                        &pair.0[prefix_old.len()..]
-                    );
+                    pair.0 = format!("{}{}", prefix_new, &pair.0[prefix_old.len()..]);
                 }
             }
         }
@@ -1829,20 +1914,22 @@ impl GitWritePort for FakeGitWrite {
         }
         if st.pull_dirty_overwrite.get(&key).copied().unwrap_or(false) {
             return Err(PortError::Git(
-                "Your local changes to the following files would be overwritten by merge"
-                    .into(),
+                "Your local changes to the following files would be overwritten by merge".into(),
             ));
         }
         if st.pull_local_ahead.get(&key).copied().unwrap_or(false) {
-            return Err(PortError::Git("Not possible to fast-forward, aborting".into()));
+            return Err(PortError::Git(
+                "Not possible to fast-forward, aborting".into(),
+            ));
         }
         let br = branch_owned.as_deref().unwrap_or("main");
         let tracking = format!("refs/remotes/{name}/{br}");
         let branch_record = branch_owned.map(|s| s.to_string());
-        let remote_oid = st
-            .remote_tracking
-            .get(&key)
-            .and_then(|refs| refs.iter().find(|(r, _)| r == &tracking).map(|(_, o)| o.clone()));
+        let remote_oid = st.remote_tracking.get(&key).and_then(|refs| {
+            refs.iter()
+                .find(|(r, _)| r == &tracking)
+                .map(|(_, o)| o.clone())
+        });
         let remote_oid = remote_oid.unwrap_or_else(|| {
             st.next_hash = st.next_hash.saturating_add(1);
             format!("{:012x}", st.next_hash)
@@ -1858,7 +1945,8 @@ impl GitWritePort for FakeGitWrite {
                 .insert(key.clone(), vec![(tracking, remote_oid.clone())]);
         }
         st.local_head.insert(key.clone(), remote_oid);
-        st.last_pull_ff_only.insert(key, (name.to_string(), branch_record));
+        st.last_pull_ff_only
+            .insert(key, (name.to_string(), branch_record));
         Ok(())
     }
 }

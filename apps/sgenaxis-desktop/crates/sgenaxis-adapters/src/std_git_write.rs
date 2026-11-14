@@ -12,6 +12,10 @@
 //! - Tag: `git tag -- <name>` (lightweight) or `git tag -a -m <msg> -- <name>`
 //!   (annotated). Local delete: `git tag -d -- <name>`. Never `-f` / `--force`.
 //!   Never push. Never `git push --delete`. Missing tag fails honestly.
+//! - Tag push: `git push -- <remote> refs/tags/<tag>` (empty remote → origin).
+//!   Never `--force` / `--force-with-lease` / `+refspec` / `--delete` /
+//!   `--all` / `--mirror` / `--tags` (bulk) / branch refspecs.
+//!   Existing remote tags fail closed. Unknown remotes are not created.
 //! - Branch create: `git branch -- <name>` from current HEAD. Never `-C` /
 //!   `--force` / `-D` / `-d`. Never remote create. Never `--set-upstream`.
 //!   Never checkout/switch. Duplicate / invalid names fail honestly.
@@ -163,7 +167,7 @@ impl StdGitWrite {
         if name.contains('\n') || name.contains('\0') {
             return Err(PortError::Other("tag name must be a single line".into()));
         }
-        if tag_out_of_scope(name) {
+        if crate::git_write::tag_name_out_of_scope(name) {
             return Err(PortError::Other(
                 "force/delete/push tag writes are out of scope".into(),
             ));
@@ -365,18 +369,6 @@ fn is_stash_selector(value: &str) -> bool {
         return false;
     };
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
-}
-
-/// Names that would become flags or destructive tag verbs without `--`.
-fn tag_out_of_scope(value: &str) -> bool {
-    let t = value.trim();
-    let lower = t.to_ascii_lowercase();
-    t.starts_with('-')
-        || matches!(
-            lower.as_str(),
-            "--delete" | "-d" | "-f" | "--force" | "push" | "--points-at"
-        )
-        || lower.contains("..")
 }
 
 /// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
@@ -599,6 +591,44 @@ impl GitWritePort for StdGitWrite {
         // Never `git push` / `git push --delete`. `--` stops option parse
         // so a name cannot be read as a flag. Missing tags fail honestly.
         self.run(repo, &["tag", "-d", "--", tag])?;
+        Ok(())
+    }
+
+    fn push_tag(
+        &self,
+        repo: &str,
+        remote: &str,
+        name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let remote_name = if remote.trim().is_empty() {
+            "origin"
+        } else {
+            remote.trim()
+        };
+        let tag = name.trim();
+        Self::require_remote_name(remote_name)?;
+        Self::require_tag_name(tag)?;
+        let listed = self.run(repo, &["remote"])?;
+        if !listed.lines().any(|line| line.trim() == remote_name) {
+            return Err(PortError::Git(format!("No such remote: '{remote_name}'")));
+        }
+        let tag_ref = format!("refs/tags/{tag}");
+        if !self.rev_exists(repo, &tag_ref) {
+            return Err(PortError::Git(format!("tag '{tag}' not found")));
+        }
+        let remote_list = self.run(repo, &["ls-remote", "--tags", "--", remote_name, &tag_ref])?;
+        if remote_list.lines().any(|line| {
+            let lower = line.to_ascii_lowercase();
+            lower.contains(&format!("refs/tags/{tag}")) && !lower.contains("^{}")
+        }) {
+            return Err(PortError::Git(format!("remote tag '{tag}' already exists")));
+        }
+        // One tag only: `git push -- <remote> refs/tags/<tag>`.
+        // `--` stops option parse. Never `--force` / `+refspec` / `--tags` /
+        // `--all` / `--mirror` / `--delete` / branch refspecs.
+        self.run(repo, &["push", "--", remote_name, &tag_ref])?;
         Ok(())
     }
 

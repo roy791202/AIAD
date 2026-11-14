@@ -595,6 +595,19 @@ pub struct GitWriteTagDeleteArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated single-tag push (`git push -- remote refs/tags/name`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteTagPushArgs {
+    pub repo: Option<String>,
+    /// Remote name. Empty after trim defaults to `origin`. Never flags / URLs.
+    #[serde(default)]
+    pub remote: String,
+    /// Local tag name. Never flags (`-f`, `--tags`, `--all`) or branch refspecs.
+    pub name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local branch create (`git branch -- name`). Never switch.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteBranchCreateArgs {

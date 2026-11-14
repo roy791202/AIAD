@@ -714,6 +714,99 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
 
+    #[test]
+    fn std_write_push_tag_annotated_and_lightweight_when_approved() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.create_tag(repo, "v1.0.0", "", GitWriteApproval::granted())
+            .expect("light");
+        w.create_tag(repo, "v1.1.0", "release notes", GitWriteApproval::granted())
+            .expect("annotated");
+        assert!(remote_tag_list(&bare).trim().is_empty());
+
+        w.push_tag(repo, "origin", "v1.0.0", GitWriteApproval::denied())
+            .expect_err("denied must not mutate remote");
+        assert!(remote_tag_list(&bare).trim().is_empty());
+
+        w.push_tag(repo, "origin", "-f", GitWriteApproval::granted())
+            .expect_err("force flag is out of scope");
+        w.push_tag(repo, "origin", "+v1.0.0", GitWriteApproval::granted())
+            .expect_err("+refspec is out of scope");
+        w.push_tag(repo, "origin", "--tags", GitWriteApproval::granted())
+            .expect_err("bulk --tags is out of scope");
+        w.push_tag(repo, "origin", "--all", GitWriteApproval::granted())
+            .expect_err("bulk --all is out of scope");
+        w.push_tag(
+            repo,
+            "origin",
+            "refs/heads/main",
+            GitWriteApproval::granted(),
+        )
+        .expect_err("branch refspec is out of scope");
+        w.push_tag(
+            repo,
+            "https://example.invalid/r.git",
+            "v1.0.0",
+            GitWriteApproval::granted(),
+        )
+        .expect_err("url-like remote is out of scope");
+        assert!(remote_tag_list(&bare).trim().is_empty());
+        assert_eq!(
+            Command::new("git")
+                .args(["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap(),
+            "main",
+            "tag push must not switch branches"
+        );
+
+        let ghost = w
+            .push_tag(repo, "ghost", "v1.0.0", GitWriteApproval::granted())
+            .expect_err("unknown remote");
+        assert!(matches!(ghost, PortError::Git(_)));
+        let remotes = Command::new("git")
+            .args(["-C", repo, "remote"])
+            .output()
+            .unwrap();
+        let listed = String::from_utf8_lossy(&remotes.stdout);
+        assert!(!listed.lines().any(|l| l.trim() == "ghost"));
+
+        let missing = w
+            .push_tag(repo, "origin", "v9.9.9", GitWriteApproval::granted())
+            .expect_err("missing local tag");
+        assert!(matches!(missing, PortError::Git(_)));
+
+        w.push_tag(repo, "  ", "v1.0.0", GitWriteApproval::granted())
+            .expect("lightweight default origin");
+        w.push_tag(repo, "origin", "v1.1.0", GitWriteApproval::granted())
+            .expect("annotated");
+        let remote_tags = remote_tag_list(&bare);
+        assert!(
+            remote_tags.contains("v1.0.0"),
+            "lightweight tag missing on remote: {remote_tags}"
+        );
+        assert!(
+            remote_tags.contains("v1.1.0"),
+            "annotated tag missing on remote: {remote_tags}"
+        );
+        assert_eq!(tag_object_type(bare.to_str().unwrap(), "v1.0.0"), "commit");
+        assert_eq!(tag_object_type(bare.to_str().unwrap(), "v1.1.0"), "tag");
+
+        let exists = w
+            .push_tag(repo, "origin", "v1.0.0", GitWriteApproval::granted())
+            .expect_err("existing remote tag must fail closed");
+        assert!(matches!(exists, PortError::Git(_)));
+        let msg = exists.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("already exists") || msg.contains("v1.0.0"),
+            "existing remote tag must fail honestly: {exists}"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     fn remote_tag_list(bare: &Path) -> String {
         let out = Command::new("git")
             .args(["-C", bare.to_str().unwrap(), "tag", "-l"])
@@ -970,7 +1063,12 @@ mod std_write_temp {
         assert!(local_branch_list(repo).contains("taken"));
 
         let missing = w
-            .rename_branch(repo, "ghost", "feature/renamed", GitWriteApproval::granted())
+            .rename_branch(
+                repo,
+                "ghost",
+                "feature/renamed",
+                GitWriteApproval::granted(),
+            )
             .expect_err("missing branch must fail");
         assert!(matches!(missing, PortError::Git(_) | PortError::Other(_)));
 
@@ -1002,12 +1100,9 @@ mod std_write_temp {
         let after_current = local_branch_list(repo);
         assert!(after_current.contains("trunk"));
         assert!(
-            !after_current.lines().any(|l| {
-                l.trim_start()
-                    .trim_start_matches('*')
-                    .trim()
-                    == "main"
-            }),
+            !after_current
+                .lines()
+                .any(|l| { l.trim_start().trim_start_matches('*').trim() == "main" }),
             "old current name must be gone: {after_current}"
         );
 
@@ -1280,7 +1375,10 @@ mod std_write_temp {
             .expect("approved ff pull");
         let head_after = rev_parse(repo, "HEAD");
         assert_ne!(head_after, head_before);
-        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v2-remote\n");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            "v2-remote\n"
+        );
         assert_eq!(rev_parse(repo, "origin/main"), head_after);
 
         // Diverged: local commit while remote already moved (other pushes v3).

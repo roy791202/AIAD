@@ -2494,6 +2494,7 @@
       stash: payload.stash,
       message: payload.message,
       name: payload.name,
+      remote: payload.remote,
       old: payload.old,
       url: payload.url,
       path: payload.path,
@@ -2534,6 +2535,8 @@
           ? "審核 Tag Create"
           : op === "tag-delete"
           ? "審核 Tag Delete"
+          : op === "tag-push"
+          ? "審核 Tag Push"
           : op === "branch-create"
           ? "審核 Branch Create"
           : op === "branch-delete"
@@ -2596,6 +2599,10 @@
           ? "核准後經 git_write_tag_delete → GitWritePort；只刪本機標籤 " +
             (payload.name || "") +
             "。缺漏的標籤會誠實失敗。不推送、不加 -f、不刪遠端。拒絕則無突變。"
+          : op === "tag-push"
+          ? "核准後經 git_write_tag_push → GitWritePort；只推送本機標籤 " +
+            (payload.name || "") +
+            "（git push -- remote refs/tags/name）。空白遠端＝origin。不加 --force／--force-with-lease／+／--delete／--all／--mirror／--tags。遠端已有同名標籤誠實失敗。拒絕則無突變。"
           : op === "branch-create"
           ? "核准後經 git_write_branch_create → GitWritePort；本機建立分支（git branch -- name），不切換、不設 upstream、不加 -C／-D。重名與無效名稱誠實失敗。拒絕則無突變。"
           : op === "branch-delete"
@@ -2661,7 +2668,11 @@
     }
     if (remoteWrap)
       remoteWrap.hidden =
-        op !== "push" && op !== "fetch" && op !== "fetch-prune" && op !== "pull-ff-only";
+        op !== "push" &&
+        op !== "fetch" &&
+        op !== "fetch-prune" &&
+        op !== "pull-ff-only" &&
+        op !== "tag-push";
     if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch" && op !== "pull-ff-only";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
@@ -2733,7 +2744,13 @@
         urlEl.value = payload.url != null ? String(payload.url) : "";
         if (op === "remote-set-url") urlEl.focus();
       }
-    } else if (op === "push" || op === "fetch" || op === "fetch-prune" || op === "pull-ff-only") {
+    } else if (
+      op === "push" ||
+      op === "fetch" ||
+      op === "fetch-prune" ||
+      op === "pull-ff-only" ||
+      op === "tag-push"
+    ) {
       const remote = document.getElementById("git-approve-remote");
       if (remote) {
         if (payload.remote != null && String(payload.remote).trim()) {
@@ -3011,6 +3028,37 @@
             true
           );
           toast("Tag delete 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "tag-push") {
+        const name = pendingGitWrite.name;
+        if (!name) {
+          hideGitApprove();
+          setGitStatusLine("未指定標籤，未推送", true);
+          return;
+        }
+        const remoteEl = document.getElementById("git-approve-remote");
+        let remote = remoteEl && remoteEl.value ? remoteEl.value.trim() : "";
+        if (!remote) remote = "origin";
+        const dto = await invoke("git_write_tag_push", {
+          args: { repo: repo, remote: remote, name: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已推送標籤 " + name + " → " + remote + "（經 GitWritePort；非 force）",
+            false
+          );
+          toast("Tag push 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "tag push 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機標籤依 Git 真實結果保留）",
+            true
+          );
+          toast("Tag push 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "branch-create") {
@@ -3968,6 +4016,7 @@
         stashCreate: function () { showGitApprove("stash-create", {}); },
         tagCreate: function () { showGitApprove("tag-create", {}); },
         tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
+        tagPush: function (name, remote) { showGitApprove("tag-push", { name: name, remote: remote }); },
         branchCreate: function () { showGitApprove("branch-create", {}); },
         branchDelete: function (name) { showGitApprove("branch-delete", { name: name }); },
         branchRename: function (name) { showGitApprove("branch-rename", { old: name }); },

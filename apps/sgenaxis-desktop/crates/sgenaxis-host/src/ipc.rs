@@ -66,6 +66,8 @@ pub enum AllowedIpcCommand {
     GitWriteTag,
     /// Approval-gated local `git tag -d -- name` via GitWritePort (never -f/push/--delete on remotes).
     GitWriteTagDelete,
+    /// Approval-gated `git push -- remote refs/tags/name` via GitWritePort (never force/bulk/branch).
+    GitWriteTagPush,
     /// Approval-gated local `git branch -- name` via GitWritePort (never -C/-D/--set-upstream/switch).
     GitWriteBranchCreate,
     /// Approval-gated local `git branch -d -- name` via GitWritePort (never -D/--force/-r/switch).
@@ -172,6 +174,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashPush => "git_write_stash_push",
             AllowedIpcCommand::GitWriteTag => "git_write_tag",
             AllowedIpcCommand::GitWriteTagDelete => "git_write_tag_delete",
+            AllowedIpcCommand::GitWriteTagPush => "git_write_tag_push",
             AllowedIpcCommand::GitWriteBranchCreate => "git_write_branch_create",
             AllowedIpcCommand::GitWriteBranchDelete => "git_write_branch_delete",
             AllowedIpcCommand::GitWriteBranchRename => "git_write_branch_rename",
@@ -242,6 +245,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteStashPush,
             AllowedIpcCommand::GitWriteTag,
             AllowedIpcCommand::GitWriteTagDelete,
+            AllowedIpcCommand::GitWriteTagPush,
             AllowedIpcCommand::GitWriteBranchCreate,
             AllowedIpcCommand::GitWriteBranchDelete,
             AllowedIpcCommand::GitWriteBranchRename,
@@ -373,6 +377,7 @@ mod tests {
         assert!(is_allowed("git_write_stash_push"));
         assert!(is_allowed("git_write_tag"));
         assert!(is_allowed("git_write_tag_delete"));
+        assert!(is_allowed("git_write_tag_push"));
         assert!(is_allowed("git_write_branch_create"));
         assert!(is_allowed("git_write_branch_delete"));
         assert!(is_allowed("git_write_branch_rename"));
@@ -519,6 +524,10 @@ mod tests {
         assert_eq!(
             authorize("git_write_tag_delete").unwrap(),
             AllowedIpcCommand::GitWriteTagDelete
+        );
+        assert_eq!(
+            authorize("git_write_tag_push").unwrap(),
+            AllowedIpcCommand::GitWriteTagPush
         );
         assert_eq!(
             authorize("git_write_branch_create").unwrap(),
