@@ -175,6 +175,38 @@ pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
         )
 }
 
+/// Paths that would widen `git clean` beyond one untracked repo-relative file.
+pub(crate) fn clean_path_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.is_empty()
+        || t == "."
+        || t == ".."
+        || t == "*"
+        || t.starts_with('-')
+        || t.starts_with('/')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\\')
+        || t.contains(':')
+        || t.split('/')
+            .any(|part| part.is_empty() || part == ".." || part == ".")
+        || lower.contains("-fdx")
+        || matches!(
+            lower.as_str(),
+            "-d" | "-x"
+                | "-f"
+                | "-e"
+                | "-fd"
+                | "-fx"
+                | "-dx"
+                | "-fdx"
+                | "--force"
+                | "--exclude"
+                | "--"
+        )
+}
+
 pub(crate) fn conflict_markers_present(text: &str) -> bool {
     text.lines().any(|line| {
         line.starts_with("<<<<<<<") || line.starts_with(">>>>>>>") || line.starts_with("=======")
@@ -397,6 +429,15 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn unstage_all(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn clean_path(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 

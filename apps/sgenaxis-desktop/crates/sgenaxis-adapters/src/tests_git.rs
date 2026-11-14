@@ -1548,6 +1548,44 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_clean_path_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.seed_untracked_path("/r", "scratch.tmp");
+    let denied = w.clean_path("/r", "scratch.tmp", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_clean_path("/r").is_none());
+    assert_eq!(w.remaining_untracked_paths("/r"), vec!["scratch.tmp"]);
+
+    w.clean_path("/r", "scratch.tmp", GitWriteApproval::granted())
+        .expect("approved clean-path");
+    assert_eq!(w.last_clean_path("/r").as_deref(), Some("scratch.tmp"));
+    assert!(w.remaining_untracked_paths("/r").is_empty());
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    let tracked = w.clean_path("/r", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(tracked, Err(PortError::Git(ref m)) if m.contains("tracked path")));
+
+    let flag = w.clean_path("/r", "-fdx", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    let dot = w.clean_path("/r", ".", GitWriteApproval::granted());
+    assert!(matches!(dot, Err(PortError::Other(_))));
+
+    w.seed_untracked_path("/r", "keep.tmp");
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.clean_path("/r", "keep.tmp", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(w.remaining_untracked_paths("/r"), vec!["keep.tmp"]);
+}
+
+#[test]
+fn gated_git_write_blocks_clean_path_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.clean_path("/any", "scratch.tmp", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());

@@ -28,6 +28,7 @@ pub mod git_set_upstream;
 pub mod git_unset_upstream;
 pub mod git_stage_all;
 pub mod git_unstage_all;
+pub mod git_clean_path;
 pub mod git_tag_push;
 pub mod git_switch;
 pub mod guard_cmd;
@@ -59,6 +60,7 @@ pub use git_set_upstream::{perform_git_set_upstream, GitSetUpstreamResult};
 pub use git_unset_upstream::{perform_git_unset_upstream, GitUnsetUpstreamResult};
 pub use git_stage_all::{perform_git_stage_all, GitStageAllResult};
 pub use git_unstage_all::{perform_git_unstage_all, GitUnstageAllResult};
+pub use git_clean_path::{perform_git_clean_path, GitCleanPathResult};
 pub use git_tag_push::{perform_git_push_tag, GitTagPushResult};
 pub use composition::{CompositionRoot, APP_NAME};
 pub use deploy::{

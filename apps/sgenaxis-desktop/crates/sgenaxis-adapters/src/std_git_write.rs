@@ -51,6 +51,11 @@
 //!   In-progress merge/rebase/cherry-pick/revert fails with
 //!   `OPERATION_IN_PROGRESS`. Clean index → success no-op. Untracked files
 //!   remain `??`.
+//! - Clean-path: `git clean -f -- <path>` for one untracked file. An untracked
+//!   directory (never `.`) may use `git clean -f -d -- <path>` after proving
+//!   it is untracked. Never `-fdx` / `-x` / `-d .` / `-e` / `rm -rf`.
+//!   Tracked paths fail honestly. Unmerged in-progress state fails with
+//!   `OPERATION_IN_PROGRESS`.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -245,6 +250,21 @@ impl StdGitWrite {
         if crate::git_write::fetch_refspec_out_of_scope(refspec) {
             return Err(PortError::Other(
                 "force/prune/update-head-ok fetch refspecs are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_clean_path(path: &str) -> Result<(), PortError> {
+        if path.trim().is_empty() {
+            return Err(PortError::Other("empty clean path".into()));
+        }
+        if path.contains('\n') || path.contains('\0') {
+            return Err(PortError::Other("clean path must be a single line".into()));
+        }
+        if crate::git_write::clean_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "force/flag/traversal clean paths are out of scope".into(),
             ));
         }
         Ok(())
@@ -934,6 +954,52 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn clean_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        Self::require_clean_path(rel)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before clean-path".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use clean-path".into(),
+            ));
+        }
+        let cached = self.run(repo, &["ls-files", "--cached", "--", rel])?;
+        if !cached.trim().is_empty() {
+            return Err(PortError::Git(
+                "tracked path; clean-path is not checkout --".into(),
+            ));
+        }
+        let others = self.run(
+            repo,
+            &["ls-files", "--others", "--exclude-standard", "--", rel],
+        )?;
+        if others.trim().is_empty() {
+            return Err(PortError::Git(
+                "path is not an untracked worktree file".into(),
+            ));
+        }
+        let abs = Path::new(repo).join(rel);
+        if abs.is_dir() {
+            // One proven untracked directory. Never `-d .`. Never `-x` / `-fdx`.
+            self.run(repo, &["clean", "-f", "-d", "--", rel])?;
+        } else {
+            // One untracked file. Never `-x` / `-d` / `-fdx`.
+            self.run(repo, &["clean", "-f", "--", rel])?;
+        }
         Ok(())
     }
 

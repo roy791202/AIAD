@@ -601,6 +601,10 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved clean-path (repo-relative untracked path).
+    last_clean_path: HashMap<String, String>,
+    /// repo → seeded untracked paths that clean-path may delete.
+    untracked_paths: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +852,30 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Seed an untracked path that approved `clean_path` may delete.
+    pub fn seed_untracked_path(&self, repo: &str, path: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.untracked_paths
+            .entry(Self::key(repo))
+            .or_default()
+            .push(path.trim().to_string());
+    }
+
+    /// Last approved clean-path for `repo`, if any.
+    pub fn last_clean_path(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_clean_path.get(&Self::key(repo)).cloned()
+    }
+
+    /// Remaining seeded untracked paths for `repo`.
+    pub fn remaining_untracked_paths(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.untracked_paths
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1918,58 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn clean_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty clean path".into()));
+        }
+        if crate::git_write::clean_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "force/flag/traversal clean paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before clean-path".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use clean-path".into(),
+            ));
+        }
+        let list = st.untracked_paths.entry(key.clone()).or_default();
+        let idx = list.iter().position(|p| p == rel);
+        let Some(idx) = idx else {
+            return Err(PortError::Git(
+                "tracked path; clean-path is not checkout --".into(),
+            ));
+        };
+        list.remove(idx);
+        st.last_clean_path.insert(key, rel.to_string());
         Ok(())
     }
 

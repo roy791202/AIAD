@@ -284,6 +284,14 @@ pub trait GitPort: Send + Sync {
 ///   honestly (`OPERATION_IN_PROGRESS`); do not use stage-all to mark
 ///   conflicts resolved. A clean worktree is a success no-op (`git add`
 ///   on an empty dirty tree succeeds).
+/// - Clean-path requires approval (no skip default). Distinct from
+///   discard-file (tracked restore): `git clean -f -- <path>` deletes one
+///   repo-relative untracked file. An untracked directory (never `.`) may
+///   use `git clean -f -d -- <path>` only after proving it is untracked.
+///   Never `-fdx` / `-x` / `-d .` / `-e` / `rm -rf` / commit / push /
+///   `reset --hard`. Tracked paths fail honestly. Path traversal,
+///   option-like names, empty, and `.` fail honestly. Unmerged in-progress
+///   state fails (`OPERATION_IN_PROGRESS`).
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -540,6 +548,22 @@ pub trait GitWritePort: Send + Sync {
     /// (`OPERATION_IN_PROGRESS`). A clean index relative to HEAD succeeds as
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Delete one repo-relative untracked path. Requires approval.
+    /// `git clean -f -- <path>` for a single untracked file.
+    /// An untracked directory (never `.`) may use `git clean -f -d -- <path>`
+    /// only after proving it is untracked. Never `-fdx` / `-x` / `-d .` /
+    /// `-e` / `rm -rf` / commit / push / `reset --hard`. Never force outside
+    /// the repo. Tracked paths fail honestly (this is not `checkout --`).
+    /// Path traversal, option-like names, empty, and `.` fail honestly.
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`).
+    fn clean_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
