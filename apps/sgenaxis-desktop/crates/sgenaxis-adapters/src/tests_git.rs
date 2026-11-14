@@ -684,6 +684,69 @@ fn gated_git_write_blocks_tag_even_when_approved() {
     assert!(matches!(del, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
+/// PD-GIT-CREATE-BRANCH-01: deny approval records no branch and does not switch.
+#[test]
+fn pd_git_create_branch_01_fake_denied_create_branch_does_not_mutate() {
+    let w = FakeGitWrite::new();
+    let denied = w.create_branch("/r", "feature/slot", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_branch_create("/r").is_none());
+    assert!(w.created_branches("/r").is_empty());
+    assert!(w.switched_branch("/r").is_none());
+    assert!(w.last_set_upstream("/r").is_none());
+    assert!(w.upstream_of("/r", "feature/slot").is_none());
+}
+
+/// PD-GIT-CREATE-BRANCH-01: approved create_branch is local-only at HEAD.
+#[test]
+fn pd_git_create_branch_01_fake_approved_create_branch_without_switch_or_upstream() {
+    let w = FakeGitWrite::new();
+    w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("create");
+    assert_eq!(w.last_branch_create("/r").as_deref(), Some("feature/slot"));
+    assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+    assert!(
+        w.switched_branch("/r").is_none(),
+        "create must not switch HEAD"
+    );
+    assert!(
+        w.last_set_upstream("/r").is_none(),
+        "create must not set upstream"
+    );
+    assert!(w.upstream_of("/r", "feature/slot").is_none());
+}
+
+/// PD-GIT-CREATE-BRANCH-01: duplicate and invalid names fail without mutation.
+#[test]
+fn pd_git_create_branch_01_fake_duplicate_and_invalid_create_branch_fail_honestly() {
+    let w = FakeGitWrite::new();
+    w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("seed");
+
+    let dup = w.create_branch("/r", "feature/slot", GitWriteApproval::granted());
+    assert!(matches!(dup, Err(PortError::Git(ref m)) if m.contains("already exists")));
+
+    for bad in ["-D", "-d", "-C", "--force", "--set-upstream", "bad..name", "  "] {
+        let err = w
+            .create_branch("/r", bad, GitWriteApproval::granted())
+            .expect_err("invalid/out-of-scope name must fail");
+        assert!(
+            matches!(err, PortError::Other(_)),
+            "expected honest Other for {bad:?}: {err:?}"
+        );
+    }
+    assert_eq!(w.created_branches("/r"), vec!["feature/slot".to_string()]);
+    assert!(w.switched_branch("/r").is_none());
+}
+
+/// PD-GIT-CREATE-BRANCH-01: default-deny adapter never creates a branch.
+#[test]
+fn pd_git_create_branch_01_gated_create_branch_always_denied() {
+    let w = GatedGitWrite::new();
+    let err = w.create_branch("/any", "feature/slot", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
 #[test]
 fn fake_git_write_create_branch_records_when_approved() {
     let w = FakeGitWrite::new();
