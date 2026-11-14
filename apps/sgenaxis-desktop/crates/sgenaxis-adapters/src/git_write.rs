@@ -400,6 +400,26 @@ impl GitWritePort for GatedGitWrite {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
+    fn stage_hunk(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _old_start: u32,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn unstage_hunk(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _old_start: u32,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
     fn conflict_save(
         &self,
         _repo: &str,

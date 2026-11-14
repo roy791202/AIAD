@@ -2188,4 +2188,232 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    fn two_hunk_file() -> String {
+        let mut lines = Vec::new();
+        lines.push("alpha".to_string());
+        lines.push("bravo".to_string());
+        lines.push("charlie".to_string());
+        for i in 4..=20 {
+            lines.push(format!("keep-{i}"));
+        }
+        lines.push("yankee".to_string());
+        lines.push("zulu".to_string());
+        lines.join("\n") + "\n"
+    }
+
+    fn two_hunk_dirty() -> String {
+        let mut lines = Vec::new();
+        lines.push("alpha".to_string());
+        lines.push("bravo-changed".to_string());
+        lines.push("charlie".to_string());
+        for i in 4..=20 {
+            lines.push(format!("keep-{i}"));
+        }
+        lines.push("yankee-changed".to_string());
+        lines.push("zulu".to_string());
+        lines.join("\n") + "\n"
+    }
+
+    fn hunk_old_starts(diff: &str) -> Vec<u32> {
+        diff.lines()
+            .filter(|l| l.starts_with("@@"))
+            .filter_map(|l| {
+                let rest = l.strip_prefix("@@")?.trim_start().strip_prefix('-')?;
+                let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                digits.parse().ok()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn s_git_write_p2_5_stage_hunk() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), two_hunk_file()).unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "two hunk seed"]);
+        fs::write(work.join("a.txt"), two_hunk_dirty()).unwrap();
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let worktree_before = fs::read_to_string(work.join("a.txt")).unwrap();
+        let diff = Command::new("git")
+            .args(["-C", repo, "diff", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let diff_text = String::from_utf8_lossy(&diff.stdout);
+        let starts = hunk_old_starts(&diff_text);
+        assert!(
+            starts.len() >= 2,
+            "fixture must have two hunks: {diff_text}"
+        );
+        let first = starts[0];
+        let second = starts[1];
+
+        let w = StdGitWrite::new();
+        w.stage_hunk(repo, "a.txt", first, GitWriteApproval::denied())
+            .expect_err("denied stage-hunk must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains(" M a.txt") || denied_st.contains(" a.txt"),
+            "denied must leave unstaged: {denied_st}"
+        );
+
+        w.stage_hunk(repo, "a.txt", first, GitWriteApproval::granted())
+            .expect("approved stage first hunk");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("MM a.txt") || staged.contains("M  a.txt") || staged.contains("MM"),
+            "first hunk staged, second remains dirty: {staged}"
+        );
+        let cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let cached_text = String::from_utf8_lossy(&cached.stdout);
+        let cached_starts = hunk_old_starts(&cached_text);
+        assert_eq!(
+            cached_starts,
+            vec![first],
+            "index must contain only the selected hunk: {cached_text}"
+        );
+        let unstaged = Command::new("git")
+            .args(["-C", repo, "diff", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let unstaged_text = String::from_utf8_lossy(&unstaged.stdout);
+        let unstaged_starts = hunk_old_starts(&unstaged_text);
+        assert_eq!(
+            unstaged_starts,
+            vec![second],
+            "worktree must keep the other hunk unstaged: {unstaged_text}"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            worktree_before,
+            "stage-hunk must not rewrite the worktree"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "stage-hunk must never commit");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .stage_hunk(crepo, "a.txt", 1, GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    #[test]
+    fn s_git_write_p2_6_unstage_hunk() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), two_hunk_file()).unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "two hunk seed"]);
+        fs::write(work.join("a.txt"), two_hunk_dirty()).unwrap();
+        git(&work, &["add", "a.txt"]);
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let worktree_before = fs::read_to_string(work.join("a.txt")).unwrap();
+        let cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let cached_text = String::from_utf8_lossy(&cached.stdout);
+        let starts = hunk_old_starts(&cached_text);
+        assert!(
+            starts.len() >= 2,
+            "fixture must have two staged hunks: {cached_text}"
+        );
+        let first = starts[0];
+        let second = starts[1];
+
+        let w = StdGitWrite::new();
+        w.unstage_hunk(repo, "a.txt", first, GitWriteApproval::denied())
+            .expect_err("denied unstage-hunk must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains("M  a.txt"),
+            "denied must leave both hunks staged: {denied_st}"
+        );
+
+        w.unstage_hunk(repo, "a.txt", first, GitWriteApproval::granted())
+            .expect("approved unstage first hunk");
+        let after = porcelain(repo);
+        assert!(
+            after.contains("MM a.txt") || after.contains("M  a.txt") || after.contains(" M a.txt"),
+            "one hunk unstaged, the other still staged: {after}"
+        );
+        let still_cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let still_text = String::from_utf8_lossy(&still_cached.stdout);
+        assert_eq!(
+            hunk_old_starts(&still_text),
+            vec![second],
+            "index must keep the other hunk: {still_text}"
+        );
+        let unstaged = Command::new("git")
+            .args(["-C", repo, "diff", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let unstaged_text = String::from_utf8_lossy(&unstaged.stdout);
+        assert_eq!(
+            hunk_old_starts(&unstaged_text),
+            vec![first],
+            "selected hunk must leave the index: {unstaged_text}"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            worktree_before,
+            "unstage-hunk must not rewrite the worktree"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "unstage-hunk must never commit");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .unstage_hunk(crepo, "a.txt", 1, GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }
