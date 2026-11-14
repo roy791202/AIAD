@@ -251,17 +251,52 @@ impl StdGitWrite {
     }
 
     fn require_conflict_path(path: &str) -> Result<(), PortError> {
-        if path.trim().is_empty() {
-            return Err(PortError::Other("empty conflict path".into()));
+        Self::require_worktree_path(path).map(|_| ())
+    }
+
+    fn require_worktree_path(path: &str) -> Result<String, PortError> {
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty worktree path".into()));
         }
-        if path.contains('\n') || path.contains('\0') {
+        if rel.contains('\n') || rel.contains('\0') {
             return Err(PortError::Other(
-                "conflict path must be a single line".into(),
+                "worktree path must be a single line".into(),
             ));
         }
-        if crate::git_write::conflict_path_out_of_scope(path) {
+        if crate::git_write::worktree_path_out_of_scope(rel) {
             return Err(PortError::Other(
-                "add-all/force/flag conflict paths are out of scope".into(),
+                "add-all/force/flag/traversal worktree paths are out of scope".into(),
+            ));
+        }
+        Ok(rel.to_string())
+    }
+
+    fn ensure_path_in_repo(&self, repo: &str, rel: &str) -> Result<(), PortError> {
+        if rel.starts_with('/') || rel.starts_with('\\') {
+            return Err(PortError::Other(
+                "absolute paths outside repository worktree".into(),
+            ));
+        }
+        let top = self.run(repo, &["rev-parse", "--show-toplevel"])?.trim().to_string();
+        let repo_root = Path::new(&top)
+            .canonicalize()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let joined = Path::new(&top).join(rel);
+        let anchor = if joined.exists() {
+            joined
+        } else {
+            joined
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| Path::new(&top).to_path_buf())
+        };
+        let anchor_canon = anchor
+            .canonicalize()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        if !anchor_canon.starts_with(&repo_root) {
+            return Err(PortError::Other(
+                "path outside repository worktree".into(),
             ));
         }
         Ok(())
@@ -914,6 +949,32 @@ impl GitWritePort for StdGitWrite {
         // Worktree-only: `git add -- .` from repo root (`git -C <repo>`).
         // Never `-A`. Never commit / push / reset --hard / --force.
         self.run(repo, &["add", "--", "."])?;
+        Ok(())
+    }
+
+    fn stage_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = Self::require_worktree_path(path)?;
+        self.ensure_path_in_repo(repo, &rel)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before stage-path".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use stage-path to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        // One path only: `git add -- <path>`. Never `-A` / `.` / `--all`.
+        self.run(repo, &["add", "--", &rel])?;
         Ok(())
     }
 

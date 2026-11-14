@@ -599,6 +599,8 @@ struct FakeGitWriteState {
     last_unset_upstream: HashMap<String, String>,
     /// repo → last approved stage-all recorded (true even on clean no-op).
     last_stage_all: HashMap<String, bool>,
+    /// repo → last approved FILE-STAGE path.
+    last_stage_path: HashMap<String, String>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
     /// repo → local branch → `(remote, branch)` tracking.
@@ -842,6 +844,12 @@ impl FakeGitWrite {
     pub fn last_stage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_stage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Last approved FILE-STAGE path for `repo`, if any.
+    pub fn last_stage_path(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_stage_path.get(&Self::key(repo)).cloned()
     }
 
     /// Whether an approved unstage-all ran for `repo` (clean index still records).
@@ -1859,6 +1867,56 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_stage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn stage_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty worktree path".into()));
+        }
+        if rel.contains('\0') {
+            return Err(PortError::Other(
+                "worktree path must be a single line".into(),
+            ));
+        }
+        if crate::git_write::worktree_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "add-all/force/flag/traversal worktree paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before stage-path".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use stage-path to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        st.last_stage_path.insert(key, rel.to_string());
         Ok(())
     }
 

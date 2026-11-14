@@ -275,6 +275,7 @@ function handle(el){const id=el.dataset.op;if($('#git-ux-inspect')?.checked){spe
  if(id==='REMOTE-UPSTREAM'&&state&&state.live){if(liveHooks&&liveHooks.setUpstream){Promise.resolve(liveHooks.setUpstream('',el.dataset.value||state.remote,'main')).catch(function(){});return}}
  if(id==='BRANCH-UNTRACK'&&state&&state.live){if(liveHooks&&liveHooks.unsetUpstream){Promise.resolve(liveHooks.unsetUpstream(el.dataset.value||state.branch)).catch(function(){});return}}
  if(id==='REMOTE-UNSET-UPSTREAM'&&state&&state.live){if(liveHooks&&liveHooks.unsetUpstream){Promise.resolve(liveHooks.unsetUpstream('')).catch(function(){});return}}
+ if(id==='FILE-STAGE'&&state&&state.live){if(liveHooks&&liveHooks.stagePath){Promise.resolve(liveHooks.stagePath(el.dataset.path)).catch(function(){});return}}
  if(id==='ALL-STAGE'&&state&&state.live){if(liveHooks&&liveHooks.stageAll){Promise.resolve(liveHooks.stageAll()).catch(function(){});return}}
  if(id==='ALL-UNSTAGE'&&state&&state.live){if(liveHooks&&liveHooks.unstageAll){Promise.resolve(liveHooks.unstageAll()).catch(function(){});return}}
  if(id==='BRANCH-DELETE'&&state&&state.live){if(liveHooks&&liveHooks.branchDelete){Promise.resolve(liveHooks.branchDelete(el.dataset.value)).catch(function(){});return}}
