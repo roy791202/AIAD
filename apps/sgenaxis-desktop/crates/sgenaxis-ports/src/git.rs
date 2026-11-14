@@ -541,6 +541,35 @@ pub trait GitWritePort: Send + Sync {
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 
+    /// Stage one selected hunk of a tracked file. Requires approval.
+    /// `git apply --cached` of that hunk only (from `git diff -- <path>`).
+    /// Never `--force`. Never commit / push / `reset --hard` / `git add -A`.
+    /// Only that hunk mutates the index; other hunks and the worktree stay.
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`). Untracked / binary / missing hunks
+    /// fail honestly.
+    fn stage_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        old_start: u32,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Unstage one selected hunk of a tracked file. Requires approval.
+    /// `git apply --cached --reverse` of that hunk only (from
+    /// `git diff --cached -- <path>`). Never `--force`. Never commit / push /
+    /// `reset --hard`. Only that hunk leaves the index; the worktree stays.
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`).
+    fn unstage_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        old_start: u32,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.

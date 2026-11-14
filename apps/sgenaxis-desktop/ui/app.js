@@ -2499,6 +2499,7 @@
       url: payload.url,
       path: payload.path,
       contents: payload.contents,
+      oldStart: payload.oldStart,
     };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
@@ -2557,6 +2558,10 @@
           ? "審核全部暫存"
           : op === "unstage-all"
           ? "審核全部取消暫存"
+          : op === "hunk-stage"
+          ? "審核暫存區塊"
+          : op === "hunk-unstage"
+          ? "審核取消暫存區塊"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2637,6 +2642,10 @@
           ? "核准後經 git_write_stage_all → GitWritePort；於儲存庫根執行 git add -- .。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部暫存標記衝突已解決。乾淨工作區為成功 no-op。拒絕則無突變。"
           : op === "unstage-all"
           ? "核准後經 git_write_unstage_all → GitWritePort；於儲存庫根執行 git reset -- .（mixed pathspec，索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部取消暫存清除衝突。乾淨索引為成功 no-op。拒絕則無突變。"
+          : op === "hunk-stage"
+          ? "核准後經 git_write_stage_hunk → GitWritePort；對已追蹤檔案的單一 hunk 執行 git apply --cached。只變更該 hunk 的索引，不改工作區、不提交、不推送、不加 --force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS）。拒絕則無突變。"
+          : op === "hunk-unstage"
+          ? "核准後經 git_write_unstage_hunk → GitWritePort；對已追蹤檔案的單一 hunk 執行 git apply --cached --reverse。只取消該 hunk 的索引，不改工作區、不提交、不推送、不加 --force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS）。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -3381,6 +3390,72 @@
             true
           );
           toast("全部取消暫存失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "hunk-stage") {
+        const path = pendingGitWrite.path || "";
+        const oldStart = Number(pendingGitWrite.oldStart) || 0;
+        const dto = await invoke("git_write_stage_hunk", {
+          args: {
+            repo: repo,
+            path: path,
+            oldStart: oldStart,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已暫存區塊 " +
+              path +
+              " @@ -" +
+              oldStart +
+              "（經 GitWritePort；git apply --cached；未提交／未推送／未 --force）",
+            false
+          );
+          toast("區塊暫存完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "區塊暫存失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（索引依 Git 真實結果保留）",
+            true
+          );
+          toast("區塊暫存失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "hunk-unstage") {
+        const path = pendingGitWrite.path || "";
+        const oldStart = Number(pendingGitWrite.oldStart) || 0;
+        const dto = await invoke("git_write_unstage_hunk", {
+          args: {
+            repo: repo,
+            path: path,
+            oldStart: oldStart,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已取消暫存區塊 " +
+              path +
+              " @@ -" +
+              oldStart +
+              "（經 GitWritePort；git apply --cached --reverse；未 --force）",
+            false
+          );
+          toast("區塊取消暫存完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "區塊取消暫存失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（索引依 Git 真實結果保留）",
+            true
+          );
+          toast("區塊取消暫存失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-rename") {
@@ -4233,6 +4308,12 @@
         unstageAll: function () {
           showGitApprove("unstage-all", {});
         },
+        stageHunk: function (path, oldStart) {
+          showGitApprove("hunk-stage", { path: path || "", oldStart: oldStart || 0 });
+        },
+        unstageHunk: function (path, oldStart) {
+          showGitApprove("hunk-unstage", { path: path || "", oldStart: oldStart || 0 });
+        },
         unsetUpstream: function (local) {
           const branchEl = document.getElementById("git-ux-branch");
           let current = "";
@@ -4295,6 +4376,33 @@
           return d && d.diff_text != null ? d.diff_text : "";
         },
       });
+    }
+    if (!wireGitIndexCommitUi._hunkCapture && document.getElementById("git-ux-root")) {
+      wireGitIndexCommitUi._hunkCapture = true;
+      document.addEventListener(
+        "click",
+        function (e) {
+          const el = e.target && e.target.closest && e.target.closest("[data-op]");
+          if (!el || el.disabled) return;
+          if (!el.closest("#git-ux-root")) return;
+          const id = el.dataset.op;
+          if (id !== "HUNK-STAGE" && id !== "HUNK-UNSTAGE") return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          const title = document.querySelector("#git-ux-view .panelhead.row span");
+          const path = el.dataset.path || (title ? title.textContent : "") || "";
+          const pre = document.querySelector("#git-ux-view pre.livediff");
+          const diffText = pre ? pre.textContent : "";
+          const match = /@@ -(\d+)/.exec(diffText || "");
+          const oldStart = match ? Number(match[1]) : 0;
+          if (id === "HUNK-STAGE") {
+            showGitApprove("hunk-stage", { path: path, oldStart: oldStart });
+          } else {
+            showGitApprove("hunk-unstage", { path: path, oldStart: oldStart });
+          }
+        },
+        true
+      );
     }
     const controller = mountGitIndexCommitUi({
       document,

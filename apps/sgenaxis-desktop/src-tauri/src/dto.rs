@@ -705,6 +705,32 @@ pub struct GitWriteUnstageAllArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated single-hunk stage (`git apply --cached`). Never --force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteStageHunkArgs {
+    pub repo: Option<String>,
+    /// Tracked path relative to the repo root.
+    pub path: String,
+    /// `@@ -<old_start>` of the selected hunk.
+    #[serde(alias = "oldStart")]
+    pub old_start: u32,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
+/// Args for approval-gated single-hunk unstage (`git apply --cached --reverse`). Never --force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteUnstageHunkArgs {
+    pub repo: Option<String>,
+    /// Tracked path relative to the repo root.
+    pub path: String,
+    /// `@@ -<old_start>` of the selected hunk.
+    #[serde(alias = "oldStart")]
+    pub old_start: u32,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {
