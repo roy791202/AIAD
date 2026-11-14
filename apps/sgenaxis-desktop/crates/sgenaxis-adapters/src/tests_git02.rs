@@ -2188,4 +2188,113 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    #[test]
+    fn std_write_restore_path_worktree_from_head_without_hard_reset() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let head_blob = {
+            let out = Command::new("git")
+                .args(["-C", repo, "show", "HEAD:a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        assert_eq!(head_blob, "v1\n");
+
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        fs::write(work.join("b.txt"), "side dirty\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+        let w = StdGitWrite::new();
+
+        w.restore_path(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied restore must not mutate");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            "dirty\n"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("b.txt")).unwrap(),
+            "side dirty\n"
+        );
+
+        w.restore_path(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved git restore --worktree");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            head_blob,
+            "worktree must match HEAD for restored path"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("b.txt")).unwrap(),
+            "side dirty\n",
+            "restore-path must not touch other paths"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("new.txt")).unwrap(),
+            "untracked\n",
+            "restore-path must not delete untracked"
+        );
+        let st = porcelain(repo);
+        assert!(
+            st.contains(" M b.txt") || st.contains("M b.txt") || st.contains(" b.txt"),
+            "sibling dirty path must remain: {st}"
+        );
+        assert!(st.contains("?? new.txt"), "untracked must remain: {st}");
+
+        let untracked_fail = w.restore_path(repo, "new.txt", GitWriteApproval::granted());
+        assert!(untracked_fail.is_err(), "untracked path must fail");
+
+        fs::write(work.join("a.txt"), "dirty again\n").unwrap();
+        w.stage_all(repo, GitWriteApproval::granted())
+            .expect("stage before index check");
+        fs::write(work.join("a.txt"), "worktree layer\n").unwrap();
+        w.restore_path(repo, "a.txt", GitWriteApproval::granted())
+            .expect("restore worktree layer only");
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            head_blob
+        );
+        let st2 = porcelain(repo);
+        assert!(
+            st2.contains("M  a.txt") || st2.contains("M a.txt"),
+            "index staging must survive worktree-only restore: {st2}"
+        );
+
+        let missing = w.restore_path(repo, "nope.txt", GitWriteApproval::granted());
+        assert!(missing.is_err(), "missing path must fail honestly");
+
+        let flag = w.restore_path(repo, "-f", GitWriteApproval::granted());
+        assert!(matches!(flag, Err(PortError::Other(_))));
+
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "restore-path must never commit");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .restore_path(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }
