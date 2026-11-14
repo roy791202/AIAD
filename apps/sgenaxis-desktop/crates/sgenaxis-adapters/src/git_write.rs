@@ -392,6 +392,10 @@ impl GitWritePort for GatedGitWrite {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
+    fn stage_all(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
     fn conflict_save(
         &self,
         _repo: &str,

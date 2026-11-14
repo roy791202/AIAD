@@ -1976,4 +1976,102 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    fn porcelain(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "status", "--porcelain"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    }
+
+    #[test]
+    fn std_write_stage_all_adds_without_commit() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let w = StdGitWrite::new();
+        w.stage_all(repo, GitWriteApproval::granted())
+            .expect("clean dirty tree is success no-op");
+        assert!(
+            porcelain(repo).trim().is_empty(),
+            "clean no-op must not create staged files"
+        );
+
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+
+        w.stage_all(repo, GitWriteApproval::denied())
+            .expect_err("denied stage-all must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains(" M a.txt")
+                || denied_st.contains("M a.txt")
+                || denied_st.contains(" a.txt"),
+            "denied must leave dirty worktree: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("?? new.txt"),
+            "denied must leave untracked: {denied_st}"
+        );
+
+        w.stage_all(repo, GitWriteApproval::granted())
+            .expect("approved git add -- .");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("M  a.txt") || staged.contains("M  a.txt"),
+            "tracked change must be staged: {staged}"
+        );
+        assert!(
+            staged.contains("A  new.txt") || staged.contains("A  new.txt"),
+            "untracked must be staged via git add -- .: {staged}"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "stage-all must never commit");
+
+        w.stage_all(repo, GitWriteApproval::granted())
+            .expect("already-staged tree is success no-op");
+        let head_noop = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_noop, head_before);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .stage_all(crepo, GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "stage-all must not mark conflicts resolved"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }

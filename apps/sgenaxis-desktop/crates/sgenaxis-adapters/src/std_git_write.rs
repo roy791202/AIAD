@@ -41,6 +41,11 @@
 //!   Empty local → current branch. Never `--set-upstream-to` / `-u`. Never
 //!   `-M` / `-C` / `--force`. Never fetch / pull / push. Never create
 //!   remotes, tracking refs, or local branches.
+//! - Stage-all: `git add -- .` from the repo root. Never commit / push /
+//!   `reset --hard` / `--force`. Never `git add -A` (conflict-save forbids
+//!   `-A` / `.`; this path is the explicit ALL-STAGE exception for `.` only).
+//!   In-progress merge/rebase/cherry-pick/revert fails with
+//!   `OPERATION_IN_PROGRESS`. Clean worktree → success no-op.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -884,6 +889,26 @@ impl GitWritePort for StdGitWrite {
         // Tracking clear only. Never `--set-upstream-to` / `-u`. Never `-M` /
         // `-C` / `--force`. Never fetch / pull / push. `--` stops option parse.
         self.run(repo, &["branch", "--unset-upstream", "--", &local_name])?;
+        Ok(())
+    }
+
+    fn stage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before stage-all".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use stage-all to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        // Worktree-only: `git add -- .` from repo root (`git -C <repo>`).
+        // Never `-A`. Never commit / push / reset --hard / --force.
+        self.run(repo, &["add", "--", "."])?;
         Ok(())
     }
 

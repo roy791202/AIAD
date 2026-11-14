@@ -689,6 +689,14 @@ pub struct GitWriteUnsetUpstreamArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git add -- .` (ALL-STAGE). Never commit/push/-A/force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteStageAllArgs {
+    pub repo: Option<String>,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {

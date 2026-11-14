@@ -26,6 +26,7 @@ pub mod git_rename;
 pub mod git_remote_rename;
 pub mod git_set_upstream;
 pub mod git_unset_upstream;
+pub mod git_stage_all;
 pub mod git_tag_push;
 pub mod git_switch;
 pub mod guard_cmd;
@@ -55,6 +56,7 @@ pub use git_rename::{perform_git_rename_branch, GitRenameResult};
 pub use git_remote_rename::{perform_git_rename_remote, GitRemoteRenameResult};
 pub use git_set_upstream::{perform_git_set_upstream, GitSetUpstreamResult};
 pub use git_unset_upstream::{perform_git_unset_upstream, GitUnsetUpstreamResult};
+pub use git_stage_all::{perform_git_stage_all, GitStageAllResult};
 pub use git_tag_push::{perform_git_push_tag, GitTagPushResult};
 pub use composition::{CompositionRoot, APP_NAME};
 pub use deploy::{

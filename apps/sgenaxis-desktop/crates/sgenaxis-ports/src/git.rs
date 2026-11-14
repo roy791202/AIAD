@@ -276,6 +276,14 @@ pub trait GitPort: Send + Sync {
 ///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
 ///   branches and dirty overwrites fail honestly; local commits and files stay
 ///   intact. Unknown remotes fail honestly.
+/// - Stage-all requires approval (no skip default). Distinct from conflict
+///   save and from commit: `git add -- .` from the repo root only. Never
+///   `git add -A` as a bulk conflict resolve. Never commit / push /
+///   `reset --hard` / `--force`. Paths outside the repo are never added.
+///   In-progress merge/rebase/cherry-pick/revert (unmerged paths) fails
+///   honestly (`OPERATION_IN_PROGRESS`); do not use stage-all to mark
+///   conflicts resolved. A clean worktree is a success no-op (`git add`
+///   on an empty dirty tree succeeds).
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -515,6 +523,14 @@ pub trait GitWritePort: Send + Sync {
         local: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Stage current worktree changes without committing. Requires approval.
+    /// `git add -- .` from the repo root. Never `-A` as conflict-resolve.
+    /// Never commit / push / `reset --hard` / `--force`. Never add paths
+    /// outside the repo. In-progress merge/rebase/cherry-pick/revert with
+    /// unmerged paths fails honestly (`OPERATION_IN_PROGRESS`). A clean
+    /// worktree succeeds as a no-op.
+    fn stage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.

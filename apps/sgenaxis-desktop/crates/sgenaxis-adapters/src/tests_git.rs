@@ -1497,6 +1497,31 @@ fn gated_git_write_blocks_unset_upstream_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_stage_all_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.stage_all("/r", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stage_all("/r").is_none());
+
+    w.stage_all("/r", GitWriteApproval::granted())
+        .expect("clean tree is success no-op");
+    assert_eq!(w.last_stage_all("/r"), Some(true));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.stage_all("/r", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+}
+
+#[test]
+fn gated_git_write_blocks_stage_all_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.stage_all("/any", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());
