@@ -628,6 +628,63 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
 
+    #[test]
+    fn pd_git_stash_push_01_std_write_stash_push_preserves_other_stashes_and_fails_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "first dirty\n").unwrap();
+        git(&work, &["stash", "push", "-m", "keep-me"]);
+        assert!(stash_list(repo).contains("keep-me"));
+
+        let w = StdGitWrite::new();
+        w.stash_push(repo, "wip", GitWriteApproval::denied())
+            .expect_err("PD-GIT-STASH-PUSH-01: deny must not mutate");
+        assert!(
+            stash_list(repo).contains("keep-me") && stash_list(repo).matches("stash@{").count() == 1,
+            "denied push must not drop other stashes: {}",
+            stash_list(repo)
+        );
+
+        fs::write(work.join("a.txt"), "second dirty\n").unwrap();
+        w.stash_push(repo, "WIP: second", GitWriteApproval::granted())
+            .expect("PD-GIT-STASH-PUSH-01: approved tracked stash_push");
+        let list = stash_list(repo);
+        assert!(list.contains("keep-me"), "must never stash clear: {list}");
+        assert!(list.contains("WIP: second"), "new stash message missing: {list}");
+        assert_eq!(
+            list.matches("stash@{").count(),
+            2,
+            "push must not drop other stashes: {list}"
+        );
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v1\n");
+
+        let empty_repo = w.stash_push("", "wip", GitWriteApproval::granted());
+        assert!(
+            matches!(empty_repo, Err(PortError::InvalidPath(_))),
+            "empty repo path must fail honestly: {empty_repo:?}"
+        );
+
+        let missing = unique_temp("missing-stash-push");
+        let missing_s = missing.to_str().unwrap();
+        let miss = w.stash_push(missing_s, "wip", GitWriteApproval::granted());
+        assert!(miss.is_err(), "missing path must fail honestly: {miss:?}");
+
+        let nongit = unique_temp("nongit-stash-push");
+        fs::create_dir_all(&nongit).unwrap();
+        let nongit_s = nongit.to_str().unwrap();
+        let ng = w.stash_push(nongit_s, "wip", GitWriteApproval::granted());
+        assert!(ng.is_err(), "non-git path must fail honestly: {ng:?}");
+        let ng_s = ng.unwrap_err().to_string();
+        assert!(
+            ng_s.to_ascii_lowercase().contains("not a git")
+                || ng_s.to_ascii_lowercase().contains("git"),
+            "non-git error must be honest: {ng_s}"
+        );
+
+        let _ = fs::remove_dir_all(&nongit);
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     fn tag_list(repo: &str) -> String {
         let out = Command::new("git")
             .args(["-C", repo, "tag", "-l"])
