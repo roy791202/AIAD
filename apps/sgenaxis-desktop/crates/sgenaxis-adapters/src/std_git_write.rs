@@ -67,8 +67,9 @@
 //! - Error text is credential-redacted.
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
 
@@ -129,6 +130,67 @@ impl StdGitWrite {
 
         String::from_utf8(output.stdout)
             .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn run_stdin(&self, repo: &str, args: &[&str], stdin: &[u8]) -> Result<String, PortError> {
+        if repo.trim().is_empty() {
+            return Err(PortError::InvalidPath("empty git repo path".into()));
+        }
+        let mut child = Command::new(&self.program)
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
+        if let Some(mut pipe) = child.stdin.take() {
+            pipe.write_all(stdin).map_err(|e| {
+                git_error_redacted(&format!("{} stdin", self.program), &e.to_string())
+            })?;
+        }
+        let output = child
+            .wait_with_output()
+            .map_err(|e| git_error_redacted(&format!("{} wait", self.program), &e.to_string()))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let code = output.status.code().unwrap_or(-1);
+            return Err(git_error_redacted(
+                &format!("git {:?} exit {code}", args),
+                &stderr,
+            ));
+        }
+        String::from_utf8(output.stdout)
+            .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn require_hunk_path(path: &str) -> Result<(), PortError> {
+        if path.trim().is_empty() {
+            return Err(PortError::Other("empty hunk path".into()));
+        }
+        if path.contains('\n') || path.contains('\0') {
+            return Err(PortError::Other("hunk path must be a single line".into()));
+        }
+        if crate::git_write::hunk_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "path traversal/force/flag hunk paths are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_hunk_text(hunk: &str) -> Result<(), PortError> {
+        if let Some(reason) = crate::git_write::hunk_text_invalid(hunk) {
+            return Err(PortError::Other(reason.into()));
+        }
+        Ok(())
+    }
+
+    fn single_file_reverse_patch(path: &str, hunk: &str) -> String {
+        let rel = path.trim();
+        let body = hunk.trim_end_matches('\n');
+        format!("diff --git a/{rel} b/{rel}\n--- a/{rel}\n+++ b/{rel}\n{body}\n")
     }
 
     fn require_local_identity(name: &str, email: &str) -> Result<(), PortError> {
@@ -934,6 +996,37 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn discard_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        Self::require_hunk_path(rel)?;
+        Self::require_hunk_text(hunk)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before hunk-discard".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use hunk-discard during conflicts"
+                    .into(),
+            ));
+        }
+        let patch = Self::single_file_reverse_patch(rel, hunk);
+        // Reverse one constructed single-file patch from stdin.
+        // Never reset --hard. Never checkout. Never -f. Never commit / push.
+        // `--` ends option parse; stdin (`-`) is the only patch source.
+        self.run_stdin(repo, &["apply", "--reverse", "--", "-"], patch.as_bytes())?;
         Ok(())
     }
 

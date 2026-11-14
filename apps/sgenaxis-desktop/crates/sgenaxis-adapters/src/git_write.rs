@@ -156,6 +156,57 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
         })
 }
 
+/// Max unified-diff hunk body accepted for discard (external size bound).
+pub(crate) const MAX_HUNK_BYTES: usize = 1_048_576;
+
+/// Paths that would become flags, traversal, or widen discard beyond one file.
+pub(crate) fn hunk_path_out_of_scope(value: &str) -> bool {
+    conflict_path_out_of_scope(value)
+}
+
+/// True when `hunk` is not a single unified-diff hunk body.
+pub(crate) fn hunk_text_invalid(hunk: &str) -> Option<&'static str> {
+    if hunk.len() > MAX_HUNK_BYTES {
+        return Some("hunk too large");
+    }
+    if hunk.contains('\0') {
+        return Some("hunk must be text");
+    }
+    let t = hunk.trim();
+    if t.is_empty() {
+        return Some("empty hunk");
+    }
+    let mut lines = t.lines();
+    let Some(header) = lines.next() else {
+        return Some("empty hunk");
+    };
+    if !header.starts_with("@@ -") || !header.contains(" @@") {
+        return Some("hunk header required");
+    }
+    for line in lines {
+        if line.starts_with("@@") {
+            return Some("exactly one hunk");
+        }
+        if line.starts_with("diff ")
+            || line.starts_with("index ")
+            || line.starts_with("--- ")
+            || line.starts_with("+++ ")
+        {
+            return Some("hunk must not include other files");
+        }
+        if line.starts_with('-')
+            || line.starts_with('+')
+            || line.starts_with(' ')
+            || line.starts_with('\\')
+            || line.is_empty()
+        {
+            continue;
+        }
+        return Some("invalid hunk body");
+    }
+    None
+}
+
 /// Paths that would become flags or widen `git add` beyond one conflicted file.
 pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -397,6 +448,16 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn unstage_all(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn discard_hunk(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _hunk: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 

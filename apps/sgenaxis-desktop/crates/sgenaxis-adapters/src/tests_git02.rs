@@ -2188,4 +2188,140 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    fn first_hunk(diff: &str) -> String {
+        let mut out = String::new();
+        let mut in_hunk = false;
+        for line in diff.lines() {
+            if line.starts_with("@@ ") {
+                if in_hunk {
+                    break;
+                }
+                in_hunk = true;
+                out.push_str(line);
+                out.push('\n');
+                continue;
+            }
+            if in_hunk {
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn std_write_discard_hunk_reverses_one_file_without_commit() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let original_a = (1..=20)
+            .map(|n| format!("line{n}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        let mut changed_a: Vec<String> = (1..=20).map(|n| format!("line{n}")).collect();
+        changed_a[1] = "CHANGED".into();
+        changed_a[18] = "CHANGED2".into();
+        fs::write(work.join("a.txt"), &original_a).unwrap();
+        fs::write(work.join("b.txt"), "other-dirty\n").unwrap();
+        git(&work, &["add", "a.txt", "b.txt"]);
+        git(&work, &["commit", "-m", "seed multi-hunk"]);
+        fs::write(work.join("a.txt"), changed_a.join("\n") + "\n").unwrap();
+        fs::write(work.join("b.txt"), "other-dirty-2\n").unwrap();
+
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let diff_a = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).into_owned()
+        };
+        let hunk = first_hunk(&diff_a);
+        assert!(hunk.starts_with("@@ "), "expected hunk, got {hunk}");
+
+        let w = StdGitWrite::new();
+        w.discard_hunk(repo, "a.txt", &hunk, GitWriteApproval::denied())
+            .expect_err("denied hunk discard must not mutate");
+        assert!(
+            fs::read_to_string(work.join("a.txt"))
+                .unwrap()
+                .contains("CHANGED\nline3"),
+            "denied must leave the first hunk"
+        );
+
+        for bad in ["../etc/passwd", "..", ".", "-A", "-"] {
+            w.discard_hunk(repo, bad, &hunk, GitWriteApproval::granted())
+                .expect_err("invalid path must fail honestly");
+        }
+        assert!(
+            fs::read_to_string(work.join("a.txt"))
+                .unwrap()
+                .contains("CHANGED\nline3"),
+            "invalid path must not mutate a.txt"
+        );
+
+        let unmatched = w.discard_hunk(
+            repo,
+            "a.txt",
+            "@@ -99,1 +99,1 @@\n-nope\n+still\n",
+            GitWriteApproval::granted(),
+        );
+        assert!(unmatched.is_err(), "unmatched hunk must fail honestly");
+        assert_eq!(
+            fs::read_to_string(work.join("b.txt")).unwrap(),
+            "other-dirty-2\n",
+            "unmatched hunk must leave other files unchanged"
+        );
+
+        w.discard_hunk(repo, "a.txt", &hunk, GitWriteApproval::granted())
+            .expect("approved reverse of first hunk");
+        let after_a = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert!(
+            after_a.contains("line2") && !after_a.contains("CHANGED\n"),
+            "first hunk must reverse: {after_a}"
+        );
+        assert!(
+            after_a.contains("CHANGED2"),
+            "second hunk of a.txt must remain: {after_a}"
+        );
+        assert_eq!(
+            fs::read_to_string(work.join("b.txt")).unwrap(),
+            "other-dirty-2\n",
+            "hunk discard must not touch b.txt"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "hunk discard must never commit");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .discard_hunk(
+                crepo,
+                "a.txt",
+                "@@ -1,1 +1,1 @@\n-ours\n+theirs\n",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }
