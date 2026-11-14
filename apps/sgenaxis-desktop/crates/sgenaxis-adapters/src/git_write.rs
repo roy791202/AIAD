@@ -400,6 +400,15 @@ impl GitWritePort for GatedGitWrite {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
+    fn discard_file(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
     fn conflict_save(
         &self,
         _repo: &str,
