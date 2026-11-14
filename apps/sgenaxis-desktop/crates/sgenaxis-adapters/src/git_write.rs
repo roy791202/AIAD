@@ -49,6 +49,7 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
                 | "--delete"
                 | "--set-upstream"
                 | "--set-upstream-to"
+                | "--unset-upstream"
                 | "-u"
                 | "--track"
                 | "-t"
@@ -366,6 +367,17 @@ impl GitWritePort for GatedGitWrite {
         _repo: &str,
         _old: &str,
         _new: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn set_upstream(
+        &self,
+        _repo: &str,
+        _remote: &str,
+        _branch: &str,
+        _local: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

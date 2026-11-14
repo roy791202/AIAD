@@ -663,6 +663,21 @@ pub struct GitWriteRemoteRemoveArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git branch --set-upstream-to=remote/branch -- local`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteSetUpstreamArgs {
+    pub repo: Option<String>,
+    /// Remote name. Never flags (`-f`, `--unset-upstream`). Never empty.
+    pub remote: String,
+    /// Remote-tracking branch name (the `<branch>` in `<remote>/<branch>`).
+    pub branch: String,
+    /// Local branch. Empty after trim → current branch. Never `--unset-upstream`.
+    #[serde(default)]
+    pub local: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {

@@ -1795,4 +1795,114 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(&clean);
         let _ = fs::remove_dir_all(&merge);
     }
+
+    fn upstream_of(repo: &str, local: &str) -> String {
+        let spec = format!("{local}@{{upstream}}");
+        let out = Command::new("git")
+            .args(["-C", repo, "rev-parse", "--abbrev-ref", &spec])
+            .output()
+            .expect("rev-parse upstream");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_set_upstream_tracks_origin_main_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["branch", "--unset-upstream", "--", "main"]);
+        git(&work, &["branch", "--", "topic"]);
+        assert_eq!(head_ref(repo), "main");
+        let w = StdGitWrite::new();
+
+        w.set_upstream(repo, "origin", "main", "main", GitWriteApproval::denied())
+            .expect_err("denied set-upstream must not mutate");
+        let denied_up = Command::new("git")
+            .args(["-C", repo, "rev-parse", "--abbrev-ref", "main@{upstream}"])
+            .output()
+            .unwrap();
+        assert!(
+            !denied_up.status.success(),
+            "denied must leave main without upstream"
+        );
+
+        w.set_upstream(repo, "  ", "main", "main", GitWriteApproval::granted())
+            .expect_err("empty remote must fail");
+        w.set_upstream(repo, "-f", "main", "main", GitWriteApproval::granted())
+            .expect_err("force flag remote is out of scope");
+        w.set_upstream(
+            repo,
+            "origin",
+            "--unset-upstream",
+            "main",
+            GitWriteApproval::granted(),
+        )
+        .expect_err("unset-upstream as name is out of scope");
+        w.set_upstream(repo, "origin", "main", "-M", GitWriteApproval::granted())
+            .expect_err("force-rename flag local is out of scope");
+
+        let ghost = w
+            .set_upstream(repo, "ghost", "main", "main", GitWriteApproval::granted())
+            .expect_err("unknown remote must fail");
+        assert!(
+            ghost
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("no such remote")
+                || ghost.to_string().to_ascii_lowercase().contains("ghost")
+        );
+        let remotes = Command::new("git")
+            .args(["-C", repo, "remote"])
+            .output()
+            .unwrap();
+        let remote_list = String::from_utf8_lossy(&remotes.stdout);
+        assert!(
+            !remote_list.lines().any(|l| l.trim() == "ghost"),
+            "must not create remotes: {remote_list}"
+        );
+
+        let missing_ref = w
+            .set_upstream(repo, "origin", "nope", "main", GitWriteApproval::granted())
+            .expect_err("missing tracking ref must fail");
+        assert!(
+            missing_ref
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("not found")
+                || missing_ref.to_string().contains("nope")
+        );
+
+        let missing_local = w
+            .set_upstream(
+                repo,
+                "origin",
+                "main",
+                "missing-local",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("missing local branch must fail");
+        assert!(
+            missing_local
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("not found")
+                || missing_local.to_string().contains("missing-local")
+        );
+        assert!(
+            !local_branch_list(repo).contains("missing-local"),
+            "must not create local branches"
+        );
+        assert_eq!(head_ref(repo), "main");
+
+        w.set_upstream(repo, "origin", "main", "", GitWriteApproval::granted())
+            .expect("empty local uses current");
+        assert_eq!(upstream_of(repo, "main"), "origin/main");
+        assert_eq!(head_ref(repo), "main");
+
+        w.set_upstream(repo, "origin", "main", "topic", GitWriteApproval::granted())
+            .expect("explicit local");
+        assert_eq!(upstream_of(repo, "topic"), "origin/main");
+        assert_eq!(head_ref(repo), "main");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

@@ -486,6 +486,22 @@ pub trait GitWritePort: Send + Sync {
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 
+    /// Set upstream tracking for a local branch. Requires approval.
+    /// `git branch --set-upstream-to=<remote>/<branch> -- <local>`.
+    /// Empty `local` → current branch. Never `--unset-upstream`. Never `-M` /
+    /// `-C` / `--force`. Never fetch / pull / push / rebase / merge / checkout /
+    /// switch. Never create remotes, remote-tracking refs, or local branches.
+    /// Unknown remotes, missing tracking refs, missing local branches, and
+    /// empty / invalid / option-like names fail honestly.
+    fn set_upstream(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: &str,
+        local: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.

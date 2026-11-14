@@ -36,9 +36,10 @@ use sgenaxis_exec::{
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
-    perform_git_switch, save_design_file, save_scene_text, CompositionRoot, DeployArtifactView,
-    DeployCheckView, DeployStatusView, DesignDoc, DesignNode, GitRemoteRenameResult,
-    GitRenameResult, GitSwitchResult, GitTagPushResult, GuardDecisionView, GuardPacketDto,
+    perform_git_set_upstream, perform_git_switch, save_design_file, save_scene_text, CompositionRoot,
+    DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
+    GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitSwitchResult, GitTagPushResult,
+    GuardDecisionView, GuardPacketDto,
     HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
@@ -54,7 +55,8 @@ use crate::dto::{
     GitWriteBranchRenameArgs, GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs,
     GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
     GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
-    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteStashArgs,
+    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
+    GitWriteStashArgs,
     GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs,
     GitWriteTagPushArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
     OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
@@ -436,6 +438,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_remote_remove",
         "git_write_remote_set_url",
         "git_write_remote_rename",
+        "git_write_set_upstream",
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
@@ -2697,6 +2700,7 @@ fn branch_out_of_scope(value: &str) -> bool {
                 | "--delete"
                 | "--set-upstream"
                 | "--set-upstream-to"
+                | "--unset-upstream"
                 | "-u"
                 | "--track"
                 | "-t"
@@ -3221,6 +3225,59 @@ pub fn git_write_remote_rename(
         &repo,
         &args.old,
         &args.new_name,
+        args.approved,
+    )
+}
+
+fn git_set_upstream_result_dto(r: GitSetUpstreamResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_set_upstream(
+    write: &dyn GitWritePort,
+    repo: &str,
+    remote: &str,
+    branch: &str,
+    local: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_remote_scope(remote, None)?;
+    reject_branch_scope(branch)?;
+    reject_branch_scope(local)?;
+    Ok(git_set_upstream_result_dto(perform_git_set_upstream(
+        write, repo, remote, branch, local, approved,
+    )))
+}
+
+/// Approval-gated `git branch --set-upstream-to=remote/branch -- local`.
+/// Empty local → current. Never `--unset-upstream`. Never create remotes/refs/branches.
+#[tauri::command]
+pub fn git_write_set_upstream(
+    state: State<'_, HostState>,
+    args: GitWriteSetUpstreamArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_set_upstream").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "set-upstream".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_set_upstream(
+        root.git_write(),
+        &repo,
+        &args.remote,
+        &args.branch,
+        &args.local,
         args.approved,
     )
 }
@@ -5563,6 +5620,76 @@ mod git_ui_tests {
                     "https://example.invalid/other.git".to_string()
                 ),
             ]
+        );
+        assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_set_upstream_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_set_upstream"));
+        assert!(!is_allowed("git_set_upstream"));
+        assert!(!is_allowed("git_branch_set_upstream"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w.create_branch("/r", "main", GitWriteApproval::granted())
+            .unwrap();
+        w.set_current_branch("/r", "main");
+        w.seed_remote_tracking("/r", "refs/remotes/origin/main", "oid-main");
+
+        let denied = perform_git_write_set_upstream(&w, "/r", "origin", "main", "main", false)
+            .unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_set_upstream("/r").is_none());
+
+        let empty = perform_git_write_set_upstream(&w, "/r", "  ", "main", "main", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_set_upstream("/r").is_none());
+
+        let flag = perform_git_write_set_upstream(&w, "/r", "-f", "main", "main", true).unwrap_err();
+        assert!(flag.contains("out of scope"));
+        let unset = perform_git_write_set_upstream(
+            &w,
+            "/r",
+            "origin",
+            "--unset-upstream",
+            "main",
+            true,
+        )
+        .unwrap_err();
+        assert!(unset.contains("out of scope"));
+
+        let missing = perform_git_write_set_upstream(&w, "/r", "ghost", "main", "main", true)
+            .unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
+
+        let missing_ref =
+            perform_git_write_set_upstream(&w, "/r", "origin", "nope", "main", true).unwrap();
+        assert!(!missing_ref.ok);
+        assert!(missing_ref.message.to_ascii_lowercase().contains("not found"));
+
+        let ok = perform_git_write_set_upstream(&w, "/r", "origin", "main", "", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "set-upstream");
+        assert_eq!(
+            w.last_set_upstream("/r"),
+            Some(("main".to_string(), "origin".to_string(), "main".to_string()))
+        );
+        assert_eq!(
+            w.upstream_of("/r", "main"),
+            Some(("origin".to_string(), "main".to_string()))
         );
         assert_eq!(w.push_count("/r"), 0);
     }

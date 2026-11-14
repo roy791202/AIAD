@@ -593,6 +593,12 @@ struct FakeGitWriteState {
     remote_set_url: HashMap<String, (String, String)>,
     /// repo → last approved remote rename `(old, new)`.
     remote_rename: HashMap<String, (String, String)>,
+    /// repo → last approved set-upstream `(local, remote, branch)`.
+    last_set_upstream: HashMap<String, (String, String, String)>,
+    /// repo → local branch → `(remote, branch)` tracking.
+    upstreams: HashMap<String, HashMap<String, (String, String)>>,
+    /// repo → current HEAD branch name (empty local uses this).
+    current_branch: HashMap<String, String>,
     /// repo → last approved fetch `(remote, optional refspec)`.
     last_fetch: HashMap<String, (String, Option<String>)>,
     /// repo → last approved fetch-prune remote.
@@ -812,6 +818,27 @@ impl FakeGitWrite {
     pub fn last_remote_rename(&self, repo: &str) -> Option<(String, String)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.remote_rename.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved set-upstream for `repo` as `(local, remote, branch)`.
+    pub fn last_set_upstream(&self, repo: &str) -> Option<(String, String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_set_upstream.get(&Self::key(repo)).cloned()
+    }
+
+    /// Recorded upstream for `local` as `(remote, branch)`.
+    pub fn upstream_of(&self, repo: &str, local: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.upstreams
+            .get(&Self::key(repo))
+            .and_then(|m| m.get(local))
+            .cloned()
+    }
+
+    /// Set Fake's current HEAD branch so empty `local` can resolve.
+    pub fn set_current_branch(&self, repo: &str, name: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.current_branch.insert(Self::key(repo), name.into());
     }
 
     /// Last approved fetch for `repo` as `(remote, optional refspec)`.
@@ -1633,6 +1660,95 @@ impl GitWritePort for FakeGitWrite {
         }
         st.remote_rename
             .insert(key, (old_name.to_string(), new_name.to_string()));
+        Ok(())
+    }
+
+    fn set_upstream(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: &str,
+        local: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let remote_name = remote.trim();
+        let remote_branch = branch.trim();
+        if remote_name.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if remote_branch.is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(remote_name)
+            || crate::git_write::branch_name_out_of_scope(remote_branch)
+        {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let local_name = if local.trim().is_empty() {
+            st.current_branch
+                .get(&key)
+                .cloned()
+                .filter(|n| !n.is_empty() && n != "HEAD")
+                .ok_or_else(|| PortError::Other("cannot set upstream on detached HEAD".into()))?
+        } else {
+            local.trim().to_string()
+        };
+        if crate::git_write::branch_name_out_of_scope(&local_name) {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let has_remote = st
+            .remotes
+            .get(&key)
+            .map(|remotes| remotes.iter().any(|(n, _)| n == remote_name))
+            .unwrap_or(false);
+        if !has_remote {
+            return Err(PortError::Git(format!("No such remote: '{remote_name}'")));
+        }
+        let has_local = st
+            .branches
+            .get(&key)
+            .map(|names| names.iter().any(|n| n == &local_name))
+            .unwrap_or(false);
+        if !has_local {
+            return Err(PortError::Git(format!("branch '{local_name}' not found")));
+        }
+        let tracking = format!("refs/remotes/{remote_name}/{remote_branch}");
+        let has_tracking = st
+            .remote_tracking
+            .get(&key)
+            .map(|refs| refs.iter().any(|(n, _)| n == &tracking))
+            .unwrap_or(false);
+        if !has_tracking {
+            return Err(PortError::Git(format!(
+                "remote-tracking branch '{remote_name}/{remote_branch}' not found"
+            )));
+        }
+        st.upstreams.entry(key.clone()).or_default().insert(
+            local_name.clone(),
+            (remote_name.to_string(), remote_branch.to_string()),
+        );
+        st.last_set_upstream.insert(
+            key,
+            (
+                local_name,
+                remote_name.to_string(),
+                remote_branch.to_string(),
+            ),
+        );
         Ok(())
     }
 

@@ -2549,6 +2549,8 @@
           ? "審核 Remote Set URL"
           : op === "remote-rename"
           ? "審核 Remote Rename"
+          : op === "set-upstream"
+          ? "審核 Set Upstream"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2621,6 +2623,8 @@
           ? "核准後經 git_write_remote_rename → GitWritePort；將本機遠端 " +
             (payload.old || "") +
             " 重新命名（git remote rename -- old new）。不改 URL（用 set-url 改 URL）。不加 fetch／set-url／push。未知遠端、重名與無效名稱誠實失敗。拒絕則無突變。"
+          : op === "set-upstream"
+          ? "核准後經 git_write_set_upstream → GitWritePort；設定本機分支追蹤（git branch --set-upstream-to=remote/branch -- local）。空白本機＝目前分支。不建立遠端／追蹤 refs／本機分支，不加 --unset-upstream／-M／-C／--force，不 fetch／pull／push。未知遠端、缺追蹤 ref、缺本機分支誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -2672,13 +2676,18 @@
         op !== "fetch" &&
         op !== "fetch-prune" &&
         op !== "pull-ff-only" &&
-        op !== "tag-push";
-    if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch" && op !== "pull-ff-only";
+        op !== "tag-push" &&
+        op !== "set-upstream";
+    if (refWrap)
+      refWrap.hidden =
+        op !== "push" && op !== "fetch" && op !== "pull-ff-only" && op !== "set-upstream";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
-    if (branchWrap) branchWrap.hidden = op !== "branch-create" && op !== "branch-rename";
+    if (branchWrap)
+      branchWrap.hidden =
+        op !== "branch-create" && op !== "branch-rename" && op !== "set-upstream";
     if (remoteNameWrap)
       remoteNameWrap.hidden =
         op !== "remote-add" && op !== "remote-set-url" && op !== "remote-rename";
@@ -2704,22 +2713,29 @@
       if (msg) {
         msg.value = payload.message != null ? String(payload.message) : "";
       }
-    } else if (op === "branch-create" || op === "branch-rename") {
+    } else if (op === "branch-create" || op === "branch-rename" || op === "set-upstream") {
       const branch = document.getElementById("git-approve-branch");
       if (branch) {
         const span = branchWrap ? branchWrap.querySelector("span") : null;
         if (span) {
-          span.textContent = op === "branch-rename" ? "新本機分支名稱" : "本機分支名稱";
+          span.textContent =
+            op === "branch-rename"
+              ? "新本機分支名稱"
+              : op === "set-upstream"
+              ? "本機分支（空白＝目前分支）"
+              : "本機分支名稱";
         }
         branch.value =
           op === "branch-rename"
             ? payload.newName != null
               ? String(payload.newName)
               : ""
+            : payload.branch != null
+            ? String(payload.branch)
             : payload.name != null
             ? String(payload.name)
             : "";
-        branch.focus();
+        if (op !== "set-upstream") branch.focus();
       }
     } else if (op === "remote-add" || op === "remote-set-url" || op === "remote-rename") {
       const nameEl = document.getElementById("git-approve-remote-name");
@@ -2749,7 +2765,8 @@
       op === "fetch" ||
       op === "fetch-prune" ||
       op === "pull-ff-only" ||
-      op === "tag-push"
+      op === "tag-push" ||
+      op === "set-upstream"
     ) {
       const remote = document.getElementById("git-approve-remote");
       if (remote) {
@@ -2761,9 +2778,18 @@
         remote.focus();
       }
       const refEl = document.getElementById("git-approve-refspec");
-      if (refEl && (op === "fetch" || op === "pull-ff-only")) {
+      if (refEl && (op === "fetch" || op === "pull-ff-only" || op === "set-upstream")) {
+        const refSpan = refWrap ? refWrap.querySelector("span") : null;
+        if (refSpan) {
+          refSpan.textContent =
+            op === "set-upstream" ? "遠端分支" : "Refspec（選填；禁止 +force）";
+        }
         refEl.value =
-          payload.refspec != null
+          op === "set-upstream"
+            ? payload.name != null
+              ? String(payload.name)
+              : "main"
+            : payload.refspec != null
             ? String(payload.refspec)
             : payload.branch != null
             ? String(payload.branch)
@@ -3208,6 +3234,53 @@
             true
           );
           toast("Remote set-url 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "set-upstream") {
+        const localEl = document.getElementById("git-approve-branch");
+        const remoteEl = document.getElementById("git-approve-remote");
+        const branchEl = document.getElementById("git-approve-refspec");
+        const local = localEl && localEl.value ? localEl.value.trim() : "";
+        const remote =
+          remoteEl && remoteEl.value && remoteEl.value.trim()
+            ? remoteEl.value.trim()
+            : "";
+        const branch = branchEl && branchEl.value ? branchEl.value.trim() : "";
+        if (!remote || !branch) {
+          setGitStatusLine("遠端與遠端分支不可空白", true);
+          toast("請填寫遠端與遠端分支");
+          return;
+        }
+        const dto = await invoke("git_write_set_upstream", {
+          args: {
+            repo: repo,
+            remote: remote,
+            branch: branch,
+            local: local,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已設定 upstream " +
+              remote +
+              "/" +
+              branch +
+              (local ? " ← " + local : " ← 目前分支") +
+              "（經 GitWritePort；git branch --set-upstream-to；未 fetch／未 push）",
+            false
+          );
+          toast("Set upstream 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "set-upstream 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機分支與遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Set upstream 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-rename") {
@@ -4039,6 +4112,19 @@
           const picker = document.getElementById("git-ux-remote-picker");
           showGitApprove("remote-rename", {
             old: name || (picker && picker.value) || "",
+          });
+        },
+        setUpstream: function (local, remote, branch) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          const branchEl = document.getElementById("git-ux-branch");
+          let current = "";
+          if (branchEl && branchEl.textContent && branchEl.textContent.indexOf("（") < 0) {
+            current = branchEl.textContent.trim();
+          }
+          showGitApprove("set-upstream", {
+            branch: local ? String(local) : current,
+            remote: remote || (picker && picker.value) || "origin",
+            name: branch || "main",
           });
         },
         remoteRemove: function (name) {

@@ -143,6 +143,7 @@ pub fn run() {
             commands::git_write_remote_remove,
             commands::git_write_remote_set_url,
             commands::git_write_remote_rename,
+            commands::git_write_set_upstream,
             commands::git_write_conflict_save,
             commands::git_write_conflict_continue,
             commands::git_write_conflict_abort,
@@ -216,6 +217,7 @@ mod host_ipc_integration {
             "git_write_remote_remove",
             "git_write_remote_set_url",
             "git_write_remote_rename",
+            "git_write_set_upstream",
             "git_write_conflict_save",
             "git_write_conflict_continue",
             "git_write_conflict_abort",
@@ -255,6 +257,7 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));
         assert!(!is_allowed("git_remote_rename"));
+        assert!(!is_allowed("git_set_upstream"));
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));

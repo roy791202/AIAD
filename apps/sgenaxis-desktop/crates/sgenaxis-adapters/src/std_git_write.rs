@@ -33,6 +33,10 @@
 //!   Unknown remotes fail honestly.
 //! - Remote rename: `git remote rename -- <old> <new>`. Never fetch /
 //!   set-url / push. URL unchanged. Unknown / duplicate names fail honestly.
+//! - Set-upstream: `git branch --set-upstream-to=<remote>/<branch> -- <local>`.
+//!   Empty local → current branch. Never `--unset-upstream`. Never `-M` / `-C`
+//!   / `--force`. Never fetch / pull / push / rebase / merge / checkout /
+//!   switch. Never create remotes, tracking refs, or local branches.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -789,6 +793,60 @@ impl GitWritePort for StdGitWrite {
         // Local config only: `git remote rename -- <old> <new>`.
         // Never fetch / set-url / push. `--` stops option parse.
         self.run(repo, &["remote", "rename", "--", old_name, new_name])?;
+        Ok(())
+    }
+
+    fn set_upstream(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: &str,
+        local: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let remote_name = remote.trim();
+        let remote_branch = branch.trim();
+        Self::require_remote_name(remote_name)?;
+        Self::require_branch_name(remote_branch)?;
+        let listed = self.run(repo, &["remote"])?;
+        if !listed.lines().any(|line| line.trim() == remote_name) {
+            return Err(PortError::Git(format!("No such remote: '{remote_name}'")));
+        }
+        let local_name = if local.trim().is_empty() {
+            let head = self.run(repo, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+            let head = head.trim();
+            if head.is_empty() || head == "HEAD" {
+                return Err(PortError::Other(
+                    "cannot set upstream on detached HEAD".into(),
+                ));
+            }
+            head.to_string()
+        } else {
+            local.trim().to_string()
+        };
+        Self::require_branch_name(&local_name)?;
+        let local_ref = format!("refs/heads/{local_name}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &local_ref])
+            .is_err()
+        {
+            return Err(PortError::Git(format!("branch '{local_name}' not found")));
+        }
+        let tracking = format!("refs/remotes/{remote_name}/{remote_branch}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &tracking])
+            .is_err()
+        {
+            return Err(PortError::Git(format!(
+                "remote-tracking branch '{remote_name}/{remote_branch}' not found"
+            )));
+        }
+        let spec = format!("--set-upstream-to={remote_name}/{remote_branch}");
+        // Tracking only. Never `--unset-upstream`. Never `-M` / `-C` / `--force`.
+        // Never fetch / pull / push / rebase / merge / checkout / switch.
+        // `--` stops option parse so a local name cannot be read as a flag.
+        self.run(repo, &["branch", &spec, "--", &local_name])?;
         Ok(())
     }
 
