@@ -4199,6 +4199,27 @@
     );
   }
 
+  function wireGitUxDiscardFileCapture() {
+    if (wireGitUxDiscardFileCapture._wired || typeof document === "undefined") return;
+    wireGitUxDiscardFileCapture._wired = true;
+    document.addEventListener(
+      "click",
+      function (e) {
+        if (!window.EluSlotGitUxMock || typeof window.EluSlotGitUxMock.isLive !== "function") {
+          return;
+        }
+        if (!window.EluSlotGitUxMock.isLive()) return;
+        const target = e.target && e.target.closest ? e.target.closest("[data-op]") : null;
+        if (!target || target.dataset.op !== "FILE-DISCARD") return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const path = target.getAttribute("data-path") || "";
+        showGitApprove("discard-file", { path: path });
+      },
+      true
+    );
+  }
+
   function wireGitIndexCommitUi() {
     if (!invoke || typeof document === "undefined") return null;
     const panel = document.getElementById("panel-git");
@@ -4338,6 +4359,7 @@
           return d && d.diff_text != null ? d.diff_text : "";
         },
       });
+      wireGitUxDiscardFileCapture();
     }
     const controller = mountGitIndexCommitUi({
       document,
