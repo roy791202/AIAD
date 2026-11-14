@@ -78,6 +78,8 @@ mod tests_swap;
 mod tests_git;
 #[cfg(test)]
 mod tests_git02;
+#[cfg(test)]
+mod tests_git_revert_commit;
 
 // EA-A0 approved fixture adapter skeleton; no native composition yet.
 #[cfg(any(windows, test))]

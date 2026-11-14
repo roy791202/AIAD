@@ -1,6 +1,6 @@
 //! In-memory fake adapters — no OS; for Core / contract unit tests.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use sgenaxis_ports::{
@@ -637,6 +637,12 @@ struct FakeGitWriteState {
     conflict_abort: HashMap<String, String>,
     /// repo → last approved skip kind.
     conflict_skip: HashMap<String, String>,
+    /// repo → commit hashes recorded as merge commits (revert must refuse).
+    merge_commits: HashMap<String, HashSet<String>>,
+    /// repo → last approved revert target sha.
+    last_revert: HashMap<String, String>,
+    /// repo → next revert error (raw; redacted on return).
+    revert_fail: HashMap<String, String>,
     next_hash: u64,
 }
 
@@ -1000,6 +1006,36 @@ impl FakeGitWrite {
             .get(&Self::key(repo))
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// Commit hashes recorded for `repo` (oldest first).
+    pub fn commit_hashes(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.commits
+            .get(&Self::key(repo))
+            .map(|v| v.iter().map(|(_, h)| h.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    /// Mark `sha` as a merge commit so revert refuses without `-m`.
+    pub fn mark_merge_commit(&self, repo: &str, sha: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.merge_commits
+            .entry(Self::key(repo))
+            .or_default()
+            .insert(sha.into());
+    }
+
+    /// Inject a one-shot revert failure; local commits are left intact.
+    pub fn fail_next_revert(&self, repo: &str, raw_error: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.revert_fail.insert(Self::key(repo), raw_error.into());
+    }
+
+    /// Last approved revert target sha for `repo`, if any.
+    pub fn last_revert_sha(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_revert.get(&Self::key(repo)).cloned()
     }
 }
 
@@ -2204,6 +2240,70 @@ impl GitWritePort for FakeGitWrite {
         st.local_head.insert(key.clone(), remote_oid);
         st.last_pull_ff_only
             .insert(key, (name.to_string(), branch_record));
+        Ok(())
+    }
+
+    fn revert_commit(
+        &self,
+        repo: &str,
+        sha: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rev = sha.trim();
+        if rev.is_empty() {
+            return Err(PortError::Other("empty commit sha".into()));
+        }
+        if crate::git_write::commit_sha_out_of_scope(rev) {
+            return Err(PortError::Other(
+                "force/no-commit/flag commit shas are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if let Some(raw) = st.revert_fail.remove(&key) {
+            return Err(PortError::Git(crate::git_write::redact_credentials(&raw)));
+        }
+        let commits = st.commits.get(&key);
+        let target_hash = commits.and_then(|list| {
+            list.iter()
+                .find(|(_, h)| h == rev || h.starts_with(rev))
+                .map(|(_, h)| h.clone())
+        });
+        let Some(target_hash) = target_hash else {
+            return Err(PortError::Git(format!("unknown commit '{rev}'")));
+        };
+        if st
+            .merge_commits
+            .get(&key)
+            .is_some_and(|s| s.contains(&target_hash))
+        {
+            return Err(PortError::Git(
+                "merge commit revert requires an explicit mainline parent (-m); not supported"
+                    .into(),
+            ));
+        }
+        let original = commits
+            .and_then(|list| {
+                list.iter()
+                    .find(|(_, h)| h == &target_hash)
+                    .map(|(m, _)| m.clone())
+            })
+            .unwrap_or_else(|| "commit".into());
+        st.next_hash = st.next_hash.saturating_add(1);
+        let hash = format!("{:012x}", st.next_hash);
+        st.commits
+            .entry(key.clone())
+            .or_default()
+            .push((format!("Revert \"{original}\""), hash));
+        st.last_revert.insert(key, rev.to_string());
         Ok(())
     }
 }
