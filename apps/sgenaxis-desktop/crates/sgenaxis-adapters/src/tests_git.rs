@@ -1548,7 +1548,7 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
-fn s_git_write_p2_file_unstage_grant_one_path() {
+fn s_git_wp2_fu_1_grant_one_path() {
     let w = FakeGitWrite::new();
     w.seed_staged_paths("/r", &["a.txt", "b.txt"]);
     w.unstage_path("/r", "a.txt", GitWriteApproval::granted())
@@ -1559,7 +1559,7 @@ fn s_git_write_p2_file_unstage_grant_one_path() {
 }
 
 #[test]
-fn s_git_write_p2_file_unstage_deny_no_mutation() {
+fn s_git_wp2_fu_2_deny_no_mutation() {
     let w = FakeGitWrite::new();
     w.seed_staged_paths("/r", &["a.txt", "b.txt"]);
     let denied = w.unstage_path("/r", "a.txt", GitWriteApproval::denied());
@@ -1569,7 +1569,7 @@ fn s_git_write_p2_file_unstage_deny_no_mutation() {
 }
 
 #[test]
-fn s_git_write_p2_file_unstage_conflict_operation_in_progress() {
+fn s_git_wp2_fu_3_conflict_operation_in_progress() {
     let w = FakeGitWrite::new();
     w.seed_staged_paths("/r", &["a.txt"]);
     w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
@@ -1581,7 +1581,7 @@ fn s_git_write_p2_file_unstage_conflict_operation_in_progress() {
 }
 
 #[test]
-fn s_git_write_p2_file_unstage_path_traversal() {
+fn s_git_wp2_fu_4_path_traversal() {
     let w = FakeGitWrite::new();
     w.seed_staged_paths("/r", &["a.txt"]);
     for bad in ["../secret", "/etc/passwd", "-f", "", "foo\0bar", ".."] {
@@ -1593,7 +1593,7 @@ fn s_git_write_p2_file_unstage_path_traversal() {
 }
 
 #[test]
-fn s_git_write_p2_file_unstage_other_files_remain_staged() {
+fn s_git_wp2_fu_5_other_files_remain_staged() {
     let w = FakeGitWrite::new();
     w.seed_staged_paths("/r", &["keep.rs", "drop.rs"]);
     w.unstage_path("/r", "drop.rs", GitWriteApproval::granted())

@@ -55,7 +55,7 @@ mod tests {
     use sgenaxis_adapters::FakeGitWrite;
 
     #[test]
-    fn s_git_write_p2_file_unstage_grant_one_path() {
+    fn s_git_wp2_fu_1_grant_one_path() {
         let w = FakeGitWrite::new();
         w.seed_staged_paths("/r", &["a.txt", "b.txt"]);
         let ok = perform_git_unstage_path(&w, "/r", "a.txt", true);
@@ -66,7 +66,7 @@ mod tests {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_deny_no_mutation() {
+    fn s_git_wp2_fu_2_deny_no_mutation() {
         let w = FakeGitWrite::new();
         w.seed_staged_paths("/r", &["a.txt"]);
         let denied = perform_git_unstage_path(&w, "/r", "a.txt", false);

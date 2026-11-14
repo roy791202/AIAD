@@ -2190,7 +2190,7 @@ mod std_write_temp {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_grant_one_path() {
+    fn s_git_wp2_fu_1_grant_one_path() {
         let (work, _bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
         fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
@@ -2217,7 +2217,7 @@ mod std_write_temp {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_deny_no_mutation() {
+    fn s_git_wp2_fu_2_deny_no_mutation() {
         let (work, _bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
         fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
@@ -2234,7 +2234,7 @@ mod std_write_temp {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_conflict_operation_in_progress() {
+    fn s_git_wp2_fu_3_conflict_operation_in_progress() {
         let conflict = make_merge_conflict();
         let crepo = conflict.to_str().unwrap();
         let w = StdGitWrite::new();
@@ -2255,7 +2255,7 @@ mod std_write_temp {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_path_traversal() {
+    fn s_git_wp2_fu_4_path_traversal() {
         let (work, _bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
         fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
@@ -2286,7 +2286,7 @@ mod std_write_temp {
     }
 
     #[test]
-    fn s_git_write_p2_file_unstage_other_files_remain_staged() {
+    fn s_git_wp2_fu_5_other_files_remain_staged() {
         let (work, _bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
         fs::write(work.join("keep.rs"), "keep\n").unwrap();

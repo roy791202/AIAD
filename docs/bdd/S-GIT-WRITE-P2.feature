@@ -1,8 +1,10 @@
+# FILE-UNSTAGE only. Product PR merge of this .feature needs GitHub label
+# spec-change plus CODEOWNERS; implementers cannot add labels.
 Feature: Gated Git write FILE-UNSTAGE
   FILE-UNSTAGE unstages one repo-relative path (`git reset -- <path>`)
   through GitWritePort. Never unstage-all, never --hard.
 
-  @s_git_write_p2_file_unstage_grant_one_path
+  @S-GIT-WP2-FU-1
   Scenario: Grant unstages only the requested path
     Given a git worktree with more than one staged path
     And GitWriteApproval is granted
@@ -11,7 +13,7 @@ Feature: Gated Git write FILE-UNSTAGE
     And the worktree contents of that file remain
     And HEAD is unchanged
 
-  @s_git_write_p2_file_unstage_deny_no_mutation
+  @S-GIT-WP2-FU-2
   Scenario: Deny does not mutate
     Given a git worktree with a staged path
     And GitWriteApproval is denied
@@ -19,7 +21,7 @@ Feature: Gated Git write FILE-UNSTAGE
     Then the result is PermissionDenied
     And the index is unchanged
 
-  @s_git_write_p2_file_unstage_conflict_operation_in_progress
+  @S-GIT-WP2-FU-3
   Scenario: In-progress conflict refuses FILE-UNSTAGE
     Given an in-progress merge with unmerged paths
     And GitWriteApproval is granted
@@ -27,7 +29,7 @@ Feature: Gated Git write FILE-UNSTAGE
     Then the error contains OPERATION_IN_PROGRESS
     And conflict state is unchanged
 
-  @s_git_write_p2_file_unstage_path_traversal
+  @S-GIT-WP2-FU-4
   Scenario: Path traversal and option-like names fail
     Given a git worktree
     When unstage_path is called with traversal, NUL, option-like, empty, or outside-repo paths
@@ -35,7 +37,7 @@ Feature: Gated Git write FILE-UNSTAGE
     And no index mutation occurs
     And a missing path fails honestly
 
-  @s_git_write_p2_file_unstage_other_files_remain_staged
+  @S-GIT-WP2-FU-5
   Scenario: Other staged files remain staged
     Given two staged paths
     When unstage_path is called for one of them

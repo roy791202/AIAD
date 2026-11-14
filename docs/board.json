@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": "AIAD / SGenAxis",
-  "updatedAt": "2026-11-14T16:14:13+00:00",
+  "updatedAt": "2026-11-14T16:20:43+00:00",
   "items": [
     {
       "id": "PD-UIDESIGNER-EDIT-P2",
@@ -25154,30 +25154,122 @@
       "updatedAt": "2026-11-04T15:10:05.032935+00:00"
     },
     {
+      "id": "S-GIT-WP2",
+      "level": "Story",
+      "title": "FILE-UNSTAGE gated single-path unstage",
+      "parentId": "PD-GIT-02",
+      "status": "In Progress",
+      "light": "Yellow",
+      "lightReason": "Task PD-GIT-UNSTAGE-PATH-01 in review; Guard/CI not Green.",
+      "createdAt": "2026-11-14T16:20:43+00:00",
+      "updatedAt": "2026-11-14T16:20:43+00:00",
+      "startedAt": "2026-11-14T16:20:43+00:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "tdd": "Green",
+      "ci": "Red",
+      "estimate": {
+        "storyPoints": 2
+      },
+      "bdd": [
+        {
+          "id": "S-GIT-WP2-FU-1",
+          "title": "Grant unstages one path",
+          "status": "Green",
+          "tests": [
+            "s_git_wp2_fu_1_grant_one_path"
+          ],
+          "given": "Staged paths + approval",
+          "when": "unstage_path one path",
+          "then": "That path leaves index; worktree stays"
+        },
+        {
+          "id": "S-GIT-WP2-FU-2",
+          "title": "Deny does not mutate",
+          "status": "Green",
+          "tests": [
+            "s_git_wp2_fu_2_deny_no_mutation"
+          ],
+          "given": "Staged path + deny",
+          "when": "unstage_path",
+          "then": "PermissionDenied; index unchanged"
+        },
+        {
+          "id": "S-GIT-WP2-FU-3",
+          "title": "Conflict OPERATION_IN_PROGRESS",
+          "status": "Green",
+          "tests": [
+            "s_git_wp2_fu_3_conflict_operation_in_progress"
+          ],
+          "given": "In-progress merge with unmerged paths",
+          "when": "unstage_path",
+          "then": "OPERATION_IN_PROGRESS; conflict unchanged"
+        },
+        {
+          "id": "S-GIT-WP2-FU-4",
+          "title": "Path traversal rejected",
+          "status": "Green",
+          "tests": [
+            "s_git_wp2_fu_4_path_traversal"
+          ],
+          "given": "Staged path",
+          "when": "unstage_path with traversal/NUL/option/empty/missing",
+          "then": "Fails honestly; no mutation"
+        },
+        {
+          "id": "S-GIT-WP2-FU-5",
+          "title": "Other files remain staged",
+          "status": "Green",
+          "tests": [
+            "s_git_wp2_fu_5_other_files_remain_staged"
+          ],
+          "given": "Two staged paths",
+          "when": "unstage_path one of them",
+          "then": "Other path stays staged; untracked stay untracked"
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-11-14T16:20:43+00:00",
+          "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
+          "text": "Story lists FILE-UNSTAGE scenarios S-GIT-WP2-FU-1..5 for Guard scenarioIds."
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-14T16:20:43+00:00",
+          "from": "Backlog",
+          "to": "In Progress",
+          "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
+          "note": "Register FILE-UNSTAGE BDD IDs ≤40 chars."
+        }
+      ]
+    },
+    {
       "id": "PD-GIT-UNSTAGE-PATH-01",
       "level": "Task",
       "title": "FILE-UNSTAGE: gated GitWritePort::unstage_path",
-      "parentId": "PD-GIT-02",
+      "parentId": "S-GIT-WP2",
       "status": "In Review",
-      "light": "Green",
-      "lightReason": "",
+      "light": "Yellow",
+      "lightReason": "AI Dev Guard scenarioIds/CI: prior IDs >40 chars; rust-windows/guard failed. Not Green CI.",
       "createdAt": "2026-11-14T16:12:38+00:00",
-      "updatedAt": "2026-11-14T16:14:13+00:00",
+      "updatedAt": "2026-11-14T16:20:43+00:00",
       "startedAt": "2026-11-14T16:12:38+00:00",
       "owner": "AIAD",
       "role": "dev-agent",
       "implementer": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
       "tdd": "Green",
-      "ci": "None",
+      "ci": "Red",
       "estimate": {
         "hours": 3
       },
       "scenarioIds": [
-        "s_git_write_p2_file_unstage_grant_one_path",
-        "s_git_write_p2_file_unstage_deny_no_mutation",
-        "s_git_write_p2_file_unstage_conflict_operation_in_progress",
-        "s_git_write_p2_file_unstage_path_traversal",
-        "s_git_write_p2_file_unstage_other_files_remain_staged"
+        "S-GIT-WP2-FU-1",
+        "S-GIT-WP2-FU-2",
+        "S-GIT-WP2-FU-3",
+        "S-GIT-WP2-FU-4",
+        "S-GIT-WP2-FU-5"
       ],
       "notes": [
         {
@@ -25189,6 +25281,11 @@
           "at": "2026-11-14T16:14:13+00:00",
           "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
           "text": "READY_FOR_TDD: GitWritePort::unstage_path implemented (gated mixed git reset -- <path>). Adapter tests 10 passed; host FILE-UNSTAGE 2 passed. Not Done/Blue. Independent verifier required."
+        },
+        {
+          "at": "2026-11-14T16:20:43+00:00",
+          "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
+          "text": "Fix Guard: shorten scenarioIds to S-GIT-WP2-FU-1..5; prUrl PR#17; ci Red (guard/rust-windows). Still In Review, not Done/Blue."
         }
       ],
       "history": [
@@ -25205,8 +25302,16 @@
           "to": "In Review",
           "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
           "note": "READY_FOR_TDD; implementer must not self-verify."
+        },
+        {
+          "at": "2026-11-14T16:20:43+00:00",
+          "from": "In Review",
+          "to": "In Review",
+          "by": "dev-agent bc-9ae9a7a1-13a0-5697-8b53-8a920c9af5ca",
+          "note": "High-tier FAIL fix: scenarioIds ≤40 + Story bdd[]; Yellow+ci Red; prUrl #17."
         }
-      ]
+      ],
+      "prUrl": "https://github.com/roy791202/AIAD/pull/17"
     }
   ],
   "migration": {
