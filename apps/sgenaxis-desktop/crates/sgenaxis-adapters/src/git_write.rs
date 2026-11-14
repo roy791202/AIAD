@@ -43,6 +43,8 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
                 | "-f"
                 | "-d"
                 | "-D"
+                | "-r"
+                | "--remotes"
                 | "-m"
                 | "-M"
                 | "--move"

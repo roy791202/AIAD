@@ -429,8 +429,10 @@ pub trait GitWritePort: Send + Sync {
 
     /// Delete a local branch. Requires approval.
     /// `git branch -d -- <name>`. Never `-D` / `--force` / `-f`.
-    /// Never `-r`. Never remote delete. Never switch/checkout.
-    /// Current HEAD, missing names, and unmerged branches fail honestly.
+    /// Never `-r` / `--remotes`. Never remote-tracking delete. Never
+    /// `git push :branch`. Never switch/checkout.
+    /// Current HEAD, missing names, remote-only names, and unmerged
+    /// branches fail honestly.
     fn delete_branch(
         &self,
         repo: &str,

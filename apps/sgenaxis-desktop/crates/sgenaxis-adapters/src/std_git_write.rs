@@ -682,9 +682,26 @@ impl GitWritePort for StdGitWrite {
                 "cannot delete the current HEAD branch".into(),
             ));
         }
+        let local = format!("refs/heads/{branch}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &local])
+            .is_err()
+        {
+            let remote_ref = format!("refs/remotes/{branch}");
+            if self
+                .run(repo, &["show-ref", "--verify", "--quiet", &remote_ref])
+                .is_ok()
+            {
+                return Err(PortError::Other(format!(
+                    "refusing remote-only name '{branch}'"
+                )));
+            }
+            return Err(PortError::Git(format!("branch '{branch}' not found")));
+        }
         // Safe delete only: `git branch -d -- <name>`. Never `-D` / `--force` /
         // `-f`. Never `-r` (remote-tracking). Never checkout/switch.
-        // Unmerged branches fail honestly (git `-d`); no force fallback.
+        // Never `git push :branch`. Unmerged branches fail honestly (git `-d`);
+        // no force fallback.
         self.run(repo, &["branch", "-d", "--", branch])?;
         Ok(())
     }
