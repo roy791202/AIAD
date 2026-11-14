@@ -601,4 +601,18 @@ pub trait GitWritePort: Send + Sync {
         branch: Option<&str>,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Restore one tracked path's worktree from `HEAD`. Requires approval.
+    /// `git restore --source=HEAD --worktree -- <path>` (worktree only; index
+    /// unchanged except by whatever was already staged). Never `reset --hard`.
+    /// Never `-A` / `.` / other paths. Never deletes untracked (that is
+    /// CLEAN-PATH). Missing, outside-repo, option-like, and untracked paths
+    /// fail honestly. In-progress merge/rebase/cherry-pick/revert with unmerged
+    /// paths fails with `OPERATION_IN_PROGRESS`.
+    fn restore_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 }
