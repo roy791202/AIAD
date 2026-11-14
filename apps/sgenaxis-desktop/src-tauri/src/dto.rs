@@ -650,6 +650,19 @@ pub struct GitWriteRemoteRemoveArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteRemoteRenameArgs {
+    pub repo: Option<String>,
+    /// Existing remote name. Never flags (`rename`, `-f`, `set-url`).
+    pub old: String,
+    /// New remote name. Never flags; must not duplicate an existing remote.
+    #[serde(alias = "newName")]
+    pub new_name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote set-url -- name url`. Never fetch/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteSetUrlArgs {

@@ -78,6 +78,8 @@ pub enum AllowedIpcCommand {
     GitWriteRemoteRemove,
     /// Approval-gated local `git remote set-url -- name url` via GitWritePort (never fetch/push/--add/--delete/--push).
     GitWriteRemoteSetUrl,
+    /// Approval-gated local `git remote rename -- old new` via GitWritePort (never fetch/set-url/push).
+    GitWriteRemoteRename,
     /// Approval-gated `git add -- path` for one resolved conflict (never -A / .).
     GitWriteConflictSave,
     /// Approval-gated merge/rebase/cherry-pick continue (never --skip / -X).
@@ -176,6 +178,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteRemoteAdd => "git_write_remote_add",
             AllowedIpcCommand::GitWriteRemoteRemove => "git_write_remote_remove",
             AllowedIpcCommand::GitWriteRemoteSetUrl => "git_write_remote_set_url",
+            AllowedIpcCommand::GitWriteRemoteRename => "git_write_remote_rename",
             AllowedIpcCommand::GitWriteConflictSave => "git_write_conflict_save",
             AllowedIpcCommand::GitWriteConflictContinue => "git_write_conflict_continue",
             AllowedIpcCommand::GitWriteConflictAbort => "git_write_conflict_abort",
@@ -245,6 +248,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteRemoteAdd,
             AllowedIpcCommand::GitWriteRemoteRemove,
             AllowedIpcCommand::GitWriteRemoteSetUrl,
+            AllowedIpcCommand::GitWriteRemoteRename,
             AllowedIpcCommand::GitWriteConflictSave,
             AllowedIpcCommand::GitWriteConflictContinue,
             AllowedIpcCommand::GitWriteConflictAbort,
@@ -375,6 +379,7 @@ mod tests {
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
         assert!(is_allowed("git_write_remote_set_url"));
+        assert!(is_allowed("git_write_remote_rename"));
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
         assert!(is_allowed("git_write_conflict_abort"));
@@ -399,6 +404,7 @@ mod tests {
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_remove"));
         assert!(!is_allowed("git_remote_set_url"));
+        assert!(!is_allowed("git_remote_rename"));
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
@@ -539,6 +545,10 @@ mod tests {
             AllowedIpcCommand::GitWriteRemoteSetUrl
         );
         assert_eq!(
+            authorize("git_write_remote_rename").unwrap(),
+            AllowedIpcCommand::GitWriteRemoteRename
+        );
+        assert_eq!(
             authorize("git_write_conflict_save").unwrap(),
             AllowedIpcCommand::GitWriteConflictSave
         );
@@ -580,6 +590,7 @@ mod tests {
         assert!(authorize("git_remote").is_err());
         assert!(authorize("git_remote_add").is_err());
         assert!(authorize("git_remote_set_url").is_err());
+        assert!(authorize("git_remote_rename").is_err());
         assert!(authorize("git_fetch").is_err());
         assert!(authorize("git_fetch_prune").is_err());
         assert!(authorize("git_pull").is_err());

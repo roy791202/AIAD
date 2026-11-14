@@ -23,6 +23,7 @@ pub mod deploy;
 pub mod error;
 pub mod git_board_sync;
 pub mod git_rename;
+pub mod git_remote_rename;
 pub mod git_switch;
 pub mod guard_cmd;
 pub mod identity_preview;
@@ -48,6 +49,7 @@ pub use git_switch::{
     occupying_run_id, perform_git_switch, GitSwitchResult, ACTIVE_LEASE_BLOCKS_SWITCH,
 };
 pub use git_rename::{perform_git_rename_branch, GitRenameResult};
+pub use git_remote_rename::{perform_git_rename_remote, GitRemoteRenameResult};
 pub use composition::{CompositionRoot, APP_NAME};
 pub use deploy::{
     check_view, default_workspace_root, find_workspace_root, focus_platform, list_artifact_views,

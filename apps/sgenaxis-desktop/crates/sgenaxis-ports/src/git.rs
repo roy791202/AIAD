@@ -250,6 +250,10 @@ pub trait GitPort: Send + Sync {
 ///   `--push` / `--mirror`. Never fetch. Never `git push`. Unknown names
 ///   and invalid name/url (including leading `-` and shell metacharacters)
 ///   fail honestly.
+/// - Remote rename requires approval (no skip default). Local config only:
+///   `git remote rename -- <old> <new>`. URL unchanged (use set-url for URL).
+///   Never fetch / set-url / push. Unknown `old`, duplicate `new`, empty names,
+///   identical old==new, invalid names, and option-like names fail honestly.
 /// - Fetch requires approval (no skip default). Updates remote-tracking
 ///   refs only: `git fetch -- <remote>` with an optional non-force refspec.
 ///   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
@@ -446,6 +450,17 @@ pub trait GitWritePort: Send + Sync {
         repo: &str,
         name: &str,
         url: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Rename an existing local remote. Requires approval.
+    /// `git remote rename -- <old> <new>`. Never fetch / set-url / push.
+    /// URL unchanged. Unknown `old`, duplicate `new`, and invalid names fail honestly.
+    fn rename_remote(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 

@@ -35,10 +35,11 @@ use sgenaxis_exec::{
 };
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
-    load_scene_text, perform_git_rename_branch, perform_git_switch, save_design_file,
-    save_scene_text, CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView,
-    DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
-    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitRenameResult, GitSwitchResult,
+    load_scene_text, perform_git_rename_branch, perform_git_rename_remote, perform_git_switch,
+    save_design_file, save_scene_text, CompositionRoot, DeployArtifactView, DeployCheckView,
+    DeployStatusView, DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto, HostSettings,
+    LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitRemoteRenameResult,
+    GitRenameResult, GitSwitchResult,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -54,7 +55,8 @@ use crate::dto::{
     GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteFetchArgs,
     GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePullFfOnlyArgs,
     GitWritePushArgs,
-    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto,
+    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteRemoteRenameArgs,
+    GitWriteRemoteSetUrlArgs, GitWriteResultDto,
     GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
     GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
     OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
@@ -434,6 +436,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_remote_add",
         "git_write_remote_remove",
         "git_write_remote_set_url",
+        "git_write_remote_rename",
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
@@ -2861,6 +2864,7 @@ fn remote_out_of_scope(value: &str) -> bool {
                 | "push"
                 | "rm"
                 | "remove"
+                | "rename"
                 | "update"
         )
 }
@@ -3098,6 +3102,55 @@ pub fn git_write_remote_set_url(
         &repo,
         &args.name,
         &args.url,
+        args.approved,
+    )
+}
+
+fn git_remote_rename_result_dto(r: GitRemoteRenameResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_remote_rename(
+    write: &dyn GitWritePort,
+    repo: &str,
+    old: &str,
+    new: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    reject_remote_scope(old, None)?;
+    reject_remote_scope(new, None)?;
+    Ok(git_remote_rename_result_dto(perform_git_rename_remote(
+        write, repo, old, new, approved,
+    )))
+}
+
+/// Approval-gated local `git remote rename -- old new`. Never fetch / set-url / push.
+#[tauri::command]
+pub fn git_write_remote_rename(
+    state: State<'_, HostState>,
+    args: GitWriteRemoteRenameArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_remote_rename").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "remote-rename".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_remote_rename(
+        root.git_write(),
+        &repo,
+        &args.old,
+        &args.new_name,
         args.approved,
     )
 }
@@ -5049,9 +5102,11 @@ mod git_ui_tests {
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
         assert!(is_allowed("git_write_remote_set_url"));
+        assert!(is_allowed("git_write_remote_rename"));
         assert!(!is_allowed("git_remote"));
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));
+        assert!(!is_allowed("git_remote_rename"));
 
         let w = FakeGitWrite::new();
         let denied = perform_git_write_remote_add(
@@ -5237,6 +5292,87 @@ mod git_ui_tests {
                 "origin".to_string(),
                 "https://example.invalid/new.git".to_string()
             )]
+        );
+        assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_remote_rename_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_remote_rename"));
+        assert!(!is_allowed("git_remote_rename"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+
+        let denied = perform_git_write_remote_rename(&w, "/r", "origin", "upstream", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_remote_rename("/r").is_none());
+
+        let empty = perform_git_write_remote_rename(&w, "/r", "  ", "upstream", true).unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_remote_rename("/r").is_none());
+
+        let same = perform_git_write_remote_rename(&w, "/r", "origin", "origin", true).unwrap();
+        assert!(!same.ok);
+        assert!(w.last_remote_rename("/r").is_none());
+
+        let flag = perform_git_write_remote_rename(&w, "/r", "-f", "upstream", true).unwrap_err();
+        assert!(flag.contains("out of scope"));
+        let url_name = perform_git_write_remote_rename(
+            &w,
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            true,
+        )
+        .unwrap_err();
+        assert!(url_name.contains("out of scope"));
+
+        let missing = perform_git_write_remote_rename(&w, "/r", "ghost", "upstream", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
+
+        w.add_remote(
+            "/r",
+            "upstream",
+            "https://example.invalid/other.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        let taken = perform_git_write_remote_rename(&w, "/r", "origin", "upstream", true).unwrap();
+        assert!(!taken.ok);
+        assert!(taken.message.to_ascii_lowercase().contains("already exists"));
+
+        let ok = perform_git_write_remote_rename(&w, "/r", "origin", "vendor", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "remote-rename");
+        assert_eq!(
+            w.last_remote_rename("/r"),
+            Some(("origin".to_string(), "vendor".to_string()))
+        );
+        assert_eq!(
+            w.configured_remotes("/r"),
+            vec![
+                (
+                    "vendor".to_string(),
+                    "https://example.invalid/r.git".to_string()
+                ),
+                (
+                    "upstream".to_string(),
+                    "https://example.invalid/other.git".to_string()
+                ),
+            ]
         );
         assert_eq!(w.push_count("/r"), 0);
     }

@@ -2494,6 +2494,7 @@
       stash: payload.stash,
       message: payload.message,
       name: payload.name,
+      old: payload.old,
       url: payload.url,
       path: payload.path,
       contents: payload.contents,
@@ -2543,6 +2544,8 @@
           ? "審核 Remote Add"
           : op === "remote-set-url"
           ? "審核 Remote Set URL"
+          : op === "remote-rename"
+          ? "審核 Remote Rename"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2607,6 +2610,10 @@
           ? "核准後經 git_write_remote_add → GitWritePort；只新增本機遠端設定（git remote add -- name url），不 fetch、不加 -f、不 set-url、不 push。重名與無效名稱／URL 誠實失敗。拒絕則無突變。"
           : op === "remote-set-url"
           ? "核准後經 git_write_remote_set_url → GitWritePort；只更新既有本機遠端 URL（git remote set-url -- name url），不 fetch、不加 --add／--delete／--push／--mirror、不 push。未知遠端與無效名稱／URL 誠實失敗。拒絕則無突變。"
+          : op === "remote-rename"
+          ? "核准後經 git_write_remote_rename → GitWritePort；將本機遠端 " +
+            (payload.old || "") +
+            " 重新命名（git remote rename -- old new）。不改 URL（用 set-url 改 URL）。不加 fetch／set-url／push。未知遠端、重名與無效名稱誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -2661,7 +2668,9 @@
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
     if (branchWrap) branchWrap.hidden = op !== "branch-create" && op !== "branch-rename";
-    if (remoteNameWrap) remoteNameWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
+    if (remoteNameWrap)
+      remoteNameWrap.hidden =
+        op !== "remote-add" && op !== "remote-set-url" && op !== "remote-rename";
     if (remoteUrlWrap) remoteUrlWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
     if (box) box.hidden = false;
     if (op === "commit" || op === "stash-create") {
@@ -2701,12 +2710,24 @@
             : "";
         branch.focus();
       }
-    } else if (op === "remote-add" || op === "remote-set-url") {
+    } else if (op === "remote-add" || op === "remote-set-url" || op === "remote-rename") {
       const nameEl = document.getElementById("git-approve-remote-name");
       const urlEl = document.getElementById("git-approve-remote-url");
+      const nameSpan = remoteNameWrap ? remoteNameWrap.querySelector("span") : null;
+      if (nameSpan) {
+        nameSpan.textContent =
+          op === "remote-rename" ? "新遠端名稱" : "遠端名稱";
+      }
       if (nameEl) {
-        nameEl.value = payload.name != null ? String(payload.name) : "";
-        if (op === "remote-add") nameEl.focus();
+        nameEl.value =
+          op === "remote-rename"
+            ? payload.newName != null
+              ? String(payload.newName)
+              : ""
+            : payload.name != null
+            ? String(payload.name)
+            : "";
+        if (op === "remote-add" || op === "remote-rename") nameEl.focus();
       }
       if (urlEl) {
         urlEl.value = payload.url != null ? String(payload.url) : "";
@@ -3139,6 +3160,36 @@
             true
           );
           toast("Remote set-url 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "remote-rename") {
+        const old = pendingGitWrite.old;
+        const nameEl = document.getElementById("git-approve-remote-name");
+        const newName = nameEl && nameEl.value ? nameEl.value.trim() : "";
+        if (!old || !newName) {
+          setGitStatusLine("遠端名稱不可空白", true);
+          toast("請填寫新遠端名稱");
+          return;
+        }
+        const dto = await invoke("git_write_remote_rename", {
+          args: { repo: repo, old: old, newName: newName, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已將本機遠端 " + old + " 更名為 " + newName + "（經 GitWritePort；git remote rename）",
+            false
+          );
+          toast("Remote rename 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "remote rename 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Remote rename 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-remove") {
@@ -3933,6 +3984,12 @@
           showGitApprove("remote-set-url", {
             name: name || (picker && picker.value) || "",
             url: urlEl && urlEl.value ? urlEl.value : "",
+          });
+        },
+        remoteRename: function (name) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          showGitApprove("remote-rename", {
+            old: name || (picker && picker.value) || "",
           });
         },
         remoteRemove: function (name) {

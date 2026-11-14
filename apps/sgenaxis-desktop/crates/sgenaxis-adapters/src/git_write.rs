@@ -80,6 +80,7 @@ pub(crate) fn remote_name_out_of_scope(value: &str) -> bool {
                 | "push"
                 | "rm"
                 | "remove"
+                | "rename"
                 | "update"
         )
 }
@@ -316,6 +317,16 @@ impl GitWritePort for GatedGitWrite {
         _repo: &str,
         _name: &str,
         _url: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn rename_remote(
+        &self,
+        _repo: &str,
+        _old: &str,
+        _new: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

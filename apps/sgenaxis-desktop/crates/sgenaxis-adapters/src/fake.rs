@@ -587,6 +587,8 @@ struct FakeGitWriteState {
     remote_remove: HashMap<String, String>,
     /// repo → last approved remote set-url `(name, url)`.
     remote_set_url: HashMap<String, (String, String)>,
+    /// repo → last approved remote rename `(old, new)`.
+    remote_rename: HashMap<String, (String, String)>,
     /// repo → last approved fetch `(remote, optional refspec)`.
     last_fetch: HashMap<String, (String, Option<String>)>,
     /// repo → last approved fetch-prune remote.
@@ -784,6 +786,12 @@ impl FakeGitWrite {
     pub fn last_remote_set_url(&self, repo: &str) -> Option<(String, String)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.remote_set_url.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved remote rename for `repo` as `(old, new)`.
+    pub fn last_remote_rename(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.remote_rename.get(&Self::key(repo)).cloned()
     }
 
     /// Last approved fetch for `repo` as `(remote, optional refspec)`.
@@ -1478,6 +1486,68 @@ impl GitWritePort for FakeGitWrite {
         }
         st.remote_set_url
             .insert(key, (remote.to_string(), remote_url.to_string()));
+        Ok(())
+    }
+
+    fn rename_remote(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let old_name = old.trim();
+        let new_name = new.trim();
+        if old_name.is_empty() || new_name.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if old_name == new_name {
+            return Err(PortError::Other("remote name unchanged".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(old_name)
+            || crate::git_write::remote_name_out_of_scope(new_name)
+        {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let existing = st.remotes.entry(key.clone()).or_default();
+        if !existing.iter().any(|(n, _)| n == old_name) {
+            return Err(PortError::Git(format!("No such remote: '{old_name}'")));
+        }
+        if existing.iter().any(|(n, _)| n == new_name) {
+            return Err(PortError::Git(format!("remote '{new_name}' already exists")));
+        }
+        for pair in existing.iter_mut() {
+            if pair.0 == old_name {
+                pair.0 = new_name.to_string();
+            }
+        }
+        let prefix_old = format!("refs/remotes/{old_name}/");
+        let prefix_new = format!("refs/remotes/{new_name}/");
+        if let Some(tracking) = st.remote_tracking.get_mut(&key) {
+            for pair in tracking.iter_mut() {
+                if pair.0.starts_with(&prefix_old) {
+                    pair.0 = format!(
+                        "{}{}",
+                        prefix_new,
+                        &pair.0[prefix_old.len()..]
+                    );
+                }
+            }
+        }
+        st.remote_rename
+            .insert(key, (old_name.to_string(), new_name.to_string()));
         Ok(())
     }
 

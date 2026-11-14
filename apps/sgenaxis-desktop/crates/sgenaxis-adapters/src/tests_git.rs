@@ -1190,6 +1190,70 @@ fn gated_git_write_blocks_remote_set_url_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_remote_rename_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+
+    let denied = w.rename_remote("/r", "origin", "upstream", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_rename("/r").is_none());
+
+    let empty = w.rename_remote("/r", "  ", "upstream", GitWriteApproval::granted());
+    assert!(matches!(empty, Err(PortError::Other(_))));
+
+    let same = w.rename_remote("/r", "origin", "origin", GitWriteApproval::granted());
+    assert!(matches!(same, Err(PortError::Other(_))));
+
+    let missing = w.rename_remote("/r", "ghost", "upstream", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+
+    let flag = w.rename_remote("/r", "-f", "upstream", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    let url_name = w.rename_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(url_name, Err(PortError::Other(_))));
+
+    w.rename_remote("/r", "origin", "upstream", GitWriteApproval::granted())
+        .expect("rename");
+    assert_eq!(
+        w.last_remote_rename("/r"),
+        Some(("origin".to_string(), "upstream".to_string()))
+    );
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "upstream".to_string(),
+            "https://example.invalid/r.git".to_string()
+        )]
+    );
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn gated_git_write_blocks_remote_rename_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.rename_remote(
+        "/any",
+        "origin",
+        "upstream",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());

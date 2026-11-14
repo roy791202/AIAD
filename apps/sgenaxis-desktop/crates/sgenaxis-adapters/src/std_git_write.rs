@@ -27,6 +27,8 @@
 //! - Remote set-url: `git remote set-url -- <name> <url>`. Never `--add` /
 //!   `--delete` / `--push` / `--mirror`. Never fetch. Never `git push`.
 //!   Unknown remotes fail honestly.
+//! - Remote rename: `git remote rename -- <old> <new>`. Never fetch /
+//!   set-url / push. URL unchanged. Unknown / duplicate names fail honestly.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -736,6 +738,27 @@ impl GitWritePort for StdGitWrite {
         // Never `--add` / `--delete` / `--push` / `--mirror`.
         // Never fetch. Never `git push`. `--` stops option parse.
         self.run(repo, &["remote", "set-url", "--", remote, remote_url])?;
+        Ok(())
+    }
+
+    fn rename_remote(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let old_name = old.trim();
+        let new_name = new.trim();
+        Self::require_remote_name(old_name)?;
+        Self::require_remote_name(new_name)?;
+        if old_name == new_name {
+            return Err(PortError::Other("remote name unchanged".into()));
+        }
+        // Local config only: `git remote rename -- <old> <new>`.
+        // Never fetch / set-url / push. `--` stops option parse.
+        self.run(repo, &["remote", "rename", "--", old_name, new_name])?;
         Ok(())
     }
 
