@@ -705,6 +705,17 @@ pub struct GitWriteUnstageAllArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git clean -f -- path` (one untracked path).
+/// Never `-fdx` / `-x` / `-d .` / `rm -rf`. Distinct from tracked discard.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteCleanPathArgs {
+    pub repo: Option<String>,
+    /// Repo-relative untracked file (or proven untracked directory, never `.`).
+    pub path: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {

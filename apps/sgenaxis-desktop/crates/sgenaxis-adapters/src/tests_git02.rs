@@ -2188,4 +2188,75 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    #[test]
+    fn std_write_clean_path_deletes_untracked_file_without_touching_tracked() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        fs::write(work.join("scratch.tmp"), "junk\n").unwrap();
+        fs::create_dir_all(work.join("keepdir")).unwrap();
+        fs::write(work.join("keepdir").join("other.tmp"), "keep\n").unwrap();
+
+        let w = StdGitWrite::new();
+        w.clean_path(repo, "scratch.tmp", GitWriteApproval::denied())
+            .expect_err("denied clean-path must not mutate");
+        assert!(work.join("scratch.tmp").exists());
+
+        w.clean_path(repo, "a.txt", GitWriteApproval::granted())
+            .expect_err("tracked path must fail honestly");
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "dirty\n");
+
+        w.clean_path(repo, ".", GitWriteApproval::granted())
+            .expect_err("dot must fail");
+        w.clean_path(repo, "-fdx", GitWriteApproval::granted())
+            .expect_err("fdx flag must fail");
+        w.clean_path(repo, "-x", GitWriteApproval::granted())
+            .expect_err("exclude-ignored flag must fail");
+        w.clean_path(repo, "../secret", GitWriteApproval::granted())
+            .expect_err("traversal must fail");
+        assert!(work.join("scratch.tmp").exists());
+
+        w.clean_path(repo, "scratch.tmp", GitWriteApproval::granted())
+            .expect("approved git clean -f -- scratch.tmp");
+        assert!(!work.join("scratch.tmp").exists());
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "dirty\n");
+        assert!(work.join("keepdir").join("other.tmp").exists());
+        let after = porcelain(repo);
+        assert!(
+            after.contains("?? keepdir") || after.contains("?? keepdir/other.tmp"),
+            "sibling untracked must remain: {after}"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "clean-path must never commit");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        fs::write(conflict.join("scratch.tmp"), "junk\n").unwrap();
+        let fail = w
+            .clean_path(crepo, "scratch.tmp", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(conflict.join("scratch.tmp").exists());
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }
