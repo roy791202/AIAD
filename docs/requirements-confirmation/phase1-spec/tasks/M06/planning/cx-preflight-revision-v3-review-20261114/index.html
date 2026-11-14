@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>M06 cx-preflight v3 獨立受限文件複驗 2026-11-14</title>
+<style>
+body{max-width:1100px;margin:40px auto;font:16px system-ui;line-height:1.6;color:#193143}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:16px}
+table{border-collapse:collapse;width:100%}
+td,th{padding:8px;border:1px solid #ccc;text-align:left;vertical-align:top}
+.pass{color:#0a6}
+.fail{color:#b00}
+</style>
+<h1>M06 cx-preflight-revision-v3 獨立受限文件複驗</h1>
+<p><strong>Verdict: BOUNDED_DOCUMENT_REACCEPTANCE_PASS</strong></p>
+<p>卡 <code>PD-M06-CX-PREFLIGHT-V3-REACCEPT-01</code>。審查者 <code>independent-document-reviewer-20261114</code>，不是 v3 撰寫者，也不是產品實作者。未改 Rust/TS/產品測試。未把 Owner 設為已採納。候選包狀態維持 <code>PENDING_REACCEPTANCE_AND_OWNER</code>。</p>
+<p>對照：<a href="../cx-preflight-revision-v3/index.html">v3 候選</a> · <a href="../cx-preflight-revision-v2/index.html">v2</a> · <a href="verification.json">verification.json</a></p>
+<p>產品／compile／RED／GREEN／native／build：<strong>NOT RUN</strong>。Skeleton：<strong>NOT AUTHORIZED</strong>。</p>
+<h2>已知母卡狀態（不重跑）</h2>
+<ul>
+<li>merge record consistency 文件受限 PASS（歷史，本輪未重跑）</li>
+<li>BDD-19 完整恢復 vs deferred retention：<strong>UNDECIDED</strong>（v3 未裁決）</li>
+<li>Owner MH1–6：<strong>pending</strong>（v3 未採納）</li>
+</ul>
+<h2>v2 → v3（文件包裝，不是產品）</h2>
+<ul>
+<li>v2 <code>review-request.status</code> = <code>ONE_OWNER_CONFIRMATION_PENDING</code>；v3 = <code>PENDING_REACCEPTANCE_AND_OWNER</code></li>
+<li>v3 <code>previous_revision</code> 等於 v2 <code>revision_sha256</code>（<code>4d5ba617…87905b1b</code>）</li>
+<li>shared-contract SHA <code>aa9af712…</code> → <code>dfa91713…</code></li>
+<li>v3 包未含 v2 的 <code>module.feature</code>、<code>fixtures.json</code>、<code>step-definition-plan.json</code></li>
+<li>index 明示：未建立 Skeleton、未改產品、tests/build/RED/GREEN/native NOT RUN</li>
+</ul>
+<h2>Checks</h2>
+<table>
+<tr><th>ID</th><th>結果</th><th>說明</th></tr>
+<tr><td>C1</td><td class="pass">PASS</td><td>review-request 維持 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>C2</td><td class="pass">PASS</td><td>identity.status = V3_CANDIDATE_PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>C3</td><td class="pass">PASS</td><td>previous_revision 綁定 v2</td></tr>
+<tr><td>C4</td><td class="pass">PASS</td><td>envelope 仍是 RR_REVISED_CANDIDATE_PENDING_OWNER</td></tr>
+<tr><td>C5</td><td class="pass">PASS</td><td>index 免責：待複驗與 Owner；未建 Skeleton；未改產品；NOT RUN</td></tr>
+<tr><td>C6</td><td class="pass">PASS</td><td>沒有 Owner adopted 事實句</td></tr>
+<tr><td>C7</td><td class="pass">PASS</td><td>沒有 Skeleton 已建立／已接受</td></tr>
+<tr><td>C8</td><td class="pass">PASS</td><td>沒有 product RED/GREEN 宣稱</td></tr>
+<tr><td>C9</td><td class="pass">PASS</td><td>沒有 native PASS</td></tr>
+<tr><td>C10</td><td class="pass">PASS</td><td>三檔 envelope 仍是候選限制，不是已落地產品改動</td></tr>
+<tr><td>C11</td><td class="pass">PASS</td><td>歷史 F1–F3 PASS_DOCUMENT_CORRECTION_SCOPE_ONLY 不是採納</td></tr>
+<tr><td>C12</td><td class="pass">PASS</td><td>BDD-19 / MH1–6 未在 v3 裁決</td></tr>
+<tr><td>C13</td><td class="pass">PASS</td><td>v2 對照僅文件包裝差異</td></tr>
+<tr><td>C14</td><td class="pass">PASS</td><td>列仍為 PROPOSED_NOT_ADOPTED / PENDING_OWNER</td></tr>
+<tr><td>C15</td><td class="pass">PASS</td><td>本輪審查未改產品／測試／v3 候選檔</td></tr>
+<tr><td>C16</td><td class="fail">FAIL</td><td>artifact-hashes.json 七檔宣告 SHA 與現檔不符（F-SEAL-HASH-DRIFT）。不構成採納。</td></tr>
+</table>
+<p>15 PASS / 1 FAIL（完整性）。主張邊界複驗仍 PASS。</p>
+<h2>Negative probes（全部 rejected）</h2>
+<table>
+<tr><th>Probe</th><th>Rejected</th><th>為何拒絕</th></tr>
+<tr><td>owner_adopted</td><td>yes</td><td>狀態仍 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>skeleton_created</td><td>yes</td><td>未建立 Skeleton；after_adoption 是未來條件</td></tr>
+<tr><td>valid_red_pass</td><td>yes</td><td>RED NOT RUN</td></tr>
+<tr><td>product_green</td><td>yes</td><td>No product RED/GREEN claimed</td></tr>
+<tr><td>native_pass</td><td>yes</td><td>environment NOT RUN remains</td></tr>
+<tr><td>product_edits</td><td>yes</td><td>產品碼受保護；本輪未碰 apps/tests</td></tr>
+<tr><td>bdd19_narrowed_or_decided</td><td>yes</td><td>v3 無 BDD-19；母卡 UNDECIDED</td></tr>
+<tr><td>mh1_6_adopted</td><td>yes</td><td>MH1–6 仍 pending</td></tr>
+<tr><td>ready_for_implementation</td><td>yes</td><td>僅 NOT_READY_FOR_IMPLEMENTATION</td></tr>
+<tr><td>hash_drift_is_adoption</td><td>yes</td><td>雜湊漂移只是文件完整性 finding</td></tr>
+<tr><td>f1f3_document_pass_is_owner</td><td>yes</td><td>範圍寫明不是 adoption/product</td></tr>
+</table>
+<h2>下一步</h2>
+<p>Owner 對<strong>現檔 live SHA</strong> 做一次採納仍未發生。重封 artifact-hashes.json 是文件衛生，不是進度。不得據此開 Skeleton 或產品實作。</p>
+</html>
