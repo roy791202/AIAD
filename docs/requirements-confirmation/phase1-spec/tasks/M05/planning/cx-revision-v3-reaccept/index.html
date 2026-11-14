@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>M05 cx-revision v3 獨立複驗（preparation only）2026-11-14</title>
+<style>
+body{max-width:1100px;margin:40px auto;font:16px system-ui;line-height:1.6;color:#193143}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:16px}
+table{border-collapse:collapse;width:100%}
+td,th{padding:8px;border:1px solid #ccc;text-align:left;vertical-align:top}
+.pass{color:#0a6}
+.fail{color:#b00}
+</style>
+<h1>M05 cx-revision-v3 獨立文件複驗</h1>
+<p><strong>Verdict: PASS_PREPARATION_ONLY</strong></p>
+<p>卡 <code>PD-P1-M05-CX-V3-REVIEW-01</code>。審查者 <code>independent-document-reviewer-m05-20261114</code>，不是 v3 撰寫者，也不是產品實作者。未改 Rust/TS/產品測試。未把 Owner 設為已採納。候選包狀態維持 <code>PENDING_REACCEPTANCE_AND_OWNER</code>。</p>
+<p>對照：<a href="../cx-revision-v3/index.html">v3 候選</a> · <a href="../cx-revision-v2/index.html">v2</a> · <a href="verification.json">verification.json</a></p>
+<p>產品／compile／RED／GREEN／native／build：<strong>NOT RUN</strong>。Skeleton：<strong>NOT AUTHORIZED</strong>。不是 Feature PASS、不是 native PASS、不是模組 Done。</p>
+<h2>已知母卡狀態（不重跑）</h2>
+<ul>
+<li>PD-P1-M05-PREP-01 仍是準備卡，不是模組產品完成</li>
+<li>已驗收 S1 WORK retention 不構成對 v3 CX 包的採納</li>
+<li>Owner 一次採納：<strong>pending</strong></li>
+</ul>
+<h2>v2 → v3（文件包裝，不是產品）</h2>
+<ul>
+<li>v2 <code>review-request.status</code> = <code>ONE_OWNER_CONFIRMATION_PENDING</code>；v3 = <code>PENDING_REACCEPTANCE_AND_OWNER</code></li>
+<li>v3 <code>previous_revision</code> 等於 v2 <code>revision_sha256</code>（<code>03f29bd9…145dc948</code>）</li>
+<li><code>common_sha256</code> 等於 shared-contract 的 canonical sorted JSON（<code>dfa91713…</code>）；raw LF 檔 digest 為 <code>5d68800f…</code></li>
+<li>v3 包未含 v2 的 <code>module.feature</code>、<code>fixtures.json</code>、<code>step-definition-plan.json</code></li>
+<li>124 筆 case-trace 均 <code>AMENDED_PROTOCOL_ONLY</code>，原 observable oracle 保留；測試結果仍 <code>PLANNED_NOT_RUN</code></li>
+<li>index 明示：未建立 Skeleton、未改產品、tests/build/RED/GREEN/native NOT RUN</li>
+</ul>
+<h2>Checks</h2>
+<table>
+<tr><th>ID</th><th>結果</th><th>說明</th></tr>
+<tr><td>C1</td><td class="pass">PASS</td><td>review-request 維持 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>C2</td><td class="pass">PASS</td><td>identity.status = V3_CANDIDATE_PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>C3</td><td class="pass">PASS</td><td>previous_revision 綁定 v2</td></tr>
+<tr><td>C4</td><td class="pass">PASS</td><td>envelope 仍是 RR_REVISED_CANDIDATE_PENDING_OWNER</td></tr>
+<tr><td>C5</td><td class="pass">PASS</td><td>index 免責：待複驗與 Owner；未建 Skeleton；未改產品；NOT RUN</td></tr>
+<tr><td>C6</td><td class="pass">PASS</td><td>沒有 Owner adopted 事實句</td></tr>
+<tr><td>C7</td><td class="pass">PASS</td><td>沒有 Skeleton 已建立／已接受</td></tr>
+<tr><td>C8</td><td class="pass">PASS</td><td>沒有 product RED/GREEN 宣稱；124 案例 PLANNED_NOT_RUN</td></tr>
+<tr><td>C9</td><td class="pass">PASS</td><td>沒有 native PASS</td></tr>
+<tr><td>C10</td><td class="pass">PASS</td><td>envelope 路徑仍是候選限制，不是已落地產品改動</td></tr>
+<tr><td>C11</td><td class="pass">PASS</td><td>oracle 未被削弱；僅 harness protocol 修訂</td></tr>
+<tr><td>C12</td><td class="pass">PASS</td><td>母卡 PREP 未被 v3 結案</td></tr>
+<tr><td>C13</td><td class="pass">PASS</td><td>v2 對照僅文件包裝差異</td></tr>
+<tr><td>C14</td><td class="pass">PASS</td><td>列仍為 PROPOSED_NOT_ADOPTED / PENDING_OWNER</td></tr>
+<tr><td>C15</td><td class="pass">PASS</td><td>本輪審查未改產品／測試／v3 候選檔</td></tr>
+<tr><td>C16</td><td class="fail">FAIL</td><td>artifact-hashes.json 七檔宣告 SHA 對 raw LF 不符、對 CRLF 正規化相符（F-SEAL-HASH-DRIFT）。不構成採納，不翻轉 PASS_PREPARATION_ONLY。</td></tr>
+</table>
+<p>15 PASS / 1 FAIL（文件完整性）。主張邊界複驗：<strong>PASS_PREPARATION_ONLY</strong>。</p>
+<h2>Negative probes（全部 rejected）</h2>
+<table>
+<tr><th>Probe</th><th>Rejected</th><th>為何拒絕</th></tr>
+<tr><td>owner_adopted</td><td>yes</td><td>狀態仍 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>skeleton_created</td><td>yes</td><td>未建立 Skeleton</td></tr>
+<tr><td>valid_red_pass</td><td>yes</td><td>RED NOT RUN</td></tr>
+<tr><td>product_green</td><td>yes</td><td>No product RED/GREEN claimed</td></tr>
+<tr><td>native_pass</td><td>yes</td><td>environment NOT RUN remains</td></tr>
+<tr><td>product_edits</td><td>yes</td><td>產品碼受保護；本輪未碰 apps/tests</td></tr>
+<tr><td>ready_for_implementation</td><td>yes</td><td>僅 NOT_READY_FOR_IMPLEMENTATION</td></tr>
+<tr><td>hash_drift_is_adoption</td><td>yes</td><td>雜湊漂移只是 LF/CRLF 文件完整性 finding</td></tr>
+<tr><td>feature_or_module_pass</td><td>yes</td><td>不是 Feature PASS、不是模組 Done</td></tr>
+<tr><td>weaken_ac</td><td>yes</td><td>原 observable oracle 保留</td></tr>
+<tr><td>prep_card_done</td><td>yes</td><td>本輪不得設 Done／藍燈</td></tr>
+</table>
+<h2>下一步</h2>
+<p>Owner 對<strong>現檔 live SHA</strong> 做一次採納仍未發生。重封 artifact-hashes.json 是文件衛生，不是進度。不得據此開 Skeleton 或產品實作。不得把 <code>PASS_PREPARATION_ONLY</code> 當成 Feature PASS、native PASS 或模組完成。</p>
+</html>
