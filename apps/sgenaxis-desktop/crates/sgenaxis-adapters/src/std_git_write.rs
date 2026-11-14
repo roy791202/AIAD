@@ -46,6 +46,11 @@
 //!   `-A` / `.`; this path is the explicit ALL-STAGE exception for `.` only).
 //!   In-progress merge/rebase/cherry-pick/revert fails with
 //!   `OPERATION_IN_PROGRESS`. Clean worktree → success no-op.
+//! - Unstage-all: `git reset -- .` from the repo root (mixed pathspec reset).
+//!   Never commit / push / `git add -A` / `reset --hard` / `--force`.
+//!   In-progress merge/rebase/cherry-pick/revert fails with
+//!   `OPERATION_IN_PROGRESS`. Clean index → success no-op. Untracked files
+//!   remain `??`.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -909,6 +914,26 @@ impl GitWritePort for StdGitWrite {
         // Worktree-only: `git add -- .` from repo root (`git -C <repo>`).
         // Never `-A`. Never commit / push / reset --hard / --force.
         self.run(repo, &["add", "--", "."])?;
+        Ok(())
+    }
+
+    fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before unstage-all".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use unstage-all to clear conflict state"
+                    .into(),
+            ));
+        }
+        // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
+        // Never `--hard`. Never commit / push / add -A / --force.
+        self.run(repo, &["reset", "--", "."])?;
         Ok(())
     }
 

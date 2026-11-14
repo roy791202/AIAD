@@ -2555,6 +2555,8 @@
           ? "審核 Unset Upstream"
           : op === "stage-all"
           ? "審核全部暫存"
+          : op === "unstage-all"
+          ? "審核全部取消暫存"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2633,6 +2635,8 @@
           ? "核准後經 git_write_unset_upstream → GitWritePort；清除本機分支追蹤（git branch --unset-upstream -- local）。空白本機＝目前分支。不建立遠端／追蹤 refs／本機分支，不加 --set-upstream-to／-u／-M／-C／--force，不 fetch／pull／push。缺本機分支或沒有 upstream 誠實失敗。拒絕則無突變。"
           : op === "stage-all"
           ? "核准後經 git_write_stage_all → GitWritePort；於儲存庫根執行 git add -- .。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部暫存標記衝突已解決。乾淨工作區為成功 no-op。拒絕則無突變。"
+          : op === "unstage-all"
+          ? "核准後經 git_write_unstage_all → GitWritePort；於儲存庫根執行 git reset -- .（mixed pathspec，索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部取消暫存清除衝突。乾淨索引為成功 no-op。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -3352,6 +3356,31 @@
             true
           );
           toast("全部暫存失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "unstage-all") {
+        const dto = await invoke("git_write_unstage_all", {
+          args: {
+            repo: repo,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已全部取消暫存（經 GitWritePort；git reset -- .；未提交／未推送／未 hard reset）",
+            false
+          );
+          toast("全部取消暫存完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "全部取消暫存失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（工作區依 Git 真實結果保留；未清除衝突）",
+            true
+          );
+          toast("全部取消暫存失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-rename") {
@@ -4200,6 +4229,9 @@
         },
         stageAll: function () {
           showGitApprove("stage-all", {});
+        },
+        unstageAll: function () {
+          showGitApprove("unstage-all", {});
         },
         unsetUpstream: function (local) {
           const branchEl = document.getElementById("git-ux-branch");
