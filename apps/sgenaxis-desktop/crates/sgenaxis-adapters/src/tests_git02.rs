@@ -2188,4 +2188,146 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    #[test]
+    fn s_git_wp2_fu_1_grant_one_path() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        fs::write(work.join("b.txt"), "dirty-b\n").unwrap();
+        git(&work, &["add", "a.txt", "b.txt"]);
+        let w = StdGitWrite::new();
+        w.unstage_path(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved git reset -- a.txt");
+        let after = porcelain(repo);
+        assert!(
+            after.contains(" M a.txt") || after.contains(" a.txt"),
+            "a.txt must leave the index and stay dirty: {after}"
+        );
+        assert!(
+            !after.contains("M  a.txt"),
+            "a.txt must not remain staged: {after}"
+        );
+        assert!(
+            after.contains("A  b.txt") || after.contains("M  b.txt"),
+            "b.txt must remain staged: {after}"
+        );
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "dirty-a\n");
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn s_git_wp2_fu_2_deny_no_mutation() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        let w = StdGitWrite::new();
+        w.unstage_path(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied FILE-UNSTAGE must not mutate");
+        let st = porcelain(repo);
+        assert!(
+            st.contains("M  a.txt"),
+            "denied must leave a.txt staged: {st}"
+        );
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn s_git_wp2_fu_3_conflict_operation_in_progress() {
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let fail = w
+            .unstage_path(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(!String::from_utf8_lossy(&unmerged.stdout).trim().is_empty());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    #[test]
+    fn s_git_wp2_fu_4_path_traversal() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        let w = StdGitWrite::new();
+        for bad in ["../secret", "/etc/passwd", "-f", "", ".."] {
+            w.unstage_path(repo, bad, GitWriteApproval::granted())
+                .expect_err("bad path must fail");
+        }
+        let st = porcelain(repo);
+        assert!(
+            st.contains("M  a.txt"),
+            "guards must not unstage a.txt: {st}"
+        );
+        let missing = w
+            .unstage_path(repo, "no-such-file.txt", GitWriteApproval::granted())
+            .expect_err("missing path must fail honestly");
+        assert!(
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("not found")
+                || missing.to_string().to_ascii_lowercase().contains("missing")
+                || missing.to_string().contains("no-such-file"),
+            "missing path error: {missing}"
+        );
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn s_git_wp2_fu_5_other_files_remain_staged() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        fs::write(work.join("keep.rs"), "keep\n").unwrap();
+        fs::write(work.join("drop.rs"), "drop\n").unwrap();
+        git(&work, &["add", "keep.rs", "drop.rs"]);
+        let w = StdGitWrite::new();
+        w.unstage_path(repo, "drop.rs", GitWriteApproval::granted())
+            .expect("unstage drop.rs");
+        let after = porcelain(repo);
+        assert!(
+            after.contains("A  keep.rs"),
+            "keep.rs must remain staged: {after}"
+        );
+        assert!(
+            !after.contains("A  drop.rs"),
+            "drop.rs must leave the index: {after}"
+        );
+        assert!(
+            after.contains("?? drop.rs"),
+            "drop.rs untracked after mixed reset of a new file: {after}"
+        );
+        assert_eq!(fs::read_to_string(work.join("drop.rs")).unwrap(), "drop\n");
+        w.unstage_path(repo, "keep.rs", GitWriteApproval::granted())
+            .expect("clean-ish second unstage");
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        w.unstage_path(repo, "a.txt", GitWriteApproval::granted())
+            .expect("clean index for a.txt is success no-op");
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before);
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

@@ -1548,6 +1548,68 @@ fn gated_git_write_blocks_unstage_all_even_when_approved() {
 }
 
 #[test]
+fn s_git_wp2_fu_1_grant_one_path() {
+    let w = FakeGitWrite::new();
+    w.seed_staged_paths("/r", &["a.txt", "b.txt"]);
+    w.unstage_path("/r", "a.txt", GitWriteApproval::granted())
+        .expect("approved FILE-UNSTAGE");
+    assert_eq!(w.last_unstage_path("/r").as_deref(), Some("a.txt"));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn s_git_wp2_fu_2_deny_no_mutation() {
+    let w = FakeGitWrite::new();
+    w.seed_staged_paths("/r", &["a.txt", "b.txt"]);
+    let denied = w.unstage_path("/r", "a.txt", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_unstage_path("/r").is_none());
+    assert_eq!(w.remaining_staged_paths("/r"), vec!["a.txt", "b.txt"]);
+}
+
+#[test]
+fn s_git_wp2_fu_3_conflict_operation_in_progress() {
+    let w = FakeGitWrite::new();
+    w.seed_staged_paths("/r", &["a.txt"]);
+    w.set_conflict_in_progress("/r", "Merge", &["src/a.rs"]);
+    let conflict = w.unstage_path("/r", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert!(w.last_unstage_path("/r").is_none());
+    assert_eq!(w.remaining_conflict_files("/r").len(), 1);
+    assert_eq!(w.remaining_staged_paths("/r"), vec!["a.txt".to_string()]);
+}
+
+#[test]
+fn s_git_wp2_fu_4_path_traversal() {
+    let w = FakeGitWrite::new();
+    w.seed_staged_paths("/r", &["a.txt"]);
+    for bad in ["../secret", "/etc/passwd", "-f", "", "foo\0bar", ".."] {
+        w.unstage_path("/r", bad, GitWriteApproval::granted())
+            .expect_err("traversal/option/empty/NUL must fail");
+        assert!(w.last_unstage_path("/r").is_none());
+        assert_eq!(w.remaining_staged_paths("/r"), vec!["a.txt".to_string()]);
+    }
+}
+
+#[test]
+fn s_git_wp2_fu_5_other_files_remain_staged() {
+    let w = FakeGitWrite::new();
+    w.seed_staged_paths("/r", &["keep.rs", "drop.rs"]);
+    w.unstage_path("/r", "drop.rs", GitWriteApproval::granted())
+        .expect("unstage drop.rs only");
+    assert_eq!(w.last_unstage_path("/r").as_deref(), Some("drop.rs"));
+    assert_eq!(w.remaining_staged_paths("/r"), vec!["keep.rs".to_string()]);
+}
+
+#[test]
+fn gated_git_write_blocks_unstage_path_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.unstage_path("/any", "a.txt", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());

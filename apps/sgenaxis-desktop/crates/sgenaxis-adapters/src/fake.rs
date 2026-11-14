@@ -601,6 +601,12 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved FILE-UNSTAGE path.
+    last_unstage_path: HashMap<String, String>,
+    /// repo → currently staged paths (for FILE-UNSTAGE isolation).
+    staged_paths: HashMap<String, Vec<String>>,
+    /// repo → paths known to exist (clean no-op vs missing).
+    known_paths: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +854,42 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Last approved FILE-UNSTAGE path for `repo`, if any.
+    pub fn last_unstage_path(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_unstage_path.get(&Self::key(repo)).cloned()
+    }
+
+    /// Seed staged index paths for FILE-UNSTAGE isolation tests.
+    pub fn seed_staged_paths(&self, repo: &str, paths: &[&str]) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        let key = Self::key(repo);
+        st.staged_paths.insert(
+            key.clone(),
+            paths.iter().map(|p| (*p).to_string()).collect(),
+        );
+        st.known_paths
+            .insert(key, paths.iter().map(|p| (*p).to_string()).collect());
+    }
+
+    /// Seed a path that exists with a clean index (success no-op).
+    pub fn seed_known_path(&self, repo: &str, path: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.known_paths
+            .entry(Self::key(repo))
+            .or_default()
+            .push(path.to_string());
+    }
+
+    /// Remaining staged paths after FILE-UNSTAGE.
+    pub fn remaining_staged_paths(&self, repo: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.staged_paths
+            .get(&Self::key(repo))
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1932,77 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn unstage_path(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty worktree path".into()));
+        }
+        if rel.contains('\0') {
+            return Err(PortError::Other(
+                "worktree path must be a single line".into(),
+            ));
+        }
+        if crate::git_write::worktree_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "add-all/force/flag/traversal worktree paths are out of scope".into(),
+            ));
+        }
+        if rel.starts_with('/') || rel.starts_with('\\') {
+            return Err(PortError::Other(
+                "absolute paths outside repository worktree".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before unstage-path".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use unstage-path to clear conflict state"
+                    .into(),
+            ));
+        }
+        let is_known = st
+            .known_paths
+            .get(&key)
+            .map(|v| v.iter().any(|p| p == rel))
+            .unwrap_or(false)
+            || st
+                .staged_paths
+                .get(&key)
+                .map(|v| v.iter().any(|p| p == rel))
+                .unwrap_or(false);
+        if !is_known {
+            return Err(PortError::Other(format!("path not found: {rel}")));
+        }
+        if let Some(staged) = st.staged_paths.get_mut(&key) {
+            staged.retain(|p| p != rel);
+        }
+        st.last_unstage_path.insert(key, rel.to_string());
         Ok(())
     }
 
