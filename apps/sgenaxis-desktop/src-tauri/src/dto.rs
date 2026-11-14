@@ -615,6 +615,19 @@ pub struct GitWriteBranchDeleteArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated local branch rename (`git branch -m -- old new`). Never `-M`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteBranchRenameArgs {
+    pub repo: Option<String>,
+    /// Existing local branch name. Never flags (`-m`, `-M`, `--force`).
+    pub old: String,
+    /// New local branch name. Never flags; never an existing local name.
+    #[serde(alias = "newName")]
+    pub new_name: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote add -- name url`. Never fetch/`-f`/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteAddArgs {

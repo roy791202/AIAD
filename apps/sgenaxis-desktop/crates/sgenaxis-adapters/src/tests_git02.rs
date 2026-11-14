@@ -918,6 +918,102 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
 
+    #[test]
+    fn std_write_rename_branch_non_force_only_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["branch", "--", "feature/slot"]);
+        git(&work, &["branch", "--", "taken"]);
+        git(&work, &["checkout", "--detach"]);
+        assert_eq!(head_ref(repo), "HEAD");
+        let w = StdGitWrite::new();
+
+        w.rename_branch(
+            repo,
+            "feature/slot",
+            "feature/renamed",
+            GitWriteApproval::denied(),
+        )
+        .expect_err("denied rename must not mutate");
+        let list = local_branch_list(repo);
+        assert!(list.contains("feature/slot"));
+        assert!(!list.contains("feature/renamed"));
+
+        w.rename_branch(repo, "  ", "feature/renamed", GitWriteApproval::granted())
+            .expect_err("empty old name must fail");
+        w.rename_branch(repo, "feature/slot", "-M", GitWriteApproval::granted())
+            .expect_err("force-rename flag name is out of scope");
+        w.rename_branch(repo, "-m", "feature/renamed", GitWriteApproval::granted())
+            .expect_err("leading dash is out of scope");
+        w.rename_branch(repo, "../evil", "ok", GitWriteApproval::granted())
+            .expect_err("path traversal name is out of scope");
+        w.rename_branch(repo, "feature/slot", ".git", GitWriteApproval::granted())
+            .expect_err(".git name is out of scope");
+        w.rename_branch(repo, "HEAD", "from-detach", GitWriteApproval::granted())
+            .expect_err("detached HEAD rename must fail honestly");
+        assert_eq!(head_ref(repo), "HEAD");
+        assert!(local_branch_list(repo).contains("feature/slot"));
+
+        git(&work, &["checkout", "main"]);
+        assert_eq!(head_ref(repo), "main");
+
+        let taken = w
+            .rename_branch(repo, "feature/slot", "taken", GitWriteApproval::granted())
+            .expect_err("existing target must fail without -M");
+        assert!(matches!(taken, PortError::Git(_) | PortError::Other(_)));
+        let tmsg = taken.to_string().to_ascii_lowercase();
+        assert!(
+            tmsg.contains("already exists") || tmsg.contains("taken"),
+            "existing target must fail honestly: {taken}"
+        );
+        assert!(local_branch_list(repo).contains("feature/slot"));
+        assert!(local_branch_list(repo).contains("taken"));
+
+        let missing = w
+            .rename_branch(repo, "ghost", "feature/renamed", GitWriteApproval::granted())
+            .expect_err("missing branch must fail");
+        assert!(matches!(missing, PortError::Git(_) | PortError::Other(_)));
+
+        w.rename_branch(
+            repo,
+            "feature/slot",
+            "feature/renamed",
+            GitWriteApproval::granted(),
+        )
+        .expect("approved non-force rename");
+        let list = local_branch_list(repo);
+        assert!(
+            !list.contains("feature/slot"),
+            "old name should be gone: {list}"
+        );
+        assert!(
+            list.contains("feature/renamed"),
+            "new name should exist: {list}"
+        );
+        assert_eq!(
+            head_ref(repo),
+            "main",
+            "rename of a non-current branch must not switch HEAD"
+        );
+
+        w.rename_branch(repo, "main", "trunk", GitWriteApproval::granted())
+            .expect("rename current when no lease is adapter-ok");
+        assert_eq!(head_ref(repo), "trunk");
+        let after_current = local_branch_list(repo);
+        assert!(after_current.contains("trunk"));
+        assert!(
+            !after_current.lines().any(|l| {
+                l.trim_start()
+                    .trim_start_matches('*')
+                    .trim()
+                    == "main"
+            }),
+            "old current name must be gone: {after_current}"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     fn remote_list(repo: &str) -> String {
         let out = Command::new("git")
             .args(["-C", repo, "remote", "-v"])

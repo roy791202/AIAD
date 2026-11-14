@@ -234,6 +234,10 @@ pub trait GitPort: Send + Sync {
 ///   Never `-r` / remote tracking delete / `push :branch`. Never checkout/switch.
 ///   Current HEAD, missing names, empty names, and option-like names fail
 ///   honestly. Unmerged branches fail as git `-d` (no force fallback).
+/// - Branch rename requires approval (no skip default). Local only:
+///   `git branch -m -- <old> <new>`. Never `-M` / `--force`. Never remote
+///   rename. Existing target names, missing local names, remote-only names,
+///   empty names, and option-like names fail honestly.
 /// - Remote add requires approval (no skip default). Local config only:
 ///   `git remote add -- <name> <url>`. Never `-f`. Never fetch as a hidden
 ///   side effect. Never `remote set-url`. Never `git push`. Duplicate names
@@ -397,6 +401,19 @@ pub trait GitWritePort: Send + Sync {
         &self,
         repo: &str,
         name: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Rename a local branch. Requires approval.
+    /// `git branch -m -- <old> <new>`. Never `-M` / `--force` / `-f`.
+    /// Never remote rename. Never switch/checkout as a separate step.
+    /// Existing target names, missing local names, remote-only names,
+    /// and invalid names fail honestly.
+    fn rename_branch(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 

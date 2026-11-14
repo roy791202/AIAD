@@ -42,6 +42,8 @@ assert "liveHooks.branchCreate" in js
 assert "git_write_branch_create" in js
 assert "liveHooks.branchDelete" in js
 assert "git_write_branch_delete" in js
+assert "liveHooks.branchRename" in js
+assert "git_write_branch_rename" in js
 assert "liveHooks.remoteAdd" in js
 assert "liveHooks.remoteRemove" in js
 assert "liveHooks.remoteSetUrl" in js
@@ -58,7 +60,7 @@ assert "git_write_conflict_abort" in js
 assert "git_write_conflict_skip" in js
 ids = re.findall(r'"id": "([^"]+)"', js)
 print("ops", len(ids), "unique", len(set(ids)))
-assert len(set(ids)) == 66
+assert len(set(ids)) == 67
 for need in (
     "git-ux-scenario",
     "git-ux-rail",

@@ -35,10 +35,10 @@ use sgenaxis_exec::{
 };
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
-    load_scene_text, perform_git_switch, save_design_file, save_scene_text,
-    CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
-    GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
-    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitSwitchResult,
+    load_scene_text, perform_git_rename_branch, perform_git_switch, save_design_file,
+    save_scene_text, CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView,
+    DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
+    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitRenameResult, GitSwitchResult,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -50,6 +50,7 @@ use crate::dto::{
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
+    GitWriteBranchRenameArgs,
     GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteFetchArgs,
     GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePullFfOnlyArgs,
     GitWritePushArgs,
@@ -429,6 +430,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_tag_delete",
         "git_write_branch_create",
         "git_write_branch_delete",
+        "git_write_branch_rename",
         "git_write_remote_add",
         "git_write_remote_remove",
         "git_write_remote_set_url",
@@ -2616,6 +2618,9 @@ fn branch_out_of_scope(value: &str) -> bool {
                 | "-f"
                 | "-d"
                 | "-D"
+                | "-m"
+                | "-M"
+                | "--move"
                 | "--delete"
                 | "--set-upstream"
                 | "--set-upstream-to"
@@ -2626,6 +2631,14 @@ fn branch_out_of_scope(value: &str) -> bool {
                 | "switch"
         )
         || lower.contains("..")
+        || lower == ".git"
+        || lower.contains("/.git/")
+        || lower.starts_with(".git/")
+        || lower.ends_with("/.git")
+        || lower.contains("@{")
+        || lower == "head"
+        || t.contains("//")
+        || t.contains('\\')
 }
 
 fn reject_branch_scope(name: &str) -> Result<(), String> {
@@ -2757,6 +2770,72 @@ pub fn git_write_branch_delete(
         });
     }
     perform_git_write_branch_delete(root.git_write(), &repo, &args.name, args.approved)
+}
+
+fn git_rename_result_dto(r: GitRenameResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+/// Soft-gated local branch rename: empty / unapproved / lease-on-current never mutates.
+fn perform_git_write_branch_rename(
+    write: &dyn GitWritePort,
+    repo: &str,
+    old: &str,
+    new: &str,
+    approved: bool,
+    occupying_run: Option<&str>,
+    current_head: Option<&str>,
+) -> Result<GitWriteResultDto, String> {
+    reject_branch_scope(old)?;
+    reject_branch_scope(new)?;
+    Ok(git_rename_result_dto(perform_git_rename_branch(
+        write,
+        repo,
+        old,
+        new,
+        approved,
+        occupying_run,
+        current_head,
+    )))
+}
+
+/// Approval-gated local `git branch -m -- old new`. Never `-M` / `--force` / remote rename.
+#[tauri::command]
+pub fn git_write_branch_rename(
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: GitWriteBranchRenameArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_branch_rename").map_err(|e| e.to_string())?;
+    let occupying = {
+        let dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+        dispatch.occupying_run_for_git_switch()
+    };
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "branch-rename".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    let current_head = root.git().status(&repo).ok().and_then(|s| s.branch);
+    perform_git_write_branch_rename(
+        root.git_write(),
+        &repo,
+        &args.old,
+        &args.new_name,
+        args.approved,
+        occupying.as_deref(),
+        current_head.as_deref(),
+    )
 }
 
 /// Names / URLs that would become flags or widen remote mutations.
@@ -4882,6 +4961,86 @@ mod git_ui_tests {
         assert_eq!(w.last_branch_delete("/r").as_deref(), Some("feature/slot"));
         assert_eq!(w.created_branches("/r"), vec!["unmerged".to_string()]);
         assert!(w.switched_branch("/r").is_none());
+    }
+
+    #[test]
+    fn git_write_branch_rename_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_branch_rename"));
+        assert!(!is_allowed("git_branch_rename"));
+        assert!(!is_allowed("git_branch_move"));
+        assert!(!is_allowed("git_checkout"));
+
+        let w = FakeGitWrite::new();
+        w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+            .expect("seed");
+        w.create_branch("/r", "taken", GitWriteApproval::granted())
+            .expect("seed taken");
+        w.mark_remote_only("/r", "origin/main");
+
+        let denied =
+            perform_git_write_branch_rename(&w, "/r", "feature/slot", "feature/renamed", false, None, Some("main"))
+                .unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_branch_rename("/r").is_none());
+
+        let empty =
+            perform_git_write_branch_rename(&w, "/r", "  ", "feature/renamed", true, None, Some("main"))
+                .unwrap();
+        assert!(!empty.ok);
+        assert!(w.last_branch_rename("/r").is_none());
+
+        let force =
+            perform_git_write_branch_rename(&w, "/r", "feature/slot", "-M", true, None, Some("main"))
+                .unwrap_err();
+        assert!(force.contains("out of scope"));
+        let dash =
+            perform_git_write_branch_rename(&w, "/r", "-m", "feature/renamed", true, None, Some("main"))
+                .unwrap_err();
+        assert!(dash.contains("out of scope"));
+        let git_trick =
+            perform_git_write_branch_rename(&w, "/r", "feature/slot", ".git", true, None, Some("main"))
+                .unwrap_err();
+        assert!(git_trick.contains("out of scope"));
+        let traversal =
+            perform_git_write_branch_rename(&w, "/r", "../evil", "ok", true, None, Some("main"))
+                .unwrap_err();
+        assert!(traversal.contains("out of scope"));
+        assert!(w.last_branch_rename("/r").is_none());
+
+        let lease = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "main",
+            "trunk",
+            true,
+            Some("run-42"),
+            Some("main"),
+        )
+        .unwrap();
+        assert!(!lease.ok);
+        assert!(lease.local_preserved);
+        assert!(lease.message.contains("活動租約禁止切換"));
+        assert!(lease.message.contains("run-42"));
+        assert!(w.last_branch_rename("/r").is_none());
+
+        let other = perform_git_write_branch_rename(
+            &w,
+            "/r",
+            "feature/slot",
+            "feature/renamed",
+            true,
+            Some("run-42"),
+            Some("main"),
+        )
+        .unwrap();
+        assert!(other.ok);
+        assert_eq!(other.op, "branch-rename");
+        assert_eq!(
+            w.last_branch_rename("/r"),
+            Some(("feature/slot".into(), "feature/renamed".into()))
+        );
     }
 
     #[test]

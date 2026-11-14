@@ -573,8 +573,12 @@ struct FakeGitWriteState {
     branch_create: HashMap<String, String>,
     /// repo → last approved local branch delete name.
     branch_delete: HashMap<String, String>,
+    /// repo → last approved local branch rename `(old, new)`.
+    branch_rename: HashMap<String, (String, String)>,
     /// repo → created local branch names (duplicate create fails honestly).
     branches: HashMap<String, Vec<String>>,
+    /// repo → names that exist only as remote-tracking refs (not local).
+    remote_only_branches: HashMap<String, Vec<String>>,
     /// repo → local branches that must fail `-d` as unmerged (no force).
     unmerged_branches: HashMap<String, Vec<String>>,
     /// repo → last approved remote add `(name, url)`.
@@ -738,6 +742,21 @@ impl FakeGitWrite {
     pub fn last_branch_delete(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.branch_delete.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved local branch rename for `repo` as `(old, new)`.
+    pub fn last_branch_rename(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.branch_rename.get(&Self::key(repo)).cloned()
+    }
+
+    /// Mark `name` as remote-tracking only so local rename refuses it.
+    pub fn mark_remote_only(&self, repo: &str, name: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.remote_only_branches
+            .entry(Self::key(repo))
+            .or_default()
+            .push(name.into());
     }
 
     /// Mark `branch` as unmerged for `repo` so safe delete fails honestly.
@@ -1261,6 +1280,76 @@ impl GitWritePort for FakeGitWrite {
             existing.retain(|b| b != branch);
         }
         st.branch_delete.insert(key, branch.to_string());
+        Ok(())
+    }
+
+    fn rename_branch(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let old = old.trim();
+        let new = new.trim();
+        if old.is_empty() || new.is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if crate::git_write::branch_name_out_of_scope(old)
+            || crate::git_write::branch_name_out_of_scope(new)
+        {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let remote_only = st
+            .remote_only_branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == old))
+            .unwrap_or(false);
+        if remote_only {
+            return Err(PortError::Other(format!(
+                "refusing remote-only name '{old}'"
+            )));
+        }
+        let exists = st
+            .branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == old))
+            .unwrap_or(false);
+        if !exists {
+            return Err(PortError::Git(format!("branch '{old}' not found")));
+        }
+        let taken = st
+            .branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == new))
+            .unwrap_or(false);
+        if taken && old != new {
+            return Err(PortError::Git(format!("branch '{new}' already exists")));
+        }
+        if let Some(existing) = st.branches.get_mut(&key) {
+            for b in existing.iter_mut() {
+                if b == old {
+                    *b = new.to_string();
+                }
+            }
+        }
+        if st.switched.get(&key).map(|s| s.as_str()) == Some(old) {
+            st.switched.insert(key.clone(), new.to_string());
+        }
+        st.branch_rename
+            .insert(key, (old.to_string(), new.to_string()));
         Ok(())
     }
 

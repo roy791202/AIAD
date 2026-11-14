@@ -29,6 +29,13 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
         || t.contains('*')
         || t.contains('[')
         || lower.contains("..")
+        || lower == ".git"
+        || lower.contains("/.git/")
+        || lower.starts_with(".git/")
+        || lower.ends_with("/.git")
+        || lower.contains("@{")
+        || lower == "head"
+        || t.contains("//")
         || matches!(
             lower.as_str(),
             "-c" | "-C"
@@ -36,6 +43,9 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
                 | "-f"
                 | "-d"
                 | "-D"
+                | "-m"
+                | "-M"
+                | "--move"
                 | "--delete"
                 | "--set-upstream"
                 | "--set-upstream-to"
@@ -267,6 +277,16 @@ impl GitWritePort for GatedGitWrite {
         &self,
         _repo: &str,
         _name: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn rename_branch(
+        &self,
+        _repo: &str,
+        _old: &str,
+        _new: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

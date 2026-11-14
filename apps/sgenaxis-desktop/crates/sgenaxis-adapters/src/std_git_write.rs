@@ -18,6 +18,8 @@
 //! - Branch delete: `git branch -d -- <name>` (safe). Never `-D` / `--force` /
 //!   `-f`. Never `-r`. Never remote delete. Never checkout/switch.
 //!   Current HEAD / missing / unmerged names fail honestly.
+//! - Branch rename: `git branch -m -- <old> <new>`. Never `-M` / `--force`.
+//!   Never remote rename. Existing target / missing / remote-only fail honestly.
 //! - Remote add: `git remote add -- <name> <url>`. Never `-f`. Never fetch.
 //!   Never `set-url`. Never `git push`. Duplicate names fail honestly.
 //! - Remote remove: `git remote remove -- <name>`. Never prune/fetch.
@@ -634,6 +636,52 @@ impl GitWritePort for StdGitWrite {
         // `-f`. Never `-r` (remote-tracking). Never checkout/switch.
         // Unmerged branches fail honestly (git `-d`); no force fallback.
         self.run(repo, &["branch", "-d", "--", branch])?;
+        Ok(())
+    }
+
+    fn rename_branch(
+        &self,
+        repo: &str,
+        old: &str,
+        new: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let old = old.trim();
+        let new = new.trim();
+        Self::require_branch_name(old)?;
+        Self::require_branch_name(new)?;
+        let head = self.run(repo, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+        let head = head.trim();
+        if head == "HEAD" && old.eq_ignore_ascii_case("HEAD") {
+            return Err(PortError::Other("cannot rename detached HEAD".into()));
+        }
+        let local_old = format!("refs/heads/{old}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &local_old])
+            .is_err()
+        {
+            let remote_old = format!("refs/remotes/{old}");
+            if self
+                .run(repo, &["show-ref", "--verify", "--quiet", &remote_old])
+                .is_ok()
+            {
+                return Err(PortError::Other(format!(
+                    "refusing remote-only name '{old}'"
+                )));
+            }
+            return Err(PortError::Git(format!("branch '{old}' not found")));
+        }
+        let local_new = format!("refs/heads/{new}");
+        if old != new
+            && self
+                .run(repo, &["show-ref", "--verify", "--quiet", &local_new])
+                .is_ok()
+        {
+            return Err(PortError::Git(format!("branch '{new}' already exists")));
+        }
+        // Non-force only: `git branch -m -- <old> <new>`. Never `-M`.
+        self.run(repo, &["branch", "-m", "--", old, new])?;
         Ok(())
     }
 

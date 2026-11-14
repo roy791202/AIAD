@@ -696,6 +696,96 @@ fn gated_git_write_blocks_branch_delete_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_rename_branch_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.create_branch("/r", "feature/slot", GitWriteApproval::granted())
+        .expect("seed");
+    w.create_branch("/r", "taken", GitWriteApproval::granted())
+        .expect("seed taken");
+    w.mark_remote_only("/r", "origin/main");
+
+    let denied = w.rename_branch(
+        "/r",
+        "feature/slot",
+        "feature/renamed",
+        GitWriteApproval::denied(),
+    );
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_branch_rename("/r").is_none());
+    assert_eq!(
+        w.created_branches("/r"),
+        vec!["feature/slot".to_string(), "taken".to_string()]
+    );
+
+    let empty_old = w.rename_branch("/r", "  ", "feature/renamed", GitWriteApproval::granted());
+    assert!(matches!(empty_old, Err(PortError::Other(_))));
+    let empty_new = w.rename_branch("/r", "feature/slot", "  ", GitWriteApproval::granted());
+    assert!(matches!(empty_new, Err(PortError::Other(_))));
+    let force = w.rename_branch("/r", "feature/slot", "-M", GitWriteApproval::granted());
+    assert!(matches!(force, Err(PortError::Other(_))));
+    let dash = w.rename_branch("/r", "-m", "feature/renamed", GitWriteApproval::granted());
+    assert!(matches!(dash, Err(PortError::Other(_))));
+    let traversal = w.rename_branch("/r", "../evil", "ok", GitWriteApproval::granted());
+    assert!(matches!(traversal, Err(PortError::Other(_))));
+    let git_trick = w.rename_branch("/r", "feature/slot", ".git", GitWriteApproval::granted());
+    assert!(matches!(git_trick, Err(PortError::Other(_))));
+    let git_seg = w.rename_branch("/r", "feature/slot", "foo/.git/bar", GitWriteApproval::granted());
+    assert!(matches!(git_seg, Err(PortError::Other(_))));
+    let taken = w.rename_branch("/r", "feature/slot", "taken", GitWriteApproval::granted());
+    assert!(matches!(taken, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("already exists")));
+    let missing = w.rename_branch("/r", "ghost", "feature/renamed", GitWriteApproval::granted());
+    assert!(matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found")));
+    let remote_only = w.rename_branch(
+        "/r",
+        "origin/main",
+        "feature/from-remote",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(
+        remote_only,
+        Err(PortError::Other(ref m) | PortError::Git(ref m))
+            if m.to_ascii_lowercase().contains("remote")
+    ));
+    assert!(w.last_branch_rename("/r").is_none());
+    assert_eq!(
+        w.created_branches("/r"),
+        vec!["feature/slot".to_string(), "taken".to_string()]
+    );
+
+    w.rename_branch(
+        "/r",
+        "feature/slot",
+        "feature/renamed",
+        GitWriteApproval::granted(),
+    )
+    .expect("rename");
+    assert_eq!(
+        w.last_branch_rename("/r"),
+        Some(("feature/slot".into(), "feature/renamed".into()))
+    );
+    assert_eq!(
+        w.created_branches("/r"),
+        vec!["feature/renamed".to_string(), "taken".to_string()]
+    );
+    assert!(
+        w.switched_branch("/r").is_none(),
+        "rename of a non-current branch must not switch HEAD"
+    );
+}
+
+#[test]
+fn gated_git_write_blocks_branch_rename_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.rename_branch(
+        "/any",
+        "feature/slot",
+        "feature/renamed",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_add_and_remove_remote_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.add_remote(

@@ -2537,6 +2537,8 @@
           ? "審核 Branch Create"
           : op === "branch-delete"
           ? "審核 Branch Delete"
+          : op === "branch-rename"
+          ? "審核 Branch Rename"
           : op === "remote-add"
           ? "審核 Remote Add"
           : op === "remote-set-url"
@@ -2597,6 +2599,10 @@
           ? "核准後經 git_write_branch_delete → GitWritePort；只刪本機分支 " +
             (payload.name || "") +
             "（git branch -d -- name）。不刪目前 HEAD。未合併會誠實失敗，不加 -D／--force／-r，不刪遠端。拒絕則無突變。"
+          : op === "branch-rename"
+          ? "核准後經 git_write_branch_rename → GitWritePort；將本機分支 " +
+            (payload.old || "") +
+            " 重新命名（git branch -m -- old new）。不加 -M／--force。目標名稱已存在、遠端-only、無效名稱會誠實失敗。目前分支在活動租約下禁止更名。拒絕則無突變。"
           : op === "remote-add"
           ? "核准後經 git_write_remote_add → GitWritePort；只新增本機遠端設定（git remote add -- name url），不 fetch、不加 -f、不 set-url、不 push。重名與無效名稱／URL 誠實失敗。拒絕則無突變。"
           : op === "remote-set-url"
@@ -2654,7 +2660,7 @@
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
-    if (branchWrap) branchWrap.hidden = op !== "branch-create";
+    if (branchWrap) branchWrap.hidden = op !== "branch-create" && op !== "branch-rename";
     if (remoteNameWrap) remoteNameWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
     if (remoteUrlWrap) remoteUrlWrap.hidden = op !== "remote-add" && op !== "remote-set-url";
     if (box) box.hidden = false;
@@ -2678,10 +2684,21 @@
       if (msg) {
         msg.value = payload.message != null ? String(payload.message) : "";
       }
-    } else if (op === "branch-create") {
+    } else if (op === "branch-create" || op === "branch-rename") {
       const branch = document.getElementById("git-approve-branch");
       if (branch) {
-        branch.value = payload.name != null ? String(payload.name) : "";
+        const span = branchWrap ? branchWrap.querySelector("span") : null;
+        if (span) {
+          span.textContent = op === "branch-rename" ? "新本機分支名稱" : "本機分支名稱";
+        }
+        branch.value =
+          op === "branch-rename"
+            ? payload.newName != null
+              ? String(payload.newName)
+              : ""
+            : payload.name != null
+            ? String(payload.name)
+            : "";
         branch.focus();
       }
     } else if (op === "remote-add" || op === "remote-set-url") {
@@ -3002,6 +3019,36 @@
             true
           );
           toast("Branch create 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "branch-rename") {
+        const old = pendingGitWrite.old;
+        const branchEl = document.getElementById("git-approve-branch");
+        const name = branchEl && branchEl.value ? branchEl.value.trim() : "";
+        if (!old || !name) {
+          setGitStatusLine("分支名稱不可空白", true);
+          toast("請填寫新本機分支名稱");
+          return;
+        }
+        const dto = await invoke("git_write_branch_rename", {
+          args: { repo: repo, old: old, newName: name, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已將本機分支 " + old + " 更名為 " + name + "（經 GitWritePort；git branch -m）",
+            false
+          );
+          toast("Branch rename 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "branch rename 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機分支依 Git 真實結果保留）",
+            true
+          );
+          toast("Branch rename 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "branch-delete") {
@@ -3872,6 +3919,7 @@
         tagDelete: function (name) { showGitApprove("tag-delete", { name: name }); },
         branchCreate: function () { showGitApprove("branch-create", {}); },
         branchDelete: function (name) { showGitApprove("branch-delete", { name: name }); },
+        branchRename: function (name) { showGitApprove("branch-rename", { old: name }); },
         remoteAdd: function () {
           const urlEl = document.getElementById("git-ux-remote-url");
           showGitApprove("remote-add", {
