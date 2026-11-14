@@ -284,6 +284,16 @@ pub trait GitPort: Send + Sync {
 ///   honestly (`OPERATION_IN_PROGRESS`); do not use stage-all to mark
 ///   conflicts resolved. A clean worktree is a success no-op (`git add`
 ///   on an empty dirty tree succeeds).
+/// - Hunk discard requires approval (no skip default). Distinct from
+///   stage-all / unstage-all / conflict save: reverse exactly one unified
+///   diff hunk for one repo-relative path via `git apply --reverse` of a
+///   constructed single-file patch (or equivalent that cannot touch other
+///   files). Never `reset --hard`. Never `checkout .`. Never `-f` on other
+///   paths. Never commit / push / force. Path traversal, `..`, NUL,
+///   option-like (`-`), `.`, and `-A` fail honestly. In-progress
+///   merge/rebase/cherry-pick/revert with unmerged paths fails honestly
+///   (`OPERATION_IN_PROGRESS`). Missing or unmatched hunks fail honestly
+///   and must leave other files unchanged.
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -540,6 +550,21 @@ pub trait GitWritePort: Send + Sync {
     /// (`OPERATION_IN_PROGRESS`). A clean index relative to HEAD succeeds as
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
+
+    /// Discard exactly one unified-diff hunk for one repo-relative path.
+    /// Requires approval. `git apply --reverse` of a validated single-file
+    /// patch (path + hunk header/body). Never `reset --hard` / `checkout .` /
+    /// `-f` / commit / push. Path traversal, `..`, NUL, option-like (`-`),
+    /// `.`, and `-A` fail honestly. In-progress merge/rebase/cherry-pick/revert
+    /// with unmerged paths fails honestly (`OPERATION_IN_PROGRESS`).
+    /// Missing or unmatched hunks fail honestly; other files stay unchanged.
+    fn discard_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.

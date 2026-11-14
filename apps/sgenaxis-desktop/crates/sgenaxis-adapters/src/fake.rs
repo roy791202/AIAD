@@ -601,6 +601,12 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → seeded discardable hunks `(path, hunk)`.
+    hunks: HashMap<String, Vec<(String, String)>>,
+    /// repo → last approved hunk discard `(path, hunk)`.
+    last_hunk_discard: HashMap<String, (String, String)>,
+    /// repo → other files that must stay unchanged across a hunk discard.
+    other_files: HashMap<String, HashMap<String, String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +854,58 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Seed a worktree hunk that an approved discard may reverse.
+    pub fn seed_hunk(&self, repo: &str, path: impl Into<String>, hunk: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.hunks
+            .entry(Self::key(repo))
+            .or_default()
+            .push((path.into(), hunk.into()));
+    }
+
+    /// Record a sibling file that hunk discard must not mutate.
+    pub fn seed_other_file(
+        &self,
+        repo: &str,
+        path: impl Into<String>,
+        contents: impl Into<String>,
+    ) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.other_files
+            .entry(Self::key(repo))
+            .or_default()
+            .insert(path.into(), contents.into());
+    }
+
+    /// Last approved hunk discard for `repo` as `(path, hunk)`.
+    pub fn last_hunk_discard(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_hunk_discard.get(&Self::key(repo)).cloned()
+    }
+
+    /// Remaining seeded hunks for `path`.
+    pub fn remaining_hunks(&self, repo: &str, path: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.hunks
+            .get(&Self::key(repo))
+            .map(|rows| {
+                rows.iter()
+                    .filter(|(p, _)| p == path)
+                    .map(|(_, h)| h.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Contents of a seeded sibling file, if any.
+    pub fn other_file(&self, repo: &str, path: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.other_files
+            .get(&Self::key(repo))
+            .and_then(|m| m.get(path))
+            .cloned()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1948,67 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn discard_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty hunk path".into()));
+        }
+        if crate::git_write::hunk_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "path traversal/force/flag hunk paths are out of scope".into(),
+            ));
+        }
+        if let Some(reason) = crate::git_write::hunk_text_invalid(hunk) {
+            return Err(PortError::Other(reason.into()));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before hunk-discard".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use hunk-discard during conflicts"
+                    .into(),
+            ));
+        }
+        let discarded = {
+            let Some(hunks) = st.hunks.get_mut(&key) else {
+                return Err(PortError::Git("unmatched hunk".into()));
+            };
+            let Some(idx) = hunks
+                .iter()
+                .position(|(p, h)| p == rel && h.trim() == hunk.trim())
+            else {
+                return Err(PortError::Git("unmatched hunk".into()));
+            };
+            hunks.remove(idx)
+        };
+        st.last_hunk_discard.insert(key, discarded);
         Ok(())
     }
 

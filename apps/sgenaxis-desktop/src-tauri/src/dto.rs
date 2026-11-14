@@ -705,6 +705,18 @@ pub struct GitWriteUnstageAllArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated single-hunk discard (`git apply --reverse`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteHunkDiscardArgs {
+    pub repo: Option<String>,
+    /// Repo-relative path. Never `.` / `..` / `-A` / option-like names.
+    pub path: String,
+    /// One unified-diff hunk (header + body). Never a multi-file patch.
+    pub hunk: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {
