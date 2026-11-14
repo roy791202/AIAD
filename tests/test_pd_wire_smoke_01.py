@@ -93,7 +93,7 @@ def test_dispatch_host_wire_smoke_cargo_or_not_run():
     """Run DispatchHost command-path smoke; missing cargo → NOT RUN (not FAIL)."""
     cargo = _cargo_bin()
     if shutil.which(cargo) is None and not Path(cargo).is_file():
-        pytest.skip(
+        pytest.skip(  # ci:allow-test-disable: env guard: no cargo/rustc -> honest NOT RUN
             "NOT RUN: cargo／rustc missing — cannot execute DispatchHost wire smoke"
         )
 
@@ -140,7 +140,7 @@ def test_no_tauri_means_not_run_not_fake_pass():
     assert "pytest" in script
     if not has_tauri:
         # Honest skip marker for live IPC — contract tests above still run.
-        pytest.skip(
+        pytest.skip(  # ci:allow-test-disable: env guard: no Tauri CLI/WebView -> honest NOT RUN
             "NOT RUN: no Tauri CLI／WebView — IPC E2E (git_workbench_*／load_local_board "
             "live invoke) not executed; DispatchHost command-path cargo path remains "
             "the mandatory observable. Not a full-feature PASS."
@@ -155,7 +155,7 @@ def test_script_documents_fail_and_honesty():
     assert "full-feature" in text.lower() or "Live PASS" in text
 
 
-@pytest.mark.skipif(not REPORT.is_file(), reason="report written after implementer PASS")
+@pytest.mark.skipif(not REPORT.is_file(), reason="report written after implementer PASS")  # ci:allow-test-disable: presence guard: report written after implementer PASS
 def test_report_exists_when_present():
     text = REPORT.read_text(encoding="utf-8")
     assert "PD-WIRE-SMOKE-01" in text

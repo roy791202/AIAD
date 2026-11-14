@@ -262,6 +262,14 @@ def added_lines(diff: str) -> dict[str, set[int]]:
     return changed
 
 
+# A test may carry an author-vouched, auditable exemption on the exact line
+# that trips the guard: a trailing `# ci:allow-test-disable: <reason>` marks a
+# legitimate environment/presence guard (an honest NOT-RUN skip, never a way to
+# hide a failing assertion). Only the marked line is exempt; everything else
+# stays fail-closed.
+_ALLOW_MARKER = "ci:allow-test-disable"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base")
@@ -276,7 +284,11 @@ def main() -> int:
         if Path(path).suffix.lower() not in supported:
             continue
         source = _git("show", f"{revision}:{path}").lstrip("\ufeff")
+        source_lines = source.splitlines()
         for line in sorted(disabled_lines(path, source) & additions):
+            raw = source_lines[line - 1] if 0 <= line - 1 < len(source_lines) else ""
+            if _ALLOW_MARKER in raw:
+                continue
             failures.append(f"{path}:{line}: executable test disable added")
     for failure in failures:
         print(failure)

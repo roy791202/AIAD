@@ -203,7 +203,7 @@ def test_full_overwrite_rejected_keeps_smoke_contract(board_path: Path):
 def test_live_board_releases_list_smoke_readonly():
     """Read-only: if live snapshot.releases non-empty, latest version/reportPath parse."""
     if not LIVE_BOARD.is_file():
-        pytest.skip("live board missing")
+        pytest.skip("live board missing")  # ci:allow-test-disable: presence guard: live board file missing
     html = LIVE_BOARD.read_text(encoding="utf-8")
     snapshot_safe.assert_shell_intact(html)
     assert DOCTYPE in html[:80] or html.lstrip().startswith(DOCTYPE)

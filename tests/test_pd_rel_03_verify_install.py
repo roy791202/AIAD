@@ -133,7 +133,7 @@ def test_verify_script_does_not_self_elevate_or_force_msiexec():
 def test_verify_install_ps1_marks_elevated_not_run_without_elevation():
     """Runnable hook: non-elevated invocation must NOT forge PASS on elevated checks."""
     if _is_elevated():
-        pytest.skip(
+        pytest.skip(  # ci:allow-test-disable: env guard: elevated process cannot assert the NOT-RUN path
             "process is elevated — cannot assert NOT RUN path; live path optional"
         )
 

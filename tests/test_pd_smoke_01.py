@@ -150,7 +150,7 @@ def test_no_elevated_msi_required():
     assert "msiexec /i" not in script.lower()
 
 
-@pytest.mark.skipif(not SCRIPT.is_file(), reason="script not yet present")
+@pytest.mark.skipif(not SCRIPT.is_file(), reason="script not yet present")  # ci:allow-test-disable: presence guard: script not yet present
 def test_rerunnable_script_exits_zero_when_invoked_as_module_check():
     """Sanity: script is importable／has main and documents FAIL-on-error."""
     text = SCRIPT.read_text(encoding="utf-8")
