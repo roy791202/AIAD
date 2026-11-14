@@ -48,7 +48,7 @@ pub enum AllowedIpcCommand {
     GitWriteCommit,
     /// PD-GIT-WRITE-UI-01: approval-gated push via GitWritePort (no force).
     GitWritePush,
-    /// PD-GIT-SWITCH-03: approval-gated switch to an existing local branch (no force／create).
+    /// PD-GIT-SWITCH-03 / GIT-002-03: approval-gated switch (no force／create／detach; occupying Run refuses).
     GitSwitchBranch,
     /// Approval-gated local `user.name` / `user.email` via GitWritePort (never --global).
     GitWriteIdentity,

@@ -22,6 +22,7 @@ pub mod composition;
 pub mod deploy;
 pub mod error;
 pub mod git_board_sync;
+pub mod git_switch;
 pub mod guard_cmd;
 pub mod identity_preview;
 pub mod ipc;
@@ -41,6 +42,9 @@ pub use board_live::{
 };
 pub use git_board_sync::{
     load_git_and_board_isolated, GitBoardSyncViews, SyncFailKind, SyncReadOrder,
+};
+pub use git_switch::{
+    occupying_run_id, perform_git_switch, GitSwitchResult, ACTIVE_LEASE_BLOCKS_SWITCH,
 };
 pub use composition::{CompositionRoot, APP_NAME};
 pub use deploy::{

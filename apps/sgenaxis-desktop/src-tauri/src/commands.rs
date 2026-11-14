@@ -35,9 +35,10 @@ use sgenaxis_exec::{
 };
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
-    load_scene_text, save_design_file, save_scene_text, CompositionRoot, DeployArtifactView,
-    DeployCheckView, DeployStatusView, DesignDoc, DesignNode, GuardDecisionView, GuardPacketDto,
-    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
+    load_scene_text, perform_git_switch, save_design_file, save_scene_text,
+    CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
+    GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
+    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL, GitSwitchResult,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -2041,52 +2042,28 @@ pub fn git_write_push(
     )
 }
 
-/// Soft-gated switch: empty branch or unapproved never mutates; approved switches via port.
-fn perform_git_switch(
-    write: &dyn GitWritePort,
-    repo: &str,
-    branch: &str,
-    approved: bool,
-) -> GitWriteResultDto {
-    if branch.trim().is_empty() {
-        return GitWriteResultDto {
-            ok: false,
-            op: "switch".into(),
-            message: "empty branch name".into(),
-            local_preserved: true,
-        };
-    }
-    if !approved {
-        return GitWriteResultDto {
-            ok: false,
-            op: "switch".into(),
-            message: "approval denied; no mutation".into(),
-            local_preserved: true,
-        };
-    }
-    match write.switch_branch(repo, branch, GitWriteApproval::granted()) {
-        Ok(()) => GitWriteResultDto {
-            ok: true,
-            op: "switch".into(),
-            message: "switch ok".into(),
-            local_preserved: true,
-        },
-        Err(e) => GitWriteResultDto {
-            ok: false,
-            op: "switch".into(),
-            message: e.to_string(),
-            local_preserved: true,
-        },
+fn git_switch_result_dto(r: GitSwitchResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
     }
 }
 
-/// Approval-gated switch to an existing local branch (PD-GIT-SWITCH-03). No force／create.
+/// Approval-gated switch to an existing local branch (PD-GIT-SWITCH-03 / GIT-002-03).
+/// No force／create／detach. Occupying workspace Run/lease refuses before GitWritePort.
 #[tauri::command]
 pub fn git_switch_branch(
+    app: State<'_, AppState>,
     state: State<'_, HostState>,
     args: GitWriteSwitchArgs,
 ) -> Result<GitWriteResultDto, String> {
     authorize("git_switch_branch").map_err(|e| e.to_string())?;
+    let occupying = {
+        let dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+        dispatch.occupying_run_for_git_switch()
+    };
     let root = state.inner.lock().map_err(|_| poison_host())?;
     let repo = resolve_repo(args.repo, root.host_settings())?;
     if !root.git_writes_enabled() {
@@ -2097,12 +2074,13 @@ pub fn git_switch_branch(
             local_preserved: true,
         });
     }
-    Ok(perform_git_switch(
+    Ok(git_switch_result_dto(perform_git_switch(
         root.git_write(),
         &repo,
         &args.branch,
         args.approved,
-    ))
+        occupying.as_deref(),
+    )))
 }
 
 /// Tokens that would widen identity writes beyond local `user.name` / `user.email`.
@@ -4548,19 +4526,31 @@ mod git_ui_tests {
 
         let w = FakeGitWrite::new();
         // Unapproved → no mutation.
-        let denied = perform_git_switch(&w, "/r", "feature", false);
+        let denied = perform_git_switch(&w, "/r", "feature", false, None);
         assert!(!denied.ok);
         assert!(denied.local_preserved);
         assert!(w.switched_branch("/r").is_none());
         // Empty branch → rejected, no mutation.
-        let empty = perform_git_switch(&w, "/r", "", true);
+        let empty = perform_git_switch(&w, "/r", "", true, None);
         assert!(!empty.ok);
         assert!(w.switched_branch("/r").is_none());
-        // Approved + valid → switches via port.
-        let ok = perform_git_switch(&w, "/r", "feature", true);
+        // Approved + valid, no occupying Run → switches via port.
+        let ok = perform_git_switch(&w, "/r", "feature", true, None);
         assert!(ok.ok);
         assert_eq!(ok.op, "switch");
         assert_eq!(w.switched_branch("/r").as_deref(), Some("feature"));
+
+        // GIT-002-03: occupying Run refuses; GitWritePort not called again.
+        let w2 = FakeGitWrite::new();
+        let blocked = perform_git_switch(&w2, "/r", "feature", true, Some("run-42"));
+        assert!(!blocked.ok);
+        assert!(blocked.local_preserved);
+        assert!(blocked.message.contains("活動租約禁止切換"));
+        assert!(blocked.message.contains("run-42"));
+        assert!(w2.switched_branch("/r").is_none());
+        let after = perform_git_switch(&w2, "/r", "feature", true, None);
+        assert!(after.ok);
+        assert_eq!(w2.switched_branch("/r").as_deref(), Some("feature"));
     }
 
     #[test]

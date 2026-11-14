@@ -38,7 +38,7 @@ use sgenaxis_ports::{
 };
 use sgenaxis_host::{
     authorize_exec_start, authorize_write_paths, check_changes_view, check_start_view,
-    GuardDecisionView, GuardExecPass, GuardPacketDto,
+    occupying_run_id, GuardDecisionView, GuardExecPass, GuardPacketDto,
 };
 use sgenaxis_listen::{EventBridge, ListenProjection, SourceEvent};
 use sgenaxis_spec::{ApprovalStatus, Contract, EvidenceValidity, SpecError, SpecStore};
@@ -310,6 +310,18 @@ impl DispatchHost {
     /// Live MCP remains unavailable with [`StubMcpClient`], including with `real-mcp` enabled.
     pub fn new() -> Self {
         Self::with_git_index_port(Arc::new(StdGitIndexCommit::new()))
+    }
+
+    /// GIT-002-03: occupying workspace Run/lease that must block `git switch`.
+    pub fn occupying_run_for_git_switch(&self) -> Option<String> {
+        let proj = self.work.projection().ok();
+        let host_run = self.active_run_id.map(|id| id.to_string());
+        occupying_run_id(proj.as_ref(), host_run.as_deref()).or_else(|| {
+            self.active_lease_project
+                .as_deref()
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+        })
     }
 
     pub(crate) fn with_git_index_port(port: Arc<dyn GitIndexCommitPort>) -> Self {
