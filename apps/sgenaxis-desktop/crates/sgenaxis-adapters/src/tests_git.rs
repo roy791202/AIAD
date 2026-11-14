@@ -1522,6 +1522,47 @@ fn gated_git_write_blocks_stage_all_even_when_approved() {
 }
 
 #[test]
+fn bdd_pd_git_stage_path_01_fake_records_when_approved() {
+    let w = FakeGitWrite::new();
+    let denied = w.stage_path("/r", "src/a.rs", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stage_path("/r").is_none());
+
+    w.stage_path("/r", "src/a.rs", GitWriteApproval::granted())
+        .expect("valid path");
+    assert_eq!(w.last_stage_path("/r"), Some("src/a.rs".into()));
+    assert_eq!(w.local_commit_count("/r"), 0);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.set_conflict_in_progress("/r", "Merge", &["src/b.rs"]);
+    let conflict = w.stage_path("/r", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(conflict, Err(PortError::Git(ref m)) if m.contains("OPERATION_IN_PROGRESS")));
+    assert_eq!(w.last_stage_path("/r"), Some("src/a.rs".into()));
+}
+
+#[test]
+fn bdd_pd_git_stage_path_01_rejects_out_of_scope_paths() {
+    let w = FakeGitWrite::new();
+    for bad in ["", ".", "-A", "--force", "../secret", "foo\0bar"] {
+        let err = w
+            .stage_path("/r", bad, GitWriteApproval::granted())
+            .expect_err("must reject");
+        assert!(
+            matches!(err, PortError::Other(_)) || matches!(err, PortError::PermissionDenied(_)),
+            "bad={bad:?} got {err:?}"
+        );
+        assert!(w.last_stage_path("/r").is_none());
+    }
+}
+
+#[test]
+fn bdd_pd_git_stage_path_01_gated_blocks_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.stage_path("/any", "src/a.rs", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_unstage_all_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.unstage_all("/r", GitWriteApproval::denied());
