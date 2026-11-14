@@ -1,0 +1,50 @@
+{
+  "id": "PD-RUST-MODULE-HTML-01",
+  "verdict": "FAIL",
+  "recommendation": "GRAY_REWORK",
+  "summary": "Planning projection structure/hash/stale/trace checks pass, but two hard-coded valid evidence records invent binding to a new draft revision, and DOCUMENT audit REVIEW_PASS is relabelled TDD_PASS. Temporary failure injection also disproves claimed output-pair preservation; planning-only status must explicitly classify this pending rather than imply implemented guarantee. Minimal report-only rework; no production changes required.",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "scope": "Read-only production/tests/board; review report writes only and disposable temp copies",
+  "checks_passed": [
+    "Two diagrams and required contracts/tests/scope/evidence/risk sections present",
+    "9 BDD/TDD/task/result/sourcehash rows; packet readiness preserved NOT_READY",
+    "SPEC projection revision draft, content_hash null",
+    "9 bound sources CURRENT; disposable source byte flip and missing source correctly PROJECTION_STALE",
+    "render_html(module.json) exactly equals existing module.html without writing canonical output"
+  ],
+  "findings": [
+    {
+      "id": "HTML-R1",
+      "priority": "P2",
+      "location": "generate_report.py:179-194; module.json module_spec_document.evidence_refs",
+      "problem": "Both evidence_refs hard-code validity=valid and bind to newly invented rev-proj-v0. Referenced reports validate earlier packet/audit artifacts, not this draft revision; no EVID authority issued these records. Document audit note also says TDD_PASS despite source review explicitly TDD_NOT_RUN. This contradicts CTR-PROJ004 and no-competing-authority intent.",
+      "minimal_fix": "Keep module_spec_document.evidence_refs empty unless actual owner-provided bound records exist. Show external reports as plain reference pointers outside authority-bearing EvidenceRef records; preserve source status REVIEW_PASS/static audit and TDD NOT RUN. Do not add registry/service/schema."
+    },
+    {
+      "id": "HTML-R2",
+      "priority": "P2",
+      "location": "module.feature partial_failure/transaction; generate_report.py tests_plan.transaction and main writes",
+      "problem": "Declared previous JSON+HTML pair preservation is absent: controlled HTML write denial leaves new JSON with previous HTML. This is report-generation behavior evidence, not product runtime defect.",
+      "minimal_fix": "Reconcile planning scope honestly: mark pair atomicity deferred/not implemented and disclose actual sequential-write limitation with owner agreement, or separately approve/test minimal report-only safe publication. Do not silently expand into production filesystem transactions or claim this scenario passed."
+    }
+  ],
+  "behavior_status": "Product runtime TDD/codec/native UI/Agent NOT RUN; independent report-function checks executed only",
+  "temp_failure_reproduction": {
+    "json_overwritten": true,
+    "html_previous": true
+  },
+  "source_sha256": {
+    "reports\\rust-improvements\\continuous\\module-engineering-projection\\generate_report.py": "bbfa04fb6e54bf921873a4a7d780e93972b3138e8d6aea0c99ce9f8d303fb26d",
+    "reports\\rust-improvements\\continuous\\module-engineering-projection\\module.json": "42998fa127038c066e20f5d8dd6f15376aae751d73358e4b81329fb740d8b701",
+    "reports\\rust-improvements\\continuous\\module-engineering-projection\\module.html": "dec493b171198f62a992ad360f61fc2e1f9b8491f85e329cf832ada39ad87f6f",
+    "reports\\rust-improvements\\continuous\\module-engineering-projection\\module.feature": "c9837a2674e35c0e6c37e8a2e5bb623bf0c50fb8560109a4755512b815f61b5c",
+    "reports\\rust-improvements\\continuous\\module-engineering-projection\\steps.pending.txt": "ccde1e2b8cf72b57d048e6f0c651e26ea976edc27a6a443e9ba22ab66c5d0d56"
+  },
+  "minimal_return_conditions": [
+    "No fabricated approved/valid EVID binding or documentary TDD_PASS promotion",
+    "Source evidence pointers/status truthful; projection remains derived draft NOT_READY",
+    "Pair-write contract reconciled with actual report behavior and pending scope explicit",
+    "Regenerate JSON/HTML consistently; rerun existing read-only current/stale/missing-source/trace/draft checks and temp pair-failure classification"
+  ],
+  "mutations": "No canonical/source/test/board/index modifications, commit or push; output failure injected only into disposable copies"
+}

@@ -1,0 +1,24 @@
+{
+  "status": "PROPOSED_PENDING_OWNER",
+  "tokens": {
+    "input_bytes": 16777216,
+    "output_bytes": 16777216,
+    "depth": 64,
+    "value_nodes": 100000,
+    "string_bytes": 1048576,
+    "number_token_bytes": 4096
+  },
+  "error": "HostError::Settings(\"DESIGN_CODEC_RESOURCE_LIMIT:<RFC6901 pointer>:<token>\"); input_bytes/output_bytes use empty root pointer, so exact string has :: before token",
+  "counting": [
+    "Input/output byte count is UTF-8 encoded complete JSON text, including whitespace/escapes; no terminal newline added by serialize_design. max inclusive; >max rejects.",
+    "Root JSON value depth=0. Every object member VALUE or array element increments depth by one from container; object keys are strings checked for decoded string_bytes but do not count as JSON value nodes and have no separate depth.",
+    "value_nodes counts every JSON value, including root, object/array containers, scalar values and null. Object member names excluded. Count on entering value, increment before testing >100000; report that value pointer.",
+    "string_bytes counts decoded UTF-8 bytes for each string value and member name separately, not raw token bytes or Unicode scalar count. Escaped key and literal equivalent key have identical decoded counting and duplicate identity. Key error pointer is the decoded escaped RFC6901 member pointer, same as its value pointer.",
+    "number_token_bytes counts raw ASCII JSON number lexeme before normalization. A syntactically valid 0.5 followed by trailing zeroes remains numeric 0.5. Grammar errors are not number-resource RED.",
+    "Streaming parse scans source order. input_bytes is checked first. At each value: grammar/valid escape -> depth -> value_nodes -> decoded key/string or raw number size -> duplicate key. Any first encountered lexical/resource failure stops; later unknown/schema/numeric errors cannot override it. Duplicate detected when second decoded key is complete, before its value.",
+    "After guarded parse completes: format/version -> unknown/type validation -> exact decimal representation -> existing validate. Unknown/type checks traverse source member order retained by guarded parser, array index order. No partial typed DesignDoc returned.",
+    "Serialize-only: validate existing format/version/product_pass first; traverse typed document in emitted struct field order, props keys byte-lexical order, array order, applying depth/value_nodes/string limits; number-token limit applies to emitted lexeme. Then emit pretty JSON with two spaces and LF/no terminal newline; enforce output_bytes on final emitted bytes. No input_bytes check for serialize-only.",
+    "A document with another resource violation is unsuitable as output-only oracle. Output overflow error is root pointer regardless of which field crosses byte cap; no partial String returned."
+  ],
+  "scope": "Clarifies C1 CP1-CP3 proposed behavior only. No approval inferred from existing S2 numbers or existing serializer; original two-file candidate scope unchanged."
+}

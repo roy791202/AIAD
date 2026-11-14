@@ -1,0 +1,152 @@
+{
+  "module": "M07",
+  "task": "PD-P1-M07-PREP-01",
+  "seam": "PH-G1 only",
+  "state": "CORRECTION_CANDIDATE_PENDING_INDEPENDENT_REVIEW_OWNER",
+  "author": "/root/m07_recovery_ack_correction",
+  "authority": {
+    "head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "inventory_files": 796
+  },
+  "intent": "Close candidate recovery capture ACK request/response and issuer-proof mapping without changing effective formal ACK.",
+  "architecture": {
+    "hexagonal": "Trusted M07 observation \u2192 proposed M04 captured-recovery ACK input boundary \u2192 sole DocumentOwner \u2192 existing trusted proof lookup abstractions \u2190 M07 index/M05 transfer issuer adapters",
+    "dependency": "M07 observer \u2192 M04 owner boundary; M04 depends on proof abstractions; no UI/native/domain bypass. No new API approval.",
+    "ownership": "M04 owns document/live state and formal/recovery baselines. M07 owns immutable attempt/index observations. M05 owns materials/pins/roots.",
+    "mutation": "Only M04 matching owner generation/session may ACK exact immutable capture. Baseline update is conditional monotonic by captured revision, never live content overwrite.",
+    "transaction": "Resolve handles/proofs outside index/catalog leases, recheck owner fence at M04 baseline commit. Owner baseline + replay terminal response must be atomic in future design; native atomicity unproved."
+  },
+  "boundary": {
+    "caller": "Only trusted orchestration with pre-resolved M04 capture capability; UI supplies no trusted body/proof/state. No unauthenticated caller data admitted.",
+    "lookup": "Fixture stands for existing issuer-owned lookup: exact (issuer, receipt_id) for M07 index and M05 root transfer; compare full context, capture and body. ReceiptRef hashes are commitments, not authorization. Never accept caller boolean verified labels.",
+    "no_registry": "immutable-proof.json is a documentary fixture, never a proposed document registry; proof/provider integration PH-G2..4 remains separate pending adoption."
+  },
+  "s1_limit": "Accepted S1 recovery_state.rs consumes HOST-supplied Published; it has no timer, filesystem, codec, fingerprint computation, pinning, capture/provider authentication or M04 ACK integration. This proposal changes none of those facts.",
+  "hash": {
+    "status": "NEW_VARIANT_PROPOSED_PENDING_OWNER",
+    "protocol": "SGA-RECOVERY-ACK-PROPOSAL-v1",
+    "role": "ack-recovery",
+    "issuer": "M04",
+    "operation_id": "UNRESOLVED Owner choice: original /0 illustrative versus explicitly fixed-zero ordinal schema; NOT adopted.",
+    "digest": "SHA256 canonical UTF8 entire admitted request recursively, including protocol/issuer/role/ordinal/context/body. Same canonical rules as CXv3; distinct protocol prevents cross-purpose replay.",
+    "key": "Proposed M04 owner replay store identity + workflow_id + operation_id + authenticated issuer/owner binding; physical durable store/provider pending Owner.",
+    "replay": "Original proposal only; stateful semantics NOT PROVEN.",
+    "details": "Request body commits capture owner/capability, attempt/snapshot/context, fingerprint profile+hash, immutable ordered material versions, payload raw, index prior/new raw+transaction+target, index/transfer refs. Resolve before freeze; no enrichment after hash."
+  },
+  "mapping": {
+    "fingerprint": "Reuse original SGA-RECOVERY-FP-v1 definition includes format/semantic/material versions/bindings. Do not replace by payload/index raw or formal semantic hash.",
+    "index": "index_receipt.evidence_digest hashes FULL immutable index evidence; context_digest hashes full WorkflowContext. Match target/prior/new raw/transaction/payload/materials/attempt/snapshot/fingerprint exactly.",
+    "transfer": "transfer_receipt.evidence_digest hashes FULL M05 immutable transfer record; request_digest must hash entire frozen transfer-recovery request. Match issuer, role, workflow, operation, context, pin, source receipt IDs, materials, roots, expected+committed generation and native store/target identity.",
+    "distinction": "M05 external_proof.raw_digest=index committed raw; projection_digest=index FULL evidence hash; recovery fingerprint remains independent. source_receipt_ids bind Held and index refs."
+  },
+  "contracts": [
+    "Never reuse formal-only ack body/role implicitly",
+    "Only M04 mutates recovery baseline; no formal baseline change",
+    "Captured R ACK may succeed with live R+1 while live remains dirty",
+    "Late R after acknowledged R+1 returns Superseded; no backward baseline",
+    "M05 root Deferred retains LocalIntegrityReady, not Published; no ACK/release",
+    "Missing or Unknown issuer evidence => UnverifiedOutcome, no automatic retry",
+    "No catalog/index lease held during M04 callback"
+  ],
+  "owner_options": [
+    {
+      "id": "RA-O1",
+      "status": "PROPOSED_PENDING_OWNER",
+      "option": "Adopt distinct protocol and ack-recovery role/body/receipt mapping, replay lifecycle and atomic owner mutation"
+    },
+    {
+      "id": "RA-O2",
+      "status": "PROPOSED_PENDING_OWNER",
+      "option": "Instead explicitly version effective transition schema with formal/recovery discriminated union, role/hash migration and full compatibility analysis; not performed"
+    },
+    {
+      "id": "RA-C-O1",
+      "status": "PENDING_OWNER",
+      "option": "Illustrative /0: define admitted ordinal operation formula"
+    },
+    {
+      "id": "RA-C-O2",
+      "status": "PENDING_OWNER",
+      "option": "Explicit schema revision fixed ordinal string 0"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "M07-RA-PLAN",
+      "primary_module": "M07",
+      "status": "PLANNING",
+      "allowed": "this new directory only",
+      "protected": "all originals/product/board/current-state/hooks/roles",
+      "acceptance": "20 bounded DOCUMENT witnesses and source/hash/seal checks; not implementation acceptance"
+    }
+  ],
+  "bdd_tdd": [
+    {
+      "id": "RA-C-001",
+      "behavior": "Invalid full root/nested request closes with no exception ACK or state change",
+      "test": "negative-cases.json",
+      "contract": "I1 admission first"
+    },
+    {
+      "id": "RA-C-002",
+      "behavior": "Original outputs and calls unchanged",
+      "test": "fixtures.json + positive-cases.json",
+      "contract": "I2 preservation"
+    },
+    {
+      "id": "RA-C-003",
+      "behavior": "Invalid admission wins over missing proof/root outcome",
+      "test": "negative cases x precedence",
+      "contract": "I1"
+    }
+  ],
+  "assumptions": [
+    "Immutable fixture authenticity assumed only",
+    "Native durable index provider unavailable/unproved",
+    "Native M05 material/root atomic inclusion unproved",
+    "Native M04 replay+baseline transaction and restart provider unproved",
+    "SHA256 collision resistance assumed",
+    "No native interface or skeleton created"
+  ],
+  "remaining_gates": [
+    "Owner selects protocol/role/hash option and confirms architecture/contracts/BDD",
+    "PH-G2 index issuer/provider adoption",
+    "PH-G3 material/root transition receipt adoption",
+    "PH-G4 restart proof lookup/lifecycle",
+    "Approved Skeleton and intended valid RED",
+    "Independent documentary review then separate native implementation acceptance"
+  ],
+  "not_run": [
+    "independent review",
+    "native",
+    "build",
+    "product tests",
+    "valid RED/GREEN",
+    "full Draft2020-12",
+    "module acceptance"
+  ],
+  "module_complete": false,
+  "document_results": {
+    "status": "PASS_BOUNDED_DOCUMENT_CORRECTION_PENDING_REVIEW_OWNER",
+    "original_cases": 20,
+    "ordinal_preservation_cases": 3,
+    "negative_cases": 318,
+    "negative_precedence_evaluations": 1272,
+    "total_evaluations": 1295,
+    "source_pointers": 32,
+    "inventory_files": 796
+  },
+  "correction": {
+    "RA-R1": "Full recursive request schema/type guard before body/context; no broad exception catch. Supplied envelope/state remain trusted.",
+    "RA-L1": "Original /0 operation formula ambiguous with admitted u64 ordinal. Ordinal 1 and maximum preserve original admission; ACK operation_id is not computed by evaluator. Owner must choose illustrative /0 with admitted ordinal formula OR explicitly revised fixed-zero schema. Neither adopted.",
+    "RA-L2": "Response shape only. Relational response binding and stateful replay/idempotency/conflict/inflight/restart/atomic baseline+response NOT PROVEN. Dictionary/hash witness only retained equality/hash difference. No new stateful seam.",
+    "RA-L3": "Authentic structurally complete immutable issuer fixture is premise. Malformed index evidence {} still KeyError outside caller admission, not a native robustness proof. Separate provider seam requires Owner approval."
+  },
+  "scope": {
+    "allowed": "this new directory only",
+    "protected": "originals/product/board/current-state/hooks/roles",
+    "skeleton": "NONE"
+  },
+  "next_action": "Independent correction review then Owner decisions; keep Yellow/no Skeleton. Native/build/product/valid RED/full Draft NOT RUN."
+}

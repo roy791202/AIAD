@@ -1,0 +1,675 @@
+<!doctype html><meta charset="utf-8"><title>M05 receipt handoff</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;background:#111827;color:#e5e7eb}pre{white-space:pre-wrap;background:#1f2937;padding:20px}h2{color:#93c5fd}</style><h1>M05｜正式保存 retention receipt handoff</h1><p>PROPOSED_PENDING_OWNER · Yellow · one transition · document only</p><p>M05 保有唯一 catalog/pin/root 權威；M04 只消費觀察證據。18 witnesses 不構成 native authenticity、exactly-once 或 restart proof。</p><h2>Architecture</h2><pre>M04 capture → M05 transfer input → MaterialOwner → output abstractions ← IO adapter
+M05 catalog SSOT → pin + root + receipt in one proposed CAS
+file commit → catalog transfer → M04 captured semantic ACK (separate boundaries)</pre><h2>Module specification</h2><pre>{
+  &quot;id&quot;: &quot;M05-RETENTION-RECEIPT-HANDOFF&quot;,
+  &quot;primary_module&quot;: &quot;M05&quot;,
+  &quot;parent&quot;: &quot;PD-P1-M05-PREP-01 Yellow&quot;,
+  &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+  &quot;intent&quot;: &quot;One Held Save pin to persisted formal-document root through candidate single catalog CAS; no full catalog rewrite.&quot;,
+  &quot;architecture&quot;: {
+    &quot;hexagonal&quot;: &quot;M04 trusted capture → proposed M05 transfer input → MaterialOwner → output abstractions → existing IO adapter; issuer lookup remains pending&quot;,
+    &quot;dependencies&quot;: &quot;M04 owns DocumentOwner/S1 ACK; M05 alone owns catalog, pin/root and transition record; M03 projects only authorized response&quot;,
+    &quot;ownership&quot;: &quot;M05 catalog authoritative candidate state; M04 supplied observations are not a second retention authority&quot;,
+    &quot;mutation&quot;: &quot;one proposed catalog CAS joins Held→Transferred, root manifest and transition_receipt&quot;,
+    &quot;transaction&quot;: &quot;file commit already verified; catalog CAS separate; M04 semantic ACK only after authenticated transfer proof; no cross-file/catalog/ACK atomicity&quot;,
+    &quot;forbidden&quot;: [
+      &quot;new Port adoption&quot;,
+      &quot;provider/persistence implementation&quot;,
+      &quot;M04 pin owner&quot;,
+      &quot;second registry&quot;,
+      &quot;physical GC&quot;,
+      &quot;automatic release/retry/rollback&quot;,
+      &quot;automatic ACK&quot;
+    ]
+  },
+  &quot;before_after&quot;: &quot;Before Held/root absent/record absent at7; after Transferred/root present/record present at8 atomically under assumed verified CAS. Any unknown proof blocks new mutation, keeps conservative retention; never asserts rollback after possible CAS.&quot;,
+  &quot;proof_projection&quot;: &quot;catalog-fixture.json uses every CXv3 registry field; NOT an adopted closed public DTO. Closed v2 request reused; exact M04 response projection remains gap H3. External catalog CommitReceipt not embedded into own committed raw bytes.&quot;,
+  &quot;choices&quot;: [
+    {
+      &quot;id&quot;: &quot;H1&quot;,
+      &quot;owner&quot;: &quot;M05+M04&quot;,
+      &quot;gap&quot;: &quot;Effective CXv3 hashes complete closed SGA-TRANSITION-v2 request recursively, including pin_id/root_manifest/external_proof. The newer M04 17-field observation has no exact assembly mapping to this body or native issuer lineage.&quot;,
+      &quot;candidate&quot;: &quot;Preserve effective v2 schema and full-body hashing. Reconcile M04 observations to frozen server-resolved body. Save purpose is immutable held-pin issuer-record binding, not a new transfer body field; changed valid body conflicts, changed source binding fails proof verification.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+    },
+    {
+      &quot;id&quot;: &quot;H2&quot;,
+      &quot;owner&quot;: &quot;M05+IO&quot;,
+      &quot;gap&quot;: &quot;store_identity/native target identity are prose; no issuer authentication, alias-safe identity/fence validator, durable inclusion verifier or restart implementation exists.&quot;,
+      &quot;candidate&quot;: &quot;Approve exact native issuer lookup/fence/inclusion seams and failure contract before Skeleton. Document fixture membership is only an assumed lookup.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+    },
+    {
+      &quot;id&quot;: &quot;H3&quot;,
+      &quot;owner&quot;: &quot;M05+M04+M03&quot;,
+      &quot;gap&quot;: &quot;Closed transfer-formal request is already defined by central v3 schema. TransferReceipt and registry projection need exact M04 handoff/output mapping; pin/receipt UUID lineage and semantic profile mapping remain handoff questions, not a reopening of v3 hash closure.&quot;,
+      &quot;candidate&quot;: &quot;Reuse central closed request; choose exact issuer registry to M04 response/proof mapping without inventing fields or treating prose projection as adopted runtime response.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+    },
+    {
+      &quot;id&quot;: &quot;H4&quot;,
+      &quot;owner&quot;: &quot;M05+IO&quot;,
+      &quot;gap&quot;: &quot;Uncertain CAS and after-CAS raw proof loss cannot prove prior or committed state from response absence. Record raw digest cannot self-reference its own committed index.&quot;,
+      &quot;candidate&quot;: &quot;Record logical generation in same CAS; retain external four-field commit proof separately as issuer evidence. No new registry; explicit reconciliation revalidates raw bytes and inclusion, never auto retry/ACK/release.&quot;,
+      &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;
+    }
+  ],
+  &quot;tuple_mapping&quot;: &quot;tuple-map.json&quot;,
+  &quot;bdd_categories&quot;: {
+    &quot;B1&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B2&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B3&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B4&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B5&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B6&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B7&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B8&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B9&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B10&quot;: &quot;Applicable: bounded documentary cases only&quot;,
+    &quot;B11&quot;: &quot;Deferred: compatibility requires approved protocol/schema&quot;,
+    &quot;B12&quot;: &quot;Applicable: bounded documentary cases only&quot;
+  },
+  &quot;tdd&quot;: {
+    &quot;document_command&quot;: &quot;python -B check_documents.py&quot;,
+    &quot;product_command&quot;: &quot;NOT RUN; owner-approved crate/test path unavailable until Skeleton approval&quot;,
+    &quot;valid_red&quot;: &quot;Compile successfully, fail for missing intended transfer/replay/proof behavior with injectable CAS/issuer seams; document oracle is not valid RED&quot;,
+    &quot;levels&quot;: &quot;L0 canonical bytes; L1 issuer tuple; L2 module port fake CAS; L3 native catalog; L4 M04/M03 regression; L5 system: all product levels planned NOT RUN&quot;
+  },
+  &quot;acceptance&quot;: [
+    &quot;all18 documentary witnesses match explicit candidate oracle&quot;,
+    &quot;same-key fullbody or immutable source-binding mutation never produces second CAS&quot;,
+    &quot;unknown commit/proof loss never asserts old catalog unchanged or ACK&quot;,
+    &quot;796 product hashes unchanged and original inputs sealed&quot;,
+    &quot;Owner choices remain pending; module_complete false&quot;
+  ],
+  &quot;pending_automation&quot;: [
+    &quot;native issuer authenticity and alias/fence proof&quot;,
+    &quot;real IO commit and inclusion persistence&quot;,
+    &quot;restart replay/uncertainty reconstruction&quot;,
+    &quot;full closed DTO+Draft2020-12 validation&quot;,
+    &quot;M04 file→transfer→S1 ACK and newer-live regression&quot;,
+    &quot;independent document review&quot;
+  ],
+  &quot;not_run&quot;: [
+    &quot;independent review&quot;,
+    &quot;native/provider/isolation/restart&quot;,
+    &quot;product tests&quot;,
+    &quot;valid RED/GREEN&quot;,
+    &quot;build/package/install&quot;,
+    &quot;full Draft2020-12&quot;
+  ],
+  &quot;module_complete&quot;: false,
+  &quot;next_ready_action&quot;: &quot;Owner decides H1-H4, revalidates architecture/contracts/BDD/Skeleton; independent review and compile-valid intended RED before any production implementation.&quot;
+}</pre><h2>Exact tuple mapping</h2><pre>[
+  {
+    &quot;source&quot;: &quot;project/document/session/generation/revision&quot;,
+    &quot;target&quot;: &quot;WorkflowContext project_uuid/document_uuid/session_id/owner_generation/captured_revision&quot;,
+    &quot;limit&quot;: &quot;Candidate field-name and decimal-string conversion; no native identity proof&quot;
+  },
+  {
+    &quot;source&quot;: &quot;request/operation&quot;,
+    &quot;target&quot;: &quot;workflow_id and UUIDv5 transfer-formal/0&quot;,
+    &quot;limit&quot;: &quot;M03 runtime request not equal M05 operation; retained mapping absent after restart&quot;
+  },
+  {
+    &quot;source&quot;: &quot;issuer&quot;,
+    &quot;target&quot;: &quot;receipt issuer M05 plus native store_identity&quot;,
+    &quot;limit&quot;: &quot;M04 capture issuer string is not authentication&quot;
+  },
+  {
+    &quot;source&quot;: &quot;target/raw/previous_raw/transaction_id&quot;,
+    &quot;target&quot;: &quot;FormalFile target binding and exact IO four-field receipt&quot;,
+    &quot;limit&quot;: &quot;raw encoded digest distinct semantic; transaction belongs post-file proof only&quot;
+  },
+  {
+    &quot;source&quot;: &quot;pin_id/asset_versions&quot;,
+    &quot;target&quot;: &quot;issuer-held record pin_id; sorted asset_pairs(asset_id,digest)&quot;,
+    &quot;limit&quot;: &quot;M04 content_digest rename not silent adoption; same-asset distinct versions retained&quot;
+  },
+  {
+    &quot;source&quot;: &quot;formal_root_id/projection_id/semantic&quot;,
+    &quot;target&quot;: &quot;root_manifest_ids / external_proof.projection_digest / captured semantic profile&quot;,
+    &quot;limit&quot;: &quot;projection ID is not projection digest; semantic profile missing from M04 17-field capture and CXv3 abbreviated proof&quot;
+  },
+  {
+    &quot;source&quot;: &quot;trusted/fence/receipt_id&quot;,
+    &quot;target&quot;: &quot;verified issuer lookup/native fence/inclusion&quot;,
+    &quot;limit&quot;: &quot;booleans only supplied observations, never verifier implementation&quot;
+  }
+]</pre><h2>Immutable fixture and before/after</h2><pre>{
+  &quot;transition_key&quot;: [
+    &quot;M05&quot;,
+    &quot;store-native-fixture&quot;,
+    &quot;44444444-4444-4444-8444-444444444444&quot;,
+    &quot;4edd51d1-165d-5804-b75b-059407b5531e&quot;
+  ],
+  &quot;request_body&quot;: {
+    &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+    &quot;issuer&quot;: &quot;M05&quot;,
+    &quot;role&quot;: &quot;transfer-formal&quot;,
+    &quot;ordinal&quot;: &quot;0&quot;,
+    &quot;context&quot;: {
+      &quot;project_uuid&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+      &quot;document_uuid&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+      &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;captured_revision&quot;: &quot;10&quot;,
+      &quot;session_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;
+    },
+    &quot;body&quot;: {
+      &quot;pin_id&quot;: &quot;ffffffffffffffffffffffffffffffff&quot;,
+      &quot;store_identity&quot;: {
+        &quot;volume_id&quot;: &quot;id_A&quot;,
+        &quot;file_id&quot;: &quot;id_A&quot;,
+        &quot;canonical_target&quot;: &quot;id_A&quot;
+      },
+      &quot;root_manifest&quot;: {
+        &quot;manifest_id&quot;: &quot;77777777-7777-4777-8777-777777777777&quot;,
+        &quot;provider_id&quot;: &quot;M04-formal-fixture&quot;,
+        &quot;kind&quot;: &quot;LiveDocuments&quot;,
+        &quot;epoch&quot;: &quot;7&quot;,
+        &quot;completeness&quot;: &quot;Complete&quot;,
+        &quot;assets&quot;: [
+          {
+            &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+            &quot;digest&quot;: &quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc&quot;,
+            &quot;size_bytes&quot;: &quot;7&quot;
+          },
+          {
+            &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+            &quot;digest&quot;: &quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd&quot;,
+            &quot;size_bytes&quot;: &quot;7&quot;
+          }
+        ]
+      },
+      &quot;external_proof&quot;: {
+        &quot;issuer&quot;: &quot;IO&quot;,
+        &quot;receipt_id&quot;: &quot;66666666-6666-4666-8666-666666666666&quot;,
+        &quot;kind&quot;: &quot;FormalFile&quot;,
+        &quot;context_digest&quot;: &quot;99ef8696089a54e765daca2011c8ee924dcce97512d30b6aec24928d0fbc8b7f&quot;,
+        &quot;evidence_digest&quot;: &quot;9999999999999999999999999999999999999999999999999999999999999999&quot;
+      },
+      &quot;expected_catalog_generation&quot;: &quot;7&quot;
+    }
+  },
+  &quot;request_canonical_utf8&quot;: &quot;{\&quot;body\&quot;:{\&quot;expected_catalog_generation\&quot;:\&quot;7\&quot;,\&quot;external_proof\&quot;:{\&quot;context_digest\&quot;:\&quot;99ef8696089a54e765daca2011c8ee924dcce97512d30b6aec24928d0fbc8b7f\&quot;,\&quot;evidence_digest\&quot;:\&quot;9999999999999999999999999999999999999999999999999999999999999999\&quot;,\&quot;issuer\&quot;:\&quot;IO\&quot;,\&quot;kind\&quot;:\&quot;FormalFile\&quot;,\&quot;receipt_id\&quot;:\&quot;66666666-6666-4666-8666-666666666666\&quot;},\&quot;pin_id\&quot;:\&quot;ffffffffffffffffffffffffffffffff\&quot;,\&quot;root_manifest\&quot;:{\&quot;assets\&quot;:[{\&quot;asset_id\&quot;:\&quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\&quot;,\&quot;digest\&quot;:\&quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\&quot;,\&quot;size_bytes\&quot;:\&quot;7\&quot;},{\&quot;asset_id\&quot;:\&quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\&quot;,\&quot;digest\&quot;:\&quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\&quot;,\&quot;size_bytes\&quot;:\&quot;7\&quot;}],\&quot;completeness\&quot;:\&quot;Complete\&quot;,\&quot;epoch\&quot;:\&quot;7\&quot;,\&quot;kind\&quot;:\&quot;LiveDocuments\&quot;,\&quot;manifest_id\&quot;:\&quot;77777777-7777-4777-8777-777777777777\&quot;,\&quot;provider_id\&quot;:\&quot;M04-formal-fixture\&quot;},\&quot;store_identity\&quot;:{\&quot;canonical_target\&quot;:\&quot;id_A\&quot;,\&quot;file_id\&quot;:\&quot;id_A\&quot;,\&quot;volume_id\&quot;:\&quot;id_A\&quot;}},\&quot;context\&quot;:{\&quot;captured_revision\&quot;:\&quot;10\&quot;,\&quot;document_uuid\&quot;:\&quot;22222222-2222-4222-8222-222222222222\&quot;,\&quot;owner_generation\&quot;:\&quot;2\&quot;,\&quot;project_uuid\&quot;:\&quot;11111111-1111-4111-8111-111111111111\&quot;,\&quot;session_id\&quot;:\&quot;33333333-3333-4333-8333-333333333333\&quot;,\&quot;workflow_id\&quot;:\&quot;44444444-4444-4444-8444-444444444444\&quot;},\&quot;issuer\&quot;:\&quot;M05\&quot;,\&quot;ordinal\&quot;:\&quot;0\&quot;,\&quot;protocol\&quot;:\&quot;SGA-TRANSITION-v2\&quot;,\&quot;role\&quot;:\&quot;transfer-formal\&quot;}&quot;,
+  &quot;request_digest&quot;: &quot;643c18c58bfad862ea38face83023e025937d2562151f2f42af80cc248ab37c1&quot;,
+  &quot;receipt_record&quot;: {
+    &quot;issuer&quot;: &quot;M05&quot;,
+    &quot;receipt_id&quot;: &quot;88888888-8888-4888-8888-888888888888&quot;,
+    &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+    &quot;operation_id&quot;: &quot;4edd51d1-165d-5804-b75b-059407b5531e&quot;,
+    &quot;role&quot;: &quot;transfer-formal&quot;,
+    &quot;ordinal&quot;: &quot;0&quot;,
+    &quot;request_digest&quot;: &quot;643c18c58bfad862ea38face83023e025937d2562151f2f42af80cc248ab37c1&quot;,
+    &quot;context&quot;: {
+      &quot;project_uuid&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+      &quot;document_uuid&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+      &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;captured_revision&quot;: &quot;10&quot;,
+      &quot;session_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;
+    },
+    &quot;store_identity&quot;: &quot;store-native-fixture&quot;,
+    &quot;target_identity&quot;: &quot;catalog-native-fixture&quot;,
+    &quot;expected_generation&quot;: &quot;7&quot;,
+    &quot;committed_generation&quot;: &quot;8&quot;,
+    &quot;source_receipt_ids&quot;: [
+      {
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;receipt_id&quot;: &quot;55555555-5555-4555-8555-555555555555&quot;
+      },
+      {
+        &quot;issuer&quot;: &quot;IO&quot;,
+        &quot;receipt_id&quot;: &quot;66666666-6666-4666-8666-666666666666&quot;
+      }
+    ],
+    &quot;pin_id&quot;: &quot;ffffffffffffffffffffffffffffffff&quot;,
+    &quot;asset_pairs&quot;: [
+      {
+        &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+        &quot;digest&quot;: &quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc&quot;
+      },
+      {
+        &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+        &quot;digest&quot;: &quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd&quot;
+      }
+    ],
+    &quot;root_manifest_ids&quot;: [
+      &quot;77777777-7777-4777-8777-777777777777&quot;
+    ],
+    &quot;external_proof&quot;: {
+      &quot;issuer&quot;: &quot;IO&quot;,
+      &quot;receipt_id&quot;: &quot;66666666-6666-4666-8666-666666666666&quot;,
+      &quot;kind&quot;: &quot;FormalFile&quot;,
+      &quot;context_digest&quot;: &quot;99ef8696089a54e765daca2011c8ee924dcce97512d30b6aec24928d0fbc8b7f&quot;,
+      &quot;target_identity&quot;: &quot;formal-native-fixture&quot;,
+      &quot;raw_digest&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;,
+      &quot;projection_digest&quot;: &quot;eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee&quot;
+    },
+    &quot;result&quot;: {
+      &quot;kind&quot;: &quot;Transferred&quot;
+    },
+    &quot;request_protocol&quot;: &quot;SGA-TRANSITION-v2&quot;
+  },
+  &quot;before&quot;: {
+    &quot;generation&quot;: &quot;7&quot;,
+    &quot;pin&quot;: {
+      &quot;pin_id&quot;: &quot;ffffffffffffffffffffffffffffffff&quot;,
+      &quot;purpose&quot;: &quot;Save&quot;,
+      &quot;state&quot;: &quot;Held&quot;,
+      &quot;context&quot;: {
+        &quot;project_uuid&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;document_uuid&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+        &quot;owner_generation&quot;: &quot;2&quot;,
+        &quot;captured_revision&quot;: &quot;10&quot;,
+        &quot;session_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;
+      },
+      &quot;versions&quot;: [
+        {
+          &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+          &quot;digest&quot;: &quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc&quot;
+        },
+        {
+          &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+          &quot;digest&quot;: &quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd&quot;
+        }
+      ]
+    },
+    &quot;root_manifests&quot;: [],
+    &quot;transition_receipts&quot;: []
+  },
+  &quot;after&quot;: {
+    &quot;generation&quot;: &quot;8&quot;,
+    &quot;pin&quot;: {
+      &quot;pin_id&quot;: &quot;ffffffffffffffffffffffffffffffff&quot;,
+      &quot;purpose&quot;: &quot;Save&quot;,
+      &quot;state&quot;: &quot;Transferred&quot;,
+      &quot;context&quot;: {
+        &quot;project_uuid&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+        &quot;document_uuid&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+        &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+        &quot;owner_generation&quot;: &quot;2&quot;,
+        &quot;captured_revision&quot;: &quot;10&quot;,
+        &quot;session_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;
+      },
+      &quot;versions&quot;: [
+        {
+          &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+          &quot;digest&quot;: &quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc&quot;
+        },
+        {
+          &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+          &quot;digest&quot;: &quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd&quot;
+        }
+      ]
+    },
+    &quot;root_manifests&quot;: [
+      &quot;77777777-7777-4777-8777-777777777777&quot;
+    ],
+    &quot;transition_receipts&quot;: [
+      {
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;receipt_id&quot;: &quot;88888888-8888-4888-8888-888888888888&quot;,
+        &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+        &quot;operation_id&quot;: &quot;4edd51d1-165d-5804-b75b-059407b5531e&quot;,
+        &quot;role&quot;: &quot;transfer-formal&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;request_digest&quot;: &quot;643c18c58bfad862ea38face83023e025937d2562151f2f42af80cc248ab37c1&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;11111111-1111-4111-8111-111111111111&quot;,
+          &quot;document_uuid&quot;: &quot;22222222-2222-4222-8222-222222222222&quot;,
+          &quot;workflow_id&quot;: &quot;44444444-4444-4444-8444-444444444444&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;session_id&quot;: &quot;33333333-3333-4333-8333-333333333333&quot;
+        },
+        &quot;store_identity&quot;: &quot;store-native-fixture&quot;,
+        &quot;target_identity&quot;: &quot;catalog-native-fixture&quot;,
+        &quot;expected_generation&quot;: &quot;7&quot;,
+        &quot;committed_generation&quot;: &quot;8&quot;,
+        &quot;source_receipt_ids&quot;: [
+          {
+            &quot;issuer&quot;: &quot;M05&quot;,
+            &quot;receipt_id&quot;: &quot;55555555-5555-4555-8555-555555555555&quot;
+          },
+          {
+            &quot;issuer&quot;: &quot;IO&quot;,
+            &quot;receipt_id&quot;: &quot;66666666-6666-4666-8666-666666666666&quot;
+          }
+        ],
+        &quot;pin_id&quot;: &quot;ffffffffffffffffffffffffffffffff&quot;,
+        &quot;asset_pairs&quot;: [
+          {
+            &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+            &quot;digest&quot;: &quot;cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc&quot;
+          },
+          {
+            &quot;asset_id&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+            &quot;digest&quot;: &quot;dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd&quot;
+          }
+        ],
+        &quot;root_manifest_ids&quot;: [
+          &quot;77777777-7777-4777-8777-777777777777&quot;
+        ],
+        &quot;external_proof&quot;: {
+          &quot;issuer&quot;: &quot;IO&quot;,
+          &quot;receipt_id&quot;: &quot;66666666-6666-4666-8666-666666666666&quot;,
+          &quot;kind&quot;: &quot;FormalFile&quot;,
+          &quot;context_digest&quot;: &quot;99ef8696089a54e765daca2011c8ee924dcce97512d30b6aec24928d0fbc8b7f&quot;,
+          &quot;target_identity&quot;: &quot;formal-native-fixture&quot;,
+          &quot;raw_digest&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;,
+          &quot;projection_digest&quot;: &quot;eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee&quot;
+        },
+        &quot;result&quot;: {
+          &quot;kind&quot;: &quot;Transferred&quot;
+        },
+        &quot;request_protocol&quot;: &quot;SGA-TRANSITION-v2&quot;
+      }
+    ]
+  },
+  &quot;file_receipt&quot;: {
+    &quot;target_path&quot;: &quot;formal-path-fixture&quot;,
+    &quot;previous_digest&quot;: null,
+    &quot;committed_digest&quot;: &quot;bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&quot;,
+    &quot;transaction_id&quot;: &quot;file-tx-fixture&quot;
+  },
+  &quot;catalog_commit_observation&quot;: {
+    &quot;target_path&quot;: &quot;catalog-path-fixture&quot;,
+    &quot;previous_digest&quot;: &quot;1111111111111111111111111111111111111111111111111111111111111111&quot;,
+    &quot;committed_digest&quot;: &quot;2222222222222222222222222222222222222222222222222222222222222222&quot;,
+    &quot;transaction_id&quot;: &quot;catalog-tx-fixture&quot;
+  },
+  &quot;warning&quot;: &quot;All identities, lookup, fences and CAS outcomes are supplied documentary premises. No native evidence.&quot;
+}</pre><h2>BDD/TDD witnesses</h2><pre>[
+  {
+    &quot;id&quot;: &quot;RH-01&quot;,
+    &quot;case&quot;: &quot;transfer&quot;,
+    &quot;observation&quot;: &quot;verified&quot;,
+    &quot;expected&quot;: &quot;Transferred&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;atomic candidate only&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-02&quot;,
+    &quot;case&quot;: &quot;replay&quot;,
+    &quot;observation&quot;: &quot;same&quot;,
+    &quot;expected&quot;: &quot;SameReceipt&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-03&quot;,
+    &quot;case&quot;: &quot;body-change&quot;,
+    &quot;observation&quot;: &quot;changed&quot;,
+    &quot;expected&quot;: &quot;ReplayConflict&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-04&quot;,
+    &quot;case&quot;: &quot;purpose-change&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-05&quot;,
+    &quot;case&quot;: &quot;root-change&quot;,
+    &quot;observation&quot;: &quot;changed&quot;,
+    &quot;expected&quot;: &quot;ReplayConflict&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-06&quot;,
+    &quot;case&quot;: &quot;pin-change&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-07&quot;,
+    &quot;case&quot;: &quot;proof-change&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-08&quot;,
+    &quot;case&quot;: &quot;precas-failure&quot;,
+    &quot;observation&quot;: &quot;precommit&quot;,
+    &quot;expected&quot;: &quot;Held&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-09&quot;,
+    &quot;case&quot;: &quot;priorcas-unknown&quot;,
+    &quot;observation&quot;: &quot;unknown&quot;,
+    &quot;expected&quot;: &quot;Indeterminate&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-10&quot;,
+    &quot;case&quot;: &quot;aftercas-proofloss&quot;,
+    &quot;observation&quot;: &quot;prooflost&quot;,
+    &quot;expected&quot;: &quot;Indeterminate&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-11&quot;,
+    &quot;case&quot;: &quot;restart-missing&quot;,
+    &quot;observation&quot;: &quot;restart-missing&quot;,
+    &quot;expected&quot;: &quot;UnverifiedOutcome&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-12&quot;,
+    &quot;case&quot;: &quot;restart-verified&quot;,
+    &quot;observation&quot;: &quot;restart-verified&quot;,
+    &quot;expected&quot;: &quot;SameReceipt&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-13&quot;,
+    &quot;case&quot;: &quot;issuer-missing&quot;,
+    &quot;observation&quot;: &quot;missing&quot;,
+    &quot;expected&quot;: &quot;NOT_PROVEN&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-14&quot;,
+    &quot;case&quot;: &quot;fence-missing&quot;,
+    &quot;observation&quot;: &quot;missing&quot;,
+    &quot;expected&quot;: &quot;NOT_PROVEN&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-15&quot;,
+    &quot;case&quot;: &quot;revoked-replay&quot;,
+    &quot;observation&quot;: &quot;denied&quot;,
+    &quot;expected&quot;: &quot;PermissionDenied&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-16&quot;,
+    &quot;case&quot;: &quot;wrong-raw&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-17&quot;,
+    &quot;case&quot;: &quot;root-released&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RH-18&quot;,
+    &quot;case&quot;: &quot;wrong-purpose&quot;,
+    &quot;observation&quot;: &quot;changed-binding&quot;,
+    &quot;expected&quot;: &quot;ProofMismatch&quot;,
+    &quot;fixture&quot;: &quot;catalog-fixture.json&quot;,
+    &quot;catalog_effect&quot;: &quot;no new CAS&quot;
+  }
+]</pre><h2>Traceability</h2><pre>[
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-01&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-01&quot;,
+    &quot;fixture&quot;: &quot;RH-01&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-02&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-02&quot;,
+    &quot;fixture&quot;: &quot;RH-02&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-03&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-03&quot;,
+    &quot;fixture&quot;: &quot;RH-03&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-04&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-04&quot;,
+    &quot;fixture&quot;: &quot;RH-04&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-05&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-05&quot;,
+    &quot;fixture&quot;: &quot;RH-05&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-06&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-06&quot;,
+    &quot;fixture&quot;: &quot;RH-06&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-07&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-07&quot;,
+    &quot;fixture&quot;: &quot;RH-07&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-08&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-08&quot;,
+    &quot;fixture&quot;: &quot;RH-08&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-09&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-09&quot;,
+    &quot;fixture&quot;: &quot;RH-09&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-10&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-10&quot;,
+    &quot;fixture&quot;: &quot;RH-10&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-11&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-11&quot;,
+    &quot;fixture&quot;: &quot;RH-11&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-12&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-12&quot;,
+    &quot;fixture&quot;: &quot;RH-12&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-13&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-13&quot;,
+    &quot;fixture&quot;: &quot;RH-13&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-14&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-14&quot;,
+    &quot;fixture&quot;: &quot;RH-14&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-15&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-15&quot;,
+    &quot;fixture&quot;: &quot;RH-15&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-16&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-16&quot;,
+    &quot;fixture&quot;: &quot;RH-16&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-17&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-17&quot;,
+    &quot;fixture&quot;: &quot;RH-17&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  },
+  {
+    &quot;requirement&quot;: &quot;REQ-M05-SAVE-HANDOFF&quot;,
+    &quot;invariant&quot;: &quot;INV-RH-01 no false transfer/ACK&quot;,
+    &quot;bdd&quot;: &quot;BDD-RH-18&quot;,
+    &quot;tdd&quot;: &quot;TDD-RH-18&quot;,
+    &quot;fixture&quot;: &quot;RH-18&quot;,
+    &quot;status&quot;: &quot;PLANNED_PRODUCT_NOT_RUN&quot;
+  }
+]</pre><script type="application/json" id="module-spec">{"id": "M05-RETENTION-RECEIPT-HANDOFF", "primary_module": "M05", "parent": "PD-P1-M05-PREP-01 Yellow", "status": "PROPOSED_PENDING_OWNER", "intent": "One Held Save pin to persisted formal-document root through candidate single catalog CAS; no full catalog rewrite.", "architecture": {"hexagonal": "M04 trusted capture → proposed M05 transfer input → MaterialOwner → output abstractions → existing IO adapter; issuer lookup remains pending", "dependencies": "M04 owns DocumentOwner/S1 ACK; M05 alone owns catalog, pin/root and transition record; M03 projects only authorized response", "ownership": "M05 catalog authoritative candidate state; M04 supplied observations are not a second retention authority", "mutation": "one proposed catalog CAS joins Held→Transferred, root manifest and transition_receipt", "transaction": "file commit already verified; catalog CAS separate; M04 semantic ACK only after authenticated transfer proof; no cross-file/catalog/ACK atomicity", "forbidden": ["new Port adoption", "provider/persistence implementation", "M04 pin owner", "second registry", "physical GC", "automatic release/retry/rollback", "automatic ACK"]}, "before_after": "Before Held/root absent/record absent at7; after Transferred/root present/record present at8 atomically under assumed verified CAS. Any unknown proof blocks new mutation, keeps conservative retention; never asserts rollback after possible CAS.", "proof_projection": "catalog-fixture.json uses every CXv3 registry field; NOT an adopted closed public DTO. Closed v2 request reused; exact M04 response projection remains gap H3. External catalog CommitReceipt not embedded into own committed raw bytes.", "choices": [{"id": "H1", "owner": "M05+M04", "gap": "Effective CXv3 hashes complete closed SGA-TRANSITION-v2 request recursively, including pin_id/root_manifest/external_proof. The newer M04 17-field observation has no exact assembly mapping to this body or native issuer lineage.", "candidate": "Preserve effective v2 schema and full-body hashing. Reconcile M04 observations to frozen server-resolved body. Save purpose is immutable held-pin issuer-record binding, not a new transfer body field; changed valid body conflicts, changed source binding fails proof verification.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H2", "owner": "M05+IO", "gap": "store_identity/native target identity are prose; no issuer authentication, alias-safe identity/fence validator, durable inclusion verifier or restart implementation exists.", "candidate": "Approve exact native issuer lookup/fence/inclusion seams and failure contract before Skeleton. Document fixture membership is only an assumed lookup.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H3", "owner": "M05+M04+M03", "gap": "Closed transfer-formal request is already defined by central v3 schema. TransferReceipt and registry projection need exact M04 handoff/output mapping; pin/receipt UUID lineage and semantic profile mapping remain handoff questions, not a reopening of v3 hash closure.", "candidate": "Reuse central closed request; choose exact issuer registry to M04 response/proof mapping without inventing fields or treating prose projection as adopted runtime response.", "status": "PROPOSED_PENDING_OWNER"}, {"id": "H4", "owner": "M05+IO", "gap": "Uncertain CAS and after-CAS raw proof loss cannot prove prior or committed state from response absence. Record raw digest cannot self-reference its own committed index.", "candidate": "Record logical generation in same CAS; retain external four-field commit proof separately as issuer evidence. No new registry; explicit reconciliation revalidates raw bytes and inclusion, never auto retry/ACK/release.", "status": "PROPOSED_PENDING_OWNER"}], "tuple_mapping": "tuple-map.json", "bdd_categories": {"B1": "Applicable: bounded documentary cases only", "B2": "Applicable: bounded documentary cases only", "B3": "Applicable: bounded documentary cases only", "B4": "Applicable: bounded documentary cases only", "B5": "Applicable: bounded documentary cases only", "B6": "Applicable: bounded documentary cases only", "B7": "Applicable: bounded documentary cases only", "B8": "Applicable: bounded documentary cases only", "B9": "Applicable: bounded documentary cases only", "B10": "Applicable: bounded documentary cases only", "B11": "Deferred: compatibility requires approved protocol/schema", "B12": "Applicable: bounded documentary cases only"}, "tdd": {"document_command": "python -B check_documents.py", "product_command": "NOT RUN; owner-approved crate/test path unavailable until Skeleton approval", "valid_red": "Compile successfully, fail for missing intended transfer/replay/proof behavior with injectable CAS/issuer seams; document oracle is not valid RED", "levels": "L0 canonical bytes; L1 issuer tuple; L2 module port fake CAS; L3 native catalog; L4 M04/M03 regression; L5 system: all product levels planned NOT RUN"}, "acceptance": ["all18 documentary witnesses match explicit candidate oracle", "same-key fullbody or immutable source-binding mutation never produces second CAS", "unknown commit/proof loss never asserts old catalog unchanged or ACK", "796 product hashes unchanged and original inputs sealed", "Owner choices remain pending; module_complete false"], "pending_automation": ["native issuer authenticity and alias/fence proof", "real IO commit and inclusion persistence", "restart replay/uncertainty reconstruction", "full closed DTO+Draft2020-12 validation", "M04 file→transfer→S1 ACK and newer-live regression", "independent document review"], "not_run": ["independent review", "native/provider/isolation/restart", "product tests", "valid RED/GREEN", "build/package/install", "full Draft2020-12"], "module_complete": false, "next_ready_action": "Owner decides H1-H4, revalidates architecture/contracts/BDD/Skeleton; independent review and compile-valid intended RED before any production implementation."}</script>

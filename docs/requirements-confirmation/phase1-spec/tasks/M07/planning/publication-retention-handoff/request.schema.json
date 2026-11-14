@@ -1,0 +1,1133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sga:cx-v3:transition-request",
+  "$defs": {
+    "U64Decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "maxLength": 20,
+      "description": "Checked runtime u64 <=18446744073709551615; no JSON number or JS Number"
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1
+    },
+    "WorkflowContext": {
+      "type": "object",
+      "properties": {
+        "project_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner_generation": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "captured_revision": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "workflow_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "project_uuid",
+        "document_uuid",
+        "session_id",
+        "owner_generation",
+        "captured_revision",
+        "workflow_id"
+      ],
+      "additionalProperties": false
+    },
+    "NativeIdentity": {
+      "type": "object",
+      "properties": {
+        "volume_id": {
+          "type": "string"
+        },
+        "file_id": {
+          "type": "string"
+        },
+        "canonical_target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "volume_id",
+        "file_id",
+        "canonical_target"
+      ],
+      "additionalProperties": false
+    },
+    "ReceiptRef": {
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "type": "string"
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "context_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "evidence_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "issuer",
+        "receipt_id",
+        "kind",
+        "context_digest",
+        "evidence_digest"
+      ],
+      "additionalProperties": false
+    },
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "$ref": "#/$defs/U64Decimal"
+        }
+      },
+      "required": [
+        "asset_id",
+        "digest",
+        "size_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "RootManifest": {
+      "type": "object",
+      "properties": {
+        "manifest_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "epoch": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "completeness": {
+          "enum": [
+            "Complete",
+            "Unknown"
+          ]
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        }
+      },
+      "required": [
+        "manifest_id",
+        "provider_id",
+        "kind",
+        "epoch",
+        "completeness",
+        "assets"
+      ],
+      "additionalProperties": false
+    },
+    "ImportMetadata": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "original_filename": {
+          "type": "string"
+        },
+        "legacy_aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "asset_id",
+        "name",
+        "media_type",
+        "original_filename",
+        "legacy_aliases"
+      ],
+      "additionalProperties": false
+    },
+    "Resolution": {
+      "type": "object",
+      "properties": {
+        "snapshot_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "catalog_raw_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "catalog_generation": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "completeness": {
+          "enum": [
+            "Complete"
+          ]
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Asset"
+          }
+        }
+      },
+      "required": [
+        "snapshot_digest",
+        "catalog_raw_digest",
+        "catalog_generation",
+        "completeness",
+        "assets"
+      ],
+      "additionalProperties": false
+    },
+    "SourceSelection": {
+      "type": "object",
+      "properties": {
+        "selection_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "native_identity": {
+          "$ref": "#/$defs/NativeIdentity"
+        },
+        "raw_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "$ref": "#/$defs/U64Decimal"
+        }
+      },
+      "required": [
+        "selection_id",
+        "native_identity",
+        "raw_digest",
+        "size_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "Bundle": {
+      "type": "object",
+      "properties": {
+        "issuer_proof": {
+          "$ref": "#/$defs/ReceiptRef"
+        },
+        "source_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset": {
+                "$ref": "#/$defs/Asset"
+              },
+              "metadata": {
+                "$ref": "#/$defs/ImportMetadata"
+              }
+            },
+            "required": [
+              "asset",
+              "metadata"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "legacy_alias_mapping": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "alias": {
+                "type": "string"
+              },
+              "asset_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "alias",
+              "asset_id",
+              "digest"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "issuer_proof",
+        "source_digest",
+        "entries",
+        "legacy_alias_mapping"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "resolve"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "ordered_requests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "requested_digest": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "asset_id",
+                  "requested_digest"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "catalog_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "ordered_requests",
+            "catalog_identity",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "pin"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "resolution": {
+              "$ref": "#/$defs/Resolution"
+            },
+            "purpose": {
+              "enum": [
+                "Candidate",
+                "Save",
+                "Undo",
+                "Redo",
+                "Recovery",
+                "Import",
+                "Export"
+              ]
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "resolution",
+            "purpose",
+            "store_identity",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "import"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "Selection"
+                  ]
+                },
+                "source": {
+                  "$ref": "#/$defs/SourceSelection"
+                },
+                "metadata": {
+                  "$ref": "#/$defs/ImportMetadata"
+                },
+                "purpose": {
+                  "enum": [
+                    "Candidate",
+                    "Save",
+                    "Undo",
+                    "Redo",
+                    "Recovery",
+                    "Import",
+                    "Export"
+                  ]
+                },
+                "store_identity": {
+                  "$ref": "#/$defs/NativeIdentity"
+                },
+                "expected_catalog_generation": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "mode",
+                "source",
+                "metadata",
+                "purpose",
+                "store_identity",
+                "expected_catalog_generation"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "VerifiedBundle"
+                  ]
+                },
+                "bundle": {
+                  "$ref": "#/$defs/Bundle"
+                },
+                "purpose": {
+                  "enum": [
+                    "Candidate",
+                    "Save",
+                    "Undo",
+                    "Redo",
+                    "Recovery",
+                    "Import",
+                    "Export"
+                  ]
+                },
+                "store_identity": {
+                  "$ref": "#/$defs/NativeIdentity"
+                },
+                "expected_catalog_generation": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "mode",
+                "bundle",
+                "purpose",
+                "store_identity",
+                "expected_catalog_generation"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "install"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidate_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidate_semantic_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "candidate_raw_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "expected_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "expected_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "pin_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "binding_ref",
+            "candidate_ref",
+            "candidate_semantic_digest",
+            "candidate_raw_digest",
+            "expected_revision",
+            "expected_generation",
+            "pin_receipt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "undo"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "history_entry_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "history_content_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "expected_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "expected_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "pin_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "binding_ref",
+            "history_entry_id",
+            "history_content_digest",
+            "expected_revision",
+            "expected_generation",
+            "pin_receipt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "release"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_bundle": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/RootManifest"
+              }
+            },
+            "provider_fences": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ReceiptRef"
+              }
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_bundle",
+            "provider_fences",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "publish"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "registration_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider_capability_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_epoch": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "registration_id",
+            "provider_capability_id",
+            "expected_epoch",
+            "manifest",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "ack"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "captured_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "captured_semantic_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "formal_target_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "file_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "transfer_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "captured_revision",
+            "captured_semantic_digest",
+            "formal_target_identity",
+            "file_receipt",
+            "transfer_receipt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "transfer-live"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "transfer-formal"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "enum": [
+            "SGA-TRANSITION-v2"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "enum": [
+            "transfer-recovery"
+          ]
+        },
+        "ordinal": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "context": {
+          "$ref": "#/$defs/WorkflowContext"
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "protocol",
+        "issuer",
+        "role",
+        "ordinal",
+        "context",
+        "body"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

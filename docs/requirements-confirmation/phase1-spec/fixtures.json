@@ -1,0 +1,406 @@
+{
+  "status": "PLANNED_NOT_EXECUTED",
+  "use": "Only generated isolated directories; never user data or real board reset",
+  "projects": {
+    "A": {
+      "id": "project-A",
+      "session": "A-session-1",
+      "path": "${TEMP_ROOT}/A"
+    },
+    "B": {
+      "id": "project-B",
+      "session": "B-session-1",
+      "path": "${TEMP_ROOT}/B"
+    }
+  },
+  "documents": {
+    "before": {
+      "id": "doc-1",
+      "revision": "r0",
+      "nodes": [
+        "n1",
+        "n2"
+      ],
+      "relations": [
+        [
+          "n1",
+          "n2"
+        ]
+      ],
+      "assets": [
+        "asset-shared@v1"
+      ],
+      "binding": "valid"
+    },
+    "incoming": {
+      "id": "doc-1",
+      "source": "unknown",
+      "revision": "external-r1",
+      "assets": [
+        "asset-new@v1"
+      ]
+    },
+    "other_document": {
+      "id": "doc-2",
+      "assets": [
+        "asset-shared@v1"
+      ]
+    }
+  },
+  "assets": {
+    "asset-shared@v1": "immutable fixture bytes shared by two documents",
+    "asset-new@v1": "fixture bytes pinned by retained snapshot after merge"
+  },
+  "clock": {
+    "controlled_seconds": [
+      0,
+      59,
+      60,
+      61,
+      120
+    ],
+    "slow_write": "hold completion past next tick",
+    "content_revisions": [
+      "r0",
+      "r1",
+      "r2"
+    ]
+  },
+  "fault_points": [
+    "read",
+    "decode",
+    "validate",
+    "prepare-assets",
+    "prepare-document",
+    "commit-document",
+    "publish-undo",
+    "write-snapshot",
+    "write-snapshot-assets",
+    "publish-index",
+    "rollback",
+    "cleanup"
+  ],
+  "comparison": "canonical document + hierarchy + relations + bindings + asset identities and hashes + unaffected documents; do not compare UI focus or playback",
+  "scenarios": [
+    {
+      "id": "01",
+      "bdd": "BDD-01",
+      "tdd": "TDD-01",
+      "module": "M01",
+      "req": "REQ-03",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "已保存欄位與未決事項仍在，未生成未確認部分",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "02",
+      "bdd": "BDD-02",
+      "tdd": "TDD-02",
+      "module": "M01",
+      "req": "REQ-08",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不覆寫，提供修改名稱、另選位置或取消",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "03",
+      "bdd": "BDD-03",
+      "tdd": "TDD-03",
+      "module": "M02",
+      "req": "REQ-04",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "只允許保存定義並明示缺少的決策",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "04",
+      "bdd": "BDD-04",
+      "tdd": "TDD-04",
+      "module": "M02",
+      "req": "REQ-04",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "程式及UI UX骨架符合預覽且未實作項可辨",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "05",
+      "bdd": "BDD-05",
+      "tdd": "TDD-05",
+      "module": "M03",
+      "req": "REQ-05",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "UI設計視窗載入主要畫面",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "06",
+      "bdd": "BDD-06",
+      "tdd": "TDD-06",
+      "module": "M03",
+      "req": "REQ-05",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不開啟多餘UI設計視窗",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "07",
+      "bdd": "BDD-07",
+      "tdd": "TDD-07",
+      "module": "M04",
+      "req": "REQ-07",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "原有效檔、修改與目前專案保留，切換未發生",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "08",
+      "bdd": "BDD-08",
+      "tdd": "TDD-08",
+      "module": "M04",
+      "req": "REQ-07",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "文件與內容保持原樣且仍開啟",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "09",
+      "bdd": "BDD-09",
+      "tdd": "TDD-09",
+      "module": "M06",
+      "req": "REQ-06",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "A來源內容不變",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "10",
+      "bdd": "BDD-10",
+      "tdd": "TDD-10",
+      "module": "M06",
+      "req": "REQ-06",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "提供另存新名稱、明確取代與取消且未自動覆寫",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "11",
+      "bdd": "BDD-11",
+      "tdd": "TDD-11",
+      "module": "M06",
+      "req": "REQ-09",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不自動輸出BIN",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "12",
+      "bdd": "BDD-12",
+      "tdd": "TDD-12",
+      "module": "M06",
+      "req": "REQ-09",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "內容清單包含定義、ESS、UI及完整被引用素材",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "13",
+      "bdd": "BDD-13",
+      "tdd": "TDD-13",
+      "module": "M06",
+      "req": "REQ-13",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "說明原因，目標不變且未執行包內程式",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "14",
+      "bdd": "BDD-14",
+      "tdd": "TDD-14",
+      "module": "M06",
+      "req": "REQ-13",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "可檢視保存，相關執行或生成被阻擋",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "15",
+      "bdd": "BDD-15",
+      "tdd": "TDD-15",
+      "module": "M06",
+      "req": "REQ-12",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "阻擋並說明前置條件，不擴大範圍",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "16",
+      "bdd": "BDD-16",
+      "tdd": "TDD-16",
+      "module": "M06",
+      "req": "REQ-11",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不自動合併，逐項提供保留本機、採用匯入或另副本",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "17",
+      "bdd": "BDD-17",
+      "tdd": "TDD-17",
+      "module": "M06",
+      "req": "REQ-14",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "暫停受影響項目並提供略過或另副本，不猜測重綁",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "18",
+      "bdd": "BDD-18",
+      "tdd": "TDD-18",
+      "module": "M06",
+      "req": "REQ-14",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "只調整副本可確定引用，未解析標待處理，來源既有內容不變",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "19",
+      "bdd": "BDD-19",
+      "tdd": "TDD-19",
+      "module": "M06",
+      "req": "REQ-11",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "回到合併前完整狀態、來源不變且不增加Undo",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "20",
+      "bdd": "BDD-20",
+      "tdd": "TDD-20",
+      "module": "M04",
+      "req": "REQ-15",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "完整還原內容與引用，只撤回該次操作",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "21",
+      "bdd": "BDD-21",
+      "tdd": "TDD-21",
+      "module": "M04",
+      "req": "REQ-15",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "還原整次變更及綁定限制，不刪來源或共用素材",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "22",
+      "bdd": "BDD-22",
+      "tdd": "TDD-22",
+      "module": "M07",
+      "req": "REQ-19",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不新增復原快照",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "23",
+      "bdd": "BDD-23",
+      "tdd": "TDD-23",
+      "module": "M07",
+      "req": "REQ-19",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "該內容及必要素材納入首次快照",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "24",
+      "bdd": "BDD-24",
+      "tdd": "TDD-24",
+      "module": "M07",
+      "req": "REQ-20",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "R成功只更新至R基準，R加1留待後續檢查",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "25",
+      "bdd": "BDD-25",
+      "tdd": "TDD-25",
+      "module": "M07",
+      "req": "REQ-20",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "保留舊快照及待保存狀態並重試，不重疊啟動",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "26",
+      "bdd": "BDD-26",
+      "tdd": "TDD-26",
+      "module": "M07",
+      "req": "REQ-20",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "延後擷取直到完成或完整回復",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "27",
+      "bdd": "BDD-27",
+      "tdd": "TDD-27",
+      "module": "M07",
+      "req": "REQ-21",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "不改快照基準、不立即刪除既有快照",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "28",
+      "bdd": "BDD-28",
+      "tdd": "TDD-28",
+      "module": "M07",
+      "req": "REQ-22",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "以未保存狀態開啟且可保存至新位置",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "29",
+      "bdd": "BDD-29",
+      "tdd": "TDD-29",
+      "module": "M07",
+      "req": "REQ-22",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "文件、快照與素材仍保留",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "30",
+      "bdd": "BDD-30",
+      "tdd": "TDD-30",
+      "module": "M07",
+      "req": "REQ-17",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "以各SessionID隔離且互不覆寫",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "31",
+      "bdd": "BDD-31",
+      "tdd": "TDD-31",
+      "module": "M05",
+      "req": "REQ-16",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "活文件引用撤回但快照所需素材保留",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "32",
+      "bdd": "BDD-32",
+      "tdd": "TDD-32",
+      "module": "M08",
+      "req": "REQ-01",
+      "fixture": "shared fixture above plus scenario-specific arrangement pending G01-G04",
+      "expected": "使用者資料區快照仍可找到與復原",
+      "result": "NOT RUN"
+    }
+  ]
+}

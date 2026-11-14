@@ -1,0 +1,70 @@
+{
+  "proposal_notice": "PROPOSED sample only; NOT production schema, NOT approval, NOT a source-document edit",
+  "source": {
+    "relative_path": "crates/sgenaxis-host/tests/fixtures/module_packet.ess",
+    "sha256": "1d8b99e7ae1d83e7fb415b32cafc49f0c92792f80acc3bd660fc38516067f602"
+  },
+  "document_bindings": [
+    {
+      "architecture_document_ref": "embedded-design",
+      "source_sha256": "1d8b99e7ae1d83e7fb415b32cafc49f0c92792f80acc3bd660fc38516067f602",
+      "selector": "/eluslotScene/design",
+      "document_kind": "embedded eluslot.esui",
+      "note": "Explicit proposed alias binding; existing .ess design has no identity attribute proving embedded-design. Alias must never be inferred."
+    }
+  ],
+  "assignments": [
+    {
+      "module_id": "semantic-A",
+      "architecture_ui_node_id": "ui",
+      "document_ref": "embedded-design",
+      "design_node_ids": [
+        "design-button"
+      ]
+    },
+    {
+      "module_id": "empty-module",
+      "architecture_ui_node_id": "ui",
+      "document_ref": "embedded-design",
+      "design_node_ids": [
+        "design-button"
+      ]
+    }
+  ],
+  "expected": {
+    "binding_state": "CONFLICT",
+    "readiness": "NOT_READY",
+    "selected_design_node_ids": [],
+    "diagnostics": [
+      "UI_BINDING_CONFLICT",
+      "UI_BINDING_MODULE_MISMATCH"
+    ],
+    "meaning": "UI architecture node ui belongs semantic-A, not empty-module; duplicate overlapping design ownership is rejected with no precedence merge."
+  },
+  "additional_negative_mutations": [
+    {
+      "change": "set design_node_ids to [missing-button]",
+      "expected": "UI_BINDING_DANGLING_NODE + NOT_READY, no selected body"
+    },
+    {
+      "change": "add second document binding for alias embedded-design pointing another selector/hash",
+      "expected": "UI_DOCUMENT_MULTIPLE + NOT_READY; even byte-identical duplicate entries reject rather than choose first"
+    },
+    {
+      "change": "set source.sha256 to any other digest or mutate source file",
+      "expected": "UI_BINDING_STALE + NOT_READY before resolving node bodies"
+    },
+    {
+      "change": "remove document binding but keep assignment",
+      "expected": "UI_DOCUMENT_UNRESOLVED + NOT_READY"
+    },
+    {
+      "change": "repeat node id in design section",
+      "expected": "UI_NODE_ID_AMBIGUOUS + NOT_READY; never choose first"
+    },
+    {
+      "change": "remove architecture module or UI member",
+      "expected": "UI_BINDING_DANGLING_MODULE_OR_UI + NOT_READY"
+    }
+  ]
+}

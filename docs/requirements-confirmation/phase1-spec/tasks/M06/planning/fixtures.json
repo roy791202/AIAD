@@ -1,0 +1,127 @@
+{
+  "module": "M06",
+  "status": "PLANNED_NOT_EXECUTED",
+  "projectA": {
+    "persistentId": "project-A-proposed",
+    "legacyRootId": "proj_A",
+    "root": "${TEMP_ROOT}/A",
+    "sessionId": "A-1"
+  },
+  "projectB": {
+    "persistentId": "project-B-proposed",
+    "root": "${TEMP_ROOT}/B",
+    "sessionId": "B-1"
+  },
+  "document": {
+    "id": "doc-1",
+    "revision": "R0",
+    "nodes": [
+      "n1",
+      "n2"
+    ],
+    "relations": [
+      [
+        "n1",
+        "n2"
+      ]
+    ],
+    "assetRefs": [
+      "shared@v1"
+    ],
+    "bindingState": "valid"
+  },
+  "otherDocument": {
+    "id": "doc-2",
+    "assetRefs": [
+      "shared@v1"
+    ]
+  },
+  "assetBytes": {
+    "shared@v1": "SHARED-V1",
+    "new@v1": "NEW-V1"
+  },
+  "baselines": {
+    "formal": "R0",
+    "snapshot": "R0"
+  },
+  "clockSeconds": [
+    0,
+    59,
+    60,
+    61,
+    120
+  ],
+  "faults": [
+    "read",
+    "validate",
+    "stage",
+    "commit",
+    "history-publish",
+    "index-publish",
+    "rollback",
+    "cleanup"
+  ],
+  "cases": {
+    "BDD-09": {
+      "given": "專案A匯出的ESS已匯入B為副本",
+      "when": "修改保存B副本",
+      "expected": "A來源內容不變"
+    },
+    "BDD-10": {
+      "given": "目標已有同名ESS",
+      "when": "預覽匯入",
+      "expected": "提供另存新名稱、明確取代與取消且未自動覆寫"
+    },
+    "BDD-11": {
+      "given": "已建立專案但未要求封裝",
+      "when": "完成一般保存",
+      "expected": "不自動輸出BIN"
+    },
+    "BDD-12": {
+      "given": "專案含UI及被引用素材",
+      "when": "明確封裝BIN",
+      "expected": "內容清單包含定義、ESS、UI及完整被引用素材"
+    },
+    "BDD-13": {
+      "given": "封裝損毀或宣告越出目標目錄的路徑",
+      "when": "要求匯入",
+      "expected": "說明原因，目標不變且未執行包內程式"
+    },
+    "BDD-14": {
+      "given": "安全完整封裝缺明確宣告的外部依賴",
+      "when": "確認以待綁定匯入",
+      "expected": "可檢視保存，相關執行或生成被阻擋"
+    },
+    "BDD-15": {
+      "given": "單文件合併必須修改另一文件才能一致",
+      "when": "確認合併",
+      "expected": "阻擋並說明前置條件，不擴大範圍"
+    },
+    "BDD-16": {
+      "given": "兩份內容沒有可靠共同基準",
+      "when": "檢視合併差異",
+      "expected": "不自動合併，逐項提供保留本機、採用匯入或另副本"
+    },
+    "BDD-17": {
+      "given": "相同ID但無法確認同源",
+      "when": "預覽套用",
+      "expected": "暫停受影響項目並提供略過或另副本，不猜測重綁"
+    },
+    "BDD-18": {
+      "given": "已預覽新身分及引用調整範圍",
+      "when": "確認另建副本",
+      "expected": "只調整副本可確定引用，未解析標待處理，來源既有內容不變"
+    },
+    "BDD-19": {
+      "given": "文件及素材已有完整前狀態",
+      "when": "合併在任一提交階段失敗",
+      "expected": "回到合併前完整狀態、來源不變且不增加Undo"
+    },
+    "BDD-M06-A": {
+      "given": "包有重複路徑/父目錄穿越/未知schema或超限",
+      "when": "要求匯入",
+      "expected": "拒絕且所有目標原檔不變"
+    }
+  },
+  "safety": "Never operate user projects or reset real board. Fixture schemas are proposals, not product schemas."
+}

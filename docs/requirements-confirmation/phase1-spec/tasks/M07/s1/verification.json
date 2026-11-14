@@ -1,0 +1,211 @@
+{
+  "module": "M07",
+  "slice": "M07-S1",
+  "status": "SKELETON_VALID_RED_DELIVERED_PENDING_ACCEPTANCE",
+  "date": "2026-11-01T10:47:58.643533+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "authority": {
+    "module": "M07",
+    "date": "2026-11-01T10:45:42.096963+08:00",
+    "adopted": [
+      "M07-R1",
+      "M07-R2",
+      "M07-R3",
+      "M07-R4"
+    ],
+    "design_path": "docs\\requirements-confirmation\\phase1-spec\\tasks\\M07\\planning\\pure-policy-design\\module-spec.json",
+    "design_sha256": "bdf5ef0daa1c67279999c6d4715f2e3919268472678d68dc6822dd9fc121bd20",
+    "authority": "Owner authorized S1 Skeleton and valid RED only. Product behavior not authorized."
+  },
+  "approved_design": "../planning/pure-policy-design/index.html",
+  "architecture": {
+    "hexagonal": "Future timer/UI/test adapter -> HOST use case -> WORK transition_recovery pure state function; HOST will provide verified immutable capture/publication events through separately approved seams.",
+    "dependency_view": "M04 stable immutable content + M05 material claims -> future HOST capture/store -> typed event -> M07 pure baseline state. Formal baseline remains owned by M04, not copied into this policy.",
+    "ownership": "Per-project/session recovery policy owns only scheduling/attempt/recovery-baseline state. It does not own current document bytes, formal baseline or snapshot index.",
+    "mutation": "Transition returns new state and action value; immutable caller input. No FS/global timer/crypto/environment dependency or direct document mutation.",
+    "transaction": "Begin records captured identity; successful durable index acknowledgement advances only that captured fingerprint. Physical payload/index/material ownership transfer remains outside this slice and requires separate approved transaction."
+  },
+  "skeleton": "Approved public data shapes and one immutable input/output function materialized. Only unimplemented marker in function body; no product behavior or private algorithms.",
+  "scope": {
+    "per_module_three_paths": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_recovery_policy.rs"
+    ],
+    "shared_composition_seam": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+    "total_unique_product_test_paths_this_joint_delivery": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_asset_roots.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_recovery_policy.rs"
+    ],
+    "existing_product_delta": "Two module declarations only, jointly authorized for M05/M07",
+    "new_production_and_test_files": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_recovery_policy.rs"
+    ],
+    "dependencies_public_ports_HOST_UI_changed": false,
+    "source_hashes": {
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs": "1d8f4f0515f4d13ca7dfcc946b5746ce75be36308607e806b89959f10642a8bb",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs": "0653889203b2aae357513f40e6a1a1f78e328397e0633ed7e2f4845cb04b9807",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_asset_roots.rs": "d3988793ea775c7e1d9ee3947057eea25f5e1ecb598a617d029726803f522e0d",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs": "190eb77602af0832c68c36f9e787bc1dfe73efb9d008813db6598fe5f2ea78d3",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_recovery_policy.rs": "23161ecd4cf0b761bdca0e4f631105ebc7face01859528ef4452b5f1bdf29383"
+    }
+  },
+  "results": {
+    "compile": "PASS",
+    "valid_RED": 34,
+    "fixture_PASS": 1,
+    "ignored": 0,
+    "RED_exit_code": 101,
+    "classification": "Every failed behavior test reaches approved missing-behavior body marker; no compile, dependency, fixture or environment failure counted as RED.",
+    "WORK_existing_PASS": 73,
+    "HOST_selected_project_new_PASS": 9,
+    "HOST_limit": "75 unrelated cases filtered; no full HOST/system acceptance",
+    "M02_existing_RED_regression": "Unchanged: 68 intended RED +4 fixture/oracle PASS",
+    "product_GREEN_build_package_native": "NOT RUN"
+  },
+  "tests": {
+    "executable_behavior_names": [
+      "m07_256_byte_attempt_id_is_valid",
+      "m07_257_byte_attempt_id_rejected",
+      "m07_59000ms_is_not_due",
+      "m07_60000ms_requests_capture",
+      "m07_61000ms_requests_capture",
+      "m07_begin_records_actual_newer_captured_revision",
+      "m07_begin_requires_capture_request",
+      "m07_close_clears_only_unstarted_capture_request",
+      "m07_closed_completion_cannot_advance_baseline",
+      "m07_empty_attempt_id_rejected",
+      "m07_empty_state_identity_rejected",
+      "m07_equal_content_skips_despite_elapsed_time",
+      "m07_failed_completion_keeps_previous_baseline",
+      "m07_first_unsaved_content_requests_capture",
+      "m07_inflight_check_does_not_overlap",
+      "m07_invalid_asset_digest_rejected",
+      "m07_invalid_current_fingerprint_rejected",
+      "m07_invalid_saved_fingerprint_rejected",
+      "m07_long_resume_requests_one_capture",
+      "m07_max_elapsed_counter_uses_subtraction_without_wrap",
+      "m07_max_elapsed_due_counter_requests_capture",
+      "m07_mismatched_attempt_is_stale",
+      "m07_mutation_defers_without_consuming_deadline",
+      "m07_newer_edit_still_requests_capture_after_old_completion",
+      "m07_next_due_check_retries_failed_capture",
+      "m07_no_timer_backlog_after_large_jump",
+      "m07_other_project_event_rejected",
+      "m07_other_session_completion_rejected",
+      "m07_pending_capture_check_does_not_request_twice",
+      "m07_published_acknowledges_only_captured_fingerprint",
+      "m07_stable_same_time_check_after_defer_is_eligible",
+      "m07_time_regression_rejected",
+      "m07_unknown_completion_is_stale",
+      "m07_unknown_current_fingerprint_rejected"
+    ],
+    "contract_groups": {
+      "cadence_no_overlap": [
+        "m07_61000ms_requests_capture",
+        "m07_60000ms_requests_capture",
+        "m07_59000ms_is_not_due",
+        "m07_inflight_check_does_not_overlap",
+        "m07_max_elapsed_due_counter_requests_capture",
+        "m07_long_resume_requests_one_capture",
+        "m07_no_timer_backlog_after_large_jump",
+        "m07_pending_capture_check_does_not_request_twice",
+        "m07_next_due_check_retries_failed_capture"
+      ],
+      "attempt_baseline_lifecycle": [
+        "m07_begin_requires_capture_request",
+        "m07_61000ms_requests_capture",
+        "m07_256_byte_attempt_id_is_valid",
+        "m07_257_byte_attempt_id_rejected",
+        "m07_close_clears_only_unstarted_capture_request",
+        "m07_begin_records_actual_newer_captured_revision",
+        "m07_60000ms_requests_capture",
+        "m07_failed_completion_keeps_previous_baseline",
+        "m07_closed_completion_cannot_advance_baseline",
+        "m07_empty_attempt_id_rejected",
+        "m07_invalid_current_fingerprint_rejected",
+        "m07_first_unsaved_content_requests_capture",
+        "m07_newer_edit_still_requests_capture_after_old_completion",
+        "m07_max_elapsed_due_counter_requests_capture",
+        "m07_invalid_saved_fingerprint_rejected",
+        "m07_other_project_event_rejected",
+        "m07_long_resume_requests_one_capture",
+        "m07_mismatched_attempt_is_stale",
+        "m07_pending_capture_check_does_not_request_twice",
+        "m07_other_session_completion_rejected",
+        "m07_published_acknowledges_only_captured_fingerprint",
+        "m07_next_due_check_retries_failed_capture",
+        "m07_unknown_completion_is_stale",
+        "m07_unknown_current_fingerprint_rejected"
+      ],
+      "invalid_boundaries": [
+        "m07_256_byte_attempt_id_is_valid",
+        "m07_257_byte_attempt_id_rejected",
+        "m07_empty_state_identity_rejected",
+        "m07_empty_attempt_id_rejected",
+        "m07_invalid_asset_digest_rejected",
+        "m07_invalid_current_fingerprint_rejected",
+        "m07_max_elapsed_counter_uses_subtraction_without_wrap",
+        "m07_max_elapsed_due_counter_requests_capture",
+        "m07_invalid_saved_fingerprint_rejected",
+        "m07_other_project_event_rejected",
+        "m07_other_session_completion_rejected",
+        "m07_time_regression_rejected",
+        "m07_unknown_current_fingerprint_rejected"
+      ]
+    },
+    "bounded_assertions": "Exact decision/state/action and typed rejection assertions; raw fixtures do not call target behavior for setup.",
+    "target": "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_recovery_policy.rs"
+  },
+  "deferred_boundaries": [
+    "No real clock, filesystem, capture barrier, immutable material pin, durable payload/index publisher or recent-history UI is present.",
+    "Inherited capture C07/C08/C09/C17/C18/C19/C20/C22 require material/IO/history/native runtime; this slice covers only policy inputs and completion-state effects where applicable.",
+    "Formal-save baseline is intentionally not a policy field/event; real M04/M07 bridge still requires separate integration tests.",
+    "Some multi-step RED cases stop on the first unimplemented transition; later sequence assertions are executable future obligations, not already verified transitions."
+  ],
+  "review": "Primary delivery checks only. Independent stage acceptance NOT RUN; no automatic green or follow-on product implementation.",
+  "module_complete": false,
+  "commands": [
+    {
+      "name": "compile",
+      "command": "cargo test -p sgenaxis-work --test phase1_asset_roots --test phase1_recovery_policy --no-run --locked",
+      "exit_code": 0,
+      "log": "compile.txt"
+    },
+    {
+      "name": "M05-red",
+      "command": "cargo test -p sgenaxis-work --test phase1_asset_roots --locked",
+      "exit_code": 101,
+      "log": "M05-red.txt"
+    },
+    {
+      "name": "M07-red",
+      "command": "cargo test -p sgenaxis-work --test phase1_recovery_policy --locked",
+      "exit_code": 101,
+      "log": "M07-red.txt"
+    },
+    {
+      "name": "regression",
+      "command": "cargo test -p sgenaxis-work --lib --test phase1_project_definition --test phase1_document_history --test project_manifest --test project_s1 --test run_binding_reservation --locked",
+      "exit_code": 0,
+      "log": "regression.txt"
+    },
+    {
+      "name": "M02-red-regression",
+      "command": "cargo test -p sgenaxis-work --test phase1_generation_plan --locked",
+      "exit_code": 101,
+      "log": "M02-red-regression.txt"
+    },
+    {
+      "name": "host-adjacent",
+      "command": "cargo test -p sgenaxis-host project_new::tests --lib --locked",
+      "exit_code": 0,
+      "log": "host-adjacent.txt"
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+--- before/apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_generation_plan.rs
++++ after/apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_generation_plan.rs
+@@ -160,6 +160,42 @@
+     }
+ }
+ 
++/// Literal expected FieldPaths are supplied by each contract case, never
++/// recomputed from the target policy or inferred by a second implementation.
++fn assert_missing_causes(actual: &[String], expected: &[&str]) {
++    let expected: Vec<String> = expected.iter().map(|s| (*s).into()).collect();
++    assert_eq!(actual, expected, "report the actual missing decisions only");
++}
++
++#[test]
++fn oracle_missing_causes_rejects_wrong_cause_even_if_sorted_unique() {
++    let wrong = vec!["topology".to_string()];
++    for expected in [
++        "requirements[0].state",
++        "requirements[0].intent",
++        "requirements[0].acceptance",
++        "deliveryTargets[0].toolchain",
++        "deliveryTargets[0].hasUi",
++        "approvalRefs",
++    ] {
++        let rejected = std::panic::catch_unwind(|| assert_missing_causes(&wrong, &[expected]));
++        assert!(rejected.is_err(), "wrong cause must fail for {expected}");
++    }
++}
++
++#[test]
++fn oracle_missing_causes_rejects_extra_duplicate_or_omitted_causes() {
++    for wrong in [
++        vec!["approvalRefs".into(), "topology".into()],
++        vec!["approvalRefs".into(), "approvalRefs".into()],
++        vec![],
++    ] {
++        let rejected =
++            std::panic::catch_unwind(|| assert_missing_causes(&wrong, &["approvalRefs"]));
++        assert!(rejected.is_err(), "incorrect cause set must fail");
++    }
++}
++
+ #[test]
+ fn m02_t01_complete_definition_yields_both_intents_without_mutation() {
+     let (d, t, c) = fixtures();
+@@ -179,13 +215,14 @@
+ }
+ 
+ macro_rules! save_only {
+-    ($name:ident,$change:expr) => {
++    ($name:ident,$change:expr,$expected:expr) => {
+         #[test]
+         fn $name() {
+             let (mut d, t, mut c) = fixtures();
+             ($change)(&mut d, &mut c);
+             let before = (d.clone(), t.clone(), c.clone());
+-            missing(&d, &t, &c);
++            let fields = missing(&d, &t, &c);
++            assert_missing_causes(&fields, $expected);
+             assert_eq!((d, t, c), before);
+         }
+     };
+@@ -193,51 +230,60 @@
+ save_only!(
+     m02_t02_missing_topology,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.topology =
+-        FieldState::Unresolved
++        FieldState::Unresolved,
++    &["topology"]
+ );
+ save_only!(
+     m02_t02_tentative_requirement,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].state =
+-        RequirementState::Tentative
++        RequirementState::Tentative,
++    &["requirements[0].state"]
+ );
+ save_only!(
+     m02_t02_unresolved_requirement,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].state =
+-        RequirementState::Unresolved
++        RequirementState::Unresolved,
++    &["requirements[0].state"]
+ );
+ save_only!(
+     m02_t02_empty_requirement_intent,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0].intent =
+-        " ".into()
++        " ".into(),
++    &["requirements[0].intent"]
+ );
+ save_only!(
+     m02_t02_missing_acceptance,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.requirements[0]
+         .acceptance
+-        .clear()
++        .clear(),
++    &["requirements[0].acceptance"]
+ );
+ save_only!(
+     m02_t02_open_decision,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.open_decisions =
+-        vec!["topology".into(), "topology".into()]
++        vec!["topology".into(), "topology".into()],
++    &["topology"]
+ );
+ save_only!(
+     m02_t02_missing_toolchain,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.delivery_targets[0]
+         .toolchain
+-        .clear()
++        .clear(),
++    &["deliveryTargets[0].toolchain"]
+ );
+ save_only!(
+     m02_t02_unresolved_ui,
+     |d: &mut ProjectDefinition, _c: &mut GenerationPolicyContext| d.draft.delivery_targets[0]
+-        .has_ui = None
++        .has_ui = None,
++    &["deliveryTargets[0].hasUi"]
+ );
+ save_only!(
+     m02_t03_unverified_approval_is_not_authority,
+     |_d: &mut ProjectDefinition, c: &mut GenerationPolicyContext| {
+         c.required_approvals_satisfied = false;
+         c.verified_approval_refs.clear();
+-    }
++    },
++    &["approvalRefs"]
+ );
+ 
+ #[test]
+@@ -248,6 +294,59 @@
+     c.required_approvals_satisfied = false;
+     let fields = missing(&d, &t, &c);
+     assert!(fields.iter().any(|s| s == "topology"));
++    assert_missing_causes(&fields, &["approvalRefs", "topology"]);
++}
++
++#[test]
++fn m02_f2_unsafe_path_precedes_missing_approval() {
++    let (d, mut t, mut c) = fixtures();
++    t.artifacts[0].relative_path = "../escape.rs".into();
++    c.required_approvals_satisfied = false;
++    c.verified_approval_refs.clear();
++    let before = (d.clone(), t.clone(), c.clone());
++    match prepare_generation(&d, &t, &c) {
++        Err(GenerationPlanError::InvalidArtifactPath { path, reason }) => {
++            assert_eq!(path, "../escape.rs");
++            assert!(!reason.is_empty());
++        }
++        other => panic!("unsafe structure precedes save-only approval outcome: {other:?}"),
++    }
++    assert_eq!((d, t, c), before);
++}
++
++#[test]
++fn m02_f2_invalid_identity_precedes_missing_topology() {
++    let (mut d, t, mut c) = fixtures();
++    d.project_uuid = PersistentProjectId::candidate("invalid");
++    c.binding.project_uuid = "invalid".into();
++    d.draft.topology = FieldState::Unresolved;
++    let before = (d.clone(), t.clone(), c.clone());
++    match prepare_generation(&d, &t, &c) {
++        Err(GenerationPlanError::InvalidInput { field, reason }) => {
++            assert_eq!(field, "projectUuid");
++            assert!(!reason.is_empty());
++        }
++        other => panic!("invalid identity precedes save-only topology outcome: {other:?}"),
++    }
++    assert_eq!((d, t, c), before);
++}
++
++#[test]
++fn m02_f2_duplicate_target_precedes_unresolved_requirement() {
++    let (mut d, t, c) = fixtures();
++    d.draft
++        .delivery_targets
++        .push(d.draft.delivery_targets[0].clone());
++    d.draft.requirements[0].state = RequirementState::Unresolved;
++    let before = (d.clone(), t.clone(), c.clone());
++    match prepare_generation(&d, &t, &c) {
++        Err(GenerationPlanError::InvalidInput { field, reason }) => {
++            assert_eq!(field, "deliveryTargets[1].id");
++            assert!(!reason.is_empty());
++        }
++        other => panic!("duplicate target precedes save-only requirement outcome: {other:?}"),
++    }
++    assert_eq!((d, t, c), before);
+ }
+ 
+ macro_rules! reject {

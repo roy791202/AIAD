@@ -1,0 +1,327 @@
+{
+  "identity": {
+    "module": "execution-guard",
+    "task": "PD-RUST-GUARD-PLAN-02",
+    "date": "2026-10-26 Asia/Taipei",
+    "phase": "PLANNING",
+    "status": "ARCHITECTURE_GAP",
+    "architecture": "PROPOSED_NOT_APPROVED",
+    "implementation": "NOT_STARTED",
+    "Skeleton_RED": "FORBIDDEN_UNTIL_OWNER_APPROVAL",
+    "parent_proposal": "../execution-guard/module.html"
+  },
+  "delta_only": "This refinement fills the command/caller matrix and binding comparator missing from the existing proposal. It does not replace the prior decision options or implement an authority service. No formal code, Skeleton, behavioral RED or live endpoint work is performed.",
+  "what_current_source_proves": [
+    {
+      "fact": "authorize(name) rejects disallowed command names but accepts no caller/window/actor identity.",
+      "reference": "host/src/ipc.rs:188-191"
+    },
+    {
+      "fact": "Main and UI editor/viewer capability files include the same dispatch-default set. That set includes start_run, start_implementation, guard_check_start/changes and mutation commands.",
+      "reference": "src-tauri/capabilities/default.json; capabilities/uidesign-window.json; permissions/dispatch.toml"
+    },
+    {
+      "fact": "spec_approve is registered and invokes host.spec_approve without a caller/human check in its handler. Registration/name allowlisting does not prove authenticated human approval. Runtime Tauri ACL effectiveness for each app command is not independently exercised by this report.",
+      "reference": "src-tauri/src/lib.rs:90; commands.rs:560-565"
+    },
+    {
+      "fact": "Current EnvelopeDto.approved and RedKindDto::Behavioral are caller data. GuardExecPass contains envelope_hash and optional work_item_id only; it explicitly does not guarantee complete project/revision/evidence authority binding.",
+      "reference": "host/src/guard_cmd.rs:52-75,80-101,113-120,149-173"
+    },
+    {
+      "fact": "SPEC approve locks a revision's contracts fingerprint; that FNV-1a hash covers contract serialization, not full architecture/BDD/skeleton or producer authority.",
+      "reference": "spec/src/model.rs:77-90; spec/src/store.rs:79-96"
+    },
+    {
+      "fact": "EVID VersionBinding has spec_hash and worktree_fingerprint. RunCapture can record build_ok, command/cwd/exit/output/cases but is not itself a trusted human or behavioral-failure attestation.",
+      "reference": "evid/src/binding.rs:5-22; evid/src/capture.rs:5-51"
+    },
+    {
+      "fact": "Current start_implementation calls authorize_exec_start on caller GuardPacketDto; start_run accepts an optional packet and can reach ungated path without it.",
+      "reference": "src-tauri/src/dispatch.rs:401-418,450-468"
+    }
+  ],
+  "proposed_trust_boundary": {
+    "owner": "One trusted local desktop operator; no claim to resist hostile same-OS programs, UI automation acting with local user permissions, or compromised trusted frontend code. This restriction must be accepted explicitly.",
+    "human_only_meaning": "Owner confirmation is a host-driven local native confirmation result; a request may ask for a prompt but cannot submit an approved=true response. A window label alone is not human authentication. Native result plus restricted command route supplies a local interaction boundary only, not remote identity proof.",
+    "minimum_owner_route": "Proposed owner_request_implementation_approval is callable only from the locally configured main window. HOST loads the exact candidate snapshot itself, shows task/module/project/fingerprint/artifact hashes/RED verdict and one-shot scope in a native confirmation, then rechecks the snapshot under the dispatch lock before recording approval. Agent tools and UI editor/viewer are denied this route. No confirmation command or native result seam currently implements this contract.",
+    "no_boolean_authority": "Do not accept actor='human', approved=true, red='behavioral', expected hashes or an allowlisted command name as authority. Agent may supply an approval reference, never the bound record or comparator truth.",
+    "future_Agent_identity_gap": "No inbound MCP authentication/caller-to-run binding is established in the inspected path. Future Agent execution/cancel must remain denied until its driving adapter supplies a host-scoped caller identity/session bound to assigned work. Do not invent an identity field in request JSON and call that authentication.",
+    "no_new_framework": "Use existing HOST composition and in-memory session records if owner approves. No DB, network approval service, repository hierarchy or global Manager. Exact local native-dialog integration/tool choice remains a required architecture seam review before Skeleton."
+  },
+  "minimum_command_tool_matrix_PROPOSED": [
+    {
+      "operation": "get_board, get_evidence_summary, spec_get_projection, spec_get_revision, arch_get_projection, listen_get_projection",
+      "main": "Read existing projections",
+      "editor_viewer": "Read existing permitted projections",
+      "Agent": "Only scoped sanitized read tools; no settings/token exposure",
+      "rule": "Queries never register intent or approve. Agent wrapper is proposed, not existing inbound MCP."
+    },
+    {
+      "operation": "guard_check_start, guard_check_changes",
+      "main": "Policy preview",
+      "editor_viewer": "Policy preview only",
+      "Agent": "Policy preview only if exposed",
+      "rule": "Allow result cannot mint or store an authority pass. No EXEC side effects from preview."
+    },
+    {
+      "operation": "owner_classify_task (proposed)",
+      "main": "Only after host-owned local confirmation",
+      "editor_viewer": "DENY",
+      "Agent": "DENY",
+      "rule": "Sets explicit Generic/Implementation intent for bound task; unknown rejects. Ordinary upsert_task/title/kind cannot classify or reclassify."
+    },
+    {
+      "operation": "owner_request_implementation_approval (proposed)",
+      "main": "May request native owner confirmation; host supplies preview/binding",
+      "editor_viewer": "DENY",
+      "Agent": "DENY",
+      "rule": "Only native accepted result after unchanged snapshot can create session record; client cannot submit approval truth."
+    },
+    {
+      "operation": "owner_revoke_implementation_approval (proposed)",
+      "main": "Local owner route; idempotent revoke",
+      "editor_viewer": "DENY",
+      "Agent": "DENY",
+      "rule": "Revocation prevents future reservation; active cancellation stays separate. No generic set_task_zone approval shortcut."
+    },
+    {
+      "operation": "start_implementation",
+      "main": "Reference-only request; exact HOST record + policy required",
+      "editor_viewer": "DENY unless separately approved future UX",
+      "Agent": "DENY until host-scoped caller binding exists; then reference-only and assigned task only",
+      "rule": "Caller GuardPacket approved/red values cannot grant access. Existing DTO change would require approval; not implemented here."
+    },
+    {
+      "operation": "start_run",
+      "main": "Only host-classified Generic task; unknown/Implementation reject",
+      "editor_viewer": "Retain only explicit approved generic use if needed",
+      "Agent": "DENY until caller binding exists; then same Generic-only guard",
+      "rule": "One-run and WORK lease gates remain. No caller intent switch or title regex fallback. Current compatibility changes must be owner-approved."
+    },
+    {
+      "operation": "poll_chunks, cancel_run",
+      "main": "Existing current-run control",
+      "editor_viewer": "Existing display/control only if permitted",
+      "Agent": "Assigned bound run only after caller binding; otherwise DENY",
+      "rule": "RunId possession alone is not proof of assignment. Cancellation never changes approval/acceptance."
+    },
+    {
+      "operation": "spec_approve, spec_revise, spec_try_set_contract, spec_load_fixture",
+      "main": "Existing document edit/approval UX, but cannot confer implementation authority; changes invalidate affected session bindings",
+      "editor_viewer": "No authority mutation; any document-edit permission separately retained/defined",
+      "Agent": "DENY in first ingress allowlist",
+      "rule": "SPEC contract approval is separate from full implementation approval; no automatic elevation."
+    },
+    {
+      "operation": "accept_work_item, complete_work_item, set_task_zone",
+      "main": "Existing explicit human workflow only; never implementation approval shortcut",
+      "editor_viewer": "No authority promotion",
+      "Agent": "DENY in first ingress allowlist",
+      "rule": "Provider Success/report cannot accept/green or authorize another run."
+    },
+    {
+      "operation": "host_set_settings, host_set_agent_settings, file_save, scene_save, uidesign_save_design, git_write_commit, git_write_push",
+      "main": "Existing human editing/settings behavior; no new permission granted",
+      "editor_viewer": "Existing document editing remains outside this guard slice",
+      "Agent": "DENY in first ingress allowlist",
+      "rule": "No broad shell/write/settings capability included in approval-reference tools; separate authorized future scope required."
+    },
+    {
+      "operation": "SubmitRunReport / claim / heartbeat (future)",
+      "main": "Not added by this planning slice",
+      "editor_viewer": "No grant",
+      "Agent": "DENY until independent ingress/report contracts approved",
+      "rule": "Cannot silently implement report mutation or treat incoming evidence as trusted RED classification."
+    }
+  ],
+  "binding_record_PROPOSED": {
+    "session_and_lifecycle": "HOST-owned session_instance + approval_id + status {Approved,Consumed,Revoked}. References from another host boot are unknown. No persistence, expiry clock or automatic retry added. One shot is proposed and requires owner selection.",
+    "task": "Exact immutable task_id + module_id + authoritative intent=Implementation. Task deletion/reclassification/module change invalidates. Caller title, module label or board color is not authority.",
+    "project": "Exact WORK project_id plus normalized bound project_root from HOST settings/WORK, not caller fallback. Reject unbound/ambiguous roots. Existing lexical normalization only; no new physical symlink/sandbox claim.",
+    "fingerprint": "Exact host-resolved current worktree fingerprint. Must identify the intended checkout/working state, not merely caller fp:path; if no trustworthy producer/resolver is selected, approval is NOT_READY. This missing producer is an explicit gap.",
+    "architecture_BDD_skeleton": "Each category binds explicit artifact manifest: revision_id plus sorted [{project_relative_path, sha256(exact UTF-8/file bytes)}]. No auto-discovery. Missing/duplicate/unsafe path rejects. A rename or any byte change (including comments) makes it stale; no semantic hashing shortcut.",
+    "envelope": "Bind primary_module, integration_modules, allowed/protected patterns, module-prefix mapping and exact approval scope. SHA256 over deterministic canonical JSON: UTF-8, lexicographic object keys, no optional whitespace; manifest paths slash-normalized and sorted, duplicate paths reject; non-path text is exact, no Unicode/case folding. Protected path wins existing GUARD policy. This manifest contract is proposed, not existing SPEC fingerprint semantics.",
+    "RED": "Exact host-resolved evidence_id + producer/runner identity + command/cwd + build_ok=true + exit/case failure + stdout/stderr digest + failing test IDs + test-source manifest + qualified behavioral classification + same task/project/fingerprint/artifact bindings. Compile/infra/missing/PASS/empty proof reject. A caller label or RunCapture field alone is insufficient; qualified runner/classifier ownership still must be chosen.",
+    "comparator_order": [
+      "Resolve caller capability and task intent from HOST-owned sources; no external start yet.",
+      "Resolve approval reference in current session; require Approved, not Consumed/Revoked.",
+      "Resolve authoritative task/module/project/root/fingerprint and bound artifact/RED records. Missing producer/record rejects NOT_READY, not default approved.",
+      "Compare every bound dimension exactly; category-specific mismatch reports stale field code, no secret/path outside bound project echoed.",
+      "Evaluate unchanged pure GUARD scope/protected-path policy using host-built data.",
+      "Revalidate and reserve/mark Consumed atomically under existing dispatch authority lock before EXEC side effects.",
+      "Run existing EXEC/WORK preflight/start path; source changes after reservation are outside a writable-session isolation guarantee. No claim to contain hostile same-OS file edits."
+    ]
+  },
+  "failure_revoke_race_contracts_PROPOSED": [
+    "F1: Actor denied, unknown task intent, missing resolver, missing record, stale binding, invalid RED, revoked/consumed reference or GUARD reject => zero EXEC start, no accepted run/lease/running task/evidence success. Policy preview remains read-only.",
+    "F2: Owner declines/closes prompt => no approval created, no intent mutation, no run. Document changes while prompt open => reject stale confirmation; never silently approve current different bytes.",
+    "F3: Approved -> Consumed at one successful reservation; concurrent two starts with same reference => at most one reservation/start attempt. Native spawn/transport failure after reservation does not resurrect approval; operator must confirm anew. This is proposed lifecycle, not current behavior.",
+    "F4: Revoke before reservation wins and starts zero. Revoke after reservation cannot retroactively undo a child already started; it prevents subsequent reservation, records revoked disposition, and explicit cancel controls the active run. Do not imply cancellation or rollback of external effects.",
+    "F5: Revision/envelope/task/project/fingerprint/RED producer record change before reservation => stale; exact rejected dimension named. Restart discards all intent/approval records, so references cannot revive.",
+    "F6: Proposed stable codes: AUTHORITY_DENIED, INTENT_UNKNOWN, IMPLEMENTATION_REQUIRES_APPROVAL, APPROVAL_NOT_FOUND, APPROVAL_STALE:<field>, APPROVAL_REVOKED, APPROVAL_CONSUMED, RED_UNQUALIFIED, APPROVAL_NOT_READY. Error spelling/API is proposed for owner review, not new current contract.",
+    "F7: Trusted frontend/local native confirmation is a scoped interaction model, not an authenticated anti-automation security boundary. If owner requires hostile local-process resistance or remote approval, stop and separately design that stronger authority."
+  ],
+  "architecture_A1_A14": {
+    "A1 Context": "Trusted local owner, untrusted future Agent adapter, current Tauri windows, HOST, SPEC/EVID/WORK, pure GUARD and EXEC.",
+    "A2 Hexagonal": "Diagram A below; real native owner confirmation remains a proposed driving capability, not a domain dependency.",
+    "A3 Dependency": "Diagram B below; no GUARD -> UI/FS/OS/network dependency.",
+    "A4 Responsibilities": "HOST owns proposed intent/approval session record and authoritative resolution; GUARD owns pure rules; SPEC owns contracts; EVID owns records; WORK owns project/lease; adapters own caller/native interaction.",
+    "A5 Input ports": "Existing start_run/start_implementation plus proposed local classify/confirm/revoke commands. Exact surface changes await owner approval.",
+    "A6 Output ports": "Reuse existing store reads and EXEC seam; native confirmation and current fingerprint/qualified RED producer resolution are explicit missing seams, not implicitly implemented.",
+    "A7 Driving adapters": "Restricted local main/native-confirmation callback; scoped Agent ingress (not implemented); tests.",
+    "A8 Driven adapters": "Existing EXEC process/MCP and artifact/runner read seams after approval; no new infrastructure framework proposed.",
+    "A9 Dependencies": "Command/caller adapter -> HOST resolved values -> GUARD; HOST -> EXEC only after authority checks. Concrete SDK/native dialog outside pure GUARD.",
+    "A10 State ownership": "New proposed session-only HOST intent/approval state explicitly requires owner approval. Views, client DTOs and HTML cannot own authority.",
+    "A11 Mutation": "Owner native result may create exact record after snapshot recheck; restricted owner revoke/classify only. Agent reference requests cannot mutate approvals. HOST consumes reservation atomically.",
+    "A12 Transactions": "Snapshot/prompt without holding dispatch lock; recheck + approval commit under lock. Start: recheck + one-shot reservation under lock before external call. No claim of OS-wide file atomicity after reservation.",
+    "A13 External boundary": "No real Agent/network invoked. Hostile same-OS processes excluded only if owner selects that model. Caller capability and producer provenance not proven by serialization validation.",
+    "A14 Forbidden": "Agent-set actor/approved/classification authority; generic bypass; UI-only approved flag; SPEC FNV treated as whole artifact seal; report-to-green; stale pass reuse; direct adapter execution bypass; hidden global authority manager."
+  },
+  "diagram_A": "Trusted owner -> restricted main request -> HOST-driven native confirmation [PROPOSED/MISSING]\nUntrusted Agent -> restricted input adapter [caller binding MISSING]\n        -> HOST input commands -> session approval/intent resolver\n        -> pure GUARD rules -> existing EXEC output boundary\nSPEC / EVID / WORK -> existing authoritative values, with missing full-binding producers explicitly NOT_READY\nDomain GUARD has no native dialog, network or filesystem dependency.",
+  "diagram_B": "Local confirmation callback -> HOST session record (new owner, NOT APPROVED)\nArtifact manifests + qualified RED runner + WORK fingerprint -> HOST comparator [missing provenance seams]\nHOST -> GUARD policy -> EXEC -> existing process/MCP adapters\nFuture Agent allowlisted query/start-reference tools -> same HOST; never -> confirm/classify/revoke\nSPEC contract approval remains separate from implementation authority.",
+  "BDD_test_plan_PROPOSED": [
+    {
+      "id": "GA01",
+      "given": "A future Agent or editor/viewer calls owner confirmation/classification/revoke",
+      "when": "the authority boundary dispatches it",
+      "then": "it is denied before state or EXEC mutation",
+      "test": "L2 adapter caller matrix + L3 native window capability integration; no client actor field accepted"
+    },
+    {
+      "id": "GA02",
+      "given": "Owner accepts native prompt for unchanged exact snapshot",
+      "when": "confirmation commits",
+      "then": "one session record stores all exact bindings",
+      "test": "L1 controlled confirmation callback; record values compared to host snapshot, no caller booleans"
+    },
+    {
+      "id": "GA03",
+      "given": "Owner rejects prompt or a bound byte changes while it is open",
+      "when": "confirmation returns",
+      "then": "no approval or start is created",
+      "test": "L1 decline/close, each dimension changed independently"
+    },
+    {
+      "id": "GA04",
+      "given": "Current qualified approval and one assigned implementation request",
+      "when": "the request starts",
+      "then": "one attempt is reserved and existing execution starts once",
+      "test": "L2 counting EXEC; one-shot status/lease checks"
+    },
+    {
+      "id": "GA05",
+      "given": "Each of task/module/project/root/fingerprint/architecture/BDD/skeleton/envelope/RED differs",
+      "when": "start is requested",
+      "then": "field-specific stale rejection starts zero",
+      "test": "L1 table, every field independently missing/empty/changed; L2 same ports"
+    },
+    {
+      "id": "GA06",
+      "given": "Reference revoked, consumed or from an earlier session",
+      "when": "start is requested",
+      "then": "zero start and readable reason",
+      "test": "L2 revoke/restart/replay; no prior pass reuse"
+    },
+    {
+      "id": "GA07",
+      "given": "Two requests share one reference",
+      "when": "they race with revoke/reservation",
+      "then": "at most one attempt and declared race order holds",
+      "test": "L2 controlled barriers, not timing sleeps; postreservation failure stays consumed"
+    },
+    {
+      "id": "GA08",
+      "given": "Unknown intent or an implementation task presented through generic start_run",
+      "when": "execution is requested",
+      "then": "it rejects; explicit trusted Generic task retains compatible execution",
+      "test": "L2 both entrypoints; caller relabel/title/upsert cannot bypass"
+    },
+    {
+      "id": "GA09",
+      "given": "Caller claims approved or behavioral RED without trusted producer record",
+      "when": "policy/start is requested",
+      "then": "preview cannot create authority and start rejects",
+      "test": "L0 GUARD predicate regression + L2 actor/producer spoof; compile/infra/PASS evidence rejects"
+    },
+    {
+      "id": "GA10",
+      "given": "Valid caller but protected-path or current one-run/WORK preflight rejects",
+      "when": "start is requested",
+      "then": "existing rules remain and no second accepted run appears",
+      "test": "L2/L4 adjacent GUARD/WORK/EXEC/CLI/MCP DryRun regression; qualified RED/GREEN only after approved Skeleton"
+    }
+  ],
+  "coverage_applicability": {
+    "success": "GA02/04",
+    "boundary": "GA05/07",
+    "invalid": "GA01/05/09",
+    "dependency_failure": "GA03/09 producer/native failure",
+    "partial_failure": "GA07 spawn failure after reservation",
+    "consistency": "GA04/06/07",
+    "transaction": "GA03/07",
+    "lifecycle": "GA06/08",
+    "recovery": "Explicit reconfirmation; no automatic retry",
+    "cross_module": "GA08/10",
+    "compatibility": "Current generic policy change must be approved",
+    "regression": "GA10; module tests NOT RUN now"
+  },
+  "acceptance_PROPOSED": [
+    "AC1: Exact role/command matrix owner-approved; tests prove main/native result path and deny Agent/editor/viewer authority calls. Static allowlist presence alone is insufficient.",
+    "AC2: Every binding has a named authoritative producer and one independently mutated stale case; no caller data silently substituted.",
+    "AC3: Unknown/implementation-through-generic requests start zero; explicit trusted generic request remains usable.",
+    "AC4: One reference reserves at most one attempt, revoke/restart semantics match stated transaction and failure rules.",
+    "AC5: No approval from client boolean, arbitrary RED label, policy preview or SPEC contracts-only hash.",
+    "AC6: No domain infrastructure dependency, new DB/auth framework/Manager; enumerate exact minimal file/API/seam cost before Skeleton.",
+    "AC7: Native capability integration and qualified runner provenance independently verified; native UI/Agent NOT RUN until actual evidence exists.",
+    "AC8: Architecture and all new semantics approved before formal Skeleton, compiled behavioral RED or production implementation."
+  ],
+  "readiness_audit": {
+    "A1_A14": "Present as reviewable proposal; missing seams explicit, not APPROVED",
+    "two_diagrams": "Present",
+    "state_mutation_transaction": "Present, PROPOSED",
+    "command_matrix": "Concrete table present; runtime enforcement NOT IMPLEMENTED/NOT VERIFIED",
+    "binding_failure_revoke": "Concrete comparator/lifecycle proposal present",
+    "BDD_test_plan_AC": "Present, PROPOSED, NOT RUN",
+    "remaining_gate_gaps": [
+      "Owner has not approved local trust boundary or one-shot policy.",
+      "Native confirmation callback/caller-window enforcement and exact runtime command ACL mapping not implemented/proven.",
+      "Trusted current fingerprint producer and qualified behavioral RED classification/producer not selected.",
+      "Current task intent ownership/schema has no approved session record yet.",
+      "Full artifact manifest schema, current-source resolution and mutation serialization must be approved before comparator Skeleton."
+    ],
+    "overall": "ARCHITECTURE_GAP / NOT_READY_FOR_IMPLEMENTATION; no Skeleton or RED created"
+  },
+  "owner_question": "是否核准最小 session-only 方案：只從受限本機 main 發起 HOST 原生確認（不接受 client approved/actor/RED 真值），Agent／editor/viewer 禁止 classify／confirm／revoke；綁定 task/module/project/root、可信 current fingerprint、完整 architecture/BDD/skeleton/envelope bytes 與 qualified RED producer，變更／重啟／撤銷即拒絕；核准採 one-shot，開始保留後即消耗，spawn 失敗也不自動重用，revoke 不回溯取消已啟動 Run？此模型不防同 OS 惡意程序／自動化。若同意，仍須先指定 fingerprint 與 RED producer，並實證 native/caller capability 分離，再核准 Skeleton。",
+  "next_bounded_action": "Owner resolves the stated threat/lifecycle choices and names current fingerprint + RED authority. Then review only exact command/native callback and producer seams. Do not build a framework, implement validation and call it trust, or start Skeleton/RED before that gate.",
+  "results": {
+    "source_inspection": "Completed; fresh hashes below",
+    "behavior_tests": "NOT RUN",
+    "native_confirmation": "NOT RUN",
+    "Agent_authentication": "NOT RUN",
+    "Skeleton_RED_production": "NOT STARTED / forbidden before approval",
+    "board": "UNCHANGED",
+    "commit_push": "NOT RUN"
+  },
+  "source_snapshot": {
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "meaning": "Fresh inspected workingbytes; source inspection only. Current ACL behavior/human provenance not runtimeverified.",
+    "sha256": {
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs": "c02bafccea302770fb348101cf2fdb81e7194b9434f799c129979be0ef7808ae",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/guard_cmd.rs": "11705826ec44f746570974544cb444d1a9d0933a7f0fa614bade38fdc74944f1",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs": "a218f57de84e10a91235118d8568570a2caa2b356415a65308542eb88fa09559",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/store.rs": "0e1b69434a33cd01b38a8a20186ee02e732dacb1708f9361b8745664416f8df1",
+      "apps/sgenaxis-desktop/crates/sgenaxis-evid/src/binding.rs": "04c69fad853e48cd6f37bb778fdfdd1fea546488ffa0b6926de283aa6b3ea6f8",
+      "apps/sgenaxis-desktop/crates/sgenaxis-evid/src/capture.rs": "20748a02133d310ffbc2d90a2b008ae4652fcc7c4a7b3e9318e242babec571d0",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs": "e0a20cedf5cc0e71e7fb570f4b2ac7f6bebe9d115c717f7432acb3201134e217",
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs": "a325d22f0dde7cea16368c3a77e6bbbe5a43e2864be5ab1de25beaf3318d30f5",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs": "7e307824b6cebc60b239b45b85f710032cb1205b46e02e8b617bfbbe6c9ff2ed",
+      "apps/sgenaxis-desktop/src-tauri/capabilities/default.json": "bba549c6ba2ac1217236f77eef91ef64a7c2d1de7a86cbd59ab15d25c83e549c",
+      "apps/sgenaxis-desktop/src-tauri/capabilities/uidesign-window.json": "3bcca3e337a140f229791a22067d99d585e43d10dbc2828e4f100016b6a42035",
+      "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml": "6086c37478d6e0346c50db186caa343e3009daf271d92dfe72083498c961ec12",
+      "apps/sgenaxis-desktop/src-tauri/permissions/host.toml": "6d0574236feb542abe6a45b1714c8f445cce5aed180e16f310608c3e517ab633",
+      "apps/sgenaxis-desktop/src-tauri/tauri.conf.json": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2",
+      "reports/rust-improvements/continuous/execution-guard/module-spec.json": "1a65d4e315a7324d03905db42c62add09cf972808e4a366ce7c3d09d66904a1d"
+    }
+  }
+}

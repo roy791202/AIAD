@@ -1,0 +1,220 @@
+# PD-HOST-01 — lifecycle / settings IPC only (no shell plugin).
+
+[[permission]]
+identifier = "allow-host-get-phase"
+description = "Allows host_get_phase"
+commands.allow = ["host_get_phase"]
+
+[[permission]]
+identifier = "allow-host-get-settings"
+description = "Allows host_get_settings"
+commands.allow = ["host_get_settings"]
+
+[[permission]]
+identifier = "allow-host-set-settings"
+description = "Allows host_set_settings"
+commands.allow = ["host_set_settings"]
+
+[[permission]]
+identifier = "allow-host-pick-project-directory"
+description = "PD-WIRE-OPEN-01: native folder pick (no domain mutate; UI persists via host_set_settings)"
+commands.allow = ["host_pick_project_directory"]
+
+[[permission]]
+identifier = "allow-host-new-project-directory"
+description = "PD-REMAIN-FILE-NEW-01: native save dialog + create dir via FileSystemPort; UI binds via host_set_settings"
+commands.allow = ["host_new_project_directory"]
+
+[[permission]]
+identifier = "allow-host-create-project-directory"
+description = "PD-BUG-FILE-NEW-01: create project dir under parent+name via FileSystemPort; UI binds via host_set_settings"
+commands.allow = ["host_create_project_directory"]
+
+[[permission]]
+identifier = "allow-file-save"
+description = "PD-REMAIN-FILE-SAVE-01: persist host settings／board path binding only (fixed store; no arbitrary path; no board write-back)"
+commands.allow = ["file_save"]
+
+[[permission]]
+identifier = "allow-host-request-shutdown"
+description = "Allows host_request_shutdown"
+commands.allow = ["host_request_shutdown"]
+
+[[permission]]
+identifier = "allow-import-preview"
+description = "PD-ELU-IMPORT-ARCH-01: read-only Rust syntax preview under the bound project root"
+commands.allow = ["import_preview"]
+
+[[permission]]
+identifier = "allow-git-index-commit"
+description = "PD-ELU-GIT-ARCH-01 A1: staged-Index preview and explicit one-use confirmation"
+commands.allow = ["git_index_commit_preview", "git_index_commit_confirm"]
+
+[[permission]]
+identifier = "allow-git-workbench"
+description = "PD-ELU-GIT-ARCH-01: read-only worktree summary + diff projection (no writes)"
+commands.allow = ["git_workbench_summary", "git_workbench_diff"]
+
+[[permission]]
+identifier = "allow-git-switch"
+description = "PD-GIT-SWITCH-03: approval-gated switch to an existing local branch (no force／create)"
+commands.allow = ["git_switch_branch"]
+
+[[permission]]
+identifier = "allow-git-commit"
+description = "PD-GIT-COMMIT-04: approval-gated local commit via GitWritePort (git add -A + commit; no push)"
+commands.allow = ["git_write_commit"]
+
+[[permission]]
+identifier = "allow-git-push"
+description = "PD-GIT-PUSH-05: approval-gated push to a named remote via GitWritePort (no force; local commits preserved on failure)"
+commands.allow = ["git_write_push"]
+
+[[permission]]
+identifier = "allow-git-settings"
+description = "Approval-gated local user.name / user.email and root .gitignore via GitWritePort (never --global / credential / untrack)"
+commands.allow = ["git_write_identity", "git_write_ignore"]
+
+[[permission]]
+identifier = "allow-git-stash"
+description = "Approval-gated git stash apply/pop/drop/push via GitWritePort (never quiet/clear/-u/--all; drop missing fails honestly; push is tracked-only)"
+commands.allow = [
+  "git_write_stash_apply",
+  "git_write_stash_pop",
+  "git_write_stash_drop",
+  "git_write_stash_push",
+]
+
+[[permission]]
+identifier = "allow-git-tag"
+description = "Approval-gated local git tag create/delete via GitWritePort (lightweight git tag -- name or annotated git tag -a -m; local git tag -d -- name; never -f/push; delete is local-only)"
+commands.allow = ["git_write_tag", "git_write_tag_delete"]
+
+[[permission]]
+identifier = "allow-git-tag-push"
+description = "Approval-gated non-force git tag push via GitWritePort (git push -- remote refs/tags/name; empty remote defaults to origin; never --force/--force-with-lease/+refspec/--delete/--all/--mirror/--tags bulk/branch refspecs)"
+commands.allow = ["git_write_tag_push"]
+
+[[permission]]
+identifier = "allow-git-branch-create"
+description = "Approval-gated local git branch create/delete/rename via GitWritePort (git branch -- name; git branch -d -- name; git branch -m -- old new; never -C/--force/-D/-M/-f/-r/--set-upstream; never checkout/switch; unmerged and existing targets fail honestly)"
+commands.allow = ["git_write_branch_create", "git_write_branch_delete", "git_write_branch_rename"]
+
+[[permission]]
+identifier = "allow-git-remote"
+description = "Approval-gated local git remote add/remove/rename/set-url/fetch via GitWritePort (git remote add -- name url; git remote remove -- name; git remote rename -- old new; git remote set-url -- name url; git fetch -- remote [refspec]; never -f/+refspec/--update-head-ok/--add/--delete/--push/--mirror/push/prune/merge/pull)"
+commands.allow = ["git_write_remote_add", "git_write_remote_remove", "git_write_remote_rename", "git_write_remote_set_url", "git_write_fetch"]
+
+[[permission]]
+identifier = "allow-git-set-upstream"
+description = "Approval-gated git branch --set-upstream-to=remote/branch -- local via GitWritePort (empty local uses current branch; never --unset-upstream/-M/-C/--force; never fetch/pull/push/rebase/merge/checkout/switch; never create remotes, tracking refs, or local branches)"
+commands.allow = ["git_write_set_upstream"]
+
+[[permission]]
+identifier = "allow-git-unset-upstream"
+description = "Approval-gated git branch --unset-upstream -- local via GitWritePort (empty local uses current branch; never --set-upstream-to/-u/-M/-C/--force; never fetch/pull/push/rebase/merge/checkout/switch; never create remotes, tracking refs, or local branches)"
+commands.allow = ["git_write_unset_upstream"]
+
+[[permission]]
+identifier = "allow-git-stage-all"
+description = "Approval-gated git add -- . via GitWritePort (ALL-STAGE from repo root; never commit/push/reset --hard/--force/-A; in-progress merge/rebase/cherry-pick/revert fails honestly; clean worktree is success no-op)"
+commands.allow = ["git_write_stage_all"]
+
+[[permission]]
+identifier = "allow-git-unstage-all"
+description = "Approval-gated git reset -- . via GitWritePort (ALL-UNSTAGE from repo root; mixed pathspec reset; never commit/push/add -A/reset --hard/--force; in-progress merge/rebase/cherry-pick/revert fails honestly; clean index is success no-op)"
+commands.allow = ["git_write_unstage_all"]
+
+[[permission]]
+identifier = "allow-git-fetch-prune"
+description = "Approval-gated git fetch --prune -- remote via GitWritePort (deletes stale remote-tracking refs only; never --prune-tags/--force/+refspec/--update-head-ok/--add/--delete/--push/--mirror/pull/merge/rebase)"
+commands.allow = ["git_write_fetch_prune"]
+
+[[permission]]
+identifier = "allow-git-pull-ff"
+description = "Approval-gated git pull --ff-only -- remote [branch] via GitWritePort (never --rebase/--no-ff/--force/+refspec/--update-head-ok; diverged/dirty fail honestly)"
+commands.allow = ["git_write_pull_ff_only"]
+
+[[permission]]
+identifier = "allow-git-conflict"
+description = "Approval-gated conflict save/continue/abort/skip via GitWritePort (git add -- path; git merge|rebase|cherry-pick --continue/--abort; git rebase|cherry-pick --skip; never add -A, -X, reset --hard; skip never falls back to continue/abort)"
+commands.allow = [
+  "git_write_conflict_save",
+  "git_write_conflict_continue",
+  "git_write_conflict_abort",
+  "git_write_conflict_skip",
+]
+
+[[permission]]
+identifier = "allow-deploy-status"
+description = "PD-DEPLOY-CMD-01 read-only deploy_status (no shell／install)"
+commands.allow = ["deploy_status"]
+
+[[permission]]
+identifier = "allow-deploy-check"
+description = "PD-DEPLOY-CMD-01 read-only deploy_check (no elevated /qn auto)"
+commands.allow = ["deploy_check"]
+
+[[permission]]
+identifier = "allow-list-artifacts"
+description = "PD-DEPLOY-CMD-01 list_artifacts (existence probe only)"
+commands.allow = ["list_artifacts"]
+
+[[permission]]
+identifier = "allow-project-preferences"
+description = "PD-SET-UI-01: project preferences load/save/presets/import-pick and create-with-preferences (host validates bound project root + digest)"
+commands.allow = [
+  "host_project_preferences_load",
+  "host_project_preferences_save",
+  "host_project_preferences_presets",
+  "host_project_preferences_pick_import",
+  "host_create_project_with_preferences",
+]
+
+[[permission]]
+identifier = "allow-project-wizard"
+description = "M01-S3: six-step project wizard command bridge (begin/apply/prepare/commit/cancel; host snapshots owner authority, holds in-flight state keyed by opaque token)"
+commands.allow = [
+  "wizard_begin",
+  "wizard_apply_step",
+  "wizard_prepare_preferences",
+  "wizard_commit",
+  "wizard_cancel",
+]
+
+[[set]]
+identifier = "host-default"
+description = "PD-HOST-01 + PD-DEPLOY-CMD-01 allowlisted commands (no shell／elevated install)"
+permissions = [
+  "allow-host-get-phase",
+  "allow-host-get-settings",
+  "allow-host-set-settings",
+  "allow-host-pick-project-directory",
+  "allow-host-new-project-directory",
+  "allow-host-create-project-directory",
+  "allow-file-save",
+  "allow-host-request-shutdown",
+  "allow-import-preview",
+  "allow-git-workbench",
+  "allow-git-switch",
+  "allow-git-commit",
+  "allow-git-push",
+  "allow-git-settings",
+  "allow-git-stash",
+  "allow-git-tag",
+  "allow-git-tag-push",
+  "allow-git-branch-create",
+  "allow-git-remote",
+  "allow-git-set-upstream",
+  "allow-git-unset-upstream",
+  "allow-git-stage-all",
+  "allow-git-unstage-all",
+  "allow-git-fetch-prune",
+  "allow-git-pull-ff",
+  "allow-git-conflict",
+  "allow-deploy-status",
+  "allow-deploy-check",
+  "allow-list-artifacts",
+  "allow-project-preferences",
+  "allow-project-wizard",
+]

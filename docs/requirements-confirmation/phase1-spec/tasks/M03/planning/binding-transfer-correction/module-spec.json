@@ -1,0 +1,131 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "slice": "design_binding_transfer ONLY",
+  "author": "/root/m03_binding_transfer_packet",
+  "status": "PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER",
+  "architecture": {
+    "context": "M03 derived writer attachment; M04 is sole S1 owner",
+    "hexagonal": "Native main/editor → dedicated trusted guard → M03 transfer input port → M04 transfer_writer opaque handle → sole M04 owner",
+    "dependency": "UI → Tauri guard → M03 → M04 input contract; never UI → filesystem/adapter",
+    "input_ports": [
+      "design_binding_transfer exact request"
+    ],
+    "output_ports": [
+      "M04.transfer_writer(handle,trusted_window) proposed observation seam",
+      "trusted native source/target and consent observation; unavailable runtime provider"
+    ],
+    "driving_adapters": [
+      "native main/ui-editor",
+      "document fixture driver"
+    ],
+    "driven_adapters": [
+      "M04 sole owner fixture double; native NOT RUN"
+    ],
+    "state_ownership": "M04 owns S1 content/history/revision/baselines/writer generation. M03 only derived attachment/candidate/preview/disclosure.",
+    "mutation": "Transfer derived write attachment only; increment M04 writer generation, no document edit",
+    "transaction": "Preflight native identities + target consent + generation/revision + capacity; atomic M04 transfer and source invalidation; confirmed commit distinct from delivery; unknown is Indeterminate",
+    "external_boundary": "native instance registry/M04 trusted providers required",
+    "forbidden": [
+      "S1 constructor or ownership move",
+      "duplicate owner",
+      "formal IO/ACK",
+      "content/history/baseline mutation",
+      "direct filesystem",
+      "global dedup"
+    ]
+  },
+  "contracts": {
+    "C1": "Only current native main/ui-editor writer may invoke for its own binding. Target cannot claim; Viewer/remote/replaced instances denied. Existing target_window label is a selector only: trusted registry must resolve exactly one live native instance; absent/ambiguous registry fails DependencyNotReady, never label-based authority.",
+    "C2": "Target consent is preexisting native/M04 trusted handshake bound to identity, generation and source/target nonce. No caller JSON consent. Exact provider interface is not approved; missing provider => DependencyNotReady(M04_OWNER_INTEGRATION).",
+    "C3": "Transfer retains dirty shared S1 state and all history/baselines; no discard. Original transfer request has no discard_unsaved. Target attachment must be ready and local unsaved-state replacement requires separately observed native discard confirmation; otherwise Busy. Do not silently add a discard request field or drop target state.",
+    "C4": "M04 alone linearizes writer generation increment plus derived source revocation, candidate/preview invalidation and disclosure retirement under one identity fence. Facade holds only opaque handle; no S1 move or second registry. Native atomic provider unavailable => DependencyNotReady, not sequential product implementation.",
+    "C5": "No request_id: no new global dedup/exactly-once registry. Identical stale retry returns StaleOwner; no replay disclosure. Tombstones retain revoked tuple only, never old success replay. Capacity policy pending; document fixture capacity=2 only. No eviction/TTL/automatic retry.",
+    "C6": "Known rollback before commit leaves old writer and all derived state unchanged. Confirmed commit with acknowledgement delivery unavailable is transferred=true/ack_state=Deferred at new generation, never ErrorUnchanged. Unknown commit => Indeterminate and retry prohibited; model cannot prove native state unchanged. Exact DTO Transfer ack_state replaces original WriterTransfer BindingProjection only in this candidate; original untouched. Owner options: adopt receipt or preserve projection with separately defined delivery authority. A receipt is not owner evidence, cannot grant target authority, and cannot be reused by UI for elevation. Operator reconciliation is proposed, not implemented.",
+    "C7": "Already started install/save effects remain M04/issuer responsibility; do not cancel/ACK/resubmit them. Any late get/install/save response requires fresh exact native identity+generation+attachment observation; revoked source cannot receive even retained replay result.",
+    "C8": "Keep exact seven DomainRejected variants from candidate-prepare-correction/response.schema.json carried unchanged via restricted close response. Non-object InvalidRequest uses details {field: empty string, reason: Type}; do not adopt open/get proposed rootType field. Generation exhaustion maps to typed DomainRejected RevisionOverflow (proposed choice), not a new top-level error. All additions remain PROPOSED, not adopted by scoped document PASS."
+  },
+  "UI_schema": {
+    "component": "Existing writer handoff",
+    "roles": "current writer main/ui-editor",
+    "controls": "target selector existing main/ui-editor; no caller nonce fields",
+    "defaults": "no automatic target or transfer",
+    "disabled": "pending or no trusted ready target",
+    "success": "target becomes writer only after confirmed transfer; source read-only/revoked",
+    "error": "plain diagnostic; no retry; uncertainty blocks edits pending trusted reconciliation",
+    "empty": "no ready target -> disabled",
+    "accessibility": "announce handoff status without focus steal"
+  },
+  "BDD_categories": {
+    "B1": "Applicable: fixture trace",
+    "B2": "Applicable: fixture trace",
+    "B3": "Applicable: fixture trace",
+    "B4": "Applicable: fixture trace",
+    "B5": "Applicable: fixture trace",
+    "B6": "Applicable: fixture trace",
+    "B7": "Applicable: fixture trace",
+    "B8": "Applicable: fixture trace",
+    "B9": "Applicable: fixture trace",
+    "B10": "Applicable: fixture trace",
+    "B11": "Deferred: native compatibility and regression NOT RUN",
+    "B12": "Deferred: native compatibility and regression NOT RUN"
+  },
+  "tasks": [
+    {
+      "id": "TR-PLAN",
+      "primary_module": "M03",
+      "allowed": "binding-transfer-integration/** only",
+      "protected": "all prior packets, product, board/currentstate",
+      "BDD": [
+        "TR-01",
+        "TR-02",
+        "TR-03",
+        "TR-04",
+        "TR-05",
+        "TR-06",
+        "TR-07",
+        "TR-08",
+        "TR-09",
+        "TR-10",
+        "TR-11",
+        "TR-12",
+        "TR-13",
+        "TR-14",
+        "TR-15",
+        "TR-16",
+        "TR-17",
+        "TR-18",
+        "TR-19",
+        "TR-20",
+        "TR-21",
+        "TR-22",
+        "TR-23",
+        "TR-24",
+        "TR-25",
+        "TR-26",
+        "TR-27",
+        "TR-28",
+        "TR-29",
+        "TR-30",
+        "TR-31",
+        "TR-32",
+        "TR-33"
+      ],
+      "TDD": "python checker.py document model only",
+      "acceptance": [
+        "closed self-contained roots",
+        "typed lexical probes",
+        "document invariants",
+        "explicit Owner proposals"
+      ],
+      "status": "AUTHOR_CANDIDATE_ONLY"
+    }
+  ],
+  "implementation": "NOT_READY_FOR_IMPLEMENTATION",
+  "independent_acceptance": "NOT RUN",
+  "Owner": "NOT RUN",
+  "FullDraft": "NOT COMPLETE",
+  "product_native_RED": "NOT RUN",
+  "build": "NOT RUN",
+  "full_module": "NOT COMPLETE"
+}

@@ -1,0 +1,1472 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sga:cx-v3:design_document_undo:response",
+  "$defs": {
+    "U64Decimal": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "maxLength": 20,
+      "description": "Checked runtime u64 <=18446744073709551615; no JSON number or JS Number"
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "Unsupported": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "type",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "BindingProjection": {
+      "type": "object",
+      "properties": {
+        "binding_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "document_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_uuid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner_generation": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "revision": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "design_json": {
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "can_edit": {
+          "type": "boolean"
+        },
+        "unsupported": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Unsupported"
+          }
+        },
+        "selection": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "persistence_ready": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "binding_ref",
+        "document_uuid",
+        "session_uuid",
+        "owner_generation",
+        "revision",
+        "design_json",
+        "dirty",
+        "can_edit",
+        "unsupported",
+        "selection",
+        "persistence_ready"
+      ],
+      "additionalProperties": false
+    },
+    "Candidate": {
+      "type": "object",
+      "properties": {
+        "candidate_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "captured_revision": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "unsupported": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Unsupported"
+          }
+        },
+        "installable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "candidate_ref",
+        "request_id",
+        "captured_revision",
+        "unsupported",
+        "installable"
+      ],
+      "additionalProperties": false
+    },
+    "Select": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content_changed": {
+          "const": false
+        },
+        "revision": {
+          "$ref": "#/$defs/U64Decimal"
+        }
+      },
+      "required": [
+        "node_id",
+        "content_changed",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "MockValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "Action"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "Toggle"
+              ]
+            },
+            "checked": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "checked"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "Text"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "Number"
+              ]
+            },
+            "number_text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "number_text"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "Selection"
+              ]
+            },
+            "item_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "item_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Preview": {
+      "type": "object",
+      "properties": {
+        "preview_session": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_revision": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "expected_sequence": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "mock_state": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "$ref": "#/$defs/MockValue"
+              }
+            },
+            "required": [
+              "node_id",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "Activate",
+                    "SetToggle",
+                    "SetText",
+                    "SetNumber",
+                    "SelectItem"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "node_id",
+              "allowed_actions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "preview_session",
+        "source_revision",
+        "expected_sequence",
+        "stale",
+        "mock_state",
+        "capabilities"
+      ],
+      "additionalProperties": false
+    },
+    "Intent": {
+      "type": "object",
+      "properties": {
+        "consumed_sequence": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "next_sequence": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "mock_delta": {
+          "$ref": "#/$defs/MockValue"
+        },
+        "content_changed": {
+          "const": false
+        }
+      },
+      "required": [
+        "consumed_sequence",
+        "next_sequence",
+        "mock_delta",
+        "content_changed"
+      ],
+      "additionalProperties": false
+    },
+    "Close": {
+      "type": "object",
+      "properties": {
+        "closed": {
+          "const": true
+        },
+        "content_changed": {
+          "const": false
+        }
+      },
+      "required": [
+        "closed",
+        "content_changed"
+      ],
+      "additionalProperties": false
+    },
+    "MutationResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "enum": [
+                "Applied"
+              ]
+            },
+            "projection": {
+              "$ref": "#/$defs/BindingProjection"
+            },
+            "replayed": {
+              "type": "boolean"
+            },
+            "before_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "after_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "history_depth": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "mutation_proof_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pin_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "outcome",
+            "projection",
+            "replayed",
+            "before_revision",
+            "after_revision",
+            "history_depth",
+            "mutation_proof_ref",
+            "pin_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "enum": [
+                "NoChange"
+              ]
+            },
+            "projection": {
+              "$ref": "#/$defs/BindingProjection"
+            },
+            "replayed": {
+              "type": "boolean"
+            },
+            "revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "history_depth": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "outcome",
+            "projection",
+            "replayed",
+            "revision",
+            "history_depth"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "enum": [
+                "AppliedRetentionDeferred"
+              ]
+            },
+            "projection": {
+              "$ref": "#/$defs/BindingProjection"
+            },
+            "replayed": {
+              "type": "boolean"
+            },
+            "before_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "after_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "history_depth": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "mutation_proof_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "stage": {
+              "enum": [
+                "LiveRoots",
+                "UndoRoots",
+                "RedoRoots"
+              ]
+            },
+            "reason": {
+              "enum": [
+                "DependencyNotReady",
+                "StaleRoots",
+                "IoFailure",
+                "ProofMismatch",
+                "Indeterminate"
+              ]
+            }
+          },
+          "required": [
+            "outcome",
+            "projection",
+            "replayed",
+            "before_revision",
+            "after_revision",
+            "history_depth",
+            "mutation_proof_ref",
+            "pin_id",
+            "stage",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "UnauthorizedCaller"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "MissingBinding"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "IdentityConflict"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "reference": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reference"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "UnsupportedDocument"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "nodes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "nodes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "StaleOwner"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "StaleRevision"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "expected": {
+                  "$ref": "#/$defs/U64Decimal"
+                },
+                "observed": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "expected",
+                "observed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "WriterRequired"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "MissingWindow"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "CandidateMissing"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "CandidateUsed"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "RequestConflict"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "Busy"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "ResourceLimit"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "limit"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "CodecRejected"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "InvalidRequest"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "AmbiguousStableId"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "NodeMissing"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "ParentMissing"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "parent_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "ParentCycle"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "UnsupportedAction"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "action"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "MissingMaterial"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "asset_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "asset_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "MissingBindingTarget"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "target_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "target_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "PreviewClosed"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "SequenceConflict"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "expected": {
+                  "$ref": "#/$defs/U64Decimal"
+                },
+                "received": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "expected",
+                "received"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "SequenceOverflow"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "DependencyNotReady"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "dependency": {
+                  "enum": [
+                    "M04_S2",
+                    "C1_CODEC",
+                    "M04_OWNER_INTEGRATION",
+                    "M05_MATERIAL",
+                    "M01_NATIVE_IDENTITY",
+                    "ESS_PROJECTOR",
+                    "ROOT_PROVIDER"
+                  ]
+                }
+              },
+              "required": [
+                "dependency"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "DomainRejected"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "fields": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "fields"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "UnverifiedOutcome"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "request_id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "enum": [
+                    "RuntimeRecordLost",
+                    "IssuerEvidenceMissing",
+                    "CommitOutcomeUnknown"
+                  ]
+                },
+                "retry_allowed": {
+                  "const": false
+                }
+              },
+              "required": [
+                "request_id",
+                "reason",
+                "retry_allowed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "ReplayConflict"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "request_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "request_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "InProgress"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "request_id": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "request_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "MaterialReadRejected"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "enum": [
+                    "PinNotReadable",
+                    "GrantMismatch",
+                    "LimitExceeded",
+                    "BlobMissing",
+                    "SizeMismatch",
+                    "IntegrityFailure",
+                    "IdentityChanged",
+                    "AliasRejected",
+                    "UnsupportedPlatform"
+                  ]
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "ProofMismatch"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "CapacityExceeded"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "IoFailure"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "Indeterminate"
+              ]
+            },
+            "details": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "code",
+            "details"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "value": {
+          "$ref": "#/$defs/MutationResult"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok",
+        "value",
+        "replayed"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "error": {
+          "$ref": "#/$defs/Error"
+        },
+        "replayed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok",
+        "error",
+        "replayed"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

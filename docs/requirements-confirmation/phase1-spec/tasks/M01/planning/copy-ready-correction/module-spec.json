@@ -1,0 +1,1528 @@
+{
+  "module": "M01",
+  "task": "PD-P1-M01-PREP-01",
+  "candidate": "copy-ready-correction",
+  "state": "PROPOSED_PENDING_OWNER",
+  "author": "/root/m01_copy_ready_correction",
+  "intent": "Correct document F1/F2 only for one final-path QuarantinedCopy→Ready transition",
+  "before": "Independent document review found 18 counterexamples: semantic issuer binding absent and malformed roots not guarded",
+  "after": "Closed full-root typed validation and separate immutable DOCUMENT fixture lookup; actual field comparisons; no caller rehash can manufacture issuer evidence",
+  "architecture_status": "PROPOSED_NOT_APPROVED",
+  "architecture": {
+    "hexagonal": "UI → existing M01 wizard input → M01 owner → M06 copy child / declared output seams → native IO and M05 issuer adapters",
+    "dependency": "M01 owns readiness; M06 supplies copy bytes closure; M05 supplies catalog generation/index/roots; native provider supplies held path identity. No new Port is implemented.",
+    "ownership": "M01 existing wizard owns context and sole Ready transition; native and issuer authenticity are assumptions, not new authorities created by this document.",
+    "mutation": "No mutation in document oracle. Planned product mutation is one exact Quarantined→Ready marker CAS.",
+    "transaction": "Final path exclusive target; quarantine first; children/catalog prepared at same final paths; proof verification; one Ready CAS; delivery only after verified Ready. Unknown preserved.",
+    "forbidden": [
+      "Staged rename/journal moves",
+      "archive/copy framework",
+      "new product Port or provider",
+      "retry/cleanup",
+      "source approval inheritance",
+      "S2 changes",
+      "board/current-state/hook/role writes"
+    ]
+  },
+  "contracts": [
+    "All request body fields bind explicit issuer premises, independent of request hashes",
+    "Every nested unknown/missing/type/enum error rejects before field access and issuer lookup",
+    "New project/document identity differs from source; bytes bound to exact captured context",
+    "Unknown catalog/incomplete children cannot publish Ready",
+    "Unknown CAS remains uncertain; verified Ready survives owner/ACK loss",
+    "Existing closed publish schema remains unchanged and unextended"
+  ],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "request": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "COPY-READY-CANDIDATE-v1"
+            ]
+          },
+          "issuer": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "M01"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "publish"
+            ]
+          },
+          "ordinal": {
+            "type": "string",
+            "minLength": 1,
+            "enum": [
+              "0"
+            ]
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "project_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "document_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "session_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner_generation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "captured_revision": {
+                "type": "string",
+                "minLength": 1
+              },
+              "workflow_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "project_uuid",
+              "document_uuid",
+              "session_id",
+              "owner_generation",
+              "captured_revision",
+              "workflow_id"
+            ],
+            "additionalProperties": false
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "new_project_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "new_document_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_project_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_document_uuid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "final_canonical_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "target_native_identity": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "volume_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "volume_id",
+                  "file_id"
+                ],
+                "additionalProperties": false
+              },
+              "marker_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expected_quarantine_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "ready_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "definition_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "document_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "catalog_index_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "catalog_generation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "manifest_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blob_manifest_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "material_root_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_snapshot_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provider_proof_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "catalog_proof_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "copy_proof_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "native_lease_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "new_project_uuid",
+              "new_document_uuid",
+              "source_project_uuid",
+              "source_document_uuid",
+              "final_canonical_path",
+              "target_native_identity",
+              "marker_path",
+              "expected_quarantine_raw",
+              "ready_raw",
+              "definition_raw",
+              "document_raw",
+              "catalog_index_raw",
+              "catalog_generation",
+              "manifest_raw",
+              "blob_manifest_digest",
+              "material_root_digest",
+              "source_snapshot_digest",
+              "provider_proof_id",
+              "catalog_proof_id",
+              "copy_proof_id",
+              "native_lease_id"
+            ],
+            "additionalProperties": false
+          },
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "protocol",
+          "issuer",
+          "role",
+          "ordinal",
+          "context",
+          "body",
+          "operation_id"
+        ],
+        "additionalProperties": false
+      },
+      "request_digest": {
+        "type": "string",
+        "minLength": 1
+      },
+      "issuer_records": {
+        "type": "object",
+        "properties": {
+          "provider-1": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "NativeProvider"
+                ]
+              },
+              "context": {
+                "type": "object",
+                "properties": {
+                  "project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "owner_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "captured_revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "project_uuid",
+                  "document_uuid",
+                  "session_id",
+                  "owner_generation",
+                  "captured_revision",
+                  "workflow_id"
+                ],
+                "additionalProperties": false
+              },
+              "target_native_identity": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "volume_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "volume_id",
+                  "file_id"
+                ],
+                "additionalProperties": false
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "Verified",
+                  "Unknown"
+                ]
+              },
+              "binding": {
+                "type": "object",
+                "properties": {
+                  "final_canonical_path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "marker_path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_native_identity": {
+                    "type": "object",
+                    "properties": {
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "volume_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file_id": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "provider",
+                      "volume_id",
+                      "file_id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "native_lease_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "final_canonical_path",
+                  "marker_path",
+                  "target_native_identity",
+                  "native_lease_id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "issuer",
+              "context",
+              "target_native_identity",
+              "status",
+              "binding"
+            ],
+            "additionalProperties": false
+          },
+          "catalog-1": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "M05"
+                ]
+              },
+              "context": {
+                "type": "object",
+                "properties": {
+                  "project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "owner_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "captured_revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "project_uuid",
+                  "document_uuid",
+                  "session_id",
+                  "owner_generation",
+                  "captured_revision",
+                  "workflow_id"
+                ],
+                "additionalProperties": false
+              },
+              "catalog_index_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "Verified",
+                  "Unknown"
+                ]
+              },
+              "binding": {
+                "type": "object",
+                "properties": {
+                  "catalog_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "catalog_index_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "manifest_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "material_root_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "new_project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "new_document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "catalog_generation",
+                  "catalog_index_raw",
+                  "manifest_raw",
+                  "material_root_digest",
+                  "new_project_uuid",
+                  "new_document_uuid"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "issuer",
+              "context",
+              "catalog_index_raw",
+              "status",
+              "binding"
+            ],
+            "additionalProperties": false
+          },
+          "copy-1": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "M06"
+                ]
+              },
+              "context": {
+                "type": "object",
+                "properties": {
+                  "project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "owner_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "captured_revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "project_uuid",
+                  "document_uuid",
+                  "session_id",
+                  "owner_generation",
+                  "captured_revision",
+                  "workflow_id"
+                ],
+                "additionalProperties": false
+              },
+              "blob_manifest_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "material_root_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "Complete",
+                  "Incomplete"
+                ]
+              },
+              "binding": {
+                "type": "object",
+                "properties": {
+                  "new_project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "new_document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "definition_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "manifest_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "blob_manifest_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "material_root_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_snapshot_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "new_project_uuid",
+                  "new_document_uuid",
+                  "source_project_uuid",
+                  "source_document_uuid",
+                  "definition_raw",
+                  "document_raw",
+                  "manifest_raw",
+                  "blob_manifest_digest",
+                  "material_root_digest",
+                  "source_snapshot_digest"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "issuer",
+              "context",
+              "blob_manifest_digest",
+              "material_root_digest",
+              "status",
+              "binding"
+            ],
+            "additionalProperties": false
+          },
+          "ready-1": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "M01"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1,
+                "enum": [
+                  "ProjectCopyReady"
+                ]
+              },
+              "receipt_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "context": {
+                "type": "object",
+                "properties": {
+                  "project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "session_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "owner_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "captured_revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "workflow_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "project_uuid",
+                  "document_uuid",
+                  "session_id",
+                  "owner_generation",
+                  "captured_revision",
+                  "workflow_id"
+                ],
+                "additionalProperties": false
+              },
+              "target_native_identity": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "volume_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "volume_id",
+                  "file_id"
+                ],
+                "additionalProperties": false
+              },
+              "target_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "previous_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "committed_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "transaction_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "request_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "catalog_index_raw": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blob_manifest_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "material_root_digest": {
+                "type": "string",
+                "minLength": 1
+              },
+              "binding": {
+                "type": "object",
+                "properties": {
+                  "new_project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "new_document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_project_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_document_uuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "final_canonical_path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "target_native_identity": {
+                    "type": "object",
+                    "properties": {
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "volume_id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file_id": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "provider",
+                      "volume_id",
+                      "file_id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "marker_path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expected_quarantine_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "ready_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "definition_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "document_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "catalog_index_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "catalog_generation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "manifest_raw": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "blob_manifest_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "material_root_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_snapshot_digest": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "provider_proof_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "catalog_proof_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "copy_proof_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "native_lease_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "new_project_uuid",
+                  "new_document_uuid",
+                  "source_project_uuid",
+                  "source_document_uuid",
+                  "final_canonical_path",
+                  "target_native_identity",
+                  "marker_path",
+                  "expected_quarantine_raw",
+                  "ready_raw",
+                  "definition_raw",
+                  "document_raw",
+                  "catalog_index_raw",
+                  "catalog_generation",
+                  "manifest_raw",
+                  "blob_manifest_digest",
+                  "material_root_digest",
+                  "source_snapshot_digest",
+                  "provider_proof_id",
+                  "catalog_proof_id",
+                  "copy_proof_id",
+                  "native_lease_id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "issuer",
+              "kind",
+              "receipt_id",
+              "context",
+              "target_native_identity",
+              "target_path",
+              "previous_digest",
+              "committed_digest",
+              "transaction_id",
+              "request_digest",
+              "catalog_index_raw",
+              "blob_manifest_digest",
+              "material_root_digest",
+              "binding"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "provider-1",
+          "catalog-1",
+          "copy-1",
+          "ready-1"
+        ],
+        "additionalProperties": false
+      },
+      "target_existing": {
+        "type": "boolean"
+      },
+      "identity_valid": {
+        "type": "boolean"
+      },
+      "ready_cas": {
+        "type": "string",
+        "minLength": 1,
+        "enum": [
+          "Verified",
+          "Unknown"
+        ]
+      },
+      "owner_current": {
+        "type": "boolean"
+      },
+      "source_ack": {
+        "type": "boolean"
+      },
+      "authority_fixture_id": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "request",
+      "request_digest",
+      "issuer_records",
+      "target_existing",
+      "identity_valid",
+      "ready_cas",
+      "owner_current",
+      "source_ack",
+      "authority_fixture_id"
+    ],
+    "additionalProperties": false,
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "PROPOSED_PENDING_OWNER closed DOCUMENT fixture root; not existing publish schema"
+  },
+  "field_mapping": {
+    "new_project_uuid": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/new_project_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/new_project_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/new_project_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "new_document_uuid": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/new_document_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/new_document_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/new_document_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "source_project_uuid": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/source_project_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/source_project_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "source_document_uuid": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/source_document_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/source_document_uuid",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "final_canonical_path": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/provider-1",
+        "field": "binding/final_canonical_path",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/final_canonical_path",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "target_native_identity": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/provider-1",
+        "field": "binding/target_native_identity",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/target_native_identity",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "marker_path": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/provider-1",
+        "field": "binding/marker_path",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/marker_path",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "expected_quarantine_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/expected_quarantine_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "ready_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/ready_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "definition_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/definition_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/definition_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "document_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/document_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/document_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "catalog_index_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/catalog_index_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/catalog_index_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "catalog_generation": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/catalog_generation",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/catalog_generation",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "manifest_raw": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/manifest_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/manifest_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/manifest_raw",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "blob_manifest_digest": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/blob_manifest_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/blob_manifest_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "material_root_digest": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/catalog-1",
+        "field": "binding/material_root_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/material_root_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/material_root_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "source_snapshot_digest": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/copy-1",
+        "field": "binding/source_snapshot_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/source_snapshot_digest",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "provider_proof_id": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/provider_proof_id",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "catalog_proof_id": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/catalog_proof_id",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "copy_proof_id": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/copy_proof_id",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ],
+    "native_lease_id": [
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/provider-1",
+        "field": "binding/native_lease_id",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      },
+      {
+        "trusted_lookup": "authority-fixtures.json#coherent-A/issuer_records/ready-1",
+        "field": "binding/native_lease_id",
+        "oracle": "oracle.py:observe trusted binding loop; actual request body value compared by equality"
+      }
+    ]
+  },
+  "owner_decisions": [
+    {
+      "id": "CR-D1",
+      "status": "PROPOSED_PENDING_OWNER",
+      "current": "No native lease provider authority exists in FileCommitReceipt.",
+      "proposal": "Provider issuer evidence binds exact final path + marker path + native volume/file identity + nonempty held lease ID to immutable context; concrete fixture lookup only models that premise.",
+      "owner_question": "Confirm actual native provider schema, lease lifecycle and platform verification before any Skeleton."
+    },
+    {
+      "id": "CR-D2",
+      "status": "PROPOSED_PENDING_OWNER",
+      "current": "No adopted durable Ready issuer record/lookup.",
+      "proposal": "M01 Ready issuer binds whole request digest, all body fields, exact marker prior/new digest, target identity, transaction ID and context; rehashed caller DTO cannot mutate frozen issuer record.",
+      "owner_question": "Confirm durable issuance/lookup/restart semantics and precise diagnostic/precedence proposal."
+    },
+    {
+      "id": "CR-D3",
+      "status": "PROPOSED_PENDING_OWNER",
+      "current": "Closed existing publish schema does not admit these fields.",
+      "proposal": "Review separate copy Ready publish body admission; candidate.schema.json is complete document root only, not a patch to existing publish. Exact before/after representation migration is attached.",
+      "owner_question": "Approve or reject complete candidate shape, field mapping, byte representation and original-eight migration; then separately revise envelope."
+    }
+  ],
+  "errors_and_precedence": {
+    "status": "PROPOSED_PENDING_OWNER",
+    "new_diagnostic_names": true,
+    "not_product_error_enum": true,
+    "precedence": [
+      {
+        "error": "CandidateShape",
+        "result": "RejectedBeforeMutation",
+        "rule": "First: every nested missing/unknown/null/wrong type/enum/empty string; before field access/lookup/CAS"
+      },
+      {
+        "error": "RequestDigestMismatch",
+        "result": "ProofMismatch",
+        "rule": "Second: canonical full request digest; hashes provide integrity, not authority"
+      },
+      {
+        "error": "InvalidWorkflowIdentity",
+        "result": "RejectedBeforeMutation",
+        "rule": "Third: malformed workflow UUID"
+      },
+      {
+        "error": "TransitionMismatch",
+        "result": "ProofMismatch",
+        "rule": "Fourth: publish/0 UUIDv5 mismatch"
+      },
+      {
+        "error": "IdentityConflict",
+        "result": "RejectedBeforeMutation",
+        "rule": "Fifth: context/new/source identity relation"
+      },
+      {
+        "error": "TargetOrIdentityRejected",
+        "result": "RejectedBeforeMutation",
+        "rule": "Sixth: pre-existing target or invalid identity"
+      },
+      {
+        "error": "DependencyUnverified",
+        "result": "DependencyNotReady",
+        "rule": "Seventh: declared Unknown provider/catalog state"
+      },
+      {
+        "error": "CopyIncomplete",
+        "result": "RejectedBeforeMutation",
+        "rule": "Eighth: declared Incomplete children"
+      },
+      {
+        "error": "IssuerRecordUnavailable",
+        "result": "ProofMismatch",
+        "rule": "Ninth: frozen document fixture lookup unavailable"
+      },
+      {
+        "error": "IssuerRecordMismatch",
+        "result": "ProofMismatch",
+        "rule": "Tenth: caller record differs from separately frozen issuer fixture; context/binding checked thereafter"
+      },
+      {
+        "error": "IssuerContextMismatch",
+        "result": "ProofMismatch",
+        "rule": "Trusted issuer context vs request context"
+      },
+      {
+        "error": "IssuerBindingMismatch",
+        "result": "ProofMismatch",
+        "rule": "Every body field vs explicit trusted issuer binding"
+      },
+      {
+        "error": "IssuerReferenceMismatch",
+        "result": "ProofMismatch",
+        "rule": "Proof handles must resolve exact records"
+      },
+      {
+        "error": "ReadyRequestMismatch",
+        "result": "ProofMismatch",
+        "rule": "Ready receipt identity and trusted request digest"
+      },
+      {
+        "error": "ReadyRelationMismatch",
+        "result": "ProofMismatch",
+        "rule": "Ready path/prior/new/catalog/blob/root relationships"
+      },
+      {
+        "error": "TargetRelationMismatch",
+        "result": "ProofMismatch",
+        "rule": "Native identity and stable marker location"
+      },
+      {
+        "error": "CASFixtureMismatch",
+        "result": "ProofMismatch",
+        "rule": "Caller CAS outcome differs from frozen domain fixture"
+      },
+      {
+        "error": "ReadyUncertain",
+        "result": "UncertainPublication",
+        "rule": "Unknown coherent CAS precedes delivery checks"
+      },
+      {
+        "error": "OwnerDeliveryDeferred",
+        "result": "DeliveryDeferred",
+        "rule": "Verified Ready + owner absent; precedes source ACK"
+      },
+      {
+        "error": "SourceAckDeferred",
+        "result": "CommittedAckDeferred",
+        "rule": "Verified Ready + ACK absent"
+      },
+      {
+        "error": "None",
+        "result": "VerifiedPublished",
+        "rule": "Only after all checks"
+      }
+    ],
+    "no_native_calls": true,
+    "no_mutation": true,
+    "notes": "Frozen record equality intentionally fences all fields before downstream consistency checks; some detailed diagnostics are defensive and unreachable for internally consistent immutable fixture tables. No broad exception catch or success fallback."
+  },
+  "original_eight_migration": {
+    "artifact": "representation-migration.json",
+    "status": "PROPOSED_PENDING_OWNER",
+    "outputs_preserved": 8
+  },
+  "authority_premise": "authority-fixtures.json contains three frozen DOCUMENT assumptions A, B and unknown-CAS. It is not a native signature/trust store, no external authenticity established. classify accepts only immutable loaded lookup plus caller fixture; it cannot create/alter lookup records. Coherent B and Unknown CAS are explicit alternate domain premises, not fixture-specific return values.",
+  "bdd": [
+    {
+      "id": "BDD-CC-01",
+      "behavior": "success",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "VerifiedPublished",
+      "fixture_ids": [
+        "M01-CR-01"
+      ]
+    },
+    {
+      "id": "BDD-CC-02",
+      "behavior": "target-existing",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "RejectedBeforeMutation",
+      "fixture_ids": [
+        "M01-CR-02"
+      ]
+    },
+    {
+      "id": "BDD-CC-03",
+      "behavior": "invalid-identity",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "RejectedBeforeMutation",
+      "fixture_ids": [
+        "M01-CR-03"
+      ]
+    },
+    {
+      "id": "BDD-CC-04",
+      "behavior": "copy-incomplete",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "RejectedBeforeMutation",
+      "fixture_ids": [
+        "M01-CR-04"
+      ]
+    },
+    {
+      "id": "BDD-CC-05",
+      "behavior": "index-unknown",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "DependencyNotReady",
+      "fixture_ids": [
+        "M01-CR-05"
+      ]
+    },
+    {
+      "id": "BDD-CC-06",
+      "behavior": "ready-CAS-unknown",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "UncertainPublication",
+      "fixture_ids": [
+        "M01-CR-06"
+      ]
+    },
+    {
+      "id": "BDD-CC-07",
+      "behavior": "owner-loss-after-ready",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "DeliveryDeferred",
+      "fixture_ids": [
+        "M01-CR-07"
+      ]
+    },
+    {
+      "id": "BDD-CC-08",
+      "behavior": "source-ACK-deferred",
+      "given": "A copy prepared at its final target with declared immutable document authority premises",
+      "when": "Readiness is evaluated",
+      "then": "CommittedAckDeferred",
+      "fixture_ids": [
+        "M01-CR-08"
+      ]
+    },
+    {
+      "id": "BDD-CC-09",
+      "behavior": "Resealing changed copy evidence cannot create issuer authority",
+      "given": "Trusted copy evidence for the captured request",
+      "when": "Changed project bytes, path, catalog generation, source snapshot or lease are submitted",
+      "then": "Readiness is rejected without changing project state",
+      "fixture_ids": []
+    },
+    {
+      "id": "BDD-CC-10",
+      "behavior": "Malformed or incomplete requests are rejected safely",
+      "given": "A copy whose current project state is unchanged",
+      "when": "A request has missing, unknown, empty or incorrectly typed fields",
+      "then": "Readiness is rejected before issuer lookup or state changes",
+      "fixture_ids": []
+    },
+    {
+      "id": "BDD-CC-11",
+      "behavior": "A coherent different copy is accepted under its own evidence premise",
+      "given": "A different coherent copy and its matching immutable document evidence",
+      "when": "Readiness is evaluated",
+      "then": "Readiness is verified in the document model",
+      "fixture_ids": []
+    },
+    {
+      "id": "BDD-CC-12",
+      "behavior": "Uncertain Ready has priority over delivery loss",
+      "given": "Unknown Ready outcome and owner delivery unavailable",
+      "when": "Readiness is evaluated",
+      "then": "Publication remains uncertain without retry or cleanup",
+      "fixture_ids": []
+    },
+    {
+      "id": "BDD-CC-13",
+      "behavior": "Owner loss has priority over ACK loss after Ready",
+      "given": "Verified Ready while both owner and ACK are unavailable",
+      "when": "Readiness is evaluated",
+      "then": "Delivery is deferred and Ready evidence retained",
+      "fixture_ids": []
+    }
+  ],
+  "tdd": {
+    "levels": [
+      "Future L0 shape/pure rules",
+      "Future L2 M01 module contract via ports",
+      "Future L3 native + issuer integration",
+      "Future L4 adjacent reader/owner/ACK regression"
+    ],
+    "traceability": "traceability.json",
+    "document_vectors": {
+      "original": 8,
+      "closure": 18,
+      "targeted": 373
+    },
+    "product_status": "PLANNED_NOT_RUN",
+    "command": "python -B docs/requirements-confirmation/phase1-spec/tasks/M01/planning/copy-ready-correction/check.py",
+    "valid_RED": "NOT RUN"
+  },
+  "acceptance": [
+    "Exact 18 review counterexamples close with before/after and no model/native mutations",
+    "Original eight outputs preserved with exact pending-owner before/after migration",
+    "All body fields tested with rehashed mutations; all schema paths missing/type guarded; unknown nested fields rejected",
+    "Positive coherent B/CAS premises demonstrate relation-based acceptance",
+    "796 product hashes unchanged; original handoff/review input hashes unchanged",
+    "HTML embedded ModuleSpec equals module-spec.json; bounded seal hashes all artifacts"
+  ],
+  "coverage": {
+    "B1": "Applicable original/coherent success",
+    "B2": "Applicable empty/missing/type boundaries",
+    "B3": "Applicable malformed root",
+    "B4": "Applicable provider/catalog Unknown",
+    "B5": "Applicable incomplete copy",
+    "B6": "Applicable input unchanged",
+    "B7": "Applicable document CAS outcome only; native NOT RUN",
+    "B8": "Applicable owner/ACK loss",
+    "B9": "Applicable no cleanup/retry model; native NOT RUN",
+    "B10": "Applicable M05/M06 issuer fixture relationships",
+    "B11": "Deferred actual native platform/provider schema pending Owner",
+    "B12": "Applicable eight retained outputs and exact18 closures"
+  },
+  "scope": [
+    "NEW copy-ready-correction only",
+    "Original inputs, product/tests, current-state, board, hooks and roles protected"
+  ],
+  "verification": {
+    "independent": "NOT RUN",
+    "native": "NOT RUN",
+    "build": "NOT RUN",
+    "product": "NOT RUN",
+    "valid_RED": "NOT RUN",
+    "full_Draft": "NOT RUN"
+  },
+  "module_pass": false,
+  "skeleton": "NOT AUTHORIZED",
+  "known_risks": [
+    "Document fixture authority can only model trust; no native held lease, durable issuer authenticity, restart semantics or real CAS proven",
+    "Closed candidate root and representation are proposals; no wire schema admission or approved product error contract",
+    "Root owner/ACK booleans are declared document scenario premises, not runtime authority tokens",
+    "All product module/E2E acceptance remains pending"
+  ],
+  "next_action": "Independent bounded document review; then Owner decide CR-D1..D3, exact schema/diagnostics/migration; only subsequently approved Skeleton and valid RED. Keep parent Yellow; no implementation dispatch."
+}

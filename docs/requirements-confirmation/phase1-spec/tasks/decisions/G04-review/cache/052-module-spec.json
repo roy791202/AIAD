@@ -1,0 +1,106 @@
+{
+  "identity": {
+    "module": "M03",
+    "task": "PD-P1-M03-PREP-01",
+    "slice": "legacy-entry-integration",
+    "author": "/root/m03_legacy_gate_packet"
+  },
+  "status": "PROPOSED_PENDING_OWNER",
+  "intent": "Reconcile original B058-B060 only; plan fail-closed legacy typed ingress without authorizing runtime implementation",
+  "architecture": {
+    "hexagonal": "Caller -> Tauri ACL/decode -> legacy input adapter -> deny. Approved future owner routes go through M03 application facade -> M04/C1 ports -> adapters. Legacy denial never traverses those ports.",
+    "dependency_view": "UI -> Tauri input adapter -> M03 facade -> M04 owner abstract input / C1 / M05 abstractions; FS/native adapters implement ports. Current legacy source bypasses DispatchHost and calls host helpers; static fact, not approved future design.",
+    "ownership": "M04 owns authoritative document, revision and history; M03 owns detached ephemeral projections only",
+    "mutation": "None in legacy denial; no owner port call",
+    "transaction": "Rejection before root/default resolution/codec/filesystem/native invocation; preserve entire before state. No read/write/rollback required for denial.",
+    "forbidden": [
+      "No fallback",
+      "No typed root as owner authority",
+      "No direct runtime/FS/native calls",
+      "No new commands/ports",
+      "No product/Skeleton changes"
+    ]
+  },
+  "contracts": [
+    "Original B058-B060 require DESIGN_OWNER_REQUIRED and zero save/load/build filesystem calls",
+    "ACL/decode denial happens before handler and is not evidence of owner denial",
+    "Existing Result<Dto,String> signature is a static fact; proposed Err(String) code token is not a newly approved wire schema",
+    "Denied calls preserve document/history/revision/bindings/selection/registry/FS and never spawn opener"
+  ],
+  "source_current": {
+    "head": "5b709343a890503ebbe24a802e43cda5647df124",
+    "authority_historical_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "authority_count": 796
+  },
+  "bdd": {
+    "original_ids": [
+      "M03-H2-B058",
+      "M03-H2-B059",
+      "M03-H2-B060"
+    ],
+    "source": "../h2-exact-design/module.feature",
+    "original_count": 62,
+    "recent_mapping_before": "59 thematic partial + 3 missing",
+    "after": "59 thematic partial + 3 dedicated planned document traces; zero inherited runtime coverage"
+  },
+  "test_strategy": {
+    "document_cases": 18,
+    "positive": "Admitted legacy call correctly refuses with original code; never successful legacy IO",
+    "negative": "ACL/decode pre-handler denial, forged owner, viewer, raw-root and open_after do not produce unintended IO",
+    "levels": "Document pure-data model only; L0-L5 product evidence NOT RUN",
+    "fixture_admission_limit": "args are symbolic legacy categories, not claims that these dictionaries deserialize as current DesignDoc DTOs. acl_admitted/decoded are explicit model inputs; real Tauri admission and typed malformed/raw-root classification are NOT RUN. A raw-root request rejected by decode must use pre-handler outcome, never fabricated DESIGN_OWNER_REQUIRED."
+  },
+  "tasks": [
+    {
+      "id": "M03-LEGACY-DOC-01",
+      "primary_module": "M03",
+      "scope": "this new directory only",
+      "state": "REVIEW_PENDING",
+      "acceptance": [
+        "3 exact original IDs linked",
+        "18 model fixtures pass",
+        "6 semantic tamper probes rejected",
+        "796 authority hashes unchanged",
+        "original packages and acceptance unchanged"
+      ]
+    }
+  ],
+  "pending_owner": [
+    "Exact legacy error String serialization and richer response shape remain PROPOSED_PENDING_OWNER; no invented discriminated error payload is approved",
+    "ACL migration and actual caller local-origin enforcement remain original H2 pending decisions",
+    "Future owner route composition and separate exported preview compatibility are not adopted by this packet"
+  ],
+  "ui_schema": {
+    "component": "Existing legacy invocation error surface",
+    "change": "No new UI/control; proposed show existing denial and preserve current view",
+    "fields": "No new fields; raw doc/root are untrusted legacy inputs",
+    "success": "No legacy IO success",
+    "error": "DESIGN_OWNER_REQUIRED for handler-admitted request; framework denial for pre-handler failure",
+    "empty": "No synthesized document/default-path fallback",
+    "accessibility": "Use existing error announcement pattern; native verification NOT RUN"
+  },
+  "verification": {
+    "independent_review": "NOT RUN",
+    "native": "NOT RUN",
+    "build": "NOT RUN",
+    "product": "NOT RUN",
+    "valid_RED": "NOT RUN",
+    "full_Draft": "NOT RUN",
+    "module_acceptance": "NOT RUN"
+  },
+  "remaining_gates": [
+    "Independent document review",
+    "Owner adoption of exact H2/C1 choices and denial shape",
+    "Approved skeleton and valid RED",
+    "Independent runtime/ACL/caller/FS/native tests",
+    "Module regressions and full Draft acceptance"
+  ],
+  "module_complete": false,
+  "health": "Yellow / REPLAN_REQUIRED",
+  "response_boundary": {
+    "current": "Each old function returns Result<its existing success DTO,String>. Success fields belong to current static source and are never emitted by proposed legacy denial. Current errors propagate authorize/root/codec/FS strings.",
+    "proposed_handler_denial": "Semantic code DESIGN_OWNER_REQUIRED; Result::Err String transport retained as candidate only. No success DTO/path/doc/opened fields, no fallback. Exact message text, typed code envelope and new fields are NOT approved.",
+    "pre_handler": "Tauri ACL/decode failure is distinct; exact framework denial payload is unspecified and NOT RUN. A client-supplied caller label cannot establish local window/writer authority.",
+    "precedence": "Framework admit/decode -> legacy denial -> stop. Owner lookup, host lock, defaults, root resolution, IO and OS opener are unreachable in proposed denial. Original legacy commands cannot be made successful by owner readiness."
+  }
+}

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent entrypoints — planning packet</title>
+<style>
+body{font:16px/1.6 system-ui;max-width:1100px;margin:32px auto;padding:20px;background:#111820;color:#edf2f8}
+a{color:#9dccff}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,monospace;background:#0b1218;padding:12px;border:1px solid #345}
+td,th{border:1px solid #567;padding:10px;text-align:left;vertical-align:top}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+h1,h2{color:#9dccff}section{border:1px solid #374151;padding:16px;margin:16px 0}
+.badge{display:inline-block;padding:2px 8px;border:1px solid #8af;color:#8af;border-radius:4px;font-size:13px;margin-right:6px}
+.warn{border-color:#b45309;background:#1c1410}
+</style>
+<body>
+<h1>後續｜其他 Agent providers 與入口整合 — 規劃封包</h1>
+<p>
+<span class="badge">PLANNING_ONLY</span>
+<span class="badge">PROPOSED_NOT_APPROVED</span>
+<span class="badge">NOT_READY_FOR_IMPLEMENTATION</span>
+<span class="badge">stay yellow</span>
+</p>
+<p>Card: <code>PD-RUST-AGENT-ENTRYPOINTS-01</code> · Module: <code>agent-integration</code> · Parent: <code>PD-RUST-IMPROVE-20261025</code> · Date: 2026-10-26 Asia/Taipei</p>
+<p>Production / live Agent / Port changes: <b>NOT STARTED</b>. Architecture approval: <b>NOT CLAIMED</b>. Intended RED: <b>NOT RUN</b>.</p>
+
+<section class="warn">
+<h2>Readiness</h2>
+<p><b>NOT_READY_FOR_IMPLEMENTATION.</b> This packet is a routing / readiness index only. Skeleton, executable RED, and delivery implementation belong to owner cards after architecture gates and open DECs clear.</p>
+<ul>
+<li>Hard deps: <code>PD-RUST-AGENT-LOOP-01</code>, unapproved schema/API/Ports/ownership/transaction/BDD, embedded DEC after <code>PD-RUST-EMBEDDED-AGENT-PLAN-01</code></li>
+<li>Open DECs affecting matrix: DISPATCH-MODES, EMBEDDED-AGENT, MCP-TRANSPORT, GUARD (as applicable)</li>
+</ul>
+</section>
+
+<section>
+<h2>Intent</h2>
+<p>沿用第一閉環（task / run / lease / cancel / report / EVID）契約，由 <code>CLI-ENTRY</code> / <code>INBOUND-MCP</code> / <code>CLAUDE-COMPAT</code> / <code>CODEX-COMPAT</code> / 內嵌與 Agent-hosted UI 各卡落實。各能力必須可報告版本、範圍、相容狀態與未支援；本模組<strong>不</strong>重複建立 SSOT。</p>
+</section>
+
+<section>
+<h2>Capability routing matrix</h2>
+<table>
+<tr><th>Capability</th><th>Owner card</th><th>Version</th><th>Scope</th><th>Compat</th><th>Unsupported / note</th></tr>
+<tr>
+<td>cli-entry</td>
+<td><code>PD-RUST-CLI-ENTRY-IMPL-01</code></td>
+<td>UNKNOWN</td>
+<td>noninteractive HOST/EXEC envelope (proposed)</td>
+<td>NOT RUN</td>
+<td>No silent stdin/PTY in first slice</td>
+</tr>
+<tr>
+<td>inbound-mcp</td>
+<td><code>PD-RUST-INBOUND-MCP-IMPL-01</code></td>
+<td>UNKNOWN</td>
+<td>driving adapter → shared Application</td>
+<td>NOT RUN</td>
+<td>≠ outbound AgentProvider spawn</td>
+</tr>
+<tr>
+<td>claude-compat</td>
+<td><code>PD-RUST-CLAUDE-COMPAT-01</code></td>
+<td>UNKNOWN (owner supply)</td>
+<td>named install + mode</td>
+<td>NOT RUN</td>
+<td>Settings defaults ≠ verified API</td>
+</tr>
+<tr>
+<td>codex-compat</td>
+<td><code>PD-RUST-CODEX-COMPAT-01</code></td>
+<td>UNKNOWN (owner supply)</td>
+<td>named install + host</td>
+<td>NOT RUN</td>
+<td>Claude PASS ≠ Codex PASS</td>
+</tr>
+<tr>
+<td>embedded</td>
+<td><code>EMBEDDED-AGENT-PLAN → DEC → IMPL</code></td>
+<td>UNKNOWN</td>
+<td>EluSlot hosts PTY or native panel</td>
+<td>NOT RUN</td>
+<td>ProcessPort gaps; DEC open</td>
+</tr>
+<tr>
+<td>agent-hosted-ui</td>
+<td><code>PD-RUST-AGENT-HOSTED-UI-01</code></td>
+<td>UNKNOWN</td>
+<td>read-only first; writes separate</td>
+<td>NOT RUN</td>
+<td>Per-host capabilities unverified</td>
+</tr>
+</table>
+</section>
+
+<section>
+<h2>Diagram A — entrypoint fan-in</h2>
+<pre>Operators / Agents / Hosts
+  ├─ CLI-ENTRY (product launches CLI) ──┐
+  ├─ INBOUND-MCP (Agent claims tools) ──┤
+  ├─ EMBEDDED (EluSlot hosts session) ──┼──► Application Host
+  └─ AGENT-HOSTED-UI (Agent hosts UI) ──┘         │
+                                                  ▼
+                         shared task/run/lease/cancel/report/EVID
+                         (first closed-loop — AGENT-LOOP family)
+                                                  │
+                         ◄── driven CLI / process adapters
+                         ◄── compat evidence indexed (not re-owned)</pre>
+</section>
+
+<section>
+<h2>Diagram B — ownership &amp; non-duplication</h2>
+<pre>OWNERSHIP
+  AGENT-LOOP (+ Host/WORK/EVID) = closed-loop contract SSOT (until approved: proposed)
+  CLI-ENTRY / INBOUND-MCP / EMBEDDED / HOSTED-UI = adapter + UX delivery
+  CLAUDE-COMPAT / CODEX-COMPAT = versioned capability evidence rows
+  THIS MODULE = routing map + readiness index ONLY
+
+FORBIDDEN
+  second task/run/report store
+  entrypoint-local acceptance / auto board green
+  guessing argv/auth across providers
+  absorbing PTY into ProcessPort without DEC</pre>
+</section>
+
+<section>
+<h2>Contracts / invariants (sketch)</h2>
+<ul>
+<li><b>INV-AE-01</b> Every capability names one primary owner card</li>
+<li><b>INV-AE-02</b> Claude and Codex rows are independent</li>
+<li><b>INV-AE-03</b> NOT RUN / NOT_SUPPORTED / BLOCKED are first-class</li>
+<li><b>INV-AE-04</b> Real-provider claims need explicit version/path/argv/auth-ready/target</li>
+<li><b>INV-AE-05</b> Inbound MCP ≠ outbound AgentProvider semantics</li>
+<li><b>INV-AE-06</b> No silent ProcessPort stdin/PTY extension</li>
+<li><b>INV-AE-07</b> No second SSOT in this module</li>
+<li><b>INV-AE-08</b> No guessed provider error classifiers</li>
+</ul>
+<p>Detail: <a href="./contracts-invariants.md">contracts-invariants.md</a> · Architecture: <a href="./architecture.md">architecture.md</a></p>
+</section>
+
+<section>
+<h2>BDD sketch (not executable RED)</h2>
+<p>IDs <code>BDD-AE-01</code>…<code>BDD-AE-07</code>: routing, status honesty, Claude/Codex independence, architecture blockers, no silent PTY, inbound≠outbound, provider success ≠ acceptance.</p>
+<p>Detail: <a href="./bdd-sketch.md">bdd-sketch.md</a>. Formal feature/steps/fixtures: <b>pending</b>.</p>
+</section>
+
+<section>
+<h2>Risks &amp; blockers</h2>
+<p>Primary blockers: <code>PD-RUST-AGENT-LOOP-01</code> gates; open DISPATCH / EMBEDDED / MCP-TRANSPORT / GUARD DECs; missing provider targets. Full list: <a href="./risks-and-blockers.md">risks-and-blockers.md</a>.</p>
+</section>
+
+<section>
+<h2>Cited proposal packets (not approvals)</h2>
+<ul>
+<li><code>reports/rust-improvements/continuous/cli-first-envelope/module.html</code></li>
+<li><code>reports/rust-improvements/embedded-agents/module.html</code></li>
+<li><code>reports/rust-improvements/dispatch-modes/module.html</code></li>
+</ul>
+</section>
+
+<section>
+<h2>Results</h2>
+<table>
+<tr><th>Item</th><th>Status</th></tr>
+<tr><td>Planning packet</td><td>COMPLETE (this folder)</td></tr>
+<tr><td>Architecture approval</td><td>NOT CLAIMED</td></tr>
+<tr><td>Skeleton / RED</td><td>NOT STARTED / NOT RUN</td></tr>
+<tr><td>Production crates</td><td>UNCHANGED</td></tr>
+<tr><td>Board green / commit / push</td><td>NOT RUN</td></tr>
+<tr><td>Live Agent / secrets / network</td><td>NOT ACCESSED</td></tr>
+</table>
+</section>
+
+<script type="application/json" id="module-spec">
+{"module":"agent-integration","task":"PD-RUST-AGENT-ENTRYPOINTS-01","state":"PLANNING_ONLY","architecture_status":"PROPOSED_NOT_APPROVED","implementation":"NOT_STARTED","verification":"NOT RUN","readiness":"NOT_READY_FOR_IMPLEMENTATION","see":"module.json"}
+</script>
+</body>
+</html>

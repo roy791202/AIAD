@@ -2,7 +2,7 @@
 from pathlib import Path
 from html.parser import HTMLParser
 from urllib.parse import unquote
-import json, struct, subprocess, base64, zipfile
+import json, os, struct, subprocess, base64, zipfile
 
 root = Path(__file__).resolve().parent
 out = root / 'ui-design'
@@ -57,30 +57,43 @@ for link in doc.links:
 for script in doc.scripts:
     r=subprocess.run(['node','--check','-'],input=script,text=True,capture_output=True)
     assert r.returncode==0,r.stderr
+# Honest status: design package is ALIGNED PROPOSAL with PARTIAL product alignment
+# (Workbench SSOT). Do not claim "product not implemented" — that contradicts desktop.
+# document_validation remains PASS; product_tests stay NOT RUN unless run separately.
 report={'document_validation':'PASS','pages':14,'images':14,'dialog_specs':8,'page_states':70,
         'planned_ui_cases':56,'links_and_traceability':'PASS','embedded_schema':'PASS',
         'javascript_syntax':'PASS','product_tests':'NOT RUN',
         'browser_verification':'NOT RUN: local file URL blocked by browser policy; no workaround attempted',
-        'acceptance':'DESIGN PROPOSAL; not product implementation or release approval'}
-(out/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-# Portable single HTML: image pixels and engineering data travel with the document.
-standalone=html
-for p in pages:
-    uri='data:image/png;base64,'+base64.b64encode((out/p['image']).read_bytes()).decode('ascii')
-    standalone=standalone.replace('src="'+p['image']+'"','src="'+uri+'"')
-    standalone=standalone.replace('href="'+p['image']+'"','href="#'+p['id']+'"')
-for name in ['ui-spec.json','verification.json']:
-    uri='data:application/json;base64,'+base64.b64encode((out/name).read_bytes()).decode('ascii')
-    standalone=standalone.replace('href="'+name+'"','download="'+name+'" href="'+uri+'"')
-# Product-plan references remain optional companion links; visuals/specs are embedded.
-(out/'SGenAxis-all-pages.html').write_text(standalone,encoding='utf-8')
-archive=root/'SGenAxis-ui-design-v0.1.zip'
-with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
-    for folder in [out,root/'product-plan']:
-        for p in folder.rglob('*'):
-            if p.is_file(): z.write(p,p.relative_to(root))
-    for name in ['build_ui_design.py','verify_ui_design.py']:
-        z.write(root/name,name)
-with zipfile.ZipFile(archive) as z: assert z.testzip() is None
-print(json.dumps(report,ensure_ascii=False))
-print(archive)
+        'alignment':'PARTIAL',
+        'acceptance':'ALIGNED PROPOSAL / PARTIAL alignment; document package status only — not product-test evidence or release approval'}
+assert 'ALIGNED PROPOSAL' in report['acceptance'] and 'PARTIAL' in report['acceptance']
+assert report['document_validation']=='PASS' and report['product_tests']=='NOT RUN'
+skip_all_pages = os.environ.get('SKIP_UIDESIGN_ALL_PAGES','').strip().lower() in ('1','true','yes')
+if skip_all_pages:
+    report['all_pages_html']='NOT RUN: SKIP_UIDESIGN_ALL_PAGES (INDEX-01 lightweight; no forced mega rebuild)'
+    report['zip_archive']='NOT RUN: SKIP_UIDESIGN_ALL_PAGES'
+    (out/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    print(json.dumps(report,ensure_ascii=False))
+else:
+    (out/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    # Portable single HTML: image pixels and engineering data travel with the document.
+    standalone=html
+    for p in pages:
+        uri='data:image/png;base64,'+base64.b64encode((out/p['image']).read_bytes()).decode('ascii')
+        standalone=standalone.replace('src="'+p['image']+'"','src="'+uri+'"')
+        standalone=standalone.replace('href="'+p['image']+'"','href="#'+p['id']+'"')
+    for name in ['ui-spec.json','verification.json']:
+        uri='data:application/json;base64,'+base64.b64encode((out/name).read_bytes()).decode('ascii')
+        standalone=standalone.replace('href="'+name+'"','download="'+name+'" href="'+uri+'"')
+    # Product-plan references remain optional companion links; visuals/specs are embedded.
+    (out/'SGenAxis-all-pages.html').write_text(standalone,encoding='utf-8')
+    archive=root/'SGenAxis-ui-design-v0.1.zip'
+    with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
+        for folder in [out,root/'product-plan']:
+            for p in folder.rglob('*'):
+                if p.is_file(): z.write(p,p.relative_to(root))
+        for name in ['build_ui_design.py','verify_ui_design.py']:
+            z.write(root/name,name)
+    with zipfile.ZipFile(archive) as z: assert z.testzip() is None
+    print(json.dumps(report,ensure_ascii=False))
+    print(archive)

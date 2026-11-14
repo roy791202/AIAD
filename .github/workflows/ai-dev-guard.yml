@@ -1,0 +1,52 @@
+# AI Dev Skills：PR 強制檢查（第 3 層）。在分支保護把「AI Dev Guard / guard」與「AI Dev Guard / tests」設為必要檢查。
+name: AI Dev Guard
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+permissions:
+  contents: read
+concurrency:
+  group: ai-dev-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Board / Task / BDD / spec / version checks
+        shell: pwsh
+        env:
+          BOARD_PATH: docs/board.json
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: ./.github/ai-dev-guard/guard.ps1
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Rust/cargo coverage runs on windows-latest in rust-gate.yml (check
+      # "rust-windows"), which runs cargo test --workspace / --lib / the exec
+      # matrix there. This app is Windows-first (Win32 paths, ConPTY,
+      # std::os::windows adapters), so its cargo tests belong on Windows, not
+      # on this Linux runner; this job covers the npm / UI tests only.
+      - uses: actions/setup-node@v4
+        if: ${{ hashFiles('apps/sgenaxis-desktop/package.json') != '' }}
+        with:
+          node-version: 20
+      - name: npm test
+        if: ${{ hashFiles('apps/sgenaxis-desktop/package.json') != '' }}
+        shell: bash
+        working-directory: apps/sgenaxis-desktop
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm test --if-present
+          node --test ui/*test.cjs

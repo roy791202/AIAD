@@ -1,0 +1,171 @@
+{
+  "status": "PROPOSED_NOT_APPROVED",
+  "primary_module": "M01",
+  "slice": "M01-S2",
+  "current_authorized_writes": [
+    "planning/s2-exact-design/**",
+    "own M01 PREP board/current-state only"
+  ],
+  "after_whole_packet_approval_only": {
+    "new_production": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs",
+        "allowed": "HOST local types/codec/helpers/readonly open+bind/Port-based save+ordered creation/adoption; no native IO"
+      }
+    ],
+    "existing_production": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "allowed": "register/re-export new definition module only"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+        "allowed": "only create_new_project_root/create_new_project_under become read-only syntax validation then WizardRequired; pure normalizers unchanged; three named unit test migrations"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+        "allowed": "only legacy create_project_with_preferences fail-closed + exact WizardRequired error variant; old preference load/save/presets/import behavior otherwise unchanged"
+      }
+    ],
+    "dependency_feature": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+        "allowed": "existing serde_json add raw_value feature only, no version/new dependency"
+      }
+    ],
+    "tests": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_creation_legacy.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/project_preferences_creation.rs"
+    ],
+    "test_doubles": "private same-fixture-FS commit double + fault log in three new integration tests; no production FakeCommit adapter",
+    "history": "legacy-history snapshots immutable"
+  },
+  "scope_delta": [
+    "HOST Cargo.toml raw_value feature explicitly proposed",
+    "two additional specifically named codec/legacy integration test targets",
+    "existing project_preferences_creation.rs explicitly named for creation-flow migration",
+    "no S2 Tauri/DispatchHost/UI source changes"
+  ],
+  "protected": [
+    "all paths not enumerated",
+    "WORK/S1 source/tests/lib and serde-free types",
+    "Ports/IO adapter/lib/tests/helper",
+    "Tauri/UI/capabilities/permissions/DTOs incl three creation handlers (S3)",
+    "HOST preference load/save tests except named creation integration file",
+    "all Cargo.lock/version/checksum and non-HOST manifests",
+    "old manifest/ESS/source preferences/assets/Git/AI/Plugin/BIN/Undo/M07"
+  ],
+  "subtasks": [
+    {
+      "id": "M01-S2-CODEC",
+      "layer": "HOST serialization",
+      "depends": [
+        "whole packet approval",
+        "accepted M01-S1"
+      ],
+      "files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs"
+      ]
+    },
+    {
+      "id": "M01-S2-STORE",
+      "layer": "HOST application",
+      "depends": [
+        "CODEC Skeleton/validRED",
+        "accepted IO implemented scope"
+      ],
+      "files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs"
+      ]
+    },
+    {
+      "id": "M01-S2-LEGACY",
+      "layer": "HOST compatibility boundary",
+      "depends": [
+        "typed outcomes specified",
+        "explicit legacy migration approval"
+      ],
+      "files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_creation_legacy.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/project_preferences_creation.rs"
+      ]
+    }
+  ],
+  "gates": [
+    "Owner confirms complete packet; architecture/details locked for named scope",
+    "Skeleton and buildable tests only; verify intended RED before any behavior implementation",
+    "Read-only Skeleton/RED acceptance, then standing automatic implementation inside approved envelope",
+    "Focused GREEN→full HOST/WORK/adapter regression→architecture→acceptance",
+    "Do not ship S2 alone while old entry routes denied and S3 wizard not accepted; no commit/push/release authorization"
+  ],
+  "commands": [
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition_codec --no-run --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition --no-run --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_creation_legacy --no-run --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition_codec --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_definition --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_project_creation_legacy --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test project_preferences_creation --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-work --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-ports -p sgenaxis-adapters --lib --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo build -p sgenaxis-host --locked",
+      "result": "NOT RUN; planning only"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+      "command": "cargo test --lib --locked",
+      "result": "NOT RUN; shell regression only, no S3/native proof"
+    }
+  ]
+}

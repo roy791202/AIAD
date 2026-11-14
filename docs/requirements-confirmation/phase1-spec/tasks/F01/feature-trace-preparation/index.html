@@ -1,0 +1,327 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>F01 原始功能證據追溯準備</title><style>body{font:16px/1.6 system-ui;max-width:1100px;margin:40px auto;padding:20px;background:#101820;color:#e6edf3}a{color:#83c9ff}section{padding:18px;margin:18px 0;border:1px solid #52606d;border-radius:8px}pre{white-space:pre-wrap}td,th{padding:12px;border:1px solid #52606d;vertical-align:top}table{border-collapse:collapse;width:100%}</style><h1>F01 六步新建與草稿</h1><p>單一原始功能 · Gray 保留 · PLANNING ONLY · 尚未取得 implementation envelope / Skeleton / 有效 RED。</p><p>本文件把原 AC01 拆成三個可量測證據列；不是新增需求，也不是 M01 全模組通過證明。產品、build、native、RED、獨立驗收本輪全為 NOT RUN。</p>
+<section><h2>證據邊界</h2><pre>{
+  &quot;product_tests_this_run&quot;: &quot;NOT RUN&quot;,
+  &quot;build&quot;: &quot;NOT RUN&quot;,
+  &quot;RED&quot;: &quot;NOT RUN&quot;,
+  &quot;independent_acceptance&quot;: &quot;NOT RUN&quot;,
+  &quot;native_this_run&quot;: &quot;NOT RUN&quot;,
+  &quot;history&quot;: &quot;S2 PASS_IMPLEMENTED_SCOPE_ONLY dated 2026-11-01; same assistant separate phase, not independent delegated reviewer&quot;,
+  &quot;windows&quot;: &quot;Historical native M01 roundtrip Windows10 build19045 only; Windows11/native aliases NOT RUN. Neither proves full S3 wizard UI/IPC.&quot;
+}</pre></section>
+<section><h2>原始契約與建議界線</h2><pre>[
+  &quot;確認：保存專案定義草稿。建議：返回不清值，重開回上次已保存步驟；不同交付目標獨立記錄。&quot;,
+  &quot;草稿可缺技術；生成不得以草稿值冒充已批准。建議：只必填名稱與位置，目的及技術可暫定。&quot;,
+  &quot;確認：同名／非空目錄不覆寫。建議：權限或空間錯誤保留表單，列出本次產物；只清理能證明本次新增的檔案，不刪既有內容。&quot;
+]</pre></section>
+<section><h2>原始 AC01 → BDD → TDD → 證據與缺口</h2><pre>[
+  {
+    &quot;id&quot;: &quot;F01-AC01-a&quot;,
+    &quot;requirement&quot;: &quot;REQ-03&quot;,
+    &quot;bdd&quot;: &quot;BDD-01&quot;,
+    &quot;original_tdd&quot;: [
+      &quot;TDD-01&quot;,
+      &quot;X01&quot;
+    ],
+    &quot;criterion&quot;: &quot;六步可保存重開&quot;,
+    &quot;source&quot;: &quot;docs/requirements-confirmation/phase1-spec/phase1.feature:8-13&quot;,
+    &quot;tests&quot;: [
+      &quot;t001_basics&quot;,
+      &quot;t001_delivery&quot;,
+      &quot;t001_topology&quot;,
+      &quot;t001_requirements&quot;,
+      &quot;t001_technology_ui&quot;,
+      &quot;t001_preview&quot;,
+      &quot;t002_draft&quot;,
+      &quot;t061_skip&quot;,
+      &quot;t070_readonly_open&quot;
+    ],
+    &quot;verdict&quot;: &quot;PARTIAL_HISTORICAL_COMPONENT_ONLY&quot;,
+    &quot;gap&quot;: &quot;Codec serializes six saved steps; no accepted full six-step back/save/close/reopen wizard IPC evidence. Component roundtrip does not prove user-visible resume.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;F01-AC01-b&quot;,
+    &quot;requirement&quot;: &quot;REQ-03&quot;,
+    &quot;bdd&quot;: &quot;BDD-01&quot;,
+    &quot;original_tdd&quot;: [
+      &quot;TDD-01&quot;,
+      &quot;X01&quot;
+    ],
+    &quot;criterion&quot;: &quot;生成被阻擋時仍可保存&quot;,
+    &quot;source&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/PD-P1-F01-DELIVERY-01.json#/acceptance/0&quot;,
+    &quot;tests&quot;: [
+      &quot;t002_draft&quot;,
+      &quot;t061_skip&quot;
+    ],
+    &quot;verdict&quot;: &quot;PARTIAL_HISTORICAL_COMPONENT_ONLY&quot;,
+    &quot;gap&quot;: &quot;Draft can retain unresolved fields at codec/HOST level; blocked-generation UI action and subsequent save/reopen not wired/accepted. S3 Draft-only finish is proposed, not generation authorization.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;F01-AC01-c&quot;,
+    &quot;requirement&quot;: &quot;REQ-08&quot;,
+    &quot;bdd&quot;: &quot;BDD-02&quot;,
+    &quot;original_tdd&quot;: [
+      &quot;TDD-02&quot;,
+      &quot;X01&quot;
+    ],
+    &quot;criterion&quot;: &quot;衝突的既有目錄逐位元不變&quot;,
+    &quot;source&quot;: &quot;docs/requirements-confirmation/phase1-spec/phase1.feature:15-20&quot;,
+    &quot;tests&quot;: [
+      &quot;t057_file&quot;,
+      &quot;t058_empty&quot;,
+      &quot;t059_nonempty&quot;,
+      &quot;t060_race&quot;
+    ],
+    &quot;verdict&quot;: &quot;PARTIAL_HISTORICAL_HOST_ONLY&quot;,
+    &quot;gap&quot;: &quot;HOST fake tree equality accepted in S2; no current/native wizard attempt plus byte inventory and modify-name/choose-location/cancel actions evidence.&quot;
+  }
+]</pre></section>
+<section><h2>其餘原工單驗收門檻</h2><pre>[
+  {
+    &quot;criterion&quot;: &quot;先完成architecture/contract/BDD/Skeleton/RED門檻&quot;,
+    &quot;verdict&quot;: &quot;NOT_RUN_OR_PENDING&quot;,
+    &quot;reason&quot;: &quot;No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation.&quot;
+  },
+  {
+    &quot;criterion&quot;: &quot;已確認與建議界線不被混淆；對應建議先整體批准&quot;,
+    &quot;verdict&quot;: &quot;NOT_RUN_OR_PENDING&quot;,
+    &quot;reason&quot;: &quot;No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation.&quot;
+  },
+  {
+    &quot;criterion&quot;: &quot;module contract GREEN且回歸分類&quot;,
+    &quot;verdict&quot;: &quot;NOT_RUN_OR_PENDING&quot;,
+    &quot;reason&quot;: &quot;No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation.&quot;
+  },
+  {
+    &quot;criterion&quot;: &quot;記錄source SHA/hash、實際命令、fixture、log及未跑證據層&quot;,
+    &quot;verdict&quot;: &quot;NOT_RUN_OR_PENDING&quot;,
+    &quot;reason&quot;: &quot;No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation.&quot;
+  },
+  {
+    &quot;criterion&quot;: &quot;不以元件或靜態結果冒充native UI／整體完成&quot;,
+    &quot;verdict&quot;: &quot;NOT_RUN_OR_PENDING&quot;,
+    &quot;reason&quot;: &quot;No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation.&quot;
+  }
+]</pre></section>
+<section><h2>現有測試（存在不等於本輪執行）</h2><pre>[
+  {
+    &quot;name&quot;: &quot;t001_basics&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 71,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t001_delivery&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 76,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t001_topology&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 81,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t001_requirements&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 86,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t001_technology_ui&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 91,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t001_preview&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 96,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t002_draft&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs&quot;,
+    &quot;line&quot;: 101,
+    &quot;target&quot;: &quot;phase1_project_definition_codec&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t057_file&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 533,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t058_empty&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 547,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t059_nonempty&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 561,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t060_race&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 579,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t061_skip&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 595,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t070_readonly_open&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 876,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  },
+  {
+    &quot;name&quot;: &quot;t072_read_denied&quot;,
+    &quot;source&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;line&quot;: 917,
+    &quot;target&quot;: &quot;phase1_project_definition&quot;,
+    &quot;exists&quot;: true,
+    &quot;executed_this_run&quot;: false,
+    &quot;historical_evidence&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json&quot;,
+    &quot;boundary&quot;: &quot;HOST/codec contract; not UI/IPC/native wizard&quot;
+  }
+]</pre></section>
+<section><h2>下一輪具體 fixture / oracle（PLANNED NOT RUN）</h2><pre>[
+  {
+    &quot;id&quot;: &quot;F01-PLAN-01&quot;,
+    &quot;rows&quot;: [
+      &quot;F01-AC01-a&quot;,
+      &quot;F01-AC01-b&quot;
+    ],
+    &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+    &quot;fixture&quot;: &quot;Reuse exact accepted codec t001_* records and S3 fixtures after owner adoption; six named WizardStep values, name Local Design, technology.framework unresolved, original openDecisions retained. Record each field canonical value before navigation, saved step, Draft mode, approvals unchanged. Do not substitute missing fields with defaults.&quot;,
+    &quot;action&quot;: &quot;After gates, navigate forward/back through six steps, save at each step, close/reopen through actual approved Input Port and UI; attempt generation with unresolved framework, then save and reopen.&quot;,
+    &quot;oracle&quot;: &quot;Every persisted field and open decision equals recorded expected value, last saved step equals saved step, Draft stays Draft, generated unconfirmed artifacts count=0. Compare bytes/tree outside own new output.&quot;,
+    &quot;valid_red&quot;: &quot;Runnable installed test with correct fixture reaches intended action and fails only on field loss/resume/save unavailable or unconfirmed generation; missing route, compile error, absent native permissions or broken fixture is NOT valid RED. Exact runner and skeleton must be approved first.&quot;,
+    &quot;future_test_ids&quot;: [
+      &quot;F01-TDD-RESUME-SIX-STEPS&quot;,
+      &quot;F01-TDD-BLOCKED-GENERATION-SAVE&quot;
+    ],
+    &quot;not_created&quot;: &quot;No new source test, Skeleton or executable product fixture created.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;F01-PLAN-02&quot;,
+    &quot;rows&quot;: [
+      &quot;F01-AC01-c&quot;
+    ],
+    &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+    &quot;fixture&quot;: &quot;Owned isolated temp parent containing existing same-name directory with keep.ess bytes 70 72 6f 74 65 63 74 65 64, nested child and empty directory; snapshot relative path/type/length/SHA256 before. Reuse t059_nonempty baseline; all paths are fixture-selected, never real user roots.&quot;,
+    &quot;action&quot;: &quot;After gates, request new project at occupied target through approved wizard; inspect rejection and modify-name/choose-location/cancel choices. Cancel and enumerate tree again.&quot;,
+    &quot;oracle&quot;: &quot;Exact pre/post inventory including empty dirs and every file hash equal; no overwrite or deletion; conflict feedback and three original BDD-02 choices visible. No extra cleanup of preexisting tree.&quot;,
+    &quot;valid_red&quot;: &quot;Test builds and reaches conflict path with healthy snapshot oracle; fails on mutated inventory or missing original conflict choices. Permission/environment/snapshot setup failure is invalid RED.&quot;,
+    &quot;future_test_ids&quot;: [
+      &quot;F01-TDD-NONEMPTY-PRESERVED&quot;
+    ],
+    &quot;not_created&quot;: &quot;No test source or new product seam.&quot;
+  }
+]</pre></section>
+<section><h2>依賴與 pending gates</h2><pre>[
+  &quot;Resolve remaining exact G01/cross-module contract gates without reopening accepted S2&quot;,
+  &quot;S3 exact-design decisions D1-D8 owner adoption pending; candidate 18-file envelope is not approved&quot;,
+  &quot;CX v3 review CHANGES_REQUIRED_V3_SCHEMA_AND_ERROR_MAPPING_ONLY V3-F1/F2; v4 correction is candidate, not owner adoption&quot;,
+  &quot;Adopt precise original F01 UI expectations; distinguish confirmed requirements from suggested defaults&quot;,
+  &quot;Approve feature-specific architecture/contract/BDD/Skeleton and exact allowed product/test files&quot;,
+  &quot;Bind actual missing-test runner target; create fixture/test only after scope approval; verify valid RED&quot;,
+  &quot;Independent verifier and reviewer distinct from developer; Gray retained until valid authorized lifecycle transitions&quot;
+]</pre></section>
+<section><h2>可執行下一步與命令</h2><pre>{
+  &quot;now&quot;: [
+    &quot;Read linked trace and immutable original BDD-01/02/X01/AC01&quot;,
+    &quot;Inspect existing test source with named exact IDs; this performs no product execution&quot;,
+    &quot;Owner/architect reconcile S3/CX adoption and approve precise envelope before new tests or Skeleton&quot;
+  ],
+  &quot;existing_test_commands_planned_not_run&quot;: [
+    &quot;cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_definition_codec -- --test-threads=1&quot;,
+    &quot;cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_definition -- --test-threads=1&quot;,
+    &quot;cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_creation_legacy -- --test-threads=1&quot;
+  ],
+  &quot;cwd&quot;: &quot;D:/AIAD&quot;,
+  &quot;missing_test_command&quot;: &quot;BLOCKED_PENDING_APPROVED_RUNNER_AND_SKELETON; no guessed cargo target or production authorization&quot;,
+  &quot;regression&quot;: &quot;Existing exact HOST target reruns are historical-scope regression only, cannot substitute for missing F01 wizard tests&quot;
+}</pre></section>
+<section><h2>來源與工具</h2><p><a href="trace.json">結構化 trace</a> · <a href="check.py">完整性 checker</a> · <a href="check-result.json">靜態結果</a> · <a href="seal.json">輸出 hash seal</a></p><ul>
+<li><a href="../../PD-P1-F01-DELIVERY-01.json">docs/requirements-confirmation/phase1-spec/tasks/PD-P1-F01-DELIVERY-01.json</a> SHA256 3bd16e0cd7d09c0da162e8c4bb8048b85ff387a3c3bf8432d57fafc001a1cd3a</li>
+<li><a href="../../../index.html">docs/requirements-confirmation/phase1-spec/index.html</a> SHA256 7b6b376345c1163afa29518caf1b2da0e84e74ea78b020077a0ba182dc4f9a1e</li>
+<li><a href="../../../phase1.feature">docs/requirements-confirmation/phase1-spec/phase1.feature</a> SHA256 fd60f4af0ebcdd19e1e6284ef988a835dc2ba163b1ac9d813dc70ec9cf687bd6</li>
+<li><a href="../../../fixtures.json">docs/requirements-confirmation/phase1-spec/fixtures.json</a> SHA256 d7dc464a4e6938373dbbd4c336090e8628d022b772d6c1d4e48c0407fe3c3861</li>
+<li><a href="../../gray-dispatch-scope-20261103/audit.json">docs/requirements-confirmation/phase1-spec/tasks/gray-dispatch-scope-20261103/audit.json</a> SHA256 025c23fc14a93fe69ca38cdf5bc92f975984c90305f520a0bfea57860e2b2132</li>
+<li><a href="../../M01/planning/s2-green/source-current.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json</a> SHA256 60d81ed00f6b0b1691f42aa87e454b92f72ed84986a0be89b4f7c2dec4d6bf08</li>
+<li><a href="../../M01/planning/s2-green/acceptance.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/acceptance.json</a> SHA256 148add3f7df99d7d8e8e364d57927071823bbaa2c04c94642bb85af63d1e0efd</li>
+<li><a href="../../M01/planning/s2-green/verification.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/verification.json</a> SHA256 85e7097b136487b3fbb0c0c1b80f748bba9b9feceaa3f48d6da6abf64d95c71d</li>
+<li><a href="../../M01/planning/s2-green/final-runs.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json</a> SHA256 c4ffd125bfd82f98530b9c918aeb110214830f5e5c0d3c7b5925d6048557f255</li>
+<li><a href="../../M01/planning/s3-entry-review/verification.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-entry-review/verification.json</a> SHA256 98f4921864d113652caf5eceb8a31bfbc204aad596294e0be74c0b41da9bdd0c</li>
+<li><a href="../../M01/planning/s3-exact-design/review-request.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/review-request.json</a> SHA256 23dbabb449dcd5cb45eb6b5176e69297f2c4a5c28b3966a4e8841d89ae5c7214</li>
+<li><a href="../../M01/planning/s3-exact-design/test-plan.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/test-plan.json</a> SHA256 742d8c0a2eef0f7f90cbd9a074c4b2ee2ff9a37adfe8fdfa94ae2a7fab6ba080</li>
+<li><a href="../../M01/planning/s3-exact-design/fixtures.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/fixtures.json</a> SHA256 27b44ebd984e97217b6daa985921d623bb5b4842caaa0a7679aed8e10e773ea2</li>
+<li><a href="../../M01/planning/s3-exact-design/ui-schema.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/ui-schema.json</a> SHA256 6bc480f735a2ad52f72f1bf98d7c12cbb766a120e5fa078450689068975075fc</li>
+<li><a href="../../M01/planning/s3-exact-design/envelope.json">docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/envelope.json</a> SHA256 19dc4f71ff9bc846726002bb4e503aea82e486066b1ce79dda565de63bf34122</li>
+<li><a href="../../integration-contract-reacceptance-v3/review-result.json">docs/requirements-confirmation/phase1-spec/tasks/integration-contract-reacceptance-v3/review-result.json</a> SHA256 89efcbbde8efe1420aaf4f6738a1279ee8ae89c8957296426279f3fc0653bde6</li>
+<li><a href="../../integration-contract-error-correction-v4/module-spec.json">docs/requirements-confirmation/phase1-spec/tasks/integration-contract-error-correction-v4/module-spec.json</a> SHA256 56d1529e02a0ce2cae2b53d8a283823a1c1447610a34486a313bf653a9b2aa69</li>
+<li><a href="../../../../../../apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs">apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs</a> SHA256 4fb3890eb3f712edfe3f844b1b517cef004c74af2afc07c942c9b14288fdaa46</li>
+<li><a href="../../../../../../apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs">apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs</a> SHA256 3d1152c1a62681385b195e5e2ddb0ded09b95a1eb7bb0461d2bdc2a0f6f921fb</li>
+<li><a href="../../../../../../apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_creation_legacy.rs">apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_creation_legacy.rs</a> SHA256 9b52778fbad2d986660678b77761db89d3731764c3fb613645421ac20f280cce</li>
+<li><a href="../../../../../board.json">docs/board.json</a> SHA256 115f7fa4ccc66993732726ea751e40acef1f118247fdd15da8621c6d9a10f1ca</li>
+</ul></section><p>Static checker only verifies provenance / counts / links / evidence boundary integrity; never establishes feature PASS. No original cases changed; accepted S2 not reopened; no board or product writes.</p><script type="application/json" id="feature-trace">{"feature": "F01", "task": "PD-P1-F01-DELIVERY-01", "module": "M01", "state": "PLANNING_ONLY", "board_zone": "gray", "feature_count": 1, "original_bdd_count": 2, "ac_behavior_row_count": 3, "proposed_recipe_count": 2, "authorization": "NEW documentation only in feature-trace-preparation; does not adopt S3/CX or authorize implementation", "head": "5b709343a890503ebbe24a802e43cda5647df124", "inventory_authority": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json", "inventory_count": 796, "inventory_note": "S2-green authority expected 796; checker discovers stored mapping, never uses historical S3 31babe snapshot as current baseline", "old_s3_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "evidence_boundaries": {"product_tests_this_run": "NOT RUN", "build": "NOT RUN", "RED": "NOT RUN", "independent_acceptance": "NOT RUN", "native_this_run": "NOT RUN", "history": "S2 PASS_IMPLEMENTED_SCOPE_ONLY dated 2026-11-01; same assistant separate phase, not independent delegated reviewer", "windows": "Historical native M01 roundtrip Windows10 build19045 only; Windows11/native aliases NOT RUN. Neither proves full S3 wizard UI/IPC."}, "original_contracts": ["確認：保存專案定義草稿。建議：返回不清值，重開回上次已保存步驟；不同交付目標獨立記錄。", "草稿可缺技術；生成不得以草稿值冒充已批准。建議：只必填名稱與位置，目的及技術可暫定。", "確認：同名／非空目錄不覆寫。建議：權限或空間錯誤保留表單，列出本次產物；只清理能證明本次新增的檔案，不刪既有內容。"], "original_acceptance": ["AC01：六步可保存重開；生成被阻擋時仍可保存；衝突的既有目錄逐位元不變。", "先完成architecture/contract/BDD/Skeleton/RED門檻", "已確認與建議界線不被混淆；對應建議先整體批准", "module contract GREEN且回歸分類", "記錄source SHA/hash、實際命令、fixture、log及未跑證據層", "不以元件或靜態結果冒充native UI／整體完成"], "trace": [{"id": "F01-AC01-a", "requirement": "REQ-03", "bdd": "BDD-01", "original_tdd": ["TDD-01", "X01"], "criterion": "六步可保存重開", "source": "docs/requirements-confirmation/phase1-spec/phase1.feature:8-13", "tests": ["t001_basics", "t001_delivery", "t001_topology", "t001_requirements", "t001_technology_ui", "t001_preview", "t002_draft", "t061_skip", "t070_readonly_open"], "verdict": "PARTIAL_HISTORICAL_COMPONENT_ONLY", "gap": "Codec serializes six saved steps; no accepted full six-step back/save/close/reopen wizard IPC evidence. Component roundtrip does not prove user-visible resume."}, {"id": "F01-AC01-b", "requirement": "REQ-03", "bdd": "BDD-01", "original_tdd": ["TDD-01", "X01"], "criterion": "生成被阻擋時仍可保存", "source": "docs/requirements-confirmation/phase1-spec/tasks/PD-P1-F01-DELIVERY-01.json#/acceptance/0", "tests": ["t002_draft", "t061_skip"], "verdict": "PARTIAL_HISTORICAL_COMPONENT_ONLY", "gap": "Draft can retain unresolved fields at codec/HOST level; blocked-generation UI action and subsequent save/reopen not wired/accepted. S3 Draft-only finish is proposed, not generation authorization."}, {"id": "F01-AC01-c", "requirement": "REQ-08", "bdd": "BDD-02", "original_tdd": ["TDD-02", "X01"], "criterion": "衝突的既有目錄逐位元不變", "source": "docs/requirements-confirmation/phase1-spec/phase1.feature:15-20", "tests": ["t057_file", "t058_empty", "t059_nonempty", "t060_race"], "verdict": "PARTIAL_HISTORICAL_HOST_ONLY", "gap": "HOST fake tree equality accepted in S2; no current/native wizard attempt plus byte inventory and modify-name/choose-location/cancel actions evidence."}], "other_acceptance_verdicts": [{"criterion": "先完成architecture/contract/BDD/Skeleton/RED門檻", "verdict": "NOT_RUN_OR_PENDING", "reason": "No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation."}, {"criterion": "已確認與建議界線不被混淆；對應建議先整體批准", "verdict": "NOT_RUN_OR_PENDING", "reason": "No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation."}, {"criterion": "module contract GREEN且回歸分類", "verdict": "NOT_RUN_OR_PENDING", "reason": "No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation."}, {"criterion": "記錄source SHA/hash、實際命令、fixture、log及未跑證據層", "verdict": "NOT_RUN_OR_PENDING", "reason": "No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation."}, {"criterion": "不以元件或靜態結果冒充native UI／整體完成", "verdict": "NOT_RUN_OR_PENDING", "reason": "No new approval, Skeleton, valid RED, module/current regression or independent acceptance established by this preparation."}], "tests": [{"name": "t001_basics", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 71, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t001_delivery", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 76, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t001_topology", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 81, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t001_requirements", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 86, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t001_technology_ui", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 91, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t001_preview", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 96, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t002_draft", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs", "line": 101, "target": "phase1_project_definition_codec", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t057_file", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 533, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t058_empty", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 547, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t059_nonempty", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 561, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t060_race", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 579, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t061_skip", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 595, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t070_readonly_open", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 876, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}, {"name": "t072_read_denied", "source": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "line": 917, "target": "phase1_project_definition", "exists": true, "executed_this_run": false, "historical_evidence": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json", "boundary": "HOST/codec contract; not UI/IPC/native wizard"}], "recipes": [{"id": "F01-PLAN-01", "rows": ["F01-AC01-a", "F01-AC01-b"], "status": "PLANNED_NOT_RUN", "fixture": "Reuse exact accepted codec t001_* records and S3 fixtures after owner adoption; six named WizardStep values, name Local Design, technology.framework unresolved, original openDecisions retained. Record each field canonical value before navigation, saved step, Draft mode, approvals unchanged. Do not substitute missing fields with defaults.", "action": "After gates, navigate forward/back through six steps, save at each step, close/reopen through actual approved Input Port and UI; attempt generation with unresolved framework, then save and reopen.", "oracle": "Every persisted field and open decision equals recorded expected value, last saved step equals saved step, Draft stays Draft, generated unconfirmed artifacts count=0. Compare bytes/tree outside own new output.", "valid_red": "Runnable installed test with correct fixture reaches intended action and fails only on field loss/resume/save unavailable or unconfirmed generation; missing route, compile error, absent native permissions or broken fixture is NOT valid RED. Exact runner and skeleton must be approved first.", "future_test_ids": ["F01-TDD-RESUME-SIX-STEPS", "F01-TDD-BLOCKED-GENERATION-SAVE"], "not_created": "No new source test, Skeleton or executable product fixture created."}, {"id": "F01-PLAN-02", "rows": ["F01-AC01-c"], "status": "PLANNED_NOT_RUN", "fixture": "Owned isolated temp parent containing existing same-name directory with keep.ess bytes 70 72 6f 74 65 63 74 65 64, nested child and empty directory; snapshot relative path/type/length/SHA256 before. Reuse t059_nonempty baseline; all paths are fixture-selected, never real user roots.", "action": "After gates, request new project at occupied target through approved wizard; inspect rejection and modify-name/choose-location/cancel choices. Cancel and enumerate tree again.", "oracle": "Exact pre/post inventory including empty dirs and every file hash equal; no overwrite or deletion; conflict feedback and three original BDD-02 choices visible. No extra cleanup of preexisting tree.", "valid_red": "Test builds and reaches conflict path with healthy snapshot oracle; fails on mutated inventory or missing original conflict choices. Permission/environment/snapshot setup failure is invalid RED.", "future_test_ids": ["F01-TDD-NONEMPTY-PRESERVED"], "not_created": "No test source or new product seam."}], "dependencies": ["PD-P1-M01-PREP-01", "PD-P1-G01-DEC-01"], "pending_gates": ["Resolve remaining exact G01/cross-module contract gates without reopening accepted S2", "S3 exact-design decisions D1-D8 owner adoption pending; candidate 18-file envelope is not approved", "CX v3 review CHANGES_REQUIRED_V3_SCHEMA_AND_ERROR_MAPPING_ONLY V3-F1/F2; v4 correction is candidate, not owner adoption", "Adopt precise original F01 UI expectations; distinguish confirmed requirements from suggested defaults", "Approve feature-specific architecture/contract/BDD/Skeleton and exact allowed product/test files", "Bind actual missing-test runner target; create fixture/test only after scope approval; verify valid RED", "Independent verifier and reviewer distinct from developer; Gray retained until valid authorized lifecycle transitions"], "next_actions": {"now": ["Read linked trace and immutable original BDD-01/02/X01/AC01", "Inspect existing test source with named exact IDs; this performs no product execution", "Owner/architect reconcile S3/CX adoption and approve precise envelope before new tests or Skeleton"], "existing_test_commands_planned_not_run": ["cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_definition_codec -- --test-threads=1", "cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_definition -- --test-threads=1", "cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-host --locked --test phase1_project_creation_legacy -- --test-threads=1"], "cwd": "D:/AIAD", "missing_test_command": "BLOCKED_PENDING_APPROVED_RUNNER_AND_SKELETON; no guessed cargo target or production authorization", "regression": "Existing exact HOST target reruns are historical-scope regression only, cannot substitute for missing F01 wizard tests"}, "sources": {"docs/requirements-confirmation/phase1-spec/tasks/PD-P1-F01-DELIVERY-01.json": "3bd16e0cd7d09c0da162e8c4bb8048b85ff387a3c3bf8432d57fafc001a1cd3a", "docs/requirements-confirmation/phase1-spec/index.html": "7b6b376345c1163afa29518caf1b2da0e84e74ea78b020077a0ba182dc4f9a1e", "docs/requirements-confirmation/phase1-spec/phase1.feature": "fd60f4af0ebcdd19e1e6284ef988a835dc2ba163b1ac9d813dc70ec9cf687bd6", "docs/requirements-confirmation/phase1-spec/fixtures.json": "d7dc464a4e6938373dbbd4c336090e8628d022b772d6c1d4e48c0407fe3c3861", "docs/requirements-confirmation/phase1-spec/tasks/gray-dispatch-scope-20261103/audit.json": "025c23fc14a93fe69ca38cdf5bc92f975984c90305f520a0bfea57860e2b2132", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json": "60d81ed00f6b0b1691f42aa87e454b92f72ed84986a0be89b4f7c2dec4d6bf08", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/acceptance.json": "148add3f7df99d7d8e8e364d57927071823bbaa2c04c94642bb85af63d1e0efd", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/verification.json": "85e7097b136487b3fbb0c0c1b80f748bba9b9feceaa3f48d6da6abf64d95c71d", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/final-runs.json": "c4ffd125bfd82f98530b9c918aeb110214830f5e5c0d3c7b5925d6048557f255", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-entry-review/verification.json": "98f4921864d113652caf5eceb8a31bfbc204aad596294e0be74c0b41da9bdd0c", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/review-request.json": "23dbabb449dcd5cb45eb6b5176e69297f2c4a5c28b3966a4e8841d89ae5c7214", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/test-plan.json": "742d8c0a2eef0f7f90cbd9a074c4b2ee2ff9a37adfe8fdfa94ae2a7fab6ba080", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/fixtures.json": "27b44ebd984e97217b6daa985921d623bb5b4842caaa0a7679aed8e10e773ea2", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/ui-schema.json": "6bc480f735a2ad52f72f1bf98d7c12cbb766a120e5fa078450689068975075fc", "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/envelope.json": "19dc4f71ff9bc846726002bb4e503aea82e486066b1ce79dda565de63bf34122", "docs/requirements-confirmation/phase1-spec/tasks/integration-contract-reacceptance-v3/review-result.json": "89efcbbde8efe1420aaf4f6738a1279ee8ae89c8957296426279f3fc0653bde6", "docs/requirements-confirmation/phase1-spec/tasks/integration-contract-error-correction-v4/module-spec.json": "56d1529e02a0ce2cae2b53d8a283823a1c1447610a34486a313bf653a9b2aa69", "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition_codec.rs": "4fb3890eb3f712edfe3f844b1b517cef004c74af2afc07c942c9b14288fdaa46", "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs": "3d1152c1a62681385b195e5e2ddb0ded09b95a1eb7bb0461d2bdc2a0f6f921fb", "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_creation_legacy.rs": "9b52778fbad2d986660678b77761db89d3731764c3fb613645421ac20f280cce", "docs/board.json": "115f7fa4ccc66993732726ea751e40acef1f118247fdd15da8621c6d9a10f1ca"}, "inventory_current_drift": []}</script></html>

@@ -1,0 +1,76 @@
+//! Isolated test-fixture process, not a production entry point or lease adapter.
+//! `native-hold` establishes an independently acquired Windows handle so tests
+//! can exercise the product boundary without relying on unimplemented setup.
+
+#[cfg(windows)]
+fn run() -> Result<(), String> {
+    use std::io::{self, Write};
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::path::PathBuf;
+
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("health") {
+        println!("FIXTURE_HELPER_OK");
+        return Ok(());
+    }
+    if args.len() != 4 || args[1] != "native-hold" {
+        return Err("expected health or native-hold <owned fixture root> <sidecar>".into());
+    }
+    let base = std::env::temp_dir()
+        .join("eluslot-io-red-fixtures")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    let root = PathBuf::from(&args[2])
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    let name = root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("invalid fixture root")?;
+    if root.parent() != Some(base.as_path())
+        || !name.starts_with("io-")
+        || std::fs::read_to_string(root.join(".owned-fixture")).map_err(|e| e.to_string())? != name
+    {
+        return Err("refusing a non-owned fixture root".into());
+    }
+    let sidecar = PathBuf::from(&args[3]);
+    if sidecar
+        .parent()
+        .ok_or("missing parent")?
+        .canonicalize()
+        .map_err(|e| e.to_string())?
+        != root
+        || sidecar.file_name().and_then(|n| n.to_str()) != Some("document.ess.eluslot-lock")
+    {
+        return Err("refusing a sidecar outside the owned fixture".into());
+    }
+    let _handle = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .share_mode(0)
+        .open(sidecar)
+        .map_err(|e| e.to_string())?;
+    println!("READY");
+    io::stdout().flush().map_err(|e| e.to_string())?;
+    let mut line = String::new();
+    io::stdin()
+        .read_line(&mut line)
+        .map_err(|e| e.to_string())?;
+    Ok(()) // Fixture handle is closed by ownership, not a product implementation.
+}
+
+#[cfg(windows)]
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("FIXTURE_ERROR:{error}");
+        std::process::exit(70);
+    }
+}
+
+#[cfg(not(windows))]
+fn main() {
+    eprintln!("fixture requires Windows; not a cross-platform test PASS");
+    std::process::exit(78);
+}

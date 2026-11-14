@@ -1,0 +1,163 @@
+{
+  "novel_probes": [
+    {
+      "id": "expected_generation-max",
+      "kind": "request_schema",
+      "input": {
+        "binding_ref": "11111111-1111-4111-8111-111111111111",
+        "expected_generation": "18446744073709551615",
+        "expected_revision": "7",
+        "request_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "contract_expected_admitted": true,
+      "observed_subset_admitted": true
+    },
+    {
+      "id": "expected_generation-overflow",
+      "kind": "request_schema",
+      "input": {
+        "binding_ref": "11111111-1111-4111-8111-111111111111",
+        "expected_generation": "18446744073709551616",
+        "expected_revision": "7",
+        "request_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "contract_expected_admitted": false,
+      "observed_subset_admitted": true
+    },
+    {
+      "id": "expected_revision-max",
+      "kind": "request_schema",
+      "input": {
+        "binding_ref": "11111111-1111-4111-8111-111111111111",
+        "expected_generation": "3",
+        "expected_revision": "18446744073709551615",
+        "request_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "contract_expected_admitted": true,
+      "observed_subset_admitted": true
+    },
+    {
+      "id": "expected_revision-overflow",
+      "kind": "request_schema",
+      "input": {
+        "binding_ref": "11111111-1111-4111-8111-111111111111",
+        "expected_generation": "3",
+        "expected_revision": "18446744073709551616",
+        "request_id": "22222222-2222-4222-8222-222222222222"
+      },
+      "contract_expected_admitted": false,
+      "observed_subset_admitted": true
+    },
+    {
+      "id": "mismatched-current-owner-with-acked-label",
+      "kind": "lifecycle_evidence_gap",
+      "input": {
+        "id": "receipt-valid-raw-not-semantic",
+        "capture": {
+          "revision": "7",
+          "semantic_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expected_previous_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "encoded_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "canonical_target": "D:/fixture/document.ess",
+          "document": "doc-A",
+          "session": "session-A",
+          "generation": "3",
+          "request": "request-7"
+        },
+        "receipt": {
+          "target_path": "D:/fixture/document.ess",
+          "previous_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "committed_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "transaction_id": "tx-7"
+        },
+        "condition": "acked",
+        "expected": "Saved",
+        "expected_ack_calls": 1,
+        "expected_ack_revision": "7",
+        "expected_ack_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "live_revision": "8",
+        "expected_dirty": true,
+        "snapshot_baseline": "unchanged",
+        "current_owner": {
+          "document": "other-doc",
+          "session": "other-session",
+          "generation": "999"
+        }
+      },
+      "required_document_outcome": "No ACK onto mismatched session; retain evidence/no stale delivery",
+      "observed_declared_model": {
+        "outcome": "Saved",
+        "ack_calls": 1
+      },
+      "interpretation": "Model ignores new current_owner evidence; this exposes missing lifecycle oracle, not production behavior."
+    },
+    {
+      "id": "missing-root-receipt-with-acked-label",
+      "kind": "lifecycle_evidence_gap",
+      "input": {
+        "id": "receipt-valid-raw-not-semantic",
+        "capture": {
+          "revision": "7",
+          "semantic_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expected_previous_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "encoded_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "canonical_target": "D:/fixture/document.ess",
+          "document": "doc-A",
+          "session": "session-A",
+          "generation": "3",
+          "request": "request-7"
+        },
+        "receipt": {
+          "target_path": "D:/fixture/document.ess",
+          "previous_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "committed_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "transaction_id": "tx-7"
+        },
+        "condition": "acked",
+        "expected": "Saved",
+        "expected_ack_calls": 1,
+        "expected_ack_revision": "7",
+        "expected_ack_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "live_revision": "8",
+        "expected_dirty": true,
+        "snapshot_baseline": "unchanged",
+        "formal_root_transfer": {
+          "verified": false,
+          "receipt": null
+        }
+      },
+      "required_document_outcome": "RootTransfer deferred and ACK 0",
+      "observed_declared_model": {
+        "outcome": "Saved",
+        "ack_calls": 1
+      },
+      "interpretation": "Model ignores root proof; condition label alone produces Saved. Add typed proof-bearing inputs before claiming end-to-end outcome oracle."
+    },
+    {
+      "id": "root-transfer-ack-rejected-combination",
+      "kind": "response_precision_gap",
+      "input": {
+        "ok": true,
+        "result": {
+          "outcome": "CommittedAckDeferred",
+          "request_id": "request-7",
+          "captured_revision": "7",
+          "live_revision": "8",
+          "dirty": true,
+          "proof_id": "opaque-proof-7",
+          "stage": "RootTransfer",
+          "reason": "AckRejected",
+          "pin_id": "held-save-pin"
+        },
+        "replayed": false
+      },
+      "observed_subset_admitted": true,
+      "interpretation": "Stage and reason are independent enums; exact allowed stage/reason combinations and M05 code/reason mapping not defined. Not asserted universally invalid until candidate policy is explicit."
+    }
+  ],
+  "local_refs_resolved": 33,
+  "frozen_unchanged": true,
+  "source796_unchanged": true,
+  "full_validator": "NOT RUN",
+  "product": "NOT RUN"
+}

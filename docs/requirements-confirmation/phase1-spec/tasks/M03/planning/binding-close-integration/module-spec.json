@@ -1,0 +1,175 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "slice": "design_binding_close ONLY; transfer DEFERRED",
+  "author": "/root/m03_binding_close_packet",
+  "status": "PROPOSED_PENDING_INDEPENDENT_REVIEW_AND_OWNER",
+  "implementation_gate": "NOT_READY_FOR_IMPLEMENTATION",
+  "independent_acceptance": "NOT RUN",
+  "owner_adoption": "NOT RUN",
+  "full_draft": "NOT COMPLETE",
+  "product_native_RED": "NOT RUN",
+  "build": "NOT RUN",
+  "architecture": {
+    "context": "Native design view consumes one M04-owned document; closing attachment leaves document live.",
+    "hexagonal": "Trusted native caller adapter → M03 close input port → derived attachment facade → M04 detach_view(handle) → sole M04 owner",
+    "dependency": "UI → Tauri native guard → M03 → M04 input contract; no direct S1/IO access",
+    "input_ports": [
+      "design_binding_close exact closed request"
+    ],
+    "output_ports": [
+      "Existing proposed M04.detach_view(handle); exact observation contract still proposed",
+      "Restricted trusted current attachment observation at delivery; fixture-only seam"
+    ],
+    "driving_adapters": [
+      "Native main/editor guard",
+      "Document model test driver"
+    ],
+    "driven_adapters": [
+      "M04 sole owner double; native implementation NOT RUN"
+    ],
+    "state_ownership": "M04 owns S1 content/history/revision/baselines/writer generation. M03 owns derived binding/candidate/preview/replay-disclosure caches only.",
+    "mutation": "Only exact attached-view derived authority revoked after M04 confirmation; no content mutation.",
+    "transaction": "Native auth → root validation → trusted binding/owner observation → preflight capacity and fences → M04 detach confirmation → revoke derived attachment/candidate/preview/disclosure. Failure precommit unchanged. Native atomicity and postcommit loss unresolved Owner seam.",
+    "external_boundary": "Native identity and M04 remain external dependencies; missing integration fails closed.",
+    "forbidden": [
+      "new owner registry",
+      "S1 constructor",
+      "document close",
+      "history/content mutation",
+      "formal IO/ACK",
+      "material pin/root release",
+      "writer transfer",
+      "cross-window arbitrary dispatch"
+    ]
+  },
+  "contracts": {
+    "C1": "Native main/editor identity and origin and live instance checked before dependency/cache lookup; viewer/remote/replaced native denied.",
+    "C2": "M04 sole S1 owner; close detaches derived binding only, never closes document or mutates content/history/revision/baselines/formal IO ACK/material roots.",
+    "C3": "Validate complete closed request and expected generation/revision before new detach; M04 observed tuple must match bound document/session/project/root/runtime/native instance.",
+    "C4": "On confirmed detach revoke binding candidates/previews and replay disclosure authority; in-flight late completion cannot reactivate attachment or install a UI projection.",
+    "C5": "No request_id accepted. Other operation replay records cannot be read/resubmitted through close; no automatic retry or TTL.",
+    "C6": "Trusted delivery observation must be current, typed and minted by fixture authority, with active attachment/native liveness and full tuple equality.",
+    "C7": "Capacity failure is pre-detach and preserves attachment; tombstones are fixture-derived state, not a second document owner.",
+    "C8": "Missing dependency, stale generation/revision, dirty unconfirmed writer or malformed observation leaves all model state unchanged."
+  },
+  "owner_choices": "owner-choices.json; all new exact policy choices PROPOSED_PENDING_OWNER",
+  "permissions": {
+    "commands": [
+      "design_binding_open",
+      "design_binding_get",
+      "design_binding_transfer",
+      "design_candidate_prepare",
+      "design_candidate_install",
+      "design_document_undo",
+      "design_document_save",
+      "design_editor_select",
+      "design_viewer_begin",
+      "design_viewer_intent",
+      "design_viewer_refresh",
+      "design_viewer_close",
+      "design_binding_close"
+    ],
+    "new_groups": {
+      "design-owner-read": [
+        "design_binding_get",
+        "design_editor_select"
+      ],
+      "design-owner-write": [
+        "design_binding_open",
+        "design_binding_transfer",
+        "design_candidate_prepare",
+        "design_candidate_install",
+        "design_document_undo",
+        "design_document_save",
+        "design_binding_close"
+      ],
+      "design-viewer-mock": [
+        "design_binding_get",
+        "design_viewer_begin",
+        "design_viewer_intent",
+        "design_viewer_refresh",
+        "design_viewer_close"
+      ]
+    },
+    "main": "default capability adds design owner read/write and viewer group; actual handler still checks caller/binding/role. Existing main generic privileges unchanged outside this task.",
+    "editor": "uidesign-window.json windows becomes [ui-editor]; retain old unrelated privilege sets only as historical editor capability, add design groups; every old design mutation entry now DESIGN_OWNER_REQUIRED. No generic action dispatch from runtime.",
+    "viewer": "New capabilities/design-viewer.json windows=[ui-viewer], only core window chrome + design-viewer-mock. Remove ui-viewer from prior broad uidesign-window group; no host-default/dispatch-default/core webview-create. app bootstrap for viewer must use binding projection only, not privileged main initialization.",
+    "native_guard": "Injected WebviewWindow with trusted instance nonce; allow local tauri://localhost or http(s)://tauri.localhost without explicit port, role-specific labels main/ui-editor/ui-viewer. Remote/dev origins reject. Do not reuse main-only guard by silently weakening its existing policy for other commands; add a dedicated design caller policy.",
+    "legacy": "uidesign_save_design/load_design/build_preview kept registered for source/ACL compatibility but return DESIGN_OWNER_REQUIRED for old authoritative args; no typed doc path reaches filesystem. Exported communication preview generation is deferred compatibility artifact path, not a backdoor to Viewer privileges. uidesign_ask_agent does not become a Viewer action.",
+    "host_allowlist": "Add exactly listed13 commands to AllowedIpcCommand parse/enum; no wildcard. Main/editor role authority is native application gate beyond allowlist.",
+    "test_migration": "commands.rs existing guard_owner_caller_tests assertion windows=[ui-editor,ui-viewer] changes explicitly to editor-only plus separate viewer capability assertions; preserve all original main-only guard denial tests. Archive old test snippet/hash in implementation-stage evidence before changing assertion."
+  },
+  "UI_schema": {
+    "component": "Existing design binding view",
+    "roles": "main/editor only by closed ACL; viewer denied",
+    "controls": "Existing close action only; no new UI controls",
+    "constraints": "No caller identity/observation flags in request",
+    "confirmation": "Dirty writer explicit confirmation observed by M04; exact detach decision pending Owner",
+    "loading": "Disable duplicate close while pending; do not clear active document speculatively",
+    "success": "Clear only detached view projection and revoke its previews/candidates",
+    "error": "Preserve prior view, plain-text diagnostic, no automatic retry",
+    "empty": "Unknown binding MissingBinding under proposed policy",
+    "accessibility": "Announce status without focus steal"
+  },
+  "BDD_categories": {
+    "B1": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B2": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B3": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B4": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B5": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B6": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B7": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B8": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B9": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B10": "Applicable: fixtures.json covers success/boundary/failure/state/transaction/lifecycle/cross-module document model",
+    "B11": "Deferred: production compatibility/regression NOT RUN",
+    "B12": "Deferred: production compatibility/regression NOT RUN"
+  },
+  "tasks": [
+    {
+      "id": "CL-CLOSE-PLAN",
+      "primary_module": "M03",
+      "layer": "Planning document",
+      "allowed_scope": "binding-close-integration/** only",
+      "protected": "All old packets/product/board/current-state",
+      "BDD": [
+        "CL-01",
+        "CL-02",
+        "CL-03",
+        "CL-04",
+        "CL-05",
+        "CL-06",
+        "CL-07",
+        "CL-08",
+        "CL-09",
+        "CL-10",
+        "CL-11",
+        "CL-12",
+        "CL-13",
+        "CL-14",
+        "CL-15",
+        "CL-16",
+        "CL-17",
+        "CL-18",
+        "CL-19",
+        "CL-20",
+        "CL-21",
+        "CL-22",
+        "CL-23",
+        "CL-24",
+        "CL-25",
+        "CL-26"
+      ],
+      "TDD": "checker.py document model; product RED NOT RUN",
+      "acceptance": [
+        "Complete self-contained root schemas",
+        "All physical lexical patterns actual parsed/audited",
+        "Typed seven DomainRejected maintained",
+        "Document lifecycle invariants checked",
+        "Owner choices and native evidence limits explicit"
+      ],
+      "status": "AUTHOR_CANDIDATE_ONLY"
+    }
+  ]
+}

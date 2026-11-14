@@ -1,0 +1,190 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>Report ingress proposal</title><style>body{font:16px system-ui;max-width:1120px;margin:40px auto;background:#111827;color:#e5e7eb}section{padding:16px;border-top:1px solid #475569}pre{white-space:pre-wrap;overflow-wrap:anywhere}h1,h2{color:#fbbf24}</style><h1>Report ingress — PROPOSED / yellow</h1><p>Architecture not approved · Implementation NOT STARTED · RED/GREEN NOT RUN · Reporting cannot grant acceptance.</p><h2>Hexagonal view (proposal)</h2><pre>HTTP / local command / MCP tool → ReportRun input port → Rust Host application → existing domain rules
+                                                   ↓ abstractions
+                                     atomic store/evidence output seam
+                                                   ↑ implements
+                                           durable store adapter</pre><h2>Module dependency and ownership view</h2><pre>Transport adapters → application ReportRun → Rust run/task domain
+Store adapter → output abstraction ← application
+Rust run/task/evidence owner → derived board / UI / HTML projections
+Mutation: authorized ReportRun only; transaction: receipt + report + run revision + projection
+Forbidden: adapter → mutable board; report → Accept; Python done → Rust green</pre><section><h2>identity</h2><pre>{
+  &quot;task&quot;: &quot;PD-RUST-REPORT-INGRESS-PLAN-01&quot;,
+  &quot;module&quot;: &quot;report-ingress&quot;,
+  &quot;status&quot;: &quot;PROPOSED&quot;,
+  &quot;architecture&quot;: &quot;NOT_APPROVED&quot;,
+  &quot;red&quot;: &quot;NOT_RUN&quot;
+}</pre></section><section><h2>intent</h2><pre>One ReportRun application input port, driven by HTTP API, local command and inbound MCP tool; preserve Rust task/run/evidence ownership.</pre></section><section><h2>roles</h2><pre>{
+  &quot;driving_adapters&quot;: [
+    &quot;HTTP API&quot;,
+    &quot;local report command&quot;,
+    &quot;MCP report tool&quot;
+  ],
+  &quot;input_port&quot;: &quot;ReportRun (proposed, not existing API)&quot;,
+  &quot;application&quot;: &quot;Rust Host validates run authority and orders transaction&quot;,
+  &quot;domain&quot;: &quot;existing Rust task/run rules; progress and terminal execution facts never imply acceptance&quot;,
+  &quot;output_ports&quot;: [
+    &quot;existing store/evidence capabilities where sufficient; atomic report commit seam requires architecture approval&quot;
+  ],
+  &quot;driven_adapters&quot;: [
+    &quot;chosen durable store adapter; not Python board authority&quot;
+  ]
+}</pre></section><section><h2>request</h2><pre>[
+  &quot;schema_version&quot;,
+  &quot;report_id&quot;,
+  &quot;task_id&quot;,
+  &quot;run_id&quot;,
+  &quot;project_id&quot;,
+  &quot;worktree_id&quot;,
+  &quot;worktree_fingerprint&quot;,
+  &quot;spec_revision&quot;,
+  &quot;envelope_revision&quot;,
+  &quot;attempt_id&quot;,
+  &quot;lease_id&quot;,
+  &quot;sequence&quot;,
+  &quot;expected_run_revision&quot;,
+  &quot;kind&quot;,
+  &quot;payload&quot;,
+  &quot;evidence_refs&quot;
+]</pre></section><section><h2>authority</h2><pre>Server resolves authenticated principal and run-bound reporting grant. Caller actor/accepted flags are untrusted. Reporting grant cannot create architecture approval, renew lease or accept task. Grant issuer, credential mechanism and revocation remain owner decisions.</pre></section><section><h2>ordering</h2><pre>Strict per-attempt sequence starting 1; gap rejected with expected sequence. Matching report_id+canonical payload returns original receipt; same report_id different payload is conflict. Identity/auth validation precedes receipt lookup. Old attempts/expired leases rejected. CAS revision conflict requires read/reconcile, not blind retry.</pre></section><section><h2>transaction</h2><pre>Validate shape -&gt; authenticate -&gt; verify binding/lease/cancellation -&gt; duplicate check -&gt; sequence and expected revision -&gt; validate evidence metadata -&gt; atomic append+receipt+run revision+derived projection. Failure before commit changes nothing; lost ack recovered by exact retry. Existing store atomic capability must be verified before implementation. No second mutable board.</pre></section><section><h2>evidence</h2><pre>Store opaque references and declared hashes/provenance. Ingestion is not verification. Do not execute referenced commands, fetch arbitrary URLs or trust claimed PASS. Progress/output/evidence/terminal execution are separate report kinds; evidence review and owner acceptance stay existing gated paths.</pre></section><section><h2>cancellation</h2><pre>Cancellation and report commit serialized on authoritative run revision. Cancelled/new reports rejected; an already committed duplicate may return receipt only under still valid reporting authorization. Reconnect does not resurrect run, lease or acceptance.</pre></section><section><h2>limits</h2><pre>Explicit proposed byte and evidence-count limits in fixture; truncation never silent. Output chunk ordering uses sequence; declared encoding. Transport adapters normalize errors but never mutate task stores directly.</pre></section><section><h2>errors</h2><pre>[
+  &quot;invalid&quot;,
+  &quot;unauthorized&quot;,
+  &quot;identity_mismatch&quot;,
+  &quot;stale_attempt&quot;,
+  &quot;lease_expired&quot;,
+  &quot;cancelled&quot;,
+  &quot;sequence_gap&quot;,
+  &quot;duplicate_conflict&quot;,
+  &quot;revision_conflict&quot;,
+  &quot;unavailable&quot;
+]</pre></section><section><h2>contracts</h2><pre>[
+  &quot;Identical authorized retry has no additional side effects&quot;,
+  &quot;Rejected request leaves authoritative state unchanged&quot;,
+  &quot;One report commits receipt, run update and projection together&quot;,
+  &quot;Done never means accepted or green&quot;,
+  &quot;Transport choice does not change domain result&quot;
+]</pre></section><section><h2>bdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;RI-01&quot;,
+    &quot;behavior&quot;: &quot;Record progress through any supported transport&quot;,
+    &quot;test&quot;: &quot;TDD-RI-01&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-02&quot;,
+    &quot;behavior&quot;: &quot;Retry an identical report&quot;,
+    &quot;test&quot;: &quot;TDD-RI-02&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-03&quot;,
+    &quot;behavior&quot;: &quot;Reject a conflicting duplicate&quot;,
+    &quot;test&quot;: &quot;TDD-RI-03&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-04&quot;,
+    &quot;behavior&quot;: &quot;Reject an out of order report&quot;,
+    &quot;test&quot;: &quot;TDD-RI-04&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-05&quot;,
+    &quot;behavior&quot;: &quot;Reject an obsolete execution attempt&quot;,
+    &quot;test&quot;: &quot;TDD-RI-05&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-06&quot;,
+    &quot;behavior&quot;: &quot;Reject an identity mismatch&quot;,
+    &quot;test&quot;: &quot;TDD-RI-06&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-07&quot;,
+    &quot;behavior&quot;: &quot;Completion is not acceptance&quot;,
+    &quot;test&quot;: &quot;TDD-RI-07&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-08&quot;,
+    &quot;behavior&quot;: &quot;Preserve state on commit failure&quot;,
+    &quot;test&quot;: &quot;TDD-RI-08&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-09&quot;,
+    &quot;behavior&quot;: &quot;Reconnect with expired authority&quot;,
+    &quot;test&quot;: &quot;TDD-RI-09&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-10&quot;,
+    &quot;behavior&quot;: &quot;Reject reports after cancellation&quot;,
+    &quot;test&quot;: &quot;TDD-RI-10&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-11&quot;,
+    &quot;behavior&quot;: &quot;Reject excessive or empty input&quot;,
+    &quot;test&quot;: &quot;TDD-RI-11&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-12&quot;,
+    &quot;behavior&quot;: &quot;Reject unauthorized reporting&quot;,
+    &quot;test&quot;: &quot;TDD-RI-12&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-13&quot;,
+    &quot;behavior&quot;: &quot;Retry after a lost acknowledgement&quot;,
+    &quot;test&quot;: &quot;TDD-RI-13&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  },
+  {
+    &quot;id&quot;: &quot;RI-14&quot;,
+    &quot;behavior&quot;: &quot;Reject changed specification binding&quot;,
+    &quot;test&quot;: &quot;TDD-RI-14&quot;,
+    &quot;level&quot;: &quot;L2; L3 transport equivalence&quot;,
+    &quot;status&quot;: &quot;PENDING&quot;
+  }
+]</pre></section><section><h2>scope</h2><pre>{
+  &quot;allowed&quot;: &quot;reports/rust-improvements/report-ingress only in this planning slice&quot;,
+  &quot;protected&quot;: &quot;production, executable tests, task board, approval sources&quot;
+}</pre></section><section><h2>acceptance</h2><pre>[
+  &quot;All 14 scenarios have executable L2 coverage before implementation is accepted&quot;,
+  &quot;All three adapters produce equivalent receipts/errors for the same fixture&quot;,
+  &quot;100 identical concurrent retries commit once; conflicting duplicate commits zero additional mutations&quot;,
+  &quot;Injected failures at every precommit boundary preserve run/task/evidence snapshot&quot;,
+  &quot;Agent terminal report cannot invoke Accept or Complete&quot;,
+  &quot;No cross-module write bypass; Rust authoritative state remains sole owner&quot;
+]</pre></section><section><h2>open_decisions</h2><pre>[
+  &quot;Approve ReportRun contract and atomic seam reuse versus extension&quot;,
+  &quot;Choose trusted reporting grant issuer and credential rotation/revocation&quot;,
+  &quot;Approve strict sequence policy and explicit payload limits&quot;,
+  &quot;Choose durable receipt retention and run identity/worktree fingerprint format&quot;,
+  &quot;Define cancellation authority and active lease source without caller approval claims&quot;
+]</pre></section><section><h2>source_evidence</h2><pre>[
+  &quot;apps/sgenaxis-desktop/crates/sgenaxis-core/src/flow.rs:1-49 acceptance/EVID gates&quot;,
+  &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs:59-69 Host run and lease state&quot;,
+  &quot;tools/board/board_core/usecases.py:38-39 Python done-&gt;green mismatch; must not inherit&quot;
+]</pre></section><section><h2>pending_automation</h2><pre>[
+  &quot;Implement step bindings only after approval/skeleton&quot;,
+  &quot;RED must compile and fail behaviorally; no RED evidence exists now&quot;,
+  &quot;L2 identity/auth/order/idempotency/failure injection&quot;,
+  &quot;L3 HTTP/command/MCP adapter parity&quot;,
+  &quot;L4 cancellation/reconnect/acceptance regression&quot;,
+  &quot;HTML embedded-spec validation and stale revision detection&quot;
+]</pre></section><section><h2>Agent UI hosting clarification</h2><p>ReportRun contract is independent of UI hosting. A Figma-like UI inside an Agent window is a separate feasibility proposal, not a proven platform capability. Agent platform auth/session identity never grants local reporting or architecture/task acceptance authority.</p></section><script type="application/json" id="module-spec">{"identity": {"task": "PD-RUST-REPORT-INGRESS-PLAN-01", "module": "report-ingress", "status": "PROPOSED", "architecture": "NOT_APPROVED", "red": "NOT_RUN"}, "intent": "One ReportRun application input port, driven by HTTP API, local command and inbound MCP tool; preserve Rust task/run/evidence ownership.", "roles": {"driving_adapters": ["HTTP API", "local report command", "MCP report tool"], "input_port": "ReportRun (proposed, not existing API)", "application": "Rust Host validates run authority and orders transaction", "domain": "existing Rust task/run rules; progress and terminal execution facts never imply acceptance", "output_ports": ["existing store/evidence capabilities where sufficient; atomic report commit seam requires architecture approval"], "driven_adapters": ["chosen durable store adapter; not Python board authority"]}, "request": ["schema_version", "report_id", "task_id", "run_id", "project_id", "worktree_id", "worktree_fingerprint", "spec_revision", "envelope_revision", "attempt_id", "lease_id", "sequence", "expected_run_revision", "kind", "payload", "evidence_refs"], "authority": "Server resolves authenticated principal and run-bound reporting grant. Caller actor/accepted flags are untrusted. Reporting grant cannot create architecture approval, renew lease or accept task. Grant issuer, credential mechanism and revocation remain owner decisions.", "ordering": "Strict per-attempt sequence starting 1; gap rejected with expected sequence. Matching report_id+canonical payload returns original receipt; same report_id different payload is conflict. Identity/auth validation precedes receipt lookup. Old attempts/expired leases rejected. CAS revision conflict requires read/reconcile, not blind retry.", "transaction": "Validate shape -> authenticate -> verify binding/lease/cancellation -> duplicate check -> sequence and expected revision -> validate evidence metadata -> atomic append+receipt+run revision+derived projection. Failure before commit changes nothing; lost ack recovered by exact retry. Existing store atomic capability must be verified before implementation. No second mutable board.", "evidence": "Store opaque references and declared hashes/provenance. Ingestion is not verification. Do not execute referenced commands, fetch arbitrary URLs or trust claimed PASS. Progress/output/evidence/terminal execution are separate report kinds; evidence review and owner acceptance stay existing gated paths.", "cancellation": "Cancellation and report commit serialized on authoritative run revision. Cancelled/new reports rejected; an already committed duplicate may return receipt only under still valid reporting authorization. Reconnect does not resurrect run, lease or acceptance.", "limits": "Explicit proposed byte and evidence-count limits in fixture; truncation never silent. Output chunk ordering uses sequence; declared encoding. Transport adapters normalize errors but never mutate task stores directly.", "errors": ["invalid", "unauthorized", "identity_mismatch", "stale_attempt", "lease_expired", "cancelled", "sequence_gap", "duplicate_conflict", "revision_conflict", "unavailable"], "contracts": ["Identical authorized retry has no additional side effects", "Rejected request leaves authoritative state unchanged", "One report commits receipt, run update and projection together", "Done never means accepted or green", "Transport choice does not change domain result"], "bdd": [{"id": "RI-01", "behavior": "Record progress through any supported transport", "test": "TDD-RI-01", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-02", "behavior": "Retry an identical report", "test": "TDD-RI-02", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-03", "behavior": "Reject a conflicting duplicate", "test": "TDD-RI-03", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-04", "behavior": "Reject an out of order report", "test": "TDD-RI-04", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-05", "behavior": "Reject an obsolete execution attempt", "test": "TDD-RI-05", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-06", "behavior": "Reject an identity mismatch", "test": "TDD-RI-06", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-07", "behavior": "Completion is not acceptance", "test": "TDD-RI-07", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-08", "behavior": "Preserve state on commit failure", "test": "TDD-RI-08", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-09", "behavior": "Reconnect with expired authority", "test": "TDD-RI-09", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-10", "behavior": "Reject reports after cancellation", "test": "TDD-RI-10", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-11", "behavior": "Reject excessive or empty input", "test": "TDD-RI-11", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-12", "behavior": "Reject unauthorized reporting", "test": "TDD-RI-12", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-13", "behavior": "Retry after a lost acknowledgement", "test": "TDD-RI-13", "level": "L2; L3 transport equivalence", "status": "PENDING"}, {"id": "RI-14", "behavior": "Reject changed specification binding", "test": "TDD-RI-14", "level": "L2; L3 transport equivalence", "status": "PENDING"}], "scope": {"allowed": "reports/rust-improvements/report-ingress only in this planning slice", "protected": "production, executable tests, task board, approval sources"}, "acceptance": ["All 14 scenarios have executable L2 coverage before implementation is accepted", "All three adapters produce equivalent receipts/errors for the same fixture", "100 identical concurrent retries commit once; conflicting duplicate commits zero additional mutations", "Injected failures at every precommit boundary preserve run/task/evidence snapshot", "Agent terminal report cannot invoke Accept or Complete", "No cross-module write bypass; Rust authoritative state remains sole owner"], "open_decisions": ["Approve ReportRun contract and atomic seam reuse versus extension", "Choose trusted reporting grant issuer and credential rotation/revocation", "Approve strict sequence policy and explicit payload limits", "Choose durable receipt retention and run identity/worktree fingerprint format", "Define cancellation authority and active lease source without caller approval claims"], "source_evidence": ["apps/sgenaxis-desktop/crates/sgenaxis-core/src/flow.rs:1-49 acceptance/EVID gates", "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs:59-69 Host run and lease state", "tools/board/board_core/usecases.py:38-39 Python done->green mismatch; must not inherit"], "pending_automation": ["Implement step bindings only after approval/skeleton", "RED must compile and fail behaviorally; no RED evidence exists now", "L2 identity/auth/order/idempotency/failure injection", "L3 HTTP/command/MCP adapter parity", "L4 cancellation/reconnect/acceptance regression", "HTML embedded-spec validation and stale revision detection"], "ui_host_independence": "ReportRun contract is independent of UI hosting. A Figma-like UI inside an Agent window is a separate feasibility proposal, not a proven platform capability. Agent platform auth/session identity never grants local reporting or architecture/task acceptance authority.", "claude_code_requirement": {"id": "REQ-AGENT-CLAUDE-01", "client": "Claude Code", "status": "REQUIRED_NOT_IMPLEMENTED", "cli_dispatch": "Required; claude -p noninteractive execution, structured output, cancel and exit classification; real integration NOT RUN.", "mcp_tools": "Required; inbound tools for task query/claim/report through shared application ports; stdio and HTTP transport choices require compatibility verification.", "reporting": "Same ReportRun contract, identity/lease/idempotency/evidence gates as other clients; no automatic acceptance.", "embedded_ui": "Host capability dependent; Claude Code MCP tool support does not establish interactive UI support. Capability detection and text/tool fallback required; current host NOT VERIFIED.", "acceptance": ["CLI target version recorded and tested", "MCP tool discovery/query/claim/report verified", "Missing configuration/auth rejected readably", "Cancel/disconnect/duplicate/stale reports tested", "No embedded-UI support means tools remain usable"], "sources": ["https://code.claude.com/docs/en/headless", "https://code.claude.com/docs/en/mcp"], "verification": "Official documentation read; no Claude login, configuration change, service launch or live run performed."}}</script><section id="claude-code-requirement"><h2>Claude Code compatibility — REQUIRED / NOT IMPLEMENTED</h2><p>Owner requirement REQ-AGENT-CLAUDE-01: support CLI launch plus inbound MCP task query, claim and reporting, using the same Rust application contracts. Real integration tests: NOT RUN.</p><p>Embedded Web UI is host-capability dependent. MCP tools must remain usable without UI; current Claude Code UI support is NOT VERIFIED.</p><p>Acceptance: record tested version; test CLI output/cancel/exit, MCP discovery/claim/report, missing auth, disconnect, duplicate and stale reports. Agent completion cannot self-approve acceptance.</p><p>Official sources: <a href="https://code.claude.com/docs/en/headless">Claude Code CLI automation</a> · <a href="https://code.claude.com/docs/en/mcp">Claude Code MCP</a>.</p></section></html>

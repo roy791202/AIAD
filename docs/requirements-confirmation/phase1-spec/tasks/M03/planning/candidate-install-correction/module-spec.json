@@ -1,0 +1,141 @@
+{
+  "identity": {
+    "module": "M03",
+    "task": "PD-P1-M03-PREP-01",
+    "command": "design_candidate_install",
+    "status": "DOCUMENT_INTEGRATION_CANDIDATE_NOT_ADOPTED",
+    "author": "/root/m03_candidate_install_packet"
+  },
+  "intent": "Install one C1-prepared supported design candidate through existing M04 single owner, preserve retention evidence and replay without second mutation.",
+  "architecture": {
+    "hexagonal": "UI -> Tauri closed command -> M03 facade -> M04 input -> existing single S1; M04 -> C1/M05 output abstractions -> adapters",
+    "dependency": "M03 -> M04 input abstraction; M05 pin never implies M04 commit",
+    "state_owner": "M04 owns authoritative content/history/baselines; M03 derived immutable candidate/preview records only",
+    "mutation_boundary": "M04 submit_design_candidate only",
+    "transaction": "validate native caller -> replay admission -> C1 immutable candidate -> verify generation/revision/unused -> M05 Candidate pin -> M04 one Edit -> M05 complete live/history transfer -> Applied or AppliedRetentionDeferred",
+    "forbidden": [
+      "second owner registry",
+      "facade S1 initialization",
+      "FileCommit",
+      "formal ACK",
+      "formal root transfer",
+      "runtime provider invention"
+    ]
+  },
+  "request_root": "request.schema.json",
+  "response_root": "response.schema.json",
+  "contracts": [
+    "C1 validated canonical raw/semantic candidate required; unsupported not installable; request cannot inject payload or proof",
+    "new request compares current owner generation, candidate capture generation/revision and expected revision; same request replay precedes used-candidate check after current authorization",
+    "only verified M04 commit advances revision/history once and consumes candidate; Redo invalidated; NoChange consumes candidate only after verified M04 NoChange record, no Edit/history/revision increment",
+    "NoChange exact candidate policy: verified M04 semantic-equal terminal record consumes candidate without Edit/revision/history/Redo changes; same request replays unchanged; new ID CandidateUsed. Requires Owner adoption and runtime contract tests.",
+    "proof failure after possible commit must be Indeterminate/UnverifiedOutcome, never ErrorUnchanged or automatic resubmit",
+    "AppliedRetentionDeferred is committed, pin Held, no rollback; same ID returns retained outcome, no transfer retry or commit",
+    "replay may deliver old R8 at live R9 but cannot render it or alter current state; close/revocation blocks disclosure",
+    "all negative precommit fixtures keep live/history/redo/candidate unchanged; retain flag means do not release any existing pin, not proof one was created"
+  ],
+  "trust_premises": [
+    "trusted-fixture-authority.json is immutable test authority, not UI supplied; fixed issuer equality supplies authentication/inclusion/completeness/current fence premises",
+    "proof checker derives listed material relations but does not prove native issuer security, persistent receipts, provider implementation, concurrent ordering, or complete project inventory",
+    "state reducer assumes native caller and immutable request capture facts; runtime loss does not rebuild success from M05 pin"
+  ],
+  "new_policy_choices": "new-policy-choices.json",
+  "allowed_scope": "only M03/planning/candidate-install-integration/**",
+  "protected_scope": "all old packages, product/tests, board/current-state, hooks and CI",
+  "acceptance": [
+    "schema bound without checker special",
+    "7 typed DomainRejected objects reject string or extra fields",
+    "25 concrete lifecycle examples; proof/member tamper negatives rejected",
+    "immutable source inputs/product authority zero drift",
+    "independent review separate; no adoption or product RED claim"
+  ],
+  "pending_automation": [
+    "native authenticated command dispatch",
+    "C1 prepare/install payload preservation",
+    "M04 exact atomic Edit and NoChange contract",
+    "M05 full pin/root lifecycle and concurrent provider fencing",
+    "native replay/loss/revocation UI gating",
+    "product RED/GREEN and build/package/install"
+  ],
+  "fullDraft": "NOT RUN unless installed; subset interpreter only",
+  "product_tests": "NOT RUN",
+  "native": "NOT RUN",
+  "RED": "NOT RUN",
+  "build": "NOT RUN",
+  "module_complete": false,
+  "NoChange": "CI-26 document candidate policy only, not runtime evidence",
+  "coverage": [
+    {
+      "category": "B1",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B2",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B3",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B4",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B5",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B6",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B7",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B8",
+      "status": "Deferred",
+      "reason": "Native lifecycle/platform compatibility requires adopted envelope; document model only"
+    },
+    {
+      "category": "B9",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B10",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    },
+    {
+      "category": "B11",
+      "status": "Deferred",
+      "reason": "Native lifecycle/platform compatibility requires adopted envelope; document model only"
+    },
+    {
+      "category": "B12",
+      "status": "Applicable",
+      "reason": "Concrete fixtures/proof/schema checks; does not establish product coverage"
+    }
+  ],
+  "task": {
+    "primary_module": "M03",
+    "dependency_modules": [
+      "M04",
+      "M05",
+      "C1"
+    ],
+    "regression_scope": "document model only; no save/undo historical suite rerun",
+    "BDD": "module.feature",
+    "TDD": "check_documents.py fixtures and expected results; not product RED",
+    "acceptance": "independent document review pending"
+  }
+}

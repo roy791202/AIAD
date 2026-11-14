@@ -1,0 +1,93 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running unittests src\lib.rs (apps\sgenaxis-desktop\target\debug\deps\sgenaxis_adapters-e242a1d3f52744e2.exe)
+
+running 13 tests
+test std_fs::std_fs_tests::fs_t01_real_create_replace_empty_and_large_binary ... ok
+test std_fs::std_fs_tests::fs_t02_a_then_b_last_commit_wins ... FAILED
+test std_fs::std_fs_tests::fs_t02_b_then_a_last_commit_wins ... FAILED
+test std_fs::std_fs_tests::fs_t02_real_candidates_are_distinct_sibling_paths ... FAILED
+test std_fs::std_fs_tests::fs_t03_collision_preserves_sentinel_and_retries ... FAILED
+test std_fs::std_fs_tests::fs_t03_exhaustion_is_bounded_and_preserves_all_existing_bytes ... FAILED
+test std_fs::std_fs_tests::fs_t04_cleanup_denial_keeps_primary_error_and_owned_residue ... FAILED
+test std_fs::std_fs_tests::fs_t04_partial_write_failure_preserves_and_cleans ... FAILED
+test std_fs::std_fs_tests::fs_t04_sync_failure_preserves_and_cleans ... FAILED
+test std_fs::std_fs_tests::fs_t05_rename_failure_preserves_and_cleans ... ok
+test std_fs::std_fs_tests::fs_t06_failed_writer_cannot_delete_prepared_peer_and_peer_commits ... FAILED
+test std_fs::std_fs_tests::fs_t07_real_directory_target_failure_preserves_directory ... ok
+test std_fs::std_fs_tests::fs_t08_nested_unicode_space_paths_and_invalid_path ... ok
+
+failures:
+
+---- std_fs::std_fs_tests::fs_t02_a_then_b_last_commit_wins stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t02_a_then_b_last_commit_wins' (327652) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:126:5:
+assertion `left != right` failed: both prepared writers must own different paths
+  left: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-concurrent-1\\target.sgenaxis-tmp-327352"
+ right: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-concurrent-1\\target.sgenaxis-tmp-327352"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- std_fs::std_fs_tests::fs_t02_b_then_a_last_commit_wins stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t02_b_then_a_last_commit_wins' (314092) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:126:5:
+assertion `left != right` failed: both prepared writers must own different paths
+  left: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-concurrent-2\\target.sgenaxis-tmp-327352"
+ right: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-concurrent-2\\target.sgenaxis-tmp-327352"
+
+---- std_fs::std_fs_tests::fs_t02_real_candidates_are_distinct_sibling_paths stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t02_real_candidates_are_distinct_sibling_paths' (323728) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:103:5:
+assertion `left != right` failed: same process invocations must not share candidates
+  left: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-names-3\\target.sgenaxis-tmp-327352"
+ right: "C:\\Users\\g6812\\AppData\\Local\\Temp\\sgenaxis-fs-contract-327352-names-3\\target.sgenaxis-tmp-327352"
+
+---- std_fs::std_fs_tests::fs_t03_collision_preserves_sentinel_and_retries stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t03_collision_preserves_sentinel_and_retries' (326720) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:64:36:
+collision sentinel must survive: Os { code: 2, kind: NotFound, message: "系統找不到指定的檔案。" }
+
+---- std_fs::std_fs_tests::fs_t03_exhaustion_is_bounded_and_preserves_all_existing_bytes stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t03_exhaustion_is_bounded_and_preserves_all_existing_bytes' (327452) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:73:5:
+Ok(())
+
+---- std_fs::std_fs_tests::fs_t04_cleanup_denial_keeps_primary_error_and_owned_residue stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t04_cleanup_denial_keeps_primary_error_and_owned_residue' (327572) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:91:5:
+assertion `left == right` failed: owned cleanup must be attempted exactly once
+  left: 0
+ right: 1
+
+---- std_fs::std_fs_tests::fs_t04_partial_write_failure_preserves_and_cleans stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t04_partial_write_failure_preserves_and_cleans' (319668) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:91:5:
+assertion `left == right` failed: owned cleanup must be attempted exactly once
+  left: 0
+ right: 1
+
+---- std_fs::std_fs_tests::fs_t04_sync_failure_preserves_and_cleans stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t04_sync_failure_preserves_and_cleans' (325928) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:91:5:
+assertion `left == right` failed: owned cleanup must be attempted exactly once
+  left: 0
+ right: 1
+
+---- std_fs::std_fs_tests::fs_t06_failed_writer_cannot_delete_prepared_peer_and_peer_commits stdout ----
+
+thread 'std_fs::std_fs_tests::fs_t06_failed_writer_cannot_delete_prepared_peer_and_peer_commits' (327236) panicked at crates\sgenaxis-adapters\src\std_fs_tests.rs:145:109:
+failed writer must clean only its own temp
+
+
+failures:
+    std_fs::std_fs_tests::fs_t02_a_then_b_last_commit_wins
+    std_fs::std_fs_tests::fs_t02_b_then_a_last_commit_wins
+    std_fs::std_fs_tests::fs_t02_real_candidates_are_distinct_sibling_paths
+    std_fs::std_fs_tests::fs_t03_collision_preserves_sentinel_and_retries
+    std_fs::std_fs_tests::fs_t03_exhaustion_is_bounded_and_preserves_all_existing_bytes
+    std_fs::std_fs_tests::fs_t04_cleanup_denial_keeps_primary_error_and_owned_residue
+    std_fs::std_fs_tests::fs_t04_partial_write_failure_preserves_and_cleans
+    std_fs::std_fs_tests::fs_t04_sync_failure_preserves_and_cleans
+    std_fs::std_fs_tests::fs_t06_failed_writer_cannot_delete_prepared_peer_and_peer_commits
+
+test result: FAILED. 4 passed; 9 failed; 0 ignored; 0 measured; 37 filtered out; finished in 0.24s
+
+error: test failed, to rerun pass `-p sgenaxis-adapters --lib`

@@ -1,0 +1,72 @@
+{
+  "reviewer": "/root/io_independent_review",
+  "date": "2026-11-01",
+  "scope": "Independent static acceptance of IO-PREREQ Skeleton and RED preparation; production/tests/board read-only",
+  "checkout": {"branch": "cursor/ui-bhv-arch-layer-editor", "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "dirty_workspace": true},
+  "verdict": "PARTIAL",
+  "gates": {
+    "port_contract_skeleton": "PASS",
+    "architecture_dependency_and_ownership": "PASS_FOR_CURRENT_SKELETON",
+    "observed_red_assertion_validity": "PASS_BY_LOG_AND_SOURCE_REVIEW; fresh execution is parent evidence",
+    "all_module_contract_branches_have_red": "PARTIAL",
+    "implementation_readiness": "BLOCKED_PENDING_PROTOCOL_AND_TEST_REPLANNING",
+    "production_functionality": "NOT_IMPLEMENTED_BY_DESIGN",
+    "independent_runtime_execution_by_this_reviewer": "NOT_RUN"
+  },
+  "findings": [
+    {
+      "id": "IO-R1", "severity": "P1", "category": "ARCHITECTURE_GAP", "location": "planning/module-spec.json: journal_proposal; adapters/tests/phase1_file_commit.rs:57-62,175-196",
+      "description": "The adopted design specifies bounded versioned length-prefixed records but leaves precise naming to confirmation. Tests now fix document.ess.eluslot-commit/journal.v1, ELUCOMMIT, payload field order, state byte 1 and ASCII checksum encoding. These are candidate fixture conventions, not a separately frozen exact persistence protocol. The six-file implementation envelope should not silently turn them into architectural persistence decisions.",
+      "required_action": "Record and review exact private journal/sidecar names, record layout, digest representation, state/checksum binding, limits and malformed handling before production implementation. Do not change tests or approved specification during this acceptance."
+    },
+    {
+      "id": "IO-R2", "severity": "P1", "category": "MISSING_CONTRACT_BRANCH_TESTS", "location": "adapters/tests/phase1_file_commit.rs:323-332,362-413",
+      "description": "IO10 only covers expected absent / actual present, not expected present / actual absent. IO12 injects VerifyPublished but not WriteCommittedJournal. IO13 injects Restore but not VerifyRestored. New-file postpublish failure and restored-absence semantics are also not executable. These tests can all turn GREEN while materially violating the adopted contract.",
+      "required_action": "Add explicit RED cases for both presence directions, commit-record failure, restoration verification failure, and originally absent target rollback; preserve invariants and existing assertions. Test-only follow-up, no product fix in this review."
+    },
+    {
+      "id": "IO-R3", "severity": "P1", "category": "JOURNAL_NEGATIVE_TEST_GAP", "location": "adapters/tests/phase1_file_commit.rs:175-196,416-442",
+      "description": "IO15 passes one unframed arbitrary invalid byte string. It does not independently exercise well-framed unknown version, checksum mismatch, valid-checksum traversal/absolute path, target binding mismatch, truncation, maximum/overmaximum journal and path sizes. A decoder that only rejects malformed magic could pass the present test. IO14 tests fail-closed from the same process, not fresh-process reopen as BDD states.",
+      "required_action": "After private protocol confirmation, create separately malformed fixtures and boundary cases plus independent-process reopen observation. Do not use invalid magic to stand in for all parser safety branches."
+    },
+    {
+      "id": "IO-R4", "severity": "P2", "category": "LIFECYCLE_EVIDENCE_GAP", "location": "adapters/examples/file_commit_probe.rs:52-71; adapters/tests/phase1_file_commit.rs:269-283,446-455",
+      "description": "The helper independently holds a native handle, and after its close/death the parent calls product acquire. This is a valid isolated acquire RED and fixture-health check. It does not prove an actual product-created lease is released on product Drop/process death or that another process can reacquire after product Drop. IO16 therefore only partially maps its intended lifecycle behavior.",
+      "required_action": "Retain the fixture/native-handle cases and plan separate product lease lifetime/child consumer cases. Do not relabel fixture handle health as product lease behavior."
+    },
+    {
+      "id": "IO-R5", "severity": "P3", "category": "FIXTURE_DETERMINISM", "location": "adapters/tests/phase1_file_commit.rs:35-50",
+      "description": "Fixture uniqueness uses process ID and SystemTime nanoseconds without a sequence or collision retry. A coarse or repeated system clock could collide between parallel tests, producing invalid setup rather than intended RED. No collision occurred in reviewed run logs.",
+      "required_action": "Use an atomic sequence plus exclusive create retry in a later test-only hardening task. Never count any resulting setup error as RED."
+    },
+    {
+      "id": "IO-R6", "severity": "P2", "category": "SPEC_PROJECTION_STATUS", "location": "planning/module-spec.json, envelope.json, test-plan.json and index.html embedded ModuleSpec",
+      "description": "The canonical planning artifacts still report proposal/review-pending, planning-only envelope and NOT RUN. The later authorization/evidence is separate and real, but automation reading only the ModuleSpec would see a stale lifecycle. Preserve historical decisions while adding an explicit current approval/evidence overlay rather than silently overwriting history.",
+      "required_action": "Expose the accepted user authority, current Skeleton/RED evidence, and this PARTIAL acceptance in a structured current-state projection."
+    }
+  ],
+  "positive_notes": [
+    "Ports expose primitive owned data and object-safe traits; no filesystem/OS types escape.",
+    "Adapter depends inward on Ports; Windows/std-adapters gate is explicit; no HOST/UI/WORK hookup.",
+    "Shipping method bodies explicitly return SKELETON_NOT_IMPLEMENTED; no hidden product commit/rollback algorithm.",
+    "Controlled tests compile the same source with cfg(test) ownership/checkpoint constructor; production acquisition is not falsely asserted by fixture lease setup.",
+    "Fault tests require actual stage evidence, avoiding accidental PASS from generic Storage errors.",
+    "Fixtures validate canonical containment and ownership before recursive cleanup; child is bounded and owned."
+  ],
+  "suggested_refactors": [
+    {"priority": 1, "classification": "REPLAN_REQUIRED_PERSISTENCE_PROTOCOL", "action": "Freeze exact private protocol and lifecycle test scope; do not refactor production during review."},
+    {"priority": 2, "classification": "TEST_ONLY_FOLLOW_UP", "action": "Expand missing contract branches and independent child/product lifecycle tests before READY_FOR_AI_IMPLEMENTATION."},
+    {"priority": 3, "classification": "TEST_ONLY_HARDENING", "action": "Make fixture naming collision-safe; no broad abstraction or new service needed."}
+  ],
+  "risks": [
+    {"level": "High", "area": "implementation gate", "reason": "Treating all 20 RED cases as complete module test readiness would leave data-preservation and parser safety branches unspecified/unproved."},
+    {"level": "Medium", "area": "maintenance", "reason": "Candidate fixture protocol could become accidental persistence SSOT unless frozen explicitly."},
+    {"level": "Low", "area": "current delivery runtime", "reason": "Adapter is not wired and intentionally has no behavior; this is a Skeleton acceptance, not deployment readiness."},
+    {"level": "Medium", "area": "compatibility", "reason": "Evidence host is Windows 10 build 19045; Windows 11 acceptance remains NOT RUN."}
+  ],
+  "review_limits": [
+    "This reviewer inspected existing source, contracts, feature, fixtures and captured logs but did not rerun Cargo; parent separately executes runtime checks.",
+    "Product source, tests and board were not modified by this reviewer.",
+    "No recommendation authorizes new product behavior or architectural self-approval."
+  ]
+}

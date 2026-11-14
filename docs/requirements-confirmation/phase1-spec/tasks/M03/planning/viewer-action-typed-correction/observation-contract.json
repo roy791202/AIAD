@@ -1,0 +1,49 @@
+{
+  "premises": {
+    "required_boolean": [
+      "trusted_local",
+      "consumer_matches",
+      "owner_present",
+      "document_matches",
+      "provider_ready",
+      "number_ready",
+      "number_accepted"
+    ],
+    "required_u64_decimal": [
+      "observed_generation",
+      "observed_revision"
+    ],
+    "required_strings": {
+      "number_canonical": "strict decimal grammar, nonempty; C1 authenticity remains premise",
+      "number_error": "nonempty string; not interpreted as authority"
+    },
+    "delivery_change": [
+      "none",
+      "consumer",
+      "document",
+      "generation",
+      "closed",
+      "revision"
+    ],
+    "optional": "delivery_observed_revision: strict U64 decimal; required for revision; same-revision remains existing M01 dependency failure",
+    "closed": true
+  },
+  "capability_record": {
+    "required": [
+      "type: nonempty string (unknown remains UnsupportedAction)",
+      "scope: null or string (non-ui remains UnsupportedAction)",
+      "allowed_actions: array of exact Activate/SetToggle/SetText/SetNumber/SelectItem strings"
+    ],
+    "optional": [
+      "asset_missing: nonempty string",
+      "target_missing: nonempty string",
+      "items_valid: exact bool",
+      "item_ids: array of strings"
+    ],
+    "ComboBox": "items_valid and item_ids required; legitimate false remains UnsupportedAction",
+    "closed": true
+  },
+  "internal_state": "before is existing harness-owned authoritative state, not a provider input: preview_session/generation/revision/sequence/closed/mock/activation_count plus preservation sentinels. No new state ingestion API or authenticity claim.",
+  "client": "request and response schemas bytewise unchanged; original request validation unchanged after new eager provider ingress.",
+  "truthiness_audit": "Every p[]/p.get field and n[]/n.get field used by original model listed above. Exact bool rejects integers and strings; optional missing resource flags remain absent; empty resource IDs malformed. Closed capability actions enum; node type deliberately open compatibility string, not a claimed closed product type enum."
+}

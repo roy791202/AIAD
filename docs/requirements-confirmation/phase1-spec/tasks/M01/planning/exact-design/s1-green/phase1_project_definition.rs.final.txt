@@ -1,0 +1,245 @@
+//! M01-S1 contract tests. Raw fixture construction does not call target behavior.
+use sgenaxis_work::project_definition::*;
+use std::collections::BTreeMap;
+
+fn draft() -> DefinitionDraft {
+    DefinitionDraft {
+        name: "Local Design".into(),
+        purpose: "Save an incomplete project definition".into(),
+        last_saved_step: WizardStep::Delivery,
+        delivery_targets: vec![],
+        topology: FieldState::Unresolved,
+        requirements: vec![],
+        preference_source: PreferenceSource::Skip,
+        template: None,
+        open_decisions: vec!["deliveryTargets".into()],
+        extensions: BTreeMap::new(),
+    }
+}
+
+fn definition(revision: u64) -> ProjectDefinition {
+    ProjectDefinition {
+        project_uuid: PersistentProjectId::candidate("11111111-1111-4111-8111-111111111111"),
+        definition_revision: DefinitionRevision(revision),
+        draft: draft(),
+        mode: DefinitionMode::Draft,
+        approval_refs: vec![],
+        legacy_root_keys: vec!["proj_legacy_A".into()],
+    }
+}
+
+#[test]
+fn m01_ex02_incomplete_draft_is_valid_without_generating_anything() {
+    let input = draft();
+    assert_eq!(
+        validate_definition(&input),
+        Ok(()),
+        "unresolved technology must not prevent a valid draft"
+    );
+    assert!(input.delivery_targets.is_empty());
+}
+
+#[test]
+fn m01_ex01_empty_and_whitespace_names_report_the_name_field() {
+    for name in ["", " ", "\t\n"] {
+        let mut input = draft();
+        input.name = name.into();
+        assert_eq!(
+            validate_definition(&input),
+            Err(DefinitionError::InvalidInput {
+                field: "name".into()
+            }),
+            "name={name:?}"
+        );
+    }
+}
+
+#[test]
+fn m01_name_length_one_and_120_are_valid_boundaries() {
+    for length in [1, 2, 119, 120] {
+        let mut input = draft();
+        input.name = "A".repeat(length);
+        assert_eq!(validate_definition(&input), Ok(()), "length={length}");
+    }
+}
+
+#[test]
+fn m01_121_character_name_is_rejected_before_apply() {
+    let mut input = draft();
+    input.name = "A".repeat(121);
+    assert_eq!(
+        validate_definition(&input),
+        Err(DefinitionError::InvalidInput {
+            field: "name".into()
+        })
+    );
+}
+
+#[test]
+fn m01_windows_reserved_names_and_separators_are_invalid() {
+    for name in [
+        "CON", "con.txt", "NUL", "COM1", "a/b", "a\\b", "a:b", "name.", "name\0",
+    ] {
+        let mut input = draft();
+        input.name = name.into();
+        assert_eq!(
+            validate_definition(&input),
+            Err(DefinitionError::InvalidInput {
+                field: "name".into()
+            }),
+            "name={name:?}"
+        );
+    }
+}
+
+#[test]
+fn m01_ex03_apply_advances_revision_and_preserves_identity_and_legacy_aliases() {
+    let current = definition(2);
+    let before = current.clone();
+    let mut input = draft();
+    input.purpose = "Revised purpose".into();
+    let result = apply_definition(&current, DefinitionRevision(2), input.clone());
+    assert!(
+        result.is_ok(),
+        "a valid current-revision draft must apply: {result:?}"
+    );
+    let applied = result.unwrap();
+    assert_eq!(applied.definition_revision, DefinitionRevision(3));
+    assert_eq!(applied.project_uuid, before.project_uuid);
+    assert_eq!(applied.legacy_root_keys, before.legacy_root_keys);
+    assert_eq!(applied.draft, input);
+    assert_eq!(
+        current, before,
+        "application returns a new value, not an alias mutation"
+    );
+}
+
+#[test]
+fn m01_ex04_stale_revision_is_a_conflict_and_preserves_current_value() {
+    let current = definition(2);
+    let before = current.clone();
+    assert_eq!(
+        apply_definition(&current, DefinitionRevision(1), draft()),
+        Err(DefinitionError::RevisionConflict)
+    );
+    assert_eq!(current, before);
+}
+
+#[test]
+fn m01_revision_overflow_does_not_wrap_or_mutate() {
+    let current = definition(u64::MAX);
+    let before = current.clone();
+    assert_eq!(
+        apply_definition(&current, DefinitionRevision(u64::MAX), draft()),
+        Err(DefinitionError::RevisionOverflow)
+    );
+    assert_eq!(current, before);
+}
+
+#[test]
+fn m01_invalid_persistent_identity_cannot_be_applied() {
+    let mut current = definition(0);
+    current.project_uuid = PersistentProjectId::candidate("not-a-uuid");
+    assert_eq!(
+        apply_definition(&current, DefinitionRevision(0), draft()),
+        Err(DefinitionError::InvalidInput {
+            field: "projectUuid".into()
+        })
+    );
+}
+
+#[test]
+fn m01_ex05_generation_gate_lists_concrete_missing_decisions() {
+    let current = definition(0);
+    let missing = missing_generation_requirements(&current);
+    assert!(
+        missing.contains(&"deliveryTargets".to_string()),
+        "missing targets must be reported: {missing:?}"
+    );
+    assert!(
+        missing.contains(&"approvalRefs".to_string()),
+        "an incomplete draft grants no architecture approval: {missing:?}"
+    );
+    assert_eq!(current.mode, DefinitionMode::Draft);
+}
+
+#[test]
+fn m01_changed_definition_invalidates_old_approval_references() {
+    let mut current = definition(2);
+    current.mode = DefinitionMode::Defined;
+    current.approval_refs = vec!["architecture@2".into(), "contract@2".into()];
+    let mut input = current.draft.clone();
+    input.purpose = "Changed requirement".into();
+    let applied = apply_definition(&current, DefinitionRevision(2), input);
+    assert!(applied.is_ok(), "valid edit must apply: {applied:?}");
+    let applied = applied.unwrap();
+    assert!(
+        applied.approval_refs.is_empty(),
+        "old evidence cannot approve revised content"
+    );
+    assert_eq!(applied.mode, DefinitionMode::Draft);
+}
+
+#[test]
+fn m01_confirmed_target_still_requires_concrete_language_and_toolchain() {
+    let mut current = definition(0);
+    current.draft.delivery_targets = vec![DeliveryTarget {
+        id: "44444444-4444-4444-8444-444444444444".into(),
+        form: FieldState::Confirmed("desktop".into()),
+        platform: FieldState::Confirmed("windows-x64".into()),
+        host: FieldState::Unresolved,
+        host_version: FieldState::Unresolved,
+        language: FieldState::Tentative("rust".into()),
+        framework: FieldState::Confirmed("vanilla-tauri".into()),
+        toolchain: vec![],
+        has_ui: Some(true),
+    }];
+    let missing = missing_generation_requirements(&current);
+    assert!(missing.contains(&"deliveryTargets[0].language".into()));
+    assert!(missing.contains(&"deliveryTargets[0].toolchain".into()));
+}
+
+#[test]
+fn m01_duplicate_target_id_is_invalid_even_in_a_draft() {
+    let mut input = draft();
+    let target = DeliveryTarget {
+        id: "44444444-4444-4444-8444-444444444444".into(),
+        form: FieldState::Unresolved,
+        platform: FieldState::Unresolved,
+        host: FieldState::Unresolved,
+        host_version: FieldState::Unresolved,
+        language: FieldState::Unresolved,
+        framework: FieldState::Unresolved,
+        toolchain: vec![],
+        has_ui: None,
+    };
+    input.delivery_targets = vec![target.clone(), target];
+    assert_eq!(
+        validate_definition(&input),
+        Err(DefinitionError::InvalidInput {
+            field: "deliveryTargets[1].id".into()
+        })
+    );
+}
+
+#[test]
+fn m01_complete_trusted_definition_has_no_missing_core_fields() {
+    let mut current = definition(0);
+    current.approval_refs = vec!["architecture@0".into(), "contract@0".into()];
+    current.draft.topology = FieldState::Confirmed("single-local".into());
+    current.draft.open_decisions.clear();
+    current.draft.delivery_targets = vec![DeliveryTarget {
+        id: "44444444-4444-4444-8444-444444444444".into(),
+        form: FieldState::Confirmed("desktop".into()),
+        platform: FieldState::Confirmed("windows-x64".into()),
+        host: FieldState::Unresolved,
+        host_version: FieldState::Unresolved,
+        language: FieldState::Confirmed("rust".into()),
+        framework: FieldState::Confirmed("vanilla-tauri".into()),
+        toolchain: vec!["cargo".into()],
+        has_ui: Some(true),
+    }];
+    assert_eq!(validate_definition(&current.draft), Ok(()));
+    assert!(missing_generation_requirements(&current).is_empty());
+    // This is completeness, not evidence authentication or executing generation.
+}

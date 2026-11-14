@@ -1,0 +1,156 @@
+{
+  "reviewer": "/root/independent_s1_acceptance",
+  "independence": "Different agent from implementer; source review + own test execution; no product/original-test/board writes",
+  "date": "2026-11-01",
+  "module": "M04",
+  "slice": "M04-S1",
+  "verdict": "PASS",
+  "status": "INDEPENDENT_ACCEPTANCE_PASS_FOR_S1_ONLY",
+  "findings": [],
+  "blocking_findings": 0,
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "worktree": "dirty; acceptance bound to file hashes, not a clean release checkout",
+  "source_files": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs",
+      "sha256": "59b63e3c007d72a0b380e5950fc98d13d55129abd858cb6cbc844102456dcd95"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_definition.rs",
+      "sha256": "1aaaf52e5d70b5ea874bf54fd25a589edeaa273c38d00578645b29e6b566a06b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_document_history.rs",
+      "sha256": "1d17a305e189572b5ea0b18063db2d12f0dbd9d3a96715a930a35fe8b495126e"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "sha256": "3633a3e3b908b6396fb1d3599a6a3d8353026461cdc1db209861a7f6d647ebc4"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/Cargo.toml",
+      "sha256": "549644fcaa27cf9e58fc3c39b91630ec5d7ff07dfc1975995a577178c8812d45"
+    }
+  ],
+  "contract_matrix": [
+    {
+      "boundary": "prepare",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 187,
+      "contract_checked": "唯讀建立單文件plan，含before/after所需素材版本；cancel不改history",
+      "evidence": "原測試＋probe所有狀態拒絕",
+      "verdict": "PASS"
+    },
+    {
+      "boundary": "commit",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 213,
+      "contract_checked": "先檢查document/session/revision/before/assets再改狀態；成功一次history；重送與stale拒絕不變",
+      "evidence": "原測試＋replay與連續編輯probes",
+      "verdict": "PASS"
+    },
+    {
+      "boundary": "undo",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 253,
+      "contract_checked": "整份DocumentContent恢復，revision繼續前進，保存基準不隨Undo倒退；overflow不消耗history",
+      "evidence": "原測試＋32次編輯/Undo與overflow probe",
+      "verdict": "PASS"
+    },
+    {
+      "boundary": "capture",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 272,
+      "contract_checked": "穩定/owning clone；Applying/RecoveryRequired/Closed拒絕",
+      "evidence": "原測試＋capture非alias probe",
+      "verdict": "PASS"
+    },
+    {
+      "boundary": "acknowledge_formal_save",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 282,
+      "contract_checked": "只推formal基準、保留較新內容dirty；未來/矛盾/倒退回報拒絕不變",
+      "evidence": "原測試＋invalid acknowledgment probe",
+      "verdict": "PASS"
+    },
+    {
+      "boundary": "acknowledge_recovery_save",
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "line": 298,
+      "contract_checked": "只推recovery基準，保留formal；捕獲R不吞R+1",
+      "evidence": "原測試＋invalid acknowledgment probe",
+      "verdict": "PASS"
+    }
+  ],
+  "test_execution": {
+    "work": {
+      "reviewer": "/root/independent_s1_acceptance",
+      "date": "2026-11-01",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "sgenaxis-work",
+        "--locked"
+      ],
+      "cwd": "D:\\AIAD\\apps\\sgenaxis-desktop",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "passed": 73
+    },
+    "independent_probe": {
+      "argv": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "D:\\AIAD\\docs\\requirements-confirmation\\phase1-spec\\tasks\\M04\\planning\\exact-design\\independent-review\\probe\\Cargo.toml",
+        "--offline"
+      ],
+      "cwd": "D:/AIAD",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "passed": 7,
+      "scope": "Independent external crate against public domain APIs only; no IO/native/codec proof"
+    }
+  },
+  "architecture": {
+    "verdict": "PASS_FOR_PURE_S1",
+    "domain_dependencies": "std-only types/policies; crate existing sgenaxis-ports dependency unchanged",
+    "no_adapters_or_OS": "No UI/Tauri/FS/process/network/serde/concrete-adapter imports in reviewed modules",
+    "state_ownership": "M01 returns new immutable definition; M04 state privately owned by DocumentSession, only immutable state accessor",
+    "mutation_boundary": "M04 validates scoped plan before mutation; preview/capture do not expose mutable model aliases",
+    "no_unauthorized_manager_service": "No new runtime manager, repository, global registry, transport or port introduced in these S1 files"
+  },
+  "scope_limits": [
+    "Does not accept full M01/M04 module or desktop feature completion",
+    "No native UI, HOST caller validation, XML/JSON roundtrip, disk rollback, OS lock, physical asset retention or package proof",
+    "Completeness helper is not evidence authentication or cross-target compatibility validation; those remain HOST/M02 gates",
+    "Independent probes are pure public-API tests; their canonical fixture bytes do not validate codec implementations",
+    "Only Rust current installed toolchain used; MSRV/other OS/remote CI NOT RUN"
+  ],
+  "evidence": {
+    "work_stdout": "work.stdout.txt",
+    "work_stderr": "work.stderr.txt",
+    "probe_stdout": "probe.stdout.txt",
+    "probe_stderr": "probe.stderr.txt",
+    "probe_source": "probe/src/lib.rs",
+    "probe_manifest": "probe/Cargo.toml"
+  },
+  "handoff": "Both S1 slices pass bounded independent acceptance. Parent may record acceptance evidence; next work must honor IO-PREREQ and existing architecture/envelope gates. No board green or product edits performed by reviewer."
+}

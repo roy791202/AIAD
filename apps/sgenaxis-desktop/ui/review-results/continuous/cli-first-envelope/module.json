@@ -1,0 +1,196 @@
+{
+  "identity": {
+    "module": "cli-dispatch-envelope",
+    "decision": "PD-RUST-DISPATCH-MODES-DEC-01",
+    "date": "2026-10-26 Asia/Taipei",
+    "state": "PLANNING_ONLY",
+    "architecture": "PROPOSED_NOT_APPROVED",
+    "formal_Skeleton_RED_implementation": "NOT_STARTED",
+    "scope": "First noninteractive CLI slice using existing HOST/EXEC; no full Agent platform"
+  },
+  "recommendation": "First validate a benign local noninteractive fixture through the existing HOST/EXEC seam. Then validate one explicitly selected Claude Code installation, followed by a separate Codex compatibility case. Keep inbound MCP/report authority, interactive PTY and Agent-hosted product UI outside this first slice. Provider ordering is a proposal, not an approval or claim of current CLI support.",
+  "current_facts": [
+    {
+      "fact": "CliToolConfig contains only path and argv; source defaults are claude + [--print] and codex + [exec]. These are current repository defaults, NOT externally verified current provider interfaces.",
+      "ref": "exec/src/settings.rs:44-92"
+    },
+    {
+      "fact": "CLI start_live passes configured path/args and request.project_root as cwd. Request task/fingerprint are required host metadata, but no task prompt, packet path, runId or report envelope is automatically added to child argv/stdin/environment.",
+      "ref": "exec/src/cli.rs:133-150; exec/src/port.rs:26-37"
+    },
+    {
+      "fact": "StdProcess explicitly uses stdin=null, piped stdout/stderr, no PTY and no resize/permission-response input. It does not configure an isolated environment; ordinary OS child environment inheritance must not be presented as secret isolation.",
+      "ref": "adapters/src/std_process.rs:91-108"
+    },
+    {
+      "fact": "ProcessPort has start/try_wait/cancel/try_read with independent stream Open/Eof/Error. Existing process slice waits for EOF and uses a first-observed-exit drain deadline. There is no general still-running child execution timeout in this port.",
+      "ref": "ports/src/process.rs; exec/src/cli.rs:228-312"
+    },
+    {
+      "fact": "HOST owns accepted run/WORK lease and reconciles only terminal facts; provider Success does not accept/green a task. Local child exit is not an authenticated ReportRun submission.",
+      "ref": "src-tauri/src/dispatch.rs:552-684"
+    },
+    {
+      "fact": "Readonly .ess packet always remains NOT_READY without complete UI/approval authority. The shared report ingress schema and atomic/authenticated submission are proposals, not installed CLI ingestion.",
+      "ref": "xml-packet/approved-a-contract.md; report-ingress/module.html"
+    }
+  ],
+  "first_slice_order_PROPOSED": [
+    {
+      "step": "C0",
+      "work": "Owner selects noninteractive-first scope and approves exact benign executable/argv/cwd/fixture input/output. No provider login or Agent launch implied.",
+      "gate": "This decision and measurable fixture contract"
+    },
+    {
+      "step": "C1",
+      "work": "Reuse existing ProcessPort/EXEC/host fixture capabilities to prove launch, argument token preservation, cwd, stdout/stderr, exit/EOF, cancellation and second-run exclusion. Direct benign executable only; no new provider abstraction.",
+      "gate": "Executable fixture evidence; historical existing helper evidence may be cited but new envelope behavior is not considered tested yet"
+    },
+    {
+      "step": "C2",
+      "work": "Lock exact packet/input delivery and captured-output binding for one run. Explicit configured argv can already name a fixture/input file; dynamic per-run packet injection is NOT currently implemented. Any required request/API change returns to architecture approval.",
+      "gate": "No invented CLI prompt field or automatic stdin support"
+    },
+    {
+      "step": "C3",
+      "work": "With user-named Claude Code path/version/argv/auth readiness and permitted task target, run a separate narrowly authorized compatibility check. Repeat as an independent Codex case using that installation's actual contract, not shared guessed flags.",
+      "gate": "Both compatibility rows completed; each may be NOT RUN/BLOCKED independently"
+    },
+    {
+      "step": "Later",
+      "work": "Only after separate Guard/document/ingress decisions: implementation-ready packet execution or authenticated report submission. Inbound MCP and both embedding directions remain separate workstreams.",
+      "gate": "No first-slice authorization extends to those features"
+    }
+  ],
+  "allowed_and_forbidden_PROPOSED": {
+    "allowed": "An explicit local benign executable using argv tokens and an explicit disposable bound cwd; controlled modes such as emit-output / nonzero-exit / await-cancel are fixture requirements, not existing provider commands. Existing start_run/poll_chunks/cancel_run and settings path/args are reused only within owner-selected scope. After separate approval, one exact provider executable/argv may be tested.",
+    "forbidden": [
+      "No Agent launch, login, token read/write, provider version invocation or authentication change in this planning task.",
+      "No shell command string, cmd /c, PowerShell -Command, shell expansion, eval, arbitrary request-supplied executable or dynamically appended unreviewed args in the proposed first envelope.",
+      "No broad auto-approve/permission-bypass flags, unknown network endpoint probing, automatic package install/update, persistent daemon/session, stdin dialogue or PTY fallback.",
+      "No task/report metadata accepted as authorization; no child output promoted into SPEC/GUARD authority or product acceptance.",
+      "No schema/Port/DTO/Manager/framework/dependency changes to fit a guessed provider interface."
+    ],
+    "scope_honesty": "The existing ProcessPort is a low-level launcher, not a security allowlist or sandbox. These are proposed envelope restrictions that need a selected enforcement/fixture boundary; do not advertise that current executable/argv settings prevent arbitrary child actions."
+  },
+  "input_output_contract_PROPOSED": {
+    "input": "Explicit selected executable + exact ordered argv vector + HOST-bound project_root/work_item_id/current fingerprint. Empty/invalid/unapproved path rejects under existing gates. No implicit PATH executable discovery or new secret-bearing args proposed; exact path policy to be approved for real installation.",
+    "source": "If a module packet is supplied, bind its explicit source-relative path, exact .ess SHA256, moduleId/taskId, packet payload SHA256 and current project/worktree snapshot. Recheck freshness before handoff; no external UI discovery or XML repair. A NOT_READY packet can be inspected but cannot authorize implementation.",
+    "delivery_choice": "For first fixture, use an explicit already-supported argv token naming a disposable read-only input file or literal fixture string. No new child stdin or request prompt field. For actual provider, whether input is argv/file/stdin and size/quoting/encoding limits are UNKNOWN until exact installed interface and user target are provided; unsupported required stdin => ARCHITECTURE_GAP, not silent port extension.",
+    "output": "Capture stdout/stderr as existing text chunks with per-stream ordering; preserve existing lossy-UTF8 contract. First fixture emits fixed marker + known payload for exact assertions. Actual provider structured-output schema and permission/auth notifications are UNKNOWN; malformed/empty output is not accepted report evidence merely because exit0.",
+    "exit": "Reuse existing exit classification and terminal-once after captured chunks. 0 means provider process success only, nonzero failure, cancellation as existing direct-child intent. No product green/acceptance. Plain wait-only error recovery remains existing follow-up, not fixed by this envelope.",
+    "cancel": "Existing request-ack + continuing poll/drain, direct-child-only cancellation. Fixed2,000ms is an observed-post-exit drain check, not whole task runtime timeout. Both EOF at an observation can complete even if caller waited longer; otherwise open streams at elapsed>=2,000ms fail incomplete. Unbounded buffers and inherited-reader lifetime remain explicit limitations.",
+    "runtime_timeout": "UNKNOWN for real provider and not added by this plan. Fixture harness may use a bounded test deadline solely to classify environment/harness failure; it must not be reported as production cancellation/timeout proof.",
+    "reports": "HOST associates captured process observations with its accepted run/task/project/fingerprint and selected source packet hashes. Child-returned runId/taskId/PASS are untrusted claimed data. Report files may be reviewed as artifacts, but authenticated ReportRun/claim/lease/report_id/sequence/CAS semantics stay in the separately unapproved ingress proposal; no new acceptance grant is invented.",
+    "failure": "Invalid/missing config, stale source or unapproved scope rejects before launch where enforcement exists; missing producer/input/report schema is NOT_READY. No automatic retry or interactive/login fallback. Auth-needed provider behavior must be detected according to verified installed interface; no guessed error-string classifier."
+  },
+  "provider_compatibility_matrix": [
+    {
+      "target": "Benign local fixture",
+      "available_evidence": "Existing adapter/native helper, EXEC controlled-port and HOST tests provide launch/output/EOF/cancel groundwork.",
+      "known_input": "Explicit program/argv/cwd; stdin closed",
+      "unknown": "Exact new fixture/input token/schema for this envelope not approved yet",
+      "verification": "No new execution in this planning task; actual envelope tests NOT RUN"
+    },
+    {
+      "target": "Claude Code",
+      "available_evidence": "Repository settings have Claude path/args fields; default --print is only source configuration.",
+      "required_owner_input": "Exact installation path + version; independently verified argv/input/output contract; auth already ready without exposing secret; permitted project/task/files; runtime timeout/cancel expectations.",
+      "verification": "NOT RUN; no auth inspection/provider invocation/current API claim"
+    },
+    {
+      "target": "Codex",
+      "available_evidence": "Repository settings have Codex path/args fields; default exec is only source configuration.",
+      "required_owner_input": "Exact installation path + version and its own verified argv/input/output/auth/permissions contract; permitted project/task/files; runtime timeout/cancel expectations.",
+      "verification": "NOT RUN independently; Claude compatibility does not prove Codex compatibility"
+    }
+  ],
+  "architecture": {
+    "domain_application": "Existing run/WORK lease and acceptance rules; HOST orchestrates accepted starts. No domain owns provider flags or authentication.",
+    "ports_adapters": "Existing AgentPort and ProcessPort; CliAgentAdapter config mapping and StdProcess OS adapter. UI commands are driving adapters. No new protocol/session interface.",
+    "ownership_mutation": "HOST/WORK own run/task/project/lease. EXEC owns output/terminal projection. Child is untrusted. First planning slice mutates none. Future fixture artifact/output files are isolated test data, not new SSOT.",
+    "transactions": "Preserve existing preflight/start/lease and terminal reconciliation; source snapshot check is a handoff freshness check, not an OS write-isolation guarantee. New report commit transaction is excluded.",
+    "forbidden_dependencies": "UI directly spawning provider; Domain depending on CLI SDK/FS; Agent writing board/SPEC directly; report ingestion bypassing HOST; interpreting process success as approval."
+  },
+  "diagram_A": "Existing desktop command [driving]\n -> HOST start_run / approved start_implementation [application; latter authority still a separate gap]\n -> AgentPort -> CliAgentAdapter -> ProcessPort\n <- StdProcess [driven OS adapter] -> explicit noninteractive child\n -> stdout/stderr/status -> EXEC chunks/terminal -> HOST WORK reconciliation -> UI\nNo stdin/PTY/native provider session or Agent network added.",
+  "diagram_B": "Settings(path,argv) -> CliAgentAdapter\nStartRunRequest(project,task,fingerprint) -> HOST/EXEC binding; project supplies childcwd\nExplicit sourcepacket manifest -- proposed approved handoff --> configured child input\nChild output -> host-bound capture artifact -> human/evidence review\nFuture ReportRun ingress [NOT IMPLEMENTED] remains separate; no direct child->accept/green route.",
+  "BDD_test_plan_PROPOSED": [
+    {
+      "id": "CF01",
+      "behavior": "Explicit benign executable receives exact argv tokens and bound cwd",
+      "proof": "L1/L2 counting ProcessPort then isolated native fixture; do not substitute shell behavior"
+    },
+    {
+      "id": "CF02",
+      "behavior": "Output tail appears once before real terminal and both streams settle",
+      "proof": "Reuse/extend actual existing EOF controlled tests only if envelope adds behavior; no new RED from a mere source label"
+    },
+    {
+      "id": "CF03",
+      "behavior": "Missing path/approval/binding or stale source rejects without start",
+      "proof": "L2 zero-start counter and source bytes/hash mismatch; existing caller fingerprint alone not strong authority"
+    },
+    {
+      "id": "CF04",
+      "behavior": "Cancellation retains tail and an active/draining run blocks duplicate launch",
+      "proof": "Existing process/HOST/browser evidence linked; new fixture contract proof after approval; direct-child scope explicit"
+    },
+    {
+      "id": "CF05",
+      "behavior": "Nonzero/empty/malformed claimed result cannot accept a task",
+      "proof": "L2 exit classification plus isolated output parser only once provider schema is chosen; no guessed parser now"
+    },
+    {
+      "id": "CF06",
+      "behavior": "Claude Code and Codex compatibility are verified independently",
+      "proof": "L3 explicit versioned executable/argv/auth-ready fixtures + separately authorized real run; absent inputs => NOT RUN, not fake PASS"
+    },
+    {
+      "id": "CF07",
+      "behavior": "Provider requiring interactive input cannot silently start an embedded terminal or auto-login",
+      "proof": "Explicit capability failure/NOT_READY according to verified provider contract; no stdin/PTY extension"
+    },
+    {
+      "id": "CF08",
+      "behavior": "Run/source/report identity remains host bound, child claims cannot promote evidence or acceptance",
+      "proof": "L2 conflicting task/run/hash claims and source changed case; ingress remains excluded"
+    }
+  ],
+  "acceptance_PROPOSED": [
+    "AC1: Owner approves benignfixture-first and exact executable/argv/input/output/cwd scope; no provider launch inferred.",
+    "AC2: Real Claude Code and Codex rows each name exact version/path/argv/auth readiness/allowed target and receive independent PASS/FAIL/BLOCKED/NOT RUN.",
+    "AC3: Existing HOST/EXEC/ProcessPort remain; no stdin/PTY/Manager/dependency/DTO extension hidden in implementation.",
+    "AC4: Source/packet/task/worktree binding is explicit; NOT_READY packet never grants implementation authority.",
+    "AC5: Output/exit/cancel/duplicate-run behavior respects existing module contract; no process success -> acceptance or fake real-provider proof.",
+    "AC6: Unknown input/output/runtime/permission details remain unresolved until chosen; no guessed defaults or secret reads.",
+    "AC7: Before any formal Skeleton/RED, approve affected contracts/UI schema/file scope; current packet is planning only."
+  ],
+  "cost_and_non_goals": "Planning cost: zero production files, types, dependencies or new interfaces. Proposed first fixture should reuse existing test seams; exact test/helper file count chosen only after envelope approval. No shared provider platform, inbound MCP, report store, PTY/session persistence, login manager or automatic permissions.",
+  "owner_question": "是否先核准『現有 HOST/EXEC 的非互動 benign fixture envelope』，只驗明確 program/argv/cwd、輸出／退出／取消及來源綁定，不啟動真 Agent？之後先 Claude Code、再 Codex 各自指定安裝版本／路徑／精確 argv 與輸入輸出格式、已備妥 auth、允許工作目標與 runtime 上限，再各別核准真實相容性驗證；Agent 入站／內嵌／report mutation 暫不包含。",
+  "readiness": "PROPOSED / approval needed. Fixture scope and real provider inputs still unselected. No formal Skeleton, RED, production change, Agent run, secret read or external API claim.",
+  "results": {
+    "source_review": "Completed; hashes below",
+    "new_behavior_tests": "NOT RUN",
+    "provider_Claude_Code": "NOT RUN",
+    "provider_Codex": "NOT RUN",
+    "network_auth_secrets": "NOT ACCESSED",
+    "formal_Skeleton_RED": "NOT STARTED",
+    "board_commit_push": "UNCHANGED / NOT RUN"
+  },
+  "source_snapshot": {
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "note": "Current inspected working bytes, not provider version/API evidence. No CLI/auth/network execution.",
+    "sha256": {
+      "apps/sgenaxis-desktop/crates/sgenaxis-exec/src/settings.rs": "474f567bfd1075c0ab2bda7ac64970188525aa71c8e9624e4b6aca1c123ea870",
+      "apps/sgenaxis-desktop/crates/sgenaxis-exec/src/cli.rs": "7600d942d73adb156ea1652862d51f21e72e092af69b083343b961bcc495eaf9",
+      "apps/sgenaxis-desktop/crates/sgenaxis-exec/src/port.rs": "834aa9263d817e6a2a05551b245df35f736a202fc6533431077e9940b6423d7a",
+      "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/process.rs": "47d6a4d2532ad8dece4fc767dcc4cdb244c24686fc7f46bdb46675fe7f5cf762",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_process.rs": "56278d94da848890d1c10a03b43a3d9cad658257b04b7e7b922be162a65535ca",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs": "7e307824b6cebc60b239b45b85f710032cb1205b46e02e8b617bfbbe6c9ff2ed",
+      "reports/rust-improvements/dispatch-modes/module.html": "4aafbafe69ef825b21835e305f607a3da1ac848e9769129a76dc86184fe6d34b",
+      "reports/rust-improvements/embedded-agents/module.html": "de61a81559fca20e60fe8e7c9b481de1ac41f827f0c7c4ab4275832cb140932f",
+      "reports/rust-improvements/report-ingress/module.html": "3ea3a1b100ff716a9229e978036a502f025ed22fe46108aade89685266095442",
+      "reports/rust-improvements/xml-packet/approved-a-contract.md": "bece746bfd25140fd5f96eb3ac83e27c88d8219e17b9e9c2368df637a5ac437a"
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "status": "PENDING_OWNER_NOT_EXECUTABLE",
+  "fixtures_source": "../../../../fixtures.json",
+  "recipes": [
+    {
+      "id": "F11-RECIPE-22",
+      "bdd": "BDD-22",
+      "setup": "same captured content at every polling tick 60/120/180; changed at 240",
+      "oracle": "payload/index count unchanged until changed content; exactly one new successful snapshot after change",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-23",
+      "bdd": "BDD-23",
+      "setup": "unsaved R1 with immutable material bytes; no successful snapshot; 59/60/61 controlled seconds",
+      "oracle": "59 no capture;60 eligible once;61 no duplicate; recovered payload and material hashes equal captured R1",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-24",
+      "bdd": "BDD-24",
+      "setup": "hold R write;edit R+1;complete R;next eligible poll",
+      "oracle": "baseline advances to R only;R+1 remains pending and next snapshot contains R+1",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-25",
+      "bdd": "BDD-25",
+      "setup": "valid old payload/index;fail new material/payload/index before publication;next polling round",
+      "oracle": "old snapshot bytes/index remain usable;pending state retained;one retry next round with no overlap",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-26",
+      "bdd": "BDD-26",
+      "setup": "pause clear/merge/Undo before stable commit then complete or rollback",
+      "oracle": "no intermediate capture;stable committed or fully rolled-back content only",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-27",
+      "bdd": "BDD-27",
+      "setup": "successful recovery R then edit R+1;formal save success and separate failure branches",
+      "oracle": "formal save neither advances recovery baseline nor deletes snapshots;failure never consumes dirty",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-28",
+      "bdd": "BDD-28",
+      "setup": "isolated complete recovery payload/materials;original disk unavailable;open history and save elsewhere",
+      "oracle": "opens unsaved;offline material usable;new save succeeds without original path",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-29",
+      "bdd": "BDD-29",
+      "setup": "history entry refers valid payload/materials;remove only history entry",
+      "oracle": "entry absent;formal file/snapshot/material bytes retained",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    },
+    {
+      "id": "F11-RECIPE-30",
+      "bdd": "BDD-30",
+      "setup": "same project sessions A/B;different captures;late A completion after close and new document binding",
+      "oracle": "distinct SessionID snapshots never overwrite;late response cannot mutate new owner/document",
+      "runner": "UNBOUND; exact runner target must be approved before valid RED",
+      "level": "L2 contract + L3 real adapter + L4 adjacent; L5 Windows where applicable",
+      "valid_red": "Build succeeds and fails for missing approved behavior; compile/fixture/environment failure invalid"
+    }
+  ],
+  "additional_obligations": [
+    {
+      "id": "AC11-poll",
+      "source": "AC11 / BDD-22/23 / X07",
+      "recipe": "59/60/61 seconds and every following 60-second polling checkpoint; unchanged content creates zero snapshots",
+      "boundary": "Historical S1 supplied elapsed input only; real timer NOT RUN",
+      "relation": "prospective"
+    },
+    {
+      "id": "AC11-publish",
+      "source": "AC11 / BDD-25 / X07",
+      "recipe": "Interrupt before index publication; previous published snapshot remains; no partial new entry",
+      "boundary": "Durable payload/index publisher prospective pending Owner",
+      "relation": "prospective"
+    },
+    {
+      "id": "X07-slow",
+      "source": "X07 / BDD-25",
+      "recipe": "Hold slow write across 60/120/180; no concurrent attempt; retry only after failure and next round",
+      "boundary": "S1 inflight policy partial; real IO NOT RUN",
+      "relation": "prospective"
+    },
+    {
+      "id": "X07-permission",
+      "source": "X07",
+      "recipe": "Denied location; preserve prior snapshot/pending state; alternative location candidate requires Owner choice",
+      "boundary": "Native permission/alternative location NOT RUN",
+      "relation": "prospective"
+    },
+    {
+      "id": "X07-close",
+      "source": "X07 / BDD-30",
+      "recipe": "Close session A;bind B;deliver A completion",
+      "boundary": "Policy rejection partial; actual owner-generation/native delivery NOT RUN",
+      "relation": "prospective"
+    },
+    {
+      "id": "ACK-correction",
+      "source": "CXv3 / PH-G1 proposal",
+      "recipe": "Document request/issuer proofs exact context; no formal-only role substitution",
+      "boundary": "Latest bounded review PASS_PENDING_OWNER; stateful response/restart/atomic baseline NOT PROVEN; trusted structural issuer fixture KeyError NOT FIXED",
+      "relation": "prospective"
+    }
+  ],
+  "pending_automation": [
+    "real timer driving trusted monotonic clock",
+    "stable capture and fingerprint provider",
+    "immutable material pin/version capture",
+    "durable payload and index publish failure injection",
+    "formal/recovery baseline bridge",
+    "native recovery ACK issuer/authentication/replay/restart",
+    "history/offline/save-as UI",
+    "Windows permissions, multiple sessions/processes, late owner delivery"
+  ],
+  "note": "Recipes refine original obligations; they are not newly approved .feature scenarios."
+}

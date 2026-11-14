@@ -1,0 +1,34 @@
+{
+  "commands": [
+    "project_wizard_start",
+    "project_wizard_pick_location",
+    "project_wizard_begin",
+    "project_wizard_update",
+    "project_wizard_set_preferences",
+    "project_wizard_save",
+    "project_wizard_finalize",
+    "project_wizard_get",
+    "project_wizard_cancel",
+    "project_definition_open",
+    "project_definition_adopt_legacy"
+  ],
+  "host_allowlist": "Add exact 11 AllowedIpcCommand enum/parse entries in crates/sgenaxis-host/src/ipc.rs; add corresponding fixed list in commands/list_commands and lib registration checks. authorize() remains required. No wildcard parse or shell capability.",
+  "tauri": "New permission identifiers allow-<command-name-with-hyphens>, each commands.allow exactly one matching name. Group project-wizard-default contains only these 11; attach group only to capabilities/default.json windows=[main]. Put wizard permissions in dispatch.toml; host.toml touched only to preserve/document legacy denial, no broadened host-default.",
+  "other_windows": "settings, uidesign, viewer and remote origins receive no new group; validate actual window guard on every handler, even if mistakenly invoked by another window.",
+  "lifecycle_hooks": "lib.rs setup tracks main instance nonce; on_window_event Destroyed/CloseRequested signals existing AppState/HostState in fixed lock order, no static singleton. Reinitializing main UI revokes previous wizard instance after authentication; other windows cannot trigger revoke.",
+  "legacy": [
+    {
+      "command": "host_new_project_directory",
+      "behavior": "Keep signature and accepted S2 WizardRequired denial, zero FS; do not reuse old args as selection capability. UI action previously reaching this route is migrated to wizard start/pick/begin. External direct calls retain explicit WIZARD_REQUIRED."
+    },
+    {
+      "command": "host_create_project_directory",
+      "behavior": "Keep signature and accepted S2 WizardRequired denial, zero FS; do not reuse old args as selection capability. UI action previously reaching this route is migrated to wizard start/pick/begin. External direct calls retain explicit WIZARD_REQUIRED."
+    },
+    {
+      "command": "host_create_project_with_preferences",
+      "behavior": "Keep signature and accepted S2 WizardRequired denial, zero FS; do not reuse old args as selection capability. UI action previously reaching this route is migrated to wizard start/pick/begin. External direct calls retain explicit WIZARD_REQUIRED."
+    }
+  ],
+  "ui_routes": "file.new/menu/toolbar/keyboard all call same cmdNewProject -> ProjectWizard.open; no prompt/raw-parent/direct-create path. Existing preference chooser selection is copied into prepared plan and preview, not auto-created. Name/picker/preference cancellation preserves current project. Existing file.open routes remain separate and trigger invalidation after successful bind."
+}

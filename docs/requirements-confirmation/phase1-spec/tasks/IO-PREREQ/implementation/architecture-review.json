@@ -1,0 +1,69 @@
+{
+  "at": "2026-11-01T12:13:03.932344+08:00",
+  "reviewer": "same assistant; separate static conformance pass after GREEN, no separately delegated reviewer",
+  "architecture_verdict": "PASS_WITHIN_APPROVED_ENVELOPE",
+  "acceptance_verdict": "PARTIAL_WINDOWS11_NATIVE_GATE_PENDING",
+  "checks": [
+    {
+      "item": "Module boundary",
+      "status": "PASS",
+      "evidence": "Only Windows adapter body/private helpers and additive owned tests changed; 790 other inventoried app files unchanged."
+    },
+    {
+      "item": "Dependency direction",
+      "status": "PASS",
+      "evidence": "Ports remain primitive; adapter uses existing SPEC hash and Windows FS/handle. No WORK/HOST/UI wiring or dependency changes."
+    },
+    {
+      "item": "Public contracts and schema",
+      "status": "PASS",
+      "evidence": "Both traits, four methods, receipt/error fields and journal protocol A unchanged; original 215 cases retained byte-for-byte."
+    },
+    {
+      "item": "Ownership",
+      "status": "PASS",
+      "evidence": "Lease owns native share_mode(0) handle; transaction tracks only exclusive-created artifacts. Atomic counter creates IDs only, not a lock/state registry."
+    },
+    {
+      "item": "Mutation boundary",
+      "status": "PASS",
+      "evidence": "Only selected target and owned scratch are changed. acquire validates journal read-only. No recursive cleanup or stale-lock deletion."
+    },
+    {
+      "item": "Transaction/failure paths",
+      "status": "PASS",
+      "evidence": "Prepared -> recheck -> publish -> verify -> committed; rollback verifies original and rolled-back record. Unconfirmed state returns RecoveryRequired and retains versions."
+    },
+    {
+      "item": "Cleanup",
+      "status": "PASS",
+      "evidence": "Hash-verified terminal artifacts only; journal removed last. Committed cleanup failure keeps successful receipt. Partial publish scratch has RED-to-GREEN regression."
+    },
+    {
+      "item": "Native identity",
+      "status": "PARTIAL",
+      "evidence": "Windows10 hard-link and case-alias refusal PASS; reparse and 8.3 alias native coverage remains IO-A-F1, not claimed complete."
+    },
+    {
+      "item": "Concurrency/lifecycle",
+      "status": "PASS",
+      "evidence": "Real child-process lease busy/drop/death and five journal crash/reopen checkpoint cases GREEN on current Windows10."
+    },
+    {
+      "item": "Architecture changes",
+      "status": "PASS",
+      "evidence": "No new Port, module, manager, adapter, ownership model, schema, or transaction guarantee. Native FFI is confined to private handle identity wrapper."
+    },
+    {
+      "item": "Platform acceptance",
+      "status": "NOT RUN",
+      "evidence": "Windows11 x64 required acceptance environment unavailable; Windows10 build19045 cannot satisfy that gate."
+    },
+    {
+      "item": "System/release",
+      "status": "NOT RUN",
+      "evidence": "No HOST/UI integration, installer, DCC, full-system test, commit, push or release in this slice."
+    }
+  ],
+  "blocking_architecture_findings": []
+}

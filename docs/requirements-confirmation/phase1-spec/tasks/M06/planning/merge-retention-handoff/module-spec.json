@@ -1,0 +1,302 @@
+{
+  "module": "M06",
+  "task": "PD-P1-M06-PREP-01 bounded merge-retention handoff",
+  "status": "PROPOSED_PENDING_OWNER",
+  "health": "Yellow unchanged",
+  "architecture_status": "NOT_APPROVED_FOR_THIS_SEAM",
+  "skeleton": "NOT_CREATED",
+  "intent": "One imported candidate→one M04 Merge commit→M05 deferred roots→one explicit Undo with retained roots, no formal Save.",
+  "assumptions": [
+    "Trusted immutable issuer fixture lookup; never caller assertion",
+    "Document commit and history change atomic inside M04 exclusive owner",
+    "Root providers registered and fenced at stated epoch; stale providers fail/defer",
+    "Catalog receipt and pin/root transition same CAS assumed, no native proof",
+    "M04 runtime mutation proof survives this modeled operation only; restart not proven"
+  ],
+  "scope": "Only this new planning folder. No original files/product/board/current-state/hooks/roles/commits/cache cleanup. No BIN parser/project copy/full-module rewrite.",
+  "architecture": {
+    "hexagonal": "UI preview/confirm driving adapter → M06 input orchestration → M04 owner mutation boundary + M05 material output ports ← trusted issuer/provider adapters",
+    "dependency": "M06 orchestration depends on declared M04/M05 seams; M04 owns DocumentSession content/history, M05 owns pins/catalog/receipts. No new manager, registry or journal.",
+    "state_owner": "M04 sole DocumentOwner. M06 candidate/mapping immutable derived projection; no mutable authoritative second state.",
+    "transaction": "Before commit: verify source/context/mapping/pin/proof/provider snapshots. M04 commit atomically content+revision+history. Release owner lock before M05 callbacks. Roots/catalog transfer separate; failure cannot roll back owner content. Undo is second explicit owner operation with new context and supplied Undo Held union premise.",
+    "input_ports": [
+      "one imported-candidate confirm proposal",
+      "existing M04 Undo boundary"
+    ],
+    "output_ports": [
+      "existing M04 DocumentSession prepare/commit/undo conceptual seam",
+      "effective M05 import/publish/transfer-live proposal"
+    ],
+    "adapters": [
+      "UI driving adapter",
+      "trusted M04 runtime proof lookup candidate",
+      "M05 native catalog/provider adapter candidate"
+    ],
+    "forbidden": [
+      "UI direct FS/Git/MCP",
+      "M06 owns document/pins",
+      "FormalFile proof reused for Merge",
+      "new role/registry/private journal",
+      "auto retry/release/rollback",
+      "cross-document changes"
+    ]
+  },
+  "contracts": [
+    "Known precommit not attempted preserves content/revision/history/baselines and other document; safely imported assets may remain Held.",
+    "Verified Merge commit increments once and adds one Undo; root failure returns MergeAppliedRetentionDeferred at actual revision 11.",
+    "Explicit Undo restores before content at revision 12, moves complete entry to redo; root failure returns UndoAppliedRetentionDeferred; pins retained.",
+    "Unknown commit returns UnverifiedOutcome; no unchanged claim/blind retry.",
+    "FreshImportedIds complete original→fresh mapping, typed parent/edge/version bindings, exact source/candidate/context must match.",
+    "No Save/ACK; formal/recovery baselines unchanged."
+  ],
+  "invariants": [
+    "M04 authoritative state only",
+    "M05 retains original Import and supplied Undo Held pins on deferred",
+    "exact full request/context/issuer/target/digest lineage",
+    "other document/source unaffected",
+    "one Merge commit and one history entry",
+    "no automatic release/retry/rollback"
+  ],
+  "ui_schema": {
+    "component": "M06 bounded Merge/Undo status projection",
+    "role": "authorized current document editor",
+    "controls": [
+      "read-only original→fresh mapping preview",
+      "Confirm selected target",
+      "explicit Undo"
+    ],
+    "validation": "Server-bound target/context/revision/source/mapping; stale or unsupported reference rejects",
+    "defaults": "No implicit target switch; no formal Save",
+    "success": "Display actual committed revision and one Undo",
+    "error": "Precommit rejection unchanged; unknown outcome blocks blind retry",
+    "deferred": "Show Merge/Undo applied, retention pending; preserve pins and no false unchanged toast",
+    "empty": "Missing candidate or issuer evidence blocks confirmation"
+  },
+  "bdd_tdd": [
+    {
+      "id": "known-precommit-failure",
+      "bdd": "BDD-M06-MH-001",
+      "tdd": "TDD-M06-MH-001",
+      "expected": "RejectedBeforeMutation",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "merge-root-failure",
+      "bdd": "BDD-M06-MH-002",
+      "tdd": "TDD-M06-MH-002",
+      "expected": "MergeAppliedRetentionDeferred",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "undo-root-failure",
+      "bdd": "BDD-M06-MH-003",
+      "tdd": "TDD-M06-MH-003",
+      "expected": "UndoAppliedRetentionDeferred",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "all-verified",
+      "bdd": "BDD-M06-MH-004",
+      "tdd": "TDD-M06-MH-004",
+      "expected": "UndoApplied",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "unknown-commit",
+      "bdd": "BDD-M06-MH-005",
+      "tdd": "TDD-M06-MH-005",
+      "expected": "UnverifiedOutcome",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-target",
+      "bdd": "BDD-M06-MH-006",
+      "tdd": "TDD-M06-MH-006",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-context",
+      "bdd": "BDD-M06-MH-007",
+      "tdd": "TDD-M06-MH-007",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-digest",
+      "bdd": "BDD-M06-MH-008",
+      "tdd": "TDD-M06-MH-008",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-import-map",
+      "bdd": "BDD-M06-MH-009",
+      "tdd": "TDD-M06-MH-009",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-issuer",
+      "bdd": "BDD-M06-MH-010",
+      "tdd": "TDD-M06-MH-010",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "formal-proof-is-not-mutation",
+      "bdd": "BDD-M06-MH-011",
+      "tdd": "TDD-M06-MH-011",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "stale-provider",
+      "bdd": "BDD-M06-MH-012",
+      "tdd": "TDD-M06-MH-012",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "import-receipt-wrong-issuer",
+      "bdd": "BDD-M06-MH-013",
+      "tdd": "TDD-M06-MH-013",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "unknown-body-field",
+      "bdd": "BDD-M06-MH-014",
+      "tdd": "TDD-M06-MH-014",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    },
+    {
+      "id": "wrong-source-bytes",
+      "bdd": "BDD-M06-MH-015",
+      "tdd": "TDD-M06-MH-015",
+      "expected": "ProofMismatch",
+      "document_result": "PASS",
+      "production_result": "NOT RUN",
+      "level": "L2 Module Contract candidate DOCUMENT oracle"
+    }
+  ],
+  "coverage_categories": {
+    "B1": "Applicable bounded documentary fixture; production NOT RUN",
+    "B2": "Applicable bounded documentary fixture; production NOT RUN",
+    "B3": "Applicable bounded documentary fixture; production NOT RUN",
+    "B4": "Applicable bounded documentary fixture; production NOT RUN",
+    "B5": "Applicable bounded documentary fixture; production NOT RUN",
+    "B6": "Applicable bounded documentary fixture; production NOT RUN",
+    "B7": "Applicable bounded documentary fixture; production NOT RUN",
+    "B8": "Applicable bounded documentary fixture; production NOT RUN",
+    "B9": "Applicable bounded documentary fixture; production NOT RUN",
+    "B10": "Applicable bounded documentary fixture; production NOT RUN",
+    "B11": "Deferred: OS/DCC/format compatibility outside this handoff",
+    "B12": "Applicable bounded documentary fixture; production NOT RUN"
+  },
+  "acceptance": [
+    "431 documentary checks pass and source authority 796 unchanged",
+    "Exact copied central schema value equality; reject changed target/context/digest/map/issuer before modeled commit",
+    "No historical preflight64 rerun presented as progress",
+    "Owner choices remain pending; no approved Skeleton or valid RED claim",
+    "All authored artifacts sealed; independent review/native/product/build NOT RUN"
+  ],
+  "tasks": [
+    {
+      "id": "M06-MH-DOC",
+      "status": "DOCUMENT_ORACLE_CHECKED_PENDING_OWNER",
+      "allowed": "this new folder only",
+      "regression": "Known exact authority hashes and reviewed input hashes only; no product execution"
+    }
+  ],
+  "verification": {
+    "scenario_cases": 15,
+    "fresh_leaf_probes": 416,
+    "total": 431,
+    "independent": "NOT RUN",
+    "valid_RED": "NOT RUN",
+    "native_product_build": "NOT RUN",
+    "full_Draft2020_12": "NOT RUN",
+    "preflight64": "Accepted historical document scope only, NOT RERUN"
+  },
+  "owner_choices": [
+    {
+      "id": "MH1",
+      "owner": "M06+M04",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "CXv3 closed roles contain no merge role. Historical apply says one M04 commit; exact imported candidate→Merge command/MutationReceipt issuer mapping is not an adopted DTO. install is not silently relabeled Merge.",
+      "proposal": "Confirm existing M04 prepare(MutationKind::Merge)/commit ownership bridge and runtime DocumentMutation proof evidence fields; retain full body closure for defined transitions."
+    },
+    {
+      "id": "MH2",
+      "owner": "M04+M05",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "M05 receipt-mapping H1-H4 is formal-save-specific; IO/FormalFile proof cannot authorize Merge transfer. M04 mutation proof is runtime-only and exact authenticated native issuer lookup missing.",
+      "proposal": "Confirm M04 DocumentMutation target/context/pin/revision/candidate/history lineage; M05 receipt same CAS inclusion and external evidence lookup separately. No second registry or private journal."
+    },
+    {
+      "id": "MH3",
+      "owner": "M04+M05",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "Legacy provider prose does not establish registered capability/epoch fences across LiveDocuments/UndoHistory/RedoHistory. Complete material resolution is not root completeness.",
+      "proposal": "Confirm registration and epoch validation for three roots, preserve other providers/documents and all unresolved pins; stale pre-observed evidence rejects before admission, actual later failure defers after commit."
+    },
+    {
+      "id": "MH4",
+      "owner": "M04+M05+M06",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "Undo workflow context differs from Merge. Original Import pin cannot be relabeled or reused as new-context Undo receipt. Native atomicity between owner commit and roots is absent.",
+      "proposal": "Separate supplied Undo-purpose Held union under Undo context is fixture premise only; approve concrete producer/receipt seam before implementation. Retain original Import Held and prior roots on deferred; no auto reacquire/retry/release."
+    },
+    {
+      "id": "MH5",
+      "owner": "M06+requirements Owner",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "Legacy Task F09 wording all failures unchanged/one Undo predates explicit postcommit deferred phases. This is stale planning wording, not a newly approved contract conflict.",
+      "proposal": "Confirm precommit known-not-attempted unchanged versus verified commit+root failure actual new revision; distinguish uncertain commit with no unchanged claim. Reconcile task wording only after Owner decision."
+    },
+    {
+      "id": "MH6",
+      "owner": "M06+M04",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "FreshImportedIds original mapping/typed references needs real ESS projector; fixture does not prove all unknown reference-bearing fields safe.",
+      "proposal": "Confirm complete typed entity/parent/edge/binding rewrite and explicit preview mapping digest with original IDs retained as provenance. Unknown reference fields block affected merge; source unchanged."
+    }
+  ],
+  "decisions": "All new design choices PROPOSED_PENDING_OWNER. Existing X1-X7/R1-R4 not adopted by this packet. Stale Task/provider prose is a planning question, not approved SPEC_CONFLICT.",
+  "next_action": "Independent read-only DOCUMENT review, then Owner resolves MH1-MH6 including precise M04 Merge proof and separate Undo Held producer/provider seam; revalidate architecture/contracts/BDD/Skeleton and obtain intended compile-valid RED before implementation.",
+  "risks": [
+    "fixture receipt membership and state snapshots are premises, not runtime issuer authentication",
+    "No real import/catalog/owner atomicity or crash/restart/fence proof",
+    "Frozen candidate fixtures prove bounded guards, not full ESS projection, import parsing, full module acceptance or general arbitrary input support"
+  ]
+}

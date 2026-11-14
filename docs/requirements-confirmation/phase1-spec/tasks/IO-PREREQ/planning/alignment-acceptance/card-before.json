@@ -1,0 +1,68 @@
+{
+  "id": "PD-P1-IO-PREREQ-RED-01",
+  "ref": "PD-P1-IO-PREREQ-RED-01",
+  "title": "IO-PREREQ｜Skeleton與有效RED（不實作）",
+  "kind": "task",
+  "zone": "yellow",
+  "bdd": "Given 已採納IO介面與18個情境 When 編譯Port/Adapter Skeleton並親跑隔離測試 Then 因目標行為缺失而有效RED，fixture/編譯/逾時錯誤不能當RED。",
+  "tdd": "build file_commit_probe；compile phase1_file_commit --no-run；明確FILE_COMMIT_PROBE_PATH跑RED；既有Ports/Adapters lib及WORK回歸。不填OS鎖/FS提交/回復邏輯。",
+  "note": "【2026-11-01T02:46:37.750362+08:00 IO三項測試修正交付】19 support PASS；196 VALID RED；0 skip；既有lib101+WORK73 PASS。R1終態改在cleanup前capture、R2不強制冗餘old.bin、R3嚴格None並新增valid PREPARED診斷案例。只改phase1_file_commit.rs；785其他source不變；方案A/Ports/Adapter Skeleton/Helper/HOST/UI/WORK未改。產品功能未實作；尚待獨立驗收，不轉綠、不派工。證據：docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/test-alignment/index.html\n--- 原始追溯 ---\n【2026-11-01 逐卡核對】INDEPENDENT_ACCEPTANCE_PARTIAL_TEST_ALIGNMENT_REQUIRED\n範圍：補測試與有效 RED 套件的完整契約對齊，未含產品功能\n驗收：獨立驗收 PARTIAL；194 項第一 assertion RED、12 support 與既有174回歸通過，不代表後置條件正確。\n差額：IO-A-R1：回傳後不應強制保留已可安全清理的 journal；R2：generic cleanup 不應強制保留冗餘 old.bin；R3：未解析紀錄須明確驗證 old/new 診斷 None。\n阻擋：三項 P2 測試契約對齊尚未完成，不能進入產品實作；Windows11 原生驗收仍 NOT RUN。\n下一步：後續僅在測試修正範圍保留終態觀測與唯一 preimage 保護，修正三項 assertion；重跑 compile／support／有效 RED／回歸，重新獨立驗收。本輪不改測試。\n本次僅依Owner授權結案已驗收階段，非整個模組完成、非產品實作授權。逐卡證據：docs/requirements-confirmation/phase1-spec/tasks/board-reconciliation-20261101/index.html#PD-P1-IO-PREREQ-RED-01\n--- 原始追溯 ---\nPrimary Module file-commit。六檔精確envelope見planning/module-spec.json。Owner本輪採納IO-D1~D3與Skeleton/RED；保護其他production/tests/Cargo/WORK/HOST/UI。構造資料、型別、非公開test seam不是功能實作。AC：helper健康、可編譯、18情境映射、逐fail裁決、來源hash及原始exit/log保存；保持yellow。\n[2026-10-31T17:20:56.764618+00:00] Skeleton/RED delivered: compile PASS; 18 scenarios / 20 VALID RED / 0 ignored. Existing Ports+Adapters lib 101 PASS; WORK 73 PASS. Source envelope verified. Windows10 host; Windows11 acceptance NOT RUN. No product behavior implementation, no green/commit/push/dispatch. Evidence: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/skeleton-red/index.html\n[2026-10-31T17:23:04.100362+00:00] Independent acceptance PARTIAL: Skeleton contract/architecture/six-file scope PASS; fresh compile PASS; 20 observed valid RED; existing 101+73 PASS. NOT_READY_FOR_IMPLEMENTATION. IO-R1 exact private persistence protocol gap; IO-R2/R3 missing contract/parser branches; IO-R4 product lease lifecycle coverage; IO-R5 fixture uniqueness; IO-R6 current-state overlay supplied. Earlier 18/20 mapping is not full contract coverage. No product/test changes, no green/commit/push/dispatch. Windows11 NOT RUN. Evidence: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/independent-review/index.html\n[2026-10-31T17:31:33.335338+00:00] IO-GAP-PLAN-v1 proposed: IO-G1..G6 journal exact protocol/failure semantics/test-only envelope and IO-ADD-01..14 plan. Owner confirmation pending; previous IO-D1..D3 retained. Review verdict remains PARTIAL / REPLAN_REQUIRED; product and test source unchanged, no tests run this planning round. Proposal: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/gap-resolution/index.html\n[2026-10-31T17:38:57.868330+00:00] Owner adopted IO-G1..G6. Delivered compile-valid test/helper/test-only Skeleton draft; 148 cases: 3 support PASS, 145 FAIL (143 missing-behavior observations, 1 invalid protocol fixture, 1 support assertion bug), 0 skip. Do not call full valid RED: SPEC_CONFLICT ELUCOMMIT is 9 bytes while approved header states 8 and offsets 8/12/16. Recommend A: keep magic, offsets9/13/17 and max4390; not applied pending correction approval. Existing lib101+WORK73 PASS; 783 protected source files unchanged; no shipping behavior. No green/commit/push/dispatch. Evidence: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/gap-red/index.html\n[2026-11-01T01:46:26.509964+08:00] Owner adopted option A; IO-GAP-PLAN-v2-A effective: magic9, offsets9/13/17, max4390; old eight-byte rule superseded with history preserved. Delivered 14 groups / 206 cases: 12 support PASS +194 VALID RED /0 skip; helper+checkpoint+test compilation PASS; existing library101+WORK73 PASS. All first failures reviewed, no fixture error counted RED. Two source files changed only: test strengthening + cfg(test) journal_candidates data. Shipping bodies unchanged; 783 protected files +84 historical evidence hashes unchanged. SPEC_CONFLICT resolved; independent acceptance and Windows11 NOT RUN. No product implementation/green/commit/push/dispatch. Evidence: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/gap-red-a/index.html\n[2026-11-01T02:05:35.490519+08:00] Independent acceptance PARTIAL. Option A wire protocol, skeleton contract/architecture/scope PASS; fresh build/no-run PASS; 194/194 intended first-assertion RED, support12 PASS, existing library101+WORK73 PASS. Full module readiness NOT_READY: IO-A-R1 rollback terminal record over-retention postcondition (14 rows); IO-A-R2 generic cleanup requires redundant old.bin (1 row); IO-A-R3 missing strict None diagnostics for pre-parse invalid records. These are test alignment issues, not a new protocol approval request. IO-A-F1 native aliases coverage recorded separately. All786source files unchanged this review; source/test read-only. Windows11 NOT RUN. No green/product implementation/commit/push/dispatch. Evidence: docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/acceptance-a/index.html",
+  "executionStatus": "TEST_ALIGNMENT_DELIVERED_PENDING_INDEPENDENT_ACCEPTANCE",
+  "createdAt": "2026-11-01T01:14:55.890706+08:00",
+  "updatedAt": "2026-11-01T02:46:37.750362+08:00",
+  "startedAt": "2026-11-01T01:14:55.890706+08:00",
+  "doneAt": null,
+  "by": "agent",
+  "updatedBy": "agent",
+  "version": 10,
+  "epic": "",
+  "story": "",
+  "report": "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/test-alignment/index.html",
+  "log": [
+    {
+      "t": "2026-11-01T01:14:55.890706+08:00",
+      "zone": "yellow",
+      "by": "agent"
+    },
+    {
+      "t": "2026-11-01T02:38:45.093609+08:00",
+      "zone": "yellow",
+      "by": "agent",
+      "note": "Owner-authorized stage reconciliation; INDEPENDENT_ACCEPTANCE_PARTIAL_TEST_ALIGNMENT_REQUIRED; moduleComplete=false"
+    },
+    {
+      "t": "2026-11-01T02:46:37.750362+08:00",
+      "zone": "yellow",
+      "by": "agent",
+      "note": "Contract-preserving test corrections delivered; independent re-review pending; no product implementation"
+    }
+  ],
+  "stageReview": {
+    "id": "PD-P1-IO-PREREQ-RED-01",
+    "original_title": "IO-PREREQ｜Skeleton與有效RED（不實作）",
+    "old_zone": "yellow",
+    "previous_status": "INDEPENDENT_ACCEPTANCE_PARTIAL_TEST_ALIGNMENT_REQUIRED",
+    "module_complete": false,
+    "evidence": [
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/acceptance-a/primary-adjudication.json",
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/acceptance-a/review.json",
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/test-alignment/index.html"
+    ],
+    "scope": "補測試與有效 RED 套件的完整契約對齊，未含產品功能",
+    "gap": "IO-A-R1～R3測試修正已交付；本修正版本尚待獨立驗收。",
+    "blockers": "NOT_READY_FOR_IMPLEMENTATION：獨立複驗門尚未通過；Windows11原生驗收NOT RUN。",
+    "next_step": "獨立核對清理終態捕捉、兩種安全清理順序、未解析診斷None、196有效RED及單檔scope；通過前不實作產品。",
+    "product_implementation_authorized": false,
+    "module": "file-commit",
+    "name": "IO-PREREQ Skeleton／RED 準備",
+    "new_zone": "yellow",
+    "status": "TEST_ALIGNMENT_DELIVERED_PENDING_INDEPENDENT_ACCEPTANCE",
+    "acceptance": "本輪修正及RED重跑已交付，先前獨立PARTIAL待此版本複驗。",
+    "follow_up": "IO-A-F1：alias/reparse/hard-link 原生拒絕案例另列後續覆蓋，不默默擴大這張卡。"
+  },
+  "closureScope": "補測試與有效 RED 套件的完整契約對齊，未含產品功能",
+  "remainingGap": "IO-A-R1～R3測試修正已交付；本修正版本尚待獨立驗收。",
+  "blockers": "NOT_READY_FOR_IMPLEMENTATION：獨立複驗門尚未通過；Windows11原生驗收NOT RUN。",
+  "nextStep": "獨立核對清理終態捕捉、兩種安全清理順序、未解析診斷None、196有效RED及單檔scope；通過前不實作產品。",
+  "moduleComplete": false
+}

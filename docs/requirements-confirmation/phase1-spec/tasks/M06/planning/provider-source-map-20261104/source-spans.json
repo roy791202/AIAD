@@ -1,0 +1,74 @@
+[
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 29,
+    "end": 53,
+    "text": "pub struct DocumentContent {\n    canonical_payload: Vec<u8>,\n    semantic_digest: String,\n    asset_refs: Vec<AssetVersionRef>,\n    bindings: Vec<BindingState>,\n    blocked_capabilities: Vec<String>,\n}\n\nimpl DocumentContent {\n    /// Structural codec/fixture input seam only, not parsing or validation.\n    pub fn from_parts(\n        canonical_payload: Vec<u8>,\n        semantic_digest: String,\n        asset_refs: Vec<AssetVersionRef>,\n        bindings: Vec<BindingState>,\n        blocked_capabilities: Vec<String>,\n    ) -> Self {\n        Self {\n            canonical_payload,\n            semantic_digest,\n            asset_refs,\n            bindings,\n            blocked_capabilities,\n        }\n    }",
+    "meaning": "Structural content constructor accepts already supplied canonical bytes; not ESS decoding/projector"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 73,
+    "end": 90,
+    "text": "pub enum MutationKind {\n    Edit,\n    Clear,\n    Merge,\n}\n\n/// Plain plan data is not authority. Commit must eventually verify document,\n/// session, revision, before-content and required asset versions independently.\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct MutationPlan {\n    pub document_uuid: String,\n    pub session_uuid: String,\n    pub expected_revision: Revision,\n    pub kind: MutationKind,\n    pub before: DocumentContent,\n    pub after: DocumentContent,\n    pub required_asset_versions: Vec<AssetVersionRef>,\n}",
+    "meaning": "Merge enum and plain plan contain no authenticated mutation issuer"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 93,
+    "end": 103,
+    "text": "pub struct DocumentHistoryEntry {\n    pub kind: MutationKind,\n    pub before: DocumentContent,\n    pub after: DocumentContent,\n}\n\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct SavedContentBaseline {\n    pub revision: Revision,\n    pub semantic_digest: String,\n}",
+    "meaning": "History before/after and saved semantic baseline"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 114,
+    "end": 136,
+    "text": "/// Ownership scaffold for a trusted session initializer. No writable reference\n/// escapes DocumentSession; history has one owner, not duplicated counters.\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct DocumentSessionState {\n    pub project_uuid: String,\n    pub document_uuid: String,\n    pub session_uuid: String,\n    pub content_revision: Revision,\n    pub content: DocumentContent,\n    pub formal_baseline: Option<SavedContentBaseline>,\n    pub snapshot_baseline: Option<SavedContentBaseline>,\n    pub status: SessionStatus,\n    pub undo: Vec<DocumentHistoryEntry>,\n    pub redo: Vec<DocumentHistoryEntry>,\n}\n\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct CommitProjection {\n    pub revision: Revision,\n    pub changed: bool,\n    pub dirty: bool,\n    pub history_depth: usize,\n}",
+    "meaning": "One session owns content undo redo; projection has four status fields"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 187,
+    "end": 210,
+    "text": "    pub fn prepare(\n        &self,\n        expected: Revision,\n        kind: MutationKind,\n        validated_after: DocumentContent,\n    ) -> Result<MutationPlan, EditError> {\n        self.check_editable()?;\n        self.check_revision(expected)?;\n        self.check_content(&validated_after)?;\n        let mut required = self.state.content.asset_refs.clone();\n        for version in &validated_after.asset_refs {\n            if !required.contains(version) {\n                required.push(version.clone());\n            }\n        }\n        Ok(MutationPlan {\n            document_uuid: self.state.document_uuid.clone(),\n            session_uuid: self.state.session_uuid.clone(),\n            expected_revision: expected,\n            kind,\n            before: self.state.content.clone(),\n            after: validated_after,\n            required_asset_versions: required,\n        })",
+    "meaning": "prepare unions before/after asset versions but no Held proof/provider"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 213,
+    "end": 239,
+    "text": "    pub fn commit(&mut self, plan: MutationPlan) -> Result<CommitProjection, EditError> {\n        self.check_editable()?;\n        if plan.document_uuid != self.state.document_uuid {\n            return Err(EditError::InvalidInput {\n                field: \"documentUuid\".into(),\n            });\n        }\n        if plan.session_uuid != self.state.session_uuid {\n            return Err(EditError::InvalidInput {\n                field: \"sessionUuid\".into(),\n            });\n        }\n        self.check_revision(plan.expected_revision)?;\n        if plan.before != self.state.content {\n            return Err(EditError::RevisionConflict);\n        }\n        self.check_content(&plan.after)?;\n        for version in plan.before.asset_refs.iter().chain(&plan.after.asset_refs) {\n            if !plan.required_asset_versions.contains(version) {\n                return Err(EditError::InvalidInput {\n                    field: \"requiredAssetVersions\".into(),\n                });\n            }\n        }\n        if plan.after == self.state.content {\n            return Ok(self.projection(false));\n        }",
+    "meaning": "commit guards identity revision before-content and required version coverage"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 240,
+    "end": 250,
+    "text": "        let revision = self.next_revision()?;\n        // Complete all fallible policy checks before mutating authoritative data.\n        self.state.undo.push(DocumentHistoryEntry {\n            kind: plan.kind,\n            before: plan.before,\n            after: plan.after.clone(),\n        });\n        self.state.content = plan.after;\n        self.state.content_revision = revision;\n        self.state.redo.clear();\n        Ok(self.projection(true))",
+    "meaning": "one local content/history mutation after fallible checks; no catalog/root CAS in this body"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 253,
+    "end": 269,
+    "text": "    pub fn undo(&mut self, expected: Revision) -> Result<CommitProjection, EditError> {\n        self.check_editable()?;\n        self.check_revision(expected)?;\n        let entry = self.state.undo.last().ok_or(EditError::NoUndo)?;\n        if entry.after != self.state.content {\n            return Err(EditError::RevisionConflict);\n        }\n        let revision = self.next_revision()?;\n        let entry = self\n            .state\n            .undo\n            .pop()\n            .expect(\"history inspected under exclusive borrow\");\n        self.state.content = entry.before.clone();\n        self.state.content_revision = revision;\n        self.state.redo.push(entry);\n        Ok(self.projection(true))",
+    "meaning": "undo moves history and increments revision; not distributed rollback"
+  },
+  {
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "start": 339,
+    "end": 353,
+    "text": "    fn check_content(&self, after: &DocumentContent) -> Result<(), EditError> {\n        // Codec owns normalization/hashing. Never accept a contradictory value\n        // under the current semantic identity, even from a plain Rust plan.\n        if !valid_digest(&after.semantic_digest)\n            || (after.semantic_digest == self.state.content.semantic_digest\n                && after != &self.state.content)\n        {\n            Err(EditError::InvalidInput {\n                field: \"semanticDigest\".into(),\n            })\n        } else {\n            Ok(())\n        }\n    }\n",
+    "meaning": "content check guards digest shape/equivalence not typed ESS reference closure"
+  }
+]

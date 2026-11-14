@@ -1,0 +1,154 @@
+{
+  "module": "M04",
+  "task": "PD-P1-M04-PREP-01",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "dirty": true,
+  "evidence": "SOURCE_INSPECTION_ONLY",
+  "files": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+      "exists": true,
+      "sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-core/src/dirty.rs",
+      "exists": true,
+      "sha256": "8943e04d2de2e4d75ad3a5e1e63ee1838d4fcd805401b5c3c86c23819e397fe0"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-core/src/edit.rs",
+      "exists": true,
+      "sha256": "b4498efe934da5b86a00103b8f6d653766a6ece231f9a231053fb8fbb3597e2e"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "exists": true,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "exists": true,
+      "sha256": "a966c10cace2207fd800224c42fb8128c4bd84aac0cdf85135e87ee2ae28646a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "exists": true,
+      "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "exists": true,
+      "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "exists": true,
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "exists": true,
+      "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "exists": true,
+      "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "exists": true,
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "exists": true,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/index.html",
+      "exists": true,
+      "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+      "exists": true,
+      "sha256": "df14f842965d15bbbcffad3f66b048bd1f8a48cd4749ccfc4857fa216d1d9718"
+    },
+    {
+      "path": "tests/test_pd_scene_project_scope_01.py",
+      "exists": true,
+      "sha256": "a38af0bbb0be61516b158e3e6b457a3dcf85c75b655948c34c19fe6e76b34124"
+    },
+    {
+      "path": "tests/test_pd_scene_sgs_01.py",
+      "exists": true,
+      "sha256": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769"
+    },
+    {
+      "path": "tests/test_pd_uidesigner_edit_p2.py",
+      "exists": true,
+      "sha256": "1295ef4eadb192ce631e78281df1524e209740040d9de4d0795489b21ada4d49"
+    }
+  ],
+  "findings": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "line_start": 790,
+      "line_end": 875,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "excerpt": "  }\n\n  function sceneDocToSgsXml() {\n    const board =\n      lastBoard && typeof lastBoard === \"object\"\n        ? lastBoard\n        : { tasks: [], active_run_id: null };\n    const design =\n      designDoc && typeof designDoc === \"object\" ? designDoc : blankDesignDoc();\n    const archXml = stripXmlDeclaration(\n      typeof archDocToXml === \"function\"\n        ? archDocToXml(archDoc)\n        : \"<eluslotArch/>\"\n    );\n    let xml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n';\n    xml +=\n      '<eluslotScene format=\"eluslot.ess\" formatVersion=\"1\" encoding=\"xml\">\\n';\n    xml +=\n      \"  <meta\" +\n      archAttr(\"savedAt\", new Date().toISOString()) +\n      archAttr(\"boardFilter\", boardFilter || \"overview\") +\n      archAttr(\"product_pass\", \"false\") +\n      archAttr(\"sgbCompat\", \"default.es+default.esml+default.esui\") +\n      \" />\\n\";\n    xml += '  <work format=\"eluslot.es\" encoding=\"xml\">\\n';\n    xml +=\n      \"    <board\" +\n      archAttr(\n        \"active_run_id\",\n        board.active_run_id == null ? \"\" : String(board.active_run_id)\n      ) +\n      \">\\n\";\n    (board.tasks || []).forEach(function (t) {\n      xml += boardTaskToXml(t);\n    });\n    xml += \"    </board>\\n\";\n    xml += \"  </work>\\n\";\n    xml += '  <architecture encoding=\"xml\">\\n';\n    xml +=\n      archXml\n        .split(\"\\n\")\n        .map(function (line) {\n          return line ? \"    \" + line : line;\n        })\n        .join(\"\\n\") +\n      (archXml.endsWith(\"\\n\") ? \"\" : \"\\n\");\n    xml += \"  </architecture>\\n\";\n    xml += '  <design format=\"eluslot.esui\" encoding=\"xml\">\\n';\n    const dm = design.meta || {};\n    xml +=\n      \"    <meta\" +\n      archAttr(\"title\", dm.title || \"\") +\n      archAttr(\"updatedAt\", dm.updatedAt || new Date().toISOString()) +\n      archAttr(\"targetStack\", dm.targetStack || \"\") +\n      archAttr(\n        \"gridSize\",\n        dm.gridSize != null ? String(dm.gridSize) : \"\"\n      ) +\n      archAttr(\"formSize\", dm.formSize || \"\") +\n      \" />\\n\";\n    xml += \"    <nodes>\\n\";\n    (design.nodes || []).forEach(function (n) {\n      xml += designNodeToXml(n);\n    });\n    xml += \"    </nodes>\\n\";\n    if (design.selection) {\n      xml += xmlTextEl(\"selection\", design.selection);\n    }\n    xml +=\n      \"    <product_pass>\" +\n      (design.product_pass ? \"true\" : \"false\") +\n      \"</product_pass>\\n\";\n    xml += \"  </design>\\n\";\n    xml += \"</eluslotScene>\\n\";\n    return xml;\n  }\n\n  function parseTagsFromXml(parentEl, tagName) {\n    if (!parentEl) return [];\n    const wrap = parentEl.querySelector(tagName);\n    if (!wrap) return [];\n    const out = [];\n    wrap.querySelectorAll(\":scope > tag\").forEach(function (el) {\n      const id = archXmlAttr(el, \"id\", \"\");\n      const label = archXmlAttr(el, \"label\", \"\");\n      const body = (el.textContent || \"\").trim();",
+      "observation": "ESS是eluslot.ess v1複合XML，含work/architecture/design",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "line_start": 14,
+      "line_end": 105,
+      "sha256": "a966c10cace2207fd800224c42fb8128c4bd84aac0cdf85135e87ee2ae28646a",
+      "excerpt": "pub const DEFAULT_SGUI_REL: &str = \"scene/default.esui\";\n\nconst ALLOWED_EXT: &[&str] = &[\n    \".ess\", \".es\", \".esml\", \".esui\", \".sgs\", \".sg\", \".sgml\", \".sgui\", \".xml\",\n];\n\nfn assert_scene_rel(rel: &str) -> Result<(), HostError> {\n    let rel = rel\n        .trim()\n        .trim_start_matches(['/', '\\\\'])\n        .replace('\\\\', \"/\");\n    if rel.is_empty() {\n        return Err(HostError::Settings(\"scene relative path empty\".into()));\n    }\n    if !rel.starts_with(\"scene/\") {\n        return Err(HostError::Settings(\n            \"scene path must be under scene/ (project-scoped only)\".into(),\n        ));\n    }\n    if rel.contains(\"..\") {\n        return Err(HostError::Settings(\"scene path must not contain ..\".into()));\n    }\n    let lower = rel.to_ascii_lowercase();\n    if !ALLOWED_EXT.iter().any(|ext| lower.ends_with(ext)) {\n        return Err(HostError::Settings(format!(\n            \"scene extension not allowed (use {} )\",\n            ALLOWED_EXT.join(\"／\")\n        )));\n    }\n    Ok(())\n}\n\npub fn normalize_scene_rel(rel: Option<&str>, default_rel: &str) -> Result<String, HostError> {\n    let raw = rel\n        .map(str::trim)\n        .filter(|s| !s.is_empty())\n        .unwrap_or(default_rel);\n    if raw.starts_with(['/', '\\\\']) {\n        return Err(HostError::Settings(\n            \"scene path must be project-relative\".into(),\n        ));\n    }\n    let norm = raw.replace('\\\\', \"/\");\n    assert_scene_rel(&norm)?;\n    Ok(norm)\n}\n\npub fn save_scene_text(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    rel_path: &str,\n    text: &str,\n) -> Result<String, HostError> {\n    let rel = normalize_scene_rel(Some(rel_path), DEFAULT_SGS_REL)?;\n    let path = join_project_rel(project_root, &rel)?;\n    if let Some(parent) = std::path::Path::new(&path).parent() {\n        let parent_s = parent.to_string_lossy();\n        if !parent_s.is_empty() {\n            fs.create_dir_all(&parent_s)\n                .map_err(|e| HostError::Settings(format!(\"mkdir for scene save: {e}\")))?;\n        }\n    }\n    fs.write_atomic(&path, text.as_bytes())\n        .map_err(|e| HostError::Settings(format!(\"write scene file: {e}\")))?;\n    Ok(path)\n}\n\npub fn load_scene_text(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    rel_path: &str,\n) -> Result<(String, String), HostError> {\n    let rel = normalize_scene_rel(Some(rel_path), DEFAULT_SGS_REL)?;\n    let path = join_project_rel(project_root, &rel)?;\n    let raw = fs\n        .read_to_string(&path)\n        .map_err(|e| HostError::Settings(format!(\"read scene file: {e}\")))?;\n    Ok((raw, path))\n}\n\npub fn scene_file_exists(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    rel_path: &str,\n) -> Result<bool, HostError> {\n    let rel = normalize_scene_rel(Some(rel_path), DEFAULT_SGS_REL)?;\n    let path = join_project_rel(project_root, &rel)?;\n    Ok(fs.exists(&path).unwrap_or(false))\n}\n\n#[cfg(test)]\nmod tests {",
+      "observation": "限制scene/與suffix並write_atomic；HOST接受raw text，非完整XML契約驗證",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "line_start": 509,
+      "line_end": 534,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "excerpt": "  /**\n   * 切換專案前：場景有異動則詢問是否存檔。\n   * @returns {\"proceed\"|\"abort\"}\n   */\n  async function confirmLeaveSceneIfDirty() {\n    if (!sceneDirty) return \"proceed\";\n    const saveFirst = window.confirm(\n      \"目前專案場景有未存檔變更。\\n\\n確定＝先存到目前專案再切換\\n取消＝下一步可選擇放棄變更\"\n    );\n    if (saveFirst) {\n      try {\n        await saveSceneSgsToProject({ quiet: false });\n        return \"proceed\";\n      } catch (err) {\n        toast(\"存檔失敗，已取消切換：\" + String(err));\n        setStatus(\"切換專案中止：場景存檔失敗\");\n        return \"abort\";\n      }\n    }\n    const discard = window.confirm(\n      \"放棄未存場景變更並切換專案？\\n\\n確定＝放棄並切換\\n取消＝留在目前專案\"\n    );\n    if (!discard) return \"abort\";\n    clearSceneDirty();\n    return \"proceed\";\n  }",
+      "observation": "dirty切換兩輪confirm，保存失敗abort；需關閉/退出一致覆蓋",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-core/src/edit.rs",
+      "line_start": 10,
+      "line_end": 153,
+      "sha256": "b4498efe934da5b86a00103b8f6d653766a6ece231f9a231053fb8fbb3597e2e",
+      "excerpt": "pub struct EditCheckpoint {\n    pub selection: BTreeSet<String>,\n}\n\n/// Errors from edit mutations.\n#[derive(Debug, Clone, PartialEq, Eq)]\npub enum EditError {\n    /// Undo stack empty.\n    NothingToUndo,\n    /// Redo stack empty.\n    NothingToRedo,\n}\n\nimpl std::fmt::Display for EditError {\n    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n        match self {\n            EditError::NothingToUndo => write!(f, \"nothing to undo\"),\n            EditError::NothingToRedo => write!(f, \"nothing to redo\"),\n        }\n    }\n}\n\nimpl std::error::Error for EditError {}\n\n/// Read-only projection for UI／Command DTO mapping.\n#[derive(Debug, Clone, PartialEq, Eq, Default)]\npub struct EditProjection {\n    pub selected: Vec<String>,\n    pub selected_count: usize,\n    pub universe_count: usize,\n    pub can_undo: bool,\n    pub can_redo: bool,\n}\n\n/// In-memory selection + history for board／change entity ids.\n#[derive(Debug, Clone, Default)]\npub struct EditSession {\n    /// Ids the session may select (synced from board／change universe).\n    universe: BTreeSet<String>,\n    selection: BTreeSet<String>,\n    undo: Vec<EditCheckpoint>,\n    redo: Vec<EditCheckpoint>,\n}\n\nimpl EditSession {\n    pub fn new() -> Self {\n        Self::default()\n    }\n\n    /// Replace selectable universe; drop selection ids no longer present.\n    pub fn set_universe<I, S>(&mut self, ids: I)\n    where\n        I: IntoIterator<Item = S>,\n        S: Into<String>,\n    {\n        self.universe = ids.into_iter().map(Into::into).collect();\n        self.selection.retain(|id| self.universe.contains(id));\n    }\n\n    pub fn universe_len(&self) -> usize {\n        self.universe.len()\n    }\n\n    pub fn selection(&self) -> &BTreeSet<String> {\n        &self.selection\n    }\n\n    pub fn can_undo(&self) -> bool {\n        !self.undo.is_empty()\n    }\n\n    pub fn can_redo(&self) -> bool {\n        !self.redo.is_empty()\n    }\n\n    fn checkpoint(&self) -> EditCheckpoint {\n        EditCheckpoint {\n            selection: self.selection.clone(),\n        }\n    }\n\n    fn push_undo_clear_redo(&mut self) {\n        self.undo.push(self.checkpoint());\n        self.redo.clear();\n    }\n\n    fn apply_checkpoint(&mut self, cp: EditCheckpoint) {\n        self.selection = cp\n            .selection\n            .into_iter()\n            .filter(|id| self.universe.contains(id))\n            .collect();\n    }\n\n    /// Select every id in the universe (「全選變更」).\n    pub fn select_all(&mut self) -> EditProjection {\n        if self.selection == self.universe {\n            return self.project();\n        }\n        self.push_undo_clear_redo();\n        self.selection = self.universe.clone();\n        self.project()\n    }\n\n    /// Clear selection.\n    pub fn clear(&mut self) -> EditProjection {\n        if self.selection.is_empty() {\n            return self.project();\n        }\n        self.push_undo_clear_redo();\n        self.selection.clear();\n        self.project()\n    }\n\n    /// Restore previous selection checkpoint.\n    pub fn undo(&mut self) -> Result<EditProjection, EditError> {\n        let prev = self.undo.pop().ok_or(EditError::NothingToUndo)?;\n        self.redo.push(self.checkpoint());\n        self.apply_checkpoint(prev);\n        Ok(self.project())\n    }\n\n    /// Re-apply undone selection checkpoint.\n    pub fn redo(&mut self) -> Result<EditProjection, EditError> {\n        let next = self.redo.pop().ok_or(EditError::NothingToRedo)?;\n        self.undo.push(self.checkpoint());\n        self.apply_checkpoint(next);\n        Ok(self.project())\n    }\n\n    pub fn project(&self) -> EditProjection {\n        EditProjection {\n            selected: self.selection.iter().cloned().collect(),\n            selected_count: self.selection.len(),\n            universe_count: self.universe.len(),\n            can_undo: self.can_undo(),\n            can_redo: self.can_redo(),\n        }\n    }\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;",
+      "observation": "EditCheckpoint只有selection；不是文件內容Undo",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/uidesign_recovery.js",
+      "line_start": 1,
+      "line_end": 117,
+      "sha256": "df14f842965d15bbbcffad3f66b048bd1f8a48cd4749ccfc4857fa216d1d9718",
+      "excerpt": "/* Private UI-local recovery helper for the currently loaded DesignDoc only. */\nconst UidesignRecovery = (() => {\n  const histories = new WeakMap();\n  const plans = new WeakMap();\n\n  function clone(value) {\n    return JSON.parse(JSON.stringify(value));\n  }\n\n  function canonical(value) {\n    if (Array.isArray(value)) return \"[\" + value.map(canonical).join(\",\") + \"]\";\n    if (value && typeof value === \"object\") {\n      return \"{\" + Object.keys(value).sort().map((key) => JSON.stringify(key) + \":\" + canonical(value[key])).join(\",\") + \"}\";\n    }\n    return JSON.stringify(value);\n  }\n\n  function createHistory() {\n    const history = Object.freeze({});\n    histories.set(history, null);\n    return history;\n  }\n\n  function prepare(input) {\n    if (!input || !input.projectRoot || !String(input.projectRoot).trim()) return { ok: false, code: \"UNBOUND_PROJECT\" };\n    if (!input.identity || !String(input.identity).trim()) return { ok: false, code: \"SCOPE_UNSUPPORTED\" };\n    if (input.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    if (!input.history || !histories.has(input.history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    if (!input.document || !input.clearedDocument) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    const before = clone(input.document);\n    const after = clone(input.clearedDocument);\n    const beforeFingerprint = canonical(before);\n    const afterFingerprint = canonical(after);\n    const plan = Object.freeze({});\n    plans.set(plan, {\n      history: input.history,\n      identity: String(input.identity),\n      projectRoot: String(input.projectRoot).trim(),\n      before,\n      after,\n      beforeFingerprint,\n      afterFingerprint,\n      beforeDirty: clone(input.dirty || {}),\n      changed: beforeFingerprint !== afterFingerprint,\n    });\n    return { ok: true, plan };\n  }\n\n  function confirm(plan, live) {\n    const checkpoint = plan && plans.get(plan);\n    if (!checkpoint || !live || !live.apply) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    // A preview token is single-use, including stale or no-op confirmation attempts.\n    plans.delete(plan);\n    if (!live.history || checkpoint.history !== live.history || !histories.has(live.history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    if (String(live.projectRoot || \"\").trim() !== checkpoint.projectRoot || live.identity !== checkpoint.identity) return { ok: false, code: \"BINDING_STALE\" };\n    if (live.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    if (canonical(live.document) !== checkpoint.beforeFingerprint) return { ok: false, code: \"WORKSPACE_STALE\" };\n    if (canonical(live.dirty || {}) !== canonical(checkpoint.beforeDirty || {})) return { ok: false, code: \"WORKSPACE_STALE\" };\n    if (!checkpoint.changed) return { ok: true, changed: false };\n    const history = live.history;\n    if (!history || !histories.has(history)) return { ok: false, code: \"CHECKPOINT_INVALID\" };\n    const afterDirty = { ...(checkpoint.beforeDirty || {}), design: true };\n    histories.set(history, {\n      identity: checkpoint.identity,\n      projectRoot: checkpoint.projectRoot,\n      before: clone(checkpoint.before),\n      after: clone(checkpoint.after),\n      beforeFingerprint: checkpoint.beforeFingerprint,\n      afterFingerprint: checkpoint.afterFingerprint,\n      beforeDirty: clone(checkpoint.beforeDirty || {}),\n      afterDirty,\n      applied: true,\n    });\n    try {\n      live.apply(clone(checkpoint.after), clone(afterDirty));\n    } catch (_projectionError) {\n      // The model commit precedes rendering; retain the checkpoint if projection fails.\n      return { ok: false, changed: true, code: \"PROJECTION_FAILED\" };\n    }\n    return { ok: true, changed: true };\n  }\n\n  function applyHistory(history, live, direction) {\n    if (!history || !histories.has(history) || !live || !live.apply) return { ok: false, code: \"NOTHING_TO_UNDO\" };\n    const entry = histories.get(history);\n    if (!entry || (direction === \"undo\" && !entry.applied) || (direction === \"redo\" && entry.applied)) return { ok: false, code: \"NOTHING_TO_UNDO\" };\n    if (String(live.projectRoot || \"\").trim() !== entry.projectRoot || live.identity !== entry.identity) {\n      histories.set(history, null);\n      return { ok: false, code: \"BINDING_STALE\" };\n    }\n    if (live.activeRunId != null) return { ok: false, code: \"ACTIVE_RUN\" };\n    const expected = direction === \"undo\" ? entry.afterFingerprint : entry.beforeFingerprint;\n    if (canonical(live.document) !== expected) {\n      histories.set(history, null);\n      return { ok: false, code: \"WORKSPACE_STALE\" };\n    }\n    const expectedDirty = direction === \"undo\" ? entry.afterDirty : entry.beforeDirty;\n    if (canonical(live.dirty || {}) !== canonical(expectedDirty || {})) {\n      histories.set(history, null);\n      return { ok: false, code: \"WORKSPACE_STALE\" };\n    }\n    entry.applied = direction === \"redo\";\n    try {\n      live.apply(clone(direction === \"undo\" ? entry.before : entry.after), clone(direction === \"undo\" ? entry.beforeDirty : entry.afterDirty));\n    } catch (_projectionError) {\n      return { ok: false, changed: true, code: \"PROJECTION_FAILED\" };\n    }\n    return { ok: true, changed: true };\n  }\n\n  function undo(history, live) { return applyHistory(history, live, \"undo\"); }\n  function redo(history, live) { return applyHistory(history, live, \"redo\"); }\n  function canUndo(history) { const entry = history && histories.has(history) ? histories.get(history) : null; return !!(entry && entry.applied); }\n  function canRedo(history) { const entry = history && histories.has(history) ? histories.get(history) : null; return !!(entry && !entry.applied); }\n\n  return { createHistory, prepare, confirm, undo, redo, canUndo, canRedo };\n})();",
+      "observation": "已有volatile清空prepare/confirm/stale guards與單筆Undo/Redo；不含合併/素材/持久快照",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "line_start": 2235,
+      "line_end": 2273,
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135",
+      "excerpt": "pub fn scene_save(\n    host: State<'_, HostState>,\n    args: SceneSaveArgs,\n) -> Result<SceneSaveDto, String> {\n    authorize(\"scene_save\").map_err(|e| e.to_string())?;\n    let root = host.inner.lock().map_err(|_| poison_host())?;\n    let project_root =\n        resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;\n    let rel = scene_rel(args.rel_path.as_deref());\n    let path = save_scene_text(root.fs(), &project_root, &rel, &args.text)\n        .map_err(|e| e.to_string())?;\n    Ok(SceneSaveDto {\n        path,\n        relative_path: rel,\n        product_pass: false,\n        message: Some(\"saved scene under project scene/ (project-scoped only)\".into()),\n    })\n}\n\n#[tauri::command]\npub fn scene_load(\n    host: State<'_, HostState>,\n    args: Option<SceneLoadArgs>,\n) -> Result<SceneLoadDto, String> {\n    authorize(\"scene_load\").map_err(|e| e.to_string())?;\n    let args = args.unwrap_or_default();\n    let root = host.inner.lock().map_err(|_| poison_host())?;\n    let project_root =\n        resolve_bound_project_root(args.project_root.as_deref(), root.host_settings())?;\n    let rel = scene_rel(args.rel_path.as_deref());\n    let (text, path) = load_scene_text(root.fs(), &project_root, &rel)\n        .map_err(|e| e.to_string())?;\n    Ok(SceneLoadDto {\n        path,\n        relative_path: rel,\n        text,\n        product_pass: false,\n        message: Some(\"loaded scene from project scene/\".into()),\n    })",
+      "observation": "scene_save/load直接HOST helper，未走DispatchHost；新架構要明列修補點",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "tests": "NOT RUN",
+  "native_ui": "NOT RUN",
+  "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+}

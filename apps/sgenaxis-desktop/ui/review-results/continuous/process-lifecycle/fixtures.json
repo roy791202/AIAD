@@ -1,0 +1,19 @@
+{
+  "status": "PROPOSED_NOT_RUN",
+  "policy": {"drain_ms":2000,"eof_at_deadline_wins":true,"clock":"monotonic injected Instant in private test helper"},
+  "late_tail": [
+    {"at_ms":0,"exit":0,"stdout":"","stderr":"","out_state":"Open","err_state":"Open","terminal":false},
+    {"at_ms":1,"exit":0,"stdout":"last-out\n","stderr":"","out_state":"Eof","err_state":"Open","terminal":false},
+    {"at_ms":2,"exit":0,"stdout":"","stderr":"last-err\n","out_state":"Eof","err_state":"Eof","terminal":"Success"}
+  ],
+  "deadlines": [
+    {"elapsed_ms":1999,"stderr":"Open","expected":"pending"},
+    {"elapsed_ms":2000,"stderr":"Open","expected":"PROCESS_OUTPUT_INCOMPLETE"},
+    {"elapsed_ms":2001,"stderr":"Open","expected":"PROCESS_OUTPUT_INCOMPLETE"},
+    {"elapsed_ms":2000,"stdout":"Eof","stderr":"Eof","expected":"Exited"}
+  ],
+  "reader_error": {"stdout":"tail-before-error","stderr_state":{"Error":"fixture read failure"},"expected":"chunks then PROCESS_OUTPUT_READ_FAILED"},
+  "cancel": {"requests":2,"expected_terminal_count":1,"kill_scope":"direct child","tail":"captured-before-cancel\n"},
+  "invalid_handle": {"process_id":999999,"expected":"NotFound"},
+  "native_helper": {"planned_only":true,"program":"disposable compiled fixture executable","network":false,"agents":false,"cleanup":"terminate owned fixture descendants and remove temporary directory after test; do not generalize production tree ownership"}
+}

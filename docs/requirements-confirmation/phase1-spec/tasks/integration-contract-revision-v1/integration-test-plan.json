@@ -1,0 +1,1481 @@
+[
+  {
+    "id": "BDD-CX-01-normal",
+    "tdd": "TDD-CX-01-normal",
+    "cx": "CX-01",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "same DocumentOwner session/revision observed by facade",
+    "contract": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "same DocumentOwner session/revision observed by facade"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-01-stale_or_failure",
+    "tdd": "TDD-CX-01-stale_or_failure",
+    "cx": "CX-01",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "OwnerMismatch; zero content commits",
+    "contract": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "OwnerMismatch; zero content commits"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-01-late_or_replay",
+    "tdd": "TDD-CX-01-late_or_replay",
+    "cx": "CX-01",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "old generation completion rejected; original receipt retained",
+    "contract": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "old generation completion rejected; original receipt retained"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-02-normal",
+    "tdd": "TDD-CX-02-normal",
+    "cx": "CX-02",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "same typed design profile/digest at all design consumers",
+    "contract": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "same typed design profile/digest at all design consumers"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-02-stale_or_failure",
+    "tdd": "TDD-CX-02-stale_or_failure",
+    "cx": "CX-02",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "ProfileMismatch; zero ACK",
+    "contract": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "ProfileMismatch; zero ACK"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-02-late_or_replay",
+    "tdd": "TDD-CX-02-late_or_replay",
+    "cx": "CX-02",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "old-profile baseline not relabeled",
+    "contract": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "old-profile baseline not relabeled"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-03-normal",
+    "tdd": "TDD-CX-03-normal",
+    "cx": "CX-03",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "18446744073709551615 preserved as exact decimal string",
+    "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "18446744073709551615 preserved as exact decimal string"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-03-stale_or_failure",
+    "tdd": "TDD-CX-03-stale_or_failure",
+    "cx": "CX-03",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "InvalidInput for 18446744073709551616 or JSON number",
+    "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "InvalidInput for 18446744073709551616 or JSON number"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-03-late_or_replay",
+    "tdd": "TDD-CX-03-late_or_replay",
+    "cx": "CX-03",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "late DTO cannot overwrite newer exact revision",
+    "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "late DTO cannot overwrite newer exact revision"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-04-normal",
+    "tdd": "TDD-CX-04-normal",
+    "cx": "CX-04",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "calls file_commit→transfer→ack exactly once",
+    "contract": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "calls file_commit→transfer→ack exactly once"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-04-stale_or_failure",
+    "tdd": "TDD-CX-04-stale_or_failure",
+    "cx": "CX-04",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "CommittedAckDeferred RetentionTransfer; fileCalls1 ackCalls0 Held retained",
+    "contract": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "CommittedAckDeferred RetentionTransfer; fileCalls1 ackCalls0 Held retained"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-04-late_or_replay",
+    "tdd": "TDD-CX-04-late_or_replay",
+    "cx": "CX-04",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "same proof replay fileCalls still1; no duplicate ACK",
+    "contract": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "same proof replay fileCalls still1; no duplicate ACK"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-05-normal",
+    "tdd": "TDD-CX-05-normal",
+    "cx": "CX-05",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "Export Held→Transferred with verified root proof",
+    "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "Export Held→Transferred with verified root proof"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-05-stale_or_failure",
+    "tdd": "TDD-CX-05-stale_or_failure",
+    "cx": "CX-05",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "Released pin cannot grant bytes/mutation",
+    "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "Released pin cannot grant bytes/mutation"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-05-late_or_replay",
+    "tdd": "TDD-CX-05-late_or_replay",
+    "cx": "CX-05",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "duplicate Released transition returns same receipt; blobDeleteCalls0",
+    "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "duplicate Released transition returns same receipt; blobDeleteCalls0"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-06-normal",
+    "tdd": "TDD-CX-06-normal",
+    "cx": "CX-06",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "exact context/asset set resolves then durable pin issued",
+    "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "exact context/asset set resolves then durable pin issued"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-06-stale_or_failure",
+    "tdd": "TDD-CX-06-stale_or_failure",
+    "cx": "CX-06",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "extra/missing response reference rejected; commitCalls0",
+    "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "extra/missing response reference rejected; commitCalls0"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-06-late_or_replay",
+    "tdd": "TDD-CX-06-late_or_replay",
+    "cx": "CX-06",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "stale catalog snapshot requires explicit re-resolve; no silent mapping",
+    "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "stale catalog snapshot requires explicit re-resolve; no silent mapping"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-07-normal",
+    "tdd": "TDD-CX-07-normal",
+    "cx": "CX-07",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M05,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "Complete material pin permits install despite Unknown RecoverySnapshots roots",
+    "contract": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "Complete material pin permits install despite Unknown RecoverySnapshots roots"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-07-stale_or_failure",
+    "tdd": "TDD-CX-07-stale_or_failure",
+    "cx": "CX-07",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M05,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "missing asset blocks install; Unknown roots blocks release",
+    "contract": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "missing asset blocks install; Unknown roots blocks release"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-07-late_or_replay",
+    "tdd": "TDD-CX-07-late_or_replay",
+    "cx": "CX-07",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M05,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "late root observation from old epoch rejected",
+    "contract": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "late root observation from old epoch rejected"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-08-normal",
+    "tdd": "TDD-CX-08-normal",
+    "cx": "CX-08",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "one S1 commit yields Applied and one history entry",
+    "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "one S1 commit yields Applied and one history entry"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-08-stale_or_failure",
+    "tdd": "TDD-CX-08-stale_or_failure",
+    "cx": "CX-08",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "postcommit root failure yields AppliedRetentionDeferred at actual R8",
+    "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "postcommit root failure yields AppliedRetentionDeferred at actual R8"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-08-late_or_replay",
+    "tdd": "TDD-CX-08-late_or_replay",
+    "cx": "CX-08",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "replay same mutation keeps revisionR8/history count1",
+    "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "replay same mutation keeps revisionR8/history count1"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-09-normal",
+    "tdd": "TDD-CX-09-normal",
+    "cx": "CX-09",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "children/catalog written at FINAL canonical paths then Ready receipt",
+    "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "children/catalog written at FINAL canonical paths then Ready receipt"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-09-stale_or_failure",
+    "tdd": "TDD-CX-09-stale_or_failure",
+    "cx": "CX-09",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "Quarantined copy denied by every official open path",
+    "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "Quarantined copy denied by every official open path"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-09-late_or_replay",
+    "tdd": "TDD-CX-09-late_or_replay",
+    "cx": "CX-09",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "restart never relocates/rewrites journal; marker uncertain stays blocked",
+    "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "restart never relocates/rewrites journal; marker uncertain stays blocked"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-10-normal",
+    "tdd": "TDD-CX-10-normal",
+    "cx": "CX-10",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "LocalIntegrityReady restore allowed with destination pin",
+    "contract": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "LocalIntegrityReady restore allowed with destination pin"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-10-stale_or_failure",
+    "tdd": "TDD-CX-10-stale_or_failure",
+    "cx": "CX-10",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "missing local asset blocks restore even if source proof claims success",
+    "contract": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "missing local asset blocks restore even if source proof claims success"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-10-late_or_replay",
+    "tdd": "TDD-CX-10-late_or_replay",
+    "cx": "CX-10",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M05,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "source root transfer pending remains Unknown/Held; no original Published ACK",
+    "contract": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "source root transfer pending remains Unknown/Held; no original Published ACK"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-11-normal",
+    "tdd": "TDD-CX-11-normal",
+    "cx": "CX-11",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "held source reservations precede active lease; release after receipt",
+    "contract": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "held source reservations precede active lease; release after receipt"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-11-stale_or_failure",
+    "tdd": "TDD-CX-11-stale_or_failure",
+    "cx": "CX-11",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "producer write Busy while held; incomplete writer coverage unavailable",
+    "contract": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "producer write Busy while held; incomplete writer coverage unavailable"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-11-late_or_replay",
+    "tdd": "TDD-CX-11-late_or_replay",
+    "cx": "CX-11",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "cancel after CAS start awaits actual result; old source not relabeled",
+    "contract": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "cancel after CAS start awaits actual result; old source not relabeled"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-12-normal",
+    "tdd": "TDD-CX-12-normal",
+    "cx": "CX-12",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,IO",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "shared guard protects terminal journal/read snapshot",
+    "contract": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "shared guard protects terminal journal/read snapshot"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-12-stale_or_failure",
+    "tdd": "TDD-CX-12-stale_or_failure",
+    "cx": "CX-12",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,IO",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "forged guard/nonterminal/mismatch rejected; journalWriteCalls0",
+    "contract": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "forged guard/nonterminal/mismatch rejected; journalWriteCalls0"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-12-late_or_replay",
+    "tdd": "TDD-CX-12-late_or_replay",
+    "cx": "CX-12",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,IO",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "writer cannot expose transient active to reader",
+    "contract": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "writer cannot expose transient active to reader"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-13-normal",
+    "tdd": "TDD-CX-13-normal",
+    "cx": "CX-13",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "live edit permitted after stable recovery capture+pin",
+    "contract": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "live edit permitted after stable recovery capture+pin"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-13-stale_or_failure",
+    "tdd": "TDD-CX-13-stale_or_failure",
+    "cx": "CX-13",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "formal WriteInFlight rejects same-owner edit Busy",
+    "contract": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "formal WriteInFlight rejects same-owner edit Busy"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-13-late_or_replay",
+    "tdd": "TDD-CX-13-late_or_replay",
+    "cx": "CX-13",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M04,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "old recovery ACK leaves newer revision pending; formal baseline untouched",
+    "contract": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "old recovery ACK leaves newer revision pending; formal baseline untouched"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-14-normal",
+    "tdd": "TDD-CX-14-normal",
+    "cx": "CX-14",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "complete typed mapping updates all declared references once",
+    "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "complete typed mapping updates all declared references once"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-14-stale_or_failure",
+    "tdd": "TDD-CX-14-stale_or_failure",
+    "cx": "CX-14",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "unknown reference-bearing field hard-blocks; commitCalls0",
+    "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "unknown reference-bearing field hard-blocks; commitCalls0"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-14-late_or_replay",
+    "tdd": "TDD-CX-14-late_or_replay",
+    "cx": "CX-14",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "stale preview mapping cannot apply to new target revision",
+    "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "stale preview mapping cannot apply to new target revision"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-15-normal",
+    "tdd": "TDD-CX-15-normal",
+    "cx": "CX-15",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "issuer registry proof tag+context matches expected action",
+    "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "issuer registry proof tag+context matches expected action"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-15-stale_or_failure",
+    "tdd": "TDD-CX-15-stale_or_failure",
+    "cx": "CX-15",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "UI fabricated receipt/other proof tag denied; ackCalls0",
+    "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "UI fabricated receipt/other proof tag denied; ackCalls0"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-15-late_or_replay",
+    "tdd": "TDD-CX-15-late_or_replay",
+    "cx": "CX-15",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "restart missing issuer proof is Unverified, never fabricated completion",
+    "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "restart missing issuer proof is Unverified, never fabricated completion"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-16-normal",
+    "tdd": "TDD-CX-16-normal",
+    "cx": "CX-16",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "one serial patch owns shared path; candidate claims exact",
+    "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "one serial patch owns shared path; candidate claims exact"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-16-stale_or_failure",
+    "tdd": "TDD-CX-16-stale_or_failure",
+    "cx": "CX-16",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "outside adopted child envelope denied",
+    "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "outside adopted child envelope denied"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-16-late_or_replay",
+    "tdd": "TDD-CX-16-late_or_replay",
+    "cx": "CX-16",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "new shared HEAD/SHA rebaselined before next accepted slice",
+    "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "new shared HEAD/SHA rebaselined before next accepted slice"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-17-normal",
+    "tdd": "TDD-CX-17-normal",
+    "cx": "CX-17",
+    "category": "normal",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+    "when": "invoke corrected module input boundary with normal",
+    "then": "golden/projector/native gate status shown accurately",
+    "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "golden/projector/native gate status shown accurately"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-17-stale_or_failure",
+    "tdd": "TDD-CX-17-stale_or_failure",
+    "cx": "CX-17",
+    "category": "stale_or_failure",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+    "when": "invoke corrected module input boundary with stale_or_failure",
+    "then": "missing fixture/provider is not valid RED or readiness",
+    "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "missing fixture/provider is not valid RED or readiness"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  },
+  {
+    "id": "BDD-CX-17-late_or_replay",
+    "tdd": "TDD-CX-17-late_or_replay",
+    "cx": "CX-17",
+    "category": "late_or_replay",
+    "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+    "when": "invoke corrected module input boundary with late_or_replay",
+    "then": "document regeneration never promotes product/parent card to green",
+    "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+    "oracle": {
+      "context": {
+        "project_uuid": "11111111-1111-4111-8111-111111111111",
+        "document_uuid": "22222222-2222-4222-8222-222222222222",
+        "session_id": "session_1",
+        "owner_generation": "3",
+        "captured_revision": "7",
+        "operation_id": "operation_1"
+      },
+      "digests": {
+        "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "result": "document regeneration never promotes product/parent card to green"
+    },
+    "status": "PLANNED_NOT_RUN",
+    "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+  }
+]

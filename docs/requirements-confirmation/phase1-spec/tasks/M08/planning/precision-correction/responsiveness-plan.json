@@ -1,0 +1,62 @@
+{
+  "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+  "finding": "M08-PREP-F1",
+  "case": "M08-N08",
+  "requirement": "既有：快照寫入不應阻塞 UI 操作；下列數字是建議驗收預設，尚未採納為產品 SLA。",
+  "proposed_default": {
+    "events": 30,
+    "nominal_input_period_us": 1000000,
+    "observation_window_us": 30000000,
+    "minimum_inputs_inside_verified_write_interval": 3,
+    "p95_upper_bound_us": 250000,
+    "maximum_upper_bound_us": 1000000,
+    "maximum_timestamp_uncertainty_us": 20000,
+    "percentile": "nearest rank sorted[ceil(0.95*N)-1]; integers in monotonic microseconds; bounds inclusive"
+  },
+  "interaction": "Alternate selection between two pre-existing visible fixture objects through ordinary permitted native UI input. Expected acknowledgement is the visible selected-object identity/highlight matching that particular input. Selection must not count as content change; no destructive action or hidden UI evaluation.",
+  "GWT": {
+    "Given": "Eligible locked artifact, actual Windows11 x64, disposable owned project/account, native recording with calibrated monotonic event/frame mapping and an approved observable snapshot write interval",
+    "When": "Issue30 alternating selection inputs over30seconds while an actual permitted snapshot write overlaps at least3 inputs",
+    "Then": "Each input receives its matching acknowledgement; conservative p95 latency <=250ms and maximum <=1000ms; content/source hashes remain valid and no edit is silently marked captured"
+  },
+  "per_event_record": [
+    "sequence:int",
+    "issued_at_us:int monotonic",
+    "expected_object_id:string stable fixture ID",
+    "ack_object_id:string",
+    "ack_frame_start_us:int",
+    "ack_frame_end_us:int",
+    "write_interval_ref:string or null"
+  ],
+  "latency": "ack_frame_end_us - issued_at_us, a conservative upper bound; use calibrated interval end, never subtract recorder uncertainty to turn a failure into PASS. Wrong object/missing acknowledgement by maximum deadline fails responsiveness; missing or invalid recording is not product RED.",
+  "observation_health": [
+    "Run/PID/start/executable hash bind input trace, recording and write interval to the same session",
+    "All30 inputs and matching acknowledgements accounted for, unless a timed-out acknowledgement is the actual measured product failure",
+    "Monotonic ordering, calibration uncertainty <=20000us, no dropped/unbounded frames, exact native write interval start/end evidence",
+    "At least3 issued inputs are within a proven write interval; at least1 still-pending content edit is checked through approved M07 observation after capture without adding new hook"
+  ],
+  "fixture_recipe": [
+    "Only approved disposable data and permitted material sizes; use current M05/M07 accepted limits, not an invented large-asset cap",
+    "Use an eligible real write and ordinary native input. If permitted workload finishes too quickly for3 overlaps, report BLOCKED_INSUFFICIENT_OVERLAP; do not stall product IO or add sleeps/hooks",
+    "If M07 cannot expose approved write/capture acknowledgement evidence, classify IMPLEMENTATION_BLOCKED/ARCHITECTURE_GAP for native execution and propose observability separately. Do not implement a test hook in this package",
+    "Record the actual permissible workload, hashes and native environment. Do not benchmark old historical binary or call a library timer/native probe full UI evidence"
+  ],
+  "classification": {
+    "measured_all_thresholds_and_health_met": "eligible native operator may report PASS only after separate native harness approval; this planning file is NOT RUN",
+    "valid_recording_with_wrong_ack_or_timeout_or_latency_limit_exceeded": "FAIL actual responsiveness observation",
+    "bad_calibration_or_wrong_process_or_missing_write_interval_or_insufficient_overlap": "BLOCKED_OBSERVATION; no native PASS/FAIL or valid RED inferred",
+    "synthetic_unit_metric_vector": "SCHEMA/METRIC ORACLE ONLY, never native responsiveness proof"
+  },
+  "forbidden": [
+    "new production UI control or runtime Port",
+    "private JS/DOM injection to simulate acknowledgement",
+    "unapproved sleep/fault/clock overrides",
+    "process-name kill or changing real user project/profile",
+    "deriving capture success from UI selection state"
+  ],
+  "integration_boundary": "M08 records evidence; M03 owns UI/preview authority and M07 owns writer/capture/baselines. This proposal does not move ownership or alter60-second snapshot cadence.",
+  "owner_decision": "M08-PD1: adopt or adjust the numeric responsiveness acceptance profile and native observation strategy as a whole; not yet approved.",
+  "proposed_metric_signature": "_evaluate_responsiveness_profile(latencies_upper_bound_us: Sequence[int], observation_health: Mapping[str, JSONValue], profile: ResponseProfile) -> ResponsivenessCheck",
+  "proposed_metric_output": "frozen ResponsivenessCheck(classification: declared metric-vector code, p95_us:int|None, maximum_us:int|None, evidence_scope:Literal[SCHEMA_UNIT]); never returns native PASS",
+  "pure_metric_precedence": "Reject malformed samples/clock/run identity or count first, then insufficient overlap, then max over1000000us, then p95 over250000us, else WITHIN_PROPOSED_PROFILE. Wrong/missing native acknowledgement is a separate measured failure in the operator assertion, not silently removed from the30-event denominator."
+}

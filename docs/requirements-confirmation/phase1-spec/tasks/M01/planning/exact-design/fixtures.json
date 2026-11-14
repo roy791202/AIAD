@@ -1,0 +1,168 @@
+{
+  "status": "PROPOSED_TEST_DATA_ONLY",
+  "module": "M01",
+  "roots": [
+    "${TEMP_ROOT}/A",
+    "${TEMP_ROOT}/B"
+  ],
+  "identity": {
+    "projectA": "11111111-1111-4111-8111-111111111111",
+    "docA": "22222222-2222-4222-8222-222222222222",
+    "sessionA": "33333333-3333-4333-8333-333333333333"
+  },
+  "versions": {
+    "formal": "R0",
+    "snapshot": "R1",
+    "current": "R2",
+    "raw_original": "ORIGINAL-BYTES",
+    "semantic_before": "BEFORE-CANONICAL",
+    "semantic_after": "AFTER-CANONICAL"
+  },
+  "assets": {
+    "shared@v1": {
+      "bytes": "SHARED-V1",
+      "roots": [
+        "other-doc",
+        "undo",
+        "snapshot"
+      ]
+    },
+    "new@v1": {
+      "bytes": "NEW-V1",
+      "roots": [
+        "transaction"
+      ]
+    }
+  },
+  "cases": {
+    "01": {
+      "given": "草稿名稱只有空白",
+      "when": "要求保存",
+      "expected": "欄位錯誤且無任何FS寫入",
+      "fault": "InvalidInput"
+    },
+    "02": {
+      "given": "目標/框架尚未選定",
+      "when": "保存draft",
+      "expected": "保留未決資訊且不生成骨架",
+      "fault": "none"
+    },
+    "03": {
+      "given": "期望revision等於目前",
+      "when": "更新definition",
+      "expected": "只更新允許欄位且revision checked加一",
+      "fault": "none"
+    },
+    "04": {
+      "given": "草稿已被較新版本更新",
+      "when": "用舊revision保存",
+      "expected": "RevisionConflict且原定義不變",
+      "fault": "RevisionConflict"
+    },
+    "05": {
+      "given": "有tentative或unresolved必要欄位",
+      "when": "finalize",
+      "expected": "列缺決策；可存draft，不能宣稱已生成",
+      "fault": "GenerationNotReady"
+    },
+    "06": {
+      "given": "同一projectUuid的定義被搬到新root",
+      "when": "開啟已保存definition",
+      "expected": "UUID不變；legacy key只作alias",
+      "fault": "none"
+    },
+    "07": {
+      "given": "目標路徑已有含資料一般檔案",
+      "when": "從所有新建入口建立",
+      "expected": "拒絕且原始bytes不變，不remove_file",
+      "fault": "ExistingTarget"
+    },
+    "08": {
+      "given": "目標已存在空或非空目錄",
+      "when": "建立新專案",
+      "expected": "拒絕並保留目錄；resume需獨立流程",
+      "fault": "ExistingTarget"
+    },
+    "09": {
+      "given": "目標不存在且有效draft",
+      "when": "明確保存draft",
+      "expected": "exclusive建立並寫definition；UI事前揭露建立位置",
+      "fault": "none"
+    },
+    "10": {
+      "given": "新目錄已建立但寫definition或選定偏好失敗",
+      "when": "結束本輪保存",
+      "expected": "PartialProjectCreated列本次產物且不綁成功、不刪來源",
+      "fault": "StorageFailure"
+    },
+    "11": {
+      "given": "legacy專案含ESS與manifest/preferences",
+      "when": "明確採用持久定義",
+      "expected": "只新增definition，其他bytes原樣",
+      "fault": "none"
+    },
+    "12": {
+      "given": "已開專案UUID出現另一root",
+      "when": "要求開啟",
+      "expected": "標示move/copy衝突，不自動重映射",
+      "fault": "RevisionConflict"
+    },
+    "13": {
+      "given": "含extensions及六步保存位置",
+      "when": "encode再decode",
+      "expected": "定義語義一致且未知schema先拒絕",
+      "fault": "UnsupportedSchema"
+    },
+    "14": {
+      "given": "非owner視窗或caller送projectUuid/root/approvalRefs",
+      "when": "提交draft",
+      "expected": "caller/DTO驗證先拒絕且不寫檔",
+      "fault": "UnauthorizedCaller"
+    },
+    "15": {
+      "given": "相同session及request_id同payload",
+      "when": "重送建立或保存",
+      "expected": "不第二次建立/增加revision；同id異payload拒絕",
+      "fault": "RevisionConflict"
+    },
+    "16": {
+      "given": "草稿保存於第3步後切換專案",
+      "when": "重開及接收舊回應",
+      "expected": "恢復已保存步驟；舊回應不能改新專案",
+      "fault": "none"
+    }
+  },
+  "fault_points": [
+    "validate",
+    "exclusive-create",
+    "lock",
+    "read",
+    "prepare-assets",
+    "stage",
+    "sync",
+    "replace",
+    "restore",
+    "history-publish",
+    "late-completion"
+  ],
+  "safety": "never use user root or real board; sample payloads are fixture labels, not real file hashes",
+  "boundary_rows": {
+    "names": [
+      "",
+      " ",
+      "A",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "CON",
+      "a/b",
+      "name."
+    ],
+    "revision_values": [
+      "0",
+      "1",
+      "18446744073709551615",
+      "18446744073709551616"
+    ],
+    "notes": "trim before Windows name validation; u64 overflow rejects without mutation; schema shape is not domain validation"
+  }
+}

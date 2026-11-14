@@ -1,0 +1,237 @@
+{
+  "status": "PLANNING_HANDOFF_NOT_APPROVED_NOT_READY",
+  "module": "M04",
+  "scope": "Original planning envelope only; S2 integration requirements and exact gap inventory, not a new approved implementation packet",
+  "architecture": {
+    "hexagonal": "UI/native input → authenticated M04 application boundary → DocumentSession; HOST → approved codec abstraction + current FileCommitPort ← adapters",
+    "ownership": "S1 DocumentSession owns content/history/baselines. IO owns native transaction scratch. Codec is a projection, not owner. Proposed HOST IO-health guard must be explicitly approved before new state exists.",
+    "transaction": "capture R + semantic A → validate/encode bytes → capture raw E + expected disk D → current IO lease/commit receipt → trusted proof validation → acknowledge captured R/A if still applicable; preserve proof on late ACK failure",
+    "forbidden": [
+      "raw digest used as semantic baseline",
+      "UI-provided request/digest grants authority",
+      "HOST deletes IO private recovery/scratch artifacts",
+      "domain state rebuilt just to set RecoveryRequired",
+      "fallback to write_atomic/create_dir_all for new formal transaction",
+      "implicit multi-file save/embedded design dual write"
+    ]
+  },
+  "facts": [
+    {
+      "id": "M04-CURRENT-1",
+      "fact": "Accepted M04-S1 pure DocumentSession remains in source; capture returns document/session/revision/DocumentContent. Formal and recovery acknowledgement are separate APIs. Constructors are structural input seams, not trusted codec validation.",
+      "evidence": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "layer": "READ_ONLY_SOURCE_AND_EXISTING_ACCEPTANCE; no new test run"
+    },
+    {
+      "id": "M04-CURRENT-2",
+      "fact": "IO-PREREQ adapter is implemented and locally accepted, not an unimplemented marker. Fresh IO220 regression was recorded by M01-S2 delivery. Windows11/reparse/8.3 gates remain independent.",
+      "evidence": "../M01/planning/s2-green/final-runs.json + IO-PREREQ/implementation/acceptance",
+      "layer": "EXISTING_HASH_BOUND_EVIDENCE; no repeat run"
+    },
+    {
+      "id": "M04-CURRENT-3",
+      "fact": "scene_doc.rs saves/loads text via FileSystemPort; source existence and its text roundtrip test do not validate a full lossless ESS work/architecture/design canonical codec.",
+      "evidence": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "layer": "SOURCE_ONLY"
+    },
+    {
+      "id": "M04-CURRENT-4",
+      "fact": "Current uidesign_doc.rs drops UI-owned fields in existing controlled probe; M03 C1 preservation contract is proposed, not adopted or implemented. Cannot assume it supplies a complete M04 DocumentCodecPort.",
+      "evidence": "M03/planning/roundtrip-evidence and preservation-contract",
+      "layer": "EXISTING_CONTROLLED_PROBE_AND_PROPOSAL"
+    },
+    {
+      "id": "M04-CURRENT-5",
+      "fact": "CommitReceipt exposes target_path/previous_digest/committed_digest/transaction_id only. RecoveryRequired exposes exact diagnostic paths. IO owns OS handles/private scratch/version/journal representation.",
+      "evidence": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "layer": "CURRENT_ACCEPTED_PORT_CONTRACT"
+    }
+  ],
+  "findings": [
+    {
+      "id": "M04-S2-R1",
+      "classification": "REPLAN_REQUIRED_FOR_PROPOSED_PERSISTENCE_BOUNDARY",
+      "trigger": "Historical storage proposal describes M04-level document-versions/document-transactions paths, whereas current accepted IO adapter owns private version/journal mechanics and success receipt does not expose an old-version handle.",
+      "required_behavior": "Single formal file commit with verified rollback/recovery semantics, no competing persistence authority.",
+      "missing": "Explicit current M04 consumer contract distinguishing IO private recovery artifacts from any separate user-facing retention requirement.",
+      "recommendation": "Consume actual FileCommitPort without duplicating its private journal. Keep original retention path proposal historical, not a new write target. If long-term document version history is required, propose it separately with its own approved lifecycle/Port rather than silently implementing it.",
+      "owner_decision_needed_before_Skeleton": true
+    },
+    {
+      "id": "M04-S2-R2",
+      "classification": "ARCHITECTURE_INCOMPLETE_CODEC_AND_ERROR_TYPES",
+      "trigger": "DocumentCodecPort proposal still names DocumentFormat/CodecError and full-document canonicalization/preservation responsibilities without fully frozen types, exact per-format field exclusions and complete codec fixture/error oracle mapping.",
+      "required_behavior": "Full ESS composite document or standalone .sgendesign must preserve supported content or reject before write.",
+      "missing": "Precise ESS XML profile, .sgendesign dependency/adoption contract, semantic canonical payload versus raw persisted bytes, actual codec-owned error shape.",
+      "recommendation": "Prepare one exact codec/type/error/field-map package. Reuse M03 only after its contract is adopted; do not treat scene text helper or packet read-only extraction as full serializer. Do not implement the absent codec adapter from placeholder names.",
+      "owner_decision_needed_before_Skeleton": true
+    },
+    {
+      "id": "M04-S2-R3",
+      "classification": "ARCHITECTURE_INCOMPLETE_SAVE_PROOF_AND_ACK",
+      "trigger": "WORK acknowledge_formal_save expects semantic digest, while CommitReceipt.committed_digest hashes exact encoded file bytes. The two may legitimately differ; trusted HOST must bind both to the same immutable capture, target, request and owner.",
+      "required_behavior": "Save captured R, keep live R+1 dirty, preserve recovery baseline; no UI-supplied digest acknowledgement.",
+      "missing": "Exact captured-save record, receipt-validation result and postcommit acknowledgement error/late-owner semantics.",
+      "recommendation": "Propose immutable capture binding with document/session/project/request, captured revision+semantic digest, encoded bytes+raw digest, expected previous raw digest and trusted target. Validate target/raw hashes/previous digest/txid before ACK. ACK only semantic digest from captured content, never raw receipt digest. If disk commit succeeds but ACK cannot apply, preserve persistence proof and report committed/ack-deferred instead of ordinary failed-unchanged.",
+      "owner_decision_needed_before_Skeleton": true
+    },
+    {
+      "id": "M04-S2-R4",
+      "classification": "ARCHITECTURE_GAP_RECOVERY_BLOCKING_SEAM",
+      "trigger": "Approved S1 has status RecoveryRequired and rejects edits while in that state, but no public transition method exists to enter it from a native IO outcome. Silent state reconstruction or a new setter would change the accepted Skeleton.",
+      "required_behavior": "Exact RecoveryRequired diagnostics retained and further destructive document operations blocked without losing content/history/baselines.",
+      "missing": "Approved location/owner of IO safety gate and how its state combines with DocumentSession status.",
+      "options": [
+        {
+          "id": "A",
+          "proposal": "Proposed per-session HOST IO-health guard owned by existing M04 application/session boundary; all destructive inputs check it before calling S1. Domain content/history status unchanged; projection explicitly combines IO health and domain editability. Requires precise guard lifecycle/DTO scope approval, no global manager."
+        },
+        {
+          "id": "B",
+          "proposal": "Explicit new domain transition API and lifecycle contract to enter/resolve RecoveryRequired. Requires S1 public API/Skeleton/TDD revision and Owner adoption; cannot be treated as local implementation."
+        }
+      ],
+      "recommendation": "Prefer A for current S2 integration if complete boundary coverage can be proved; present exact model and all-entry guards for one review before Skeleton. Do not self-approve either option.",
+      "owner_decision_needed_before_Skeleton": true
+    }
+  ],
+  "planned_cases": [
+    {
+      "id": "M04-S2-P01",
+      "Given": "Captured semantic hash A differs from raw encoded hash E; current document advanced R to R+1",
+      "When": "Verified receipt commits E for exact target",
+      "Then": "HOST acknowledges captured R with A; formal baseline advances only to A, currentR+1 dirty, recovery baseline/history unchanged",
+      "fixture_need": "capture/codec/commit/ACK binding",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P02",
+      "Given": "Codec returns unrepresentable-content rejection",
+      "When": "Save requested",
+      "Then": "No acquire/create/write/ACK; source and both baselines/Undo unchanged",
+      "fixture_need": "pre-write failure",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P03",
+      "Given": "Success receipt has wrong target/digest/previous digest/txid",
+      "When": "Validate completion",
+      "Then": "Retain reported proof as evidence mismatch; no ACK or further write, no fabricated rollback/journal diagnostics",
+      "fixture_need": "4 receipt mutations",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P04",
+      "Given": "Native commit ordinary Storage failure with verified old-byte preservation",
+      "When": "Handle save completion",
+      "Then": "No baseline or history acknowledgement; original raw bytes and both baselines unchanged",
+      "fixture_need": "ordinary IO mapping",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P05",
+      "Given": "Native RecoveryRequired returns exact target/journal/old/new paths",
+      "When": "Handle save completion",
+      "Then": "Copy exact diagnostics; proposed safety gate blocks destructive entry points; no clean rollback claim",
+      "fixture_need": "new safety-gate architecture required",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P06",
+      "Given": "Disk committed but owner/session closed or changed before ACK",
+      "When": "Handle late completion",
+      "Then": "Retain committed proof; do not mutate new owner/session or misreport failed-unchanged",
+      "fixture_need": "committed/ACK-deferred outcome proposed",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P07",
+      "Given": "Old ACK arrives after newer formal baseline",
+      "When": "Apply completion",
+      "Then": "No baseline regression; retained persistence evidence and explicit stale/out-of-order ACK outcome",
+      "fixture_need": "same trusted capture/proof required",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P08",
+      "Given": "Recovered content and formal baseline differ",
+      "When": "Formal save succeeds",
+      "Then": "Recovery baseline and retained snapshots are not reset or cleared",
+      "fixture_need": "two independent baselines",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P09",
+      "Given": "Source disk bytes externally reformatted or replaced",
+      "When": "Save under cooperating lease",
+      "Then": "Compare raw baseline before replacing; stale raw bytes conflict even if semantic content appears equal",
+      "fixture_need": "raw versus semantic conflict",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    },
+    {
+      "id": "M04-S2-P10",
+      "Given": "ESS embeds work/architecture/design and unknown supported extension data",
+      "When": "Decode/encode verified candidate",
+      "Then": "Preserve all supported composite content or refuse before persistence; no second standalone design write",
+      "fixture_need": "full-codec profile pending",
+      "status": "PLANNED_NOT_RUN",
+      "candidate_target": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_document_save.rs",
+      "command": "cargo test -p sgenaxis-host --test phase1_document_save --locked",
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "valid_RED": "Only after exact S2 contract/Skeleton approval and healthy buildable fixture; missing API/codec/environment is not valid RED."
+    }
+  ],
+  "current_envelope": {
+    "writes": [
+      "M04/planning/**",
+      "own PREP board evidence only"
+    ],
+    "future_candidates": "Original exact-design envelope remains proposed; no new broad source scope granted by this report",
+    "protected": "All product/tests/other module packages/manifests/locks/IO API and accepted S1"
+  },
+  "next_packet_requirements": [
+    "exact DocumentFormat/CodecError/field preservation and semantic exclusion tables",
+    "captured save proof/committed ACK-deferred error contract and fixtures",
+    "IO safety-gate owner/lifecycle/all input entry coverage",
+    "existing call-site migration and precise product/test paths",
+    "BDD ↔ TDD traceability and immutable source hashes before Skeleton approval"
+  ],
+  "ready_for_implementation": false,
+  "module_complete": false
+}

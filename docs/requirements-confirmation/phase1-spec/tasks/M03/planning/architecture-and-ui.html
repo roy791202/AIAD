@@ -1,0 +1,331 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M03 架構與UI設計準備交付</title><style>body{font:16px/1.75 system-ui;max-width:1250px;margin:30px auto;padding:20px;color:#233044}section,article{border:1px solid #ccd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ccd;padding:9px;text-align:left;vertical-align:top}.scroll{overflow:auto}a{color:#245cb4}h2{color:#254b77}</style><h1>M03 架構與UI設計 準備交付</h1><p>PLANNING_DELIVERED_REVIEW_PENDING｜Architecture PROPOSED_NOT_APPROVED｜Product tests／RED／GREEN／Native NOT RUN</p><p>架構視圖、UI定義、Editor／Viewer與交叉定位</p><p>cursor/ui-bhv-arch-layer-editor @ 31babe87a7ef1e40a0d4bedc523077e7a45d63ab；已有WIP，以個別SHA256為來源基準。</p><p><a href="../../M08/planning/index.html">八模組整體審查</a> · <a href="inventory.json">來源證據</a> · <a href="gap-matrix.json">差額矩陣</a> · <a href="envelope.json">精確候選範圍</a></p><section><h2>目前能力與差額</h2><div class="scroll"><table><tr><th>來源行</th><th>SHA256</th><th>觀察</th><th>證據層</th></tr><tr><td>apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs:15</td><td>c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac</td><td>DesignDoc格式/版本/節點/props/hints；selection也會serialize；meta僅title/updatedAt/targetStack</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs:210</td><td>c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac</td><td>Build preview將node畫成可選卡片及hint；不能等同完整導覽/表單/錯誤狀態</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/ui/app.js:5685</td><td>ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b</td><td>已有embedded/OS Editor與Viewer入口；新建成功自動載主要畫面待接</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/ui/app.js:13323</td><td>ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b</td><td>Build invoke及product_pass=false保護存在；仍需preview revision及過期契約</td><td>SOURCE_ONLY</td></tr></table></div><ul><li>JS metadata如guides與HOST型別往返可能丟欄位，須正式roundtrip fixture</li><li>事件/模擬狀態schema、隔離runtime及跨視圖ID綁定未定</li><li>多視窗JS模型需單一提交authority及revision，不能假設視圖同步</li></ul><p>Negative findings只限inventory及search-log所列範圍；不宣稱遍歷全repo已證明功能不存在。</p></section><section><h2>View A Hexagonal系統邊界（提案）</h2><pre>Driving UI / Tests
+          ↓
+Tauri Commands → DispatchHost / Input ports
+          ↓
+HOST Application usecase → WORK Domain (authority)
+          ↓ abstractions
+Storage / Transaction / Codec / Clock roles
+          ↑ implements
+Std FS / user paths / archive / preview adapters
+State owner: 現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。
+Mutation boundary: Get/CommitDesign/BuildPreview/ResolveArchitectureLink（提案）</pre></section><section><h2>View B 模組依賴與交易（提案）</h2><pre>M03 Input → M03 Usecase → domain policy + output ports
+M01 project definition → M02 generation → M03 design projection
+M06 single merge → M04 document commit/history → M05 asset references
+M07 stable capture ← M04 content revision; M07 retained pins → M05
+M08 test drivers → module input ports, no domain ownership
+Transaction: capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。</pre><div class="scroll"><table><tr><th>A1-A14</th><th>內容</th></tr><tr><td>A1_context</td><td>架構與UI設計；架構視圖、UI定義、Editor／Viewer與交叉定位</td></tr><tr><td>A2_hexagonal</td><td>UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters</td></tr><tr><td>A3_dependency</td><td>M03 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass</td></tr><tr><td>A4_responsibility</td><td>架構視圖、UI定義、Editor／Viewer與交叉定位</td></tr><tr><td>A5_input_ports</td><td>Get/CommitDesign/BuildPreview/ResolveArchitectureLink（提案）</td></tr><tr><td>A6_output_ports</td><td>FileSystemPort與既有preview builder；Viewer不得旁路FS。</td></tr><tr><td>A7_driving_adapters</td><td>Vanilla UI / module tests / Windows native operator</td></tr><tr><td>A8_driven_adapters</td><td>Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager</td></tr><tr><td>A9_direction</td><td>Domain must not depend on UI/FS/OS/Tauri/concrete adapters</td></tr><tr><td>A10_ownership</td><td>現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。</td></tr><tr><td>A11_mutation</td><td>All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document</td></tr><tr><td>A12_transaction</td><td>capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。</td></tr><tr><td>A13_external</td><td>Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority</td></tr><tr><td>A14_forbidden</td><td>UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape</td></tr><tr><td>status</td><td>PROPOSED_NOT_APPROVED</td></tr></table></div></section><section><h2>契約、不變條件與UI schema</h2><pre>{
+  &quot;preconditions&quot;: &quot;Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions&quot;,
+  &quot;success&quot;: &quot;Result reflects committed version, no error contradiction; design/build status never equals functional acceptance&quot;,
+  &quot;failure&quot;: &quot;Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5&quot;,
+  &quot;ownership&quot;: &quot;現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。&quot;,
+  &quot;atomicity&quot;: &quot;capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。&quot;,
+  &quot;lifecycle&quot;: &quot;Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files&quot;,
+  &quot;invariants&quot;: [
+    [
+      &quot;INV01&quot;,
+      &quot;任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。&quot;
+    ],
+    [
+      &quot;INV02&quot;,
+      &quot;文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。&quot;
+    ],
+    [
+      &quot;INV06&quot;,
+      &quot;成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。&quot;
+    ],
+    [
+      &quot;INV08&quot;,
+      &quot;匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。&quot;
+    ]
+  ]
+}</pre><pre>{
+  &quot;role&quot;: &quot;本機專案作者／設計者&quot;,
+  &quot;fields_controls_states&quot;: &quot;Editor/Viewer/Build、過期badge、畫面/元件/事件清單、錯誤定位；無UI不開窗。&quot;,
+  &quot;validation&quot;: &quot;Validate fields, identity, revision and capability before mutation; disabled states name reason&quot;,
+  &quot;defaults&quot;: &quot;Spec D01-D13 are proposals; no implicit approval here&quot;,
+  &quot;empty&quot;: &quot;No project/document/template/asset/artifact: show actual empty state and next available action&quot;,
+  &quot;accessibility&quot;: &quot;Text labels, keyboard focus, field-linked errors; details pending rendered UI review&quot;
+}</pre></section><section><h2>精確候選檔案與成本（待批准）</h2><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;status&quot;: &quot;PROPOSED_NOT_APPROVED&quot;,
+  &quot;current_authorized_writes&quot;: [
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M03/planning/**&quot;,
+    &quot;own PREP board notes and planning status only&quot;
+  ],
+  &quot;proposed_existing_production&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/commands.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/dto.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/lib.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/app.js&quot;,
+    &quot;apps/sgenaxis-desktop/ui/index.html&quot;,
+    &quot;apps/sgenaxis-desktop/ui/styles.css&quot;
+  ],
+  &quot;proposed_new_production&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/design_binding.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/design-preview-runtime.js&quot;
+  ],
+  &quot;proposed_tests&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/design-preview-runtime.test.cjs&quot;
+  ],
+  &quot;protected&quot;: &quot;All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.&quot;,
+  &quot;shared_files&quot;: &quot;app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.&quot;,
+  &quot;baseline&quot;: [
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs&quot;,
+      &quot;sha256&quot;: &quot;c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs&quot;,
+      &quot;sha256&quot;: &quot;851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/commands.rs&quot;,
+      &quot;sha256&quot;: &quot;90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs&quot;,
+      &quot;sha256&quot;: &quot;6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dto.rs&quot;,
+      &quot;sha256&quot;: &quot;6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/lib.rs&quot;,
+      &quot;sha256&quot;: &quot;8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/app.js&quot;,
+      &quot;sha256&quot;: &quot;ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/index.html&quot;,
+      &quot;sha256&quot;: &quot;5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/styles.css&quot;,
+      &quot;sha256&quot;: &quot;40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42&quot;
+    }
+  ],
+  &quot;new_dependency_cost&quot;: &quot;No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.&quot;,
+  &quot;new_public_api_cost&quot;: &quot;Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.&quot;,
+  &quot;file_cost&quot;: {
+    &quot;existing_candidates&quot;: 9,
+    &quot;new_production_candidates&quot;: 2,
+    &quot;new_test_candidates&quot;: 2
+  },
+  &quot;decisions&quot;: [
+    &quot;D2&quot;,
+    &quot;D3&quot;,
+    &quot;D4&quot;
+  ]
+}</pre><p>以上為針對此模組的候選集合，不是無條件的實作包；G門檻與public API/Skeleton未批准前只能寫planning。跨模組new files的責任歸屬要先拆卡，不可在共用檔改整個產品。</p></section><section><h2>BDD與驗收</h2><div class="scroll"><table><tr><th>BDD</th><th>TDD</th><th>Given</th><th>When</th><th>Then</th><th>結果</th></tr><tr><td>BDD-05</td><td>TDD-05</td><td>有UI專案成功生成雙骨架</td><td>顯示建立結果</td><td>UI設計視窗載入主要畫面</td><td>NOT RUN</td></tr><tr><td>BDD-06</td><td>TDD-06</td><td>無UI專案成功生成骨架</td><td>顯示建立結果</td><td>不開啟多餘UI設計視窗</td><td>NOT RUN</td></tr><tr><td>BDD-M03-A</td><td>TDD-M03-A</td><td>設計含guides與事件等批准欄位</td><td>保存再重開</td><td>語義內容完整或明確拒未知版本，不靜默丟欄位</td><td>NOT RUN</td></tr><tr><td>BDD-M03-B</td><td>TDD-M03-B</td><td>已有舊版preview與修改後設計</td><td>Build失敗後操作Viewer</td><td>明示舊版且不執行正式副作用</td><td>NOT RUN</td></tr></table></div><p><a href="module.feature">Gherkin</a> · <a href="steps_pending.py">Step stubs</a> · <a href="fixtures.json">Fixture</a> · <a href="test-plan.json">TDD完整計畫</a></p><pre>{
+  &quot;module&quot;: &quot;M03&quot;,
+  &quot;existing_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test -p sgenaxis-host uidesign_doc::tests&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD&quot;,
+      &quot;command&quot;: &quot;python -m pytest tests/test_pd_uidesigner_edit_p2.py -q&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    }
+  ],
+  &quot;proposed_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test -p sgenaxis-host --test phase1_design_roundtrip&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;node --test ui/design-preview-runtime.test.cjs&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    }
+  ],
+  &quot;cases&quot;: [
+    {
+      &quot;id&quot;: &quot;TDD-05&quot;,
+      &quot;bdd&quot;: &quot;BDD-05&quot;,
+      &quot;requirement&quot;: &quot;REQ-05&quot;,
+      &quot;title&quot;: &quot;有UI自動開窗&quot;,
+      &quot;given&quot;: &quot;有UI專案成功生成雙骨架&quot;,
+      &quot;when&quot;: &quot;顯示建立結果&quot;,
+      &quot;then&quot;: &quot;UI設計視窗載入主要畫面&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-05&quot;,
+      &quot;levels&quot;: [
+        &quot;L1 component&quot;,
+        &quot;L2 module contract&quot;,
+        &quot;L3 adapter where applicable&quot;
+      ],
+      &quot;valid_red&quot;: &quot;After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-06&quot;,
+      &quot;bdd&quot;: &quot;BDD-06&quot;,
+      &quot;requirement&quot;: &quot;REQ-05&quot;,
+      &quot;title&quot;: &quot;無UI不開窗&quot;,
+      &quot;given&quot;: &quot;無UI專案成功生成骨架&quot;,
+      &quot;when&quot;: &quot;顯示建立結果&quot;,
+      &quot;then&quot;: &quot;不開啟多餘UI設計視窗&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-06&quot;,
+      &quot;levels&quot;: [
+        &quot;L1 component&quot;,
+        &quot;L2 module contract&quot;,
+        &quot;L3 adapter where applicable&quot;
+      ],
+      &quot;valid_red&quot;: &quot;After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-M03-A&quot;,
+      &quot;bdd&quot;: &quot;BDD-M03-A&quot;,
+      &quot;requirement&quot;: &quot;REQ-05,18&quot;,
+      &quot;title&quot;: &quot;設計欄位往返&quot;,
+      &quot;given&quot;: &quot;設計含guides與事件等批准欄位&quot;,
+      &quot;when&quot;: &quot;保存再重開&quot;,
+      &quot;then&quot;: &quot;語義內容完整或明確拒未知版本，不靜默丟欄位&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-M03-A&quot;,
+      &quot;levels&quot;: [
+        &quot;L2 module contract&quot;,
+        &quot;L4 adjacent regression&quot;
+      ],
+      &quot;valid_red&quot;: &quot;Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-M03-B&quot;,
+      &quot;bdd&quot;: &quot;BDD-M03-B&quot;,
+      &quot;requirement&quot;: &quot;REQ-05,18&quot;,
+      &quot;title&quot;: &quot;preview版本隔離&quot;,
+      &quot;given&quot;: &quot;已有舊版preview與修改後設計&quot;,
+      &quot;when&quot;: &quot;Build失敗後操作Viewer&quot;,
+      &quot;then&quot;: &quot;明示舊版且不執行正式副作用&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-M03-B&quot;,
+      &quot;levels&quot;: [
+        &quot;L2 module contract&quot;,
+        &quot;L4 adjacent regression&quot;
+      ],
+      &quot;valid_red&quot;: &quot;Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    }
+  ],
+  &quot;B1_B12&quot;: [
+    {
+      &quot;id&quot;: &quot;B1&quot;,
+      &quot;name&quot;: &quot;成功&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B2&quot;,
+      &quot;name&quot;: &quot;邊界&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B3&quot;,
+      &quot;name&quot;: &quot;非法輸入&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B4&quot;,
+      &quot;name&quot;: &quot;依賴失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B5&quot;,
+      &quot;name&quot;: &quot;部分失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B6&quot;,
+      &quot;name&quot;: &quot;狀態一致性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B7&quot;,
+      &quot;name&quot;: &quot;交易&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B8&quot;,
+      &quot;name&quot;: &quot;生命週期&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B9&quot;,
+      &quot;name&quot;: &quot;回復&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B10&quot;,
+      &quot;name&quot;: &quot;跨模組&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B11&quot;,
+      &quot;name&quot;: &quot;相容性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B12&quot;,
+      &quot;name&quot;: &quot;回歸&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    }
+  ],
+  &quot;fixture_strategy&quot;: &quot;isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.&quot;,
+  &quot;regression_levels&quot;: [
+    &quot;focused new cases&quot;,
+    &quot;module public-input contract tests&quot;,
+    &quot;adjacent shared-boundary tests&quot;,
+    &quot;architecture constraints&quot;,
+    &quot;Windows native via M08&quot;
+  ],
+  &quot;pending_automation&quot;: [
+    &quot;exact approved input DTO/Port bindings&quot;,
+    &quot;create listed test target and fixtures after Skeleton gate&quot;,
+    &quot;expand per-case fault matrix&quot;,
+    &quot;native UI operator + runtime source identity&quot;,
+    &quot;real filesystem interruption and rollback-failure coverage&quot;
+  ],
+  &quot;stop_conditions&quot;: [
+    &quot;unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED&quot;,
+    &quot;conflicting specification → SPEC_CONFLICT&quot;,
+    &quot;tests compile/fixture/environment errors → not valid RED&quot;
+  ],
+  &quot;test_execution&quot;: &quot;NOT RUN; no production tests or test files created&quot;
+}</pre></section><section><h2>需要集中決策與剩餘風險</h2><div class="scroll"><table><tr><th>ID</th><th>方案建議</th><th>局部阻塞</th></tr><tr><td>D2</td><td>漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。</td><td>ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。</td></tr><tr><td>D3</td><td>首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。</td><td>只阻擋對應生成/preview/media；非全域停工。</td></tr><tr><td>D4</td><td>保留selection原契約；WORK加入document before/after revision及compound history，HOST協調pin；M07取stable immutable revision。fingerprint排除selection/viewport/playback及純savedAt。</td><td>Undo/capture lifecycle與test seam需批准。</td></tr></table></div><p>Acceptance：所有相關REQ/BDD有現況或缺口；B1-B12逐項評估；兩圖/authority/mutation/transaction明列；精確檔案與未來命令可審；未跑證據層明示。獨立審查與Owner批准未取得，因此不宣告MODULE_TASK_COMPLETE、不自行綠燈。</p></section><script type="application/json" id="module-spec">{"module": "M03", "task": "PD-P1-M03-PREP-01", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "architecture": {"A1_context": "架構與UI設計；架構視圖、UI定義、Editor／Viewer與交叉定位", "A2_hexagonal": "UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters", "A3_dependency": "M03 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass", "A4_responsibility": "架構視圖、UI定義、Editor／Viewer與交叉定位", "A5_input_ports": "Get/CommitDesign/BuildPreview/ResolveArchitectureLink（提案）", "A6_output_ports": "FileSystemPort與既有preview builder；Viewer不得旁路FS。", "A7_driving_adapters": "Vanilla UI / module tests / Windows native operator", "A8_driven_adapters": "Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager", "A9_direction": "Domain must not depend on UI/FS/OS/Tauri/concrete adapters", "A10_ownership": "現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。", "A11_mutation": "All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document", "A12_transaction": "capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。", "A13_external": "Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority", "A14_forbidden": "UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape", "status": "PROPOSED_NOT_APPROVED"}, "contract": {"preconditions": "Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions", "success": "Result reflects committed version, no error contradiction; design/build status never equals functional acceptance", "failure": "Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5", "ownership": "現況archDoc/designDoc在UI；提案WORK持提交內容/revision，Editor只持draft；其他視窗projection或顯式寫者租約。", "atomicity": "capture design+binding revision → isolated build → publish preview revision；失敗保留明標舊版。", "lifecycle": "Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files", "invariants": [["INV01", "任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。"], ["INV02", "文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。"], ["INV06", "成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。"], ["INV08", "匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。"]]}, "inventory": {"module": "M03", "task": "PD-P1-M03-PREP-01", "branch": "cursor/ui-bhv-arch-layer-editor", "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "dirty": true, "evidence": "SOURCE_INSPECTION_ONLY", "files": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs", "exists": true, "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "exists": true, "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"}, {"path": "apps/sgenaxis-desktop/src-tauri/capabilities/uidesign-window.json", "exists": true, "sha256": "3bcca3e337a140f229791a22067d99d585e43d10dbc2828e4f100016b6a42035"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "exists": true, "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "exists": true, "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "exists": true, "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "exists": true, "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "exists": true, "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"}, {"path": "apps/sgenaxis-desktop/ui/index.html", "exists": true, "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"}, {"path": "apps/sgenaxis-desktop/ui/styles.css", "exists": true, "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"}, {"path": "fixtures/sgenaxis-design/sample.sgendesign", "exists": true, "sha256": "0a0f077ad877848d24c7a344590005f3598a0fbcdf03c19b58ef2f861f3bb89b"}, {"path": "tests/test_pd_uidesign_spec_01.py", "exists": true, "sha256": "bd73a2b949c1c8b0a74df024132fa0086ed6bc8cfd94154c37e63e181902ece4"}, {"path": "tests/test_pd_uidesigner_edit_p2.py", "exists": true, "sha256": "1295ef4eadb192ce631e78281df1524e209740040d9de4d0795489b21ada4d49"}], "findings": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs", "line_start": 15, "line_end": 130, "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac", "excerpt": "#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]\npub struct DesignMeta {\n    #[serde(default)]\n    pub title: String,\n    #[serde(default, rename = \"updatedAt\")]\n    pub updated_at: String,\n    #[serde(default = \"default_stack\", rename = \"targetStack\")]\n    pub target_stack: String,\n}\n\nfn default_stack() -> String {\n    \"vanilla-tauri\".into()\n}\n\n#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]\npub struct DesignNode {\n    pub id: String,\n    #[serde(rename = \"type\")]\n    pub node_type: String,\n    #[serde(default, rename = \"parentId\")]\n    pub parent_id: Option<String>,\n    #[serde(default)]\n    pub props: serde_json::Map<String, serde_json::Value>,\n    #[serde(default, rename = \"bddHint\")]\n    pub bdd_hint: String,\n    #[serde(default, rename = \"tddHint\")]\n    pub tdd_hint: String,\n    #[serde(default, rename = \"behaviorHints\")]\n    pub behavior_hints: Vec<String>,\n}\n\n#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]\npub struct DesignDoc {\n    pub format: String,\n    #[serde(rename = \"formatVersion\")]\n    pub format_version: u32,\n    #[serde(default)]\n    pub meta: DesignMeta,\n    #[serde(default)]\n    pub nodes: Vec<DesignNode>,\n    #[serde(default)]\n    pub selection: Option<String>,\n    /// Always false for design artifacts (never product acceptance).\n    #[serde(default)]\n    pub product_pass: bool,\n}\n\nimpl Default for DesignMeta {\n    fn default() -> Self {\n        Self {\n            title: \"Untitled Form\".into(),\n            updated_at: String::new(),\n            target_stack: default_stack(),\n        }\n    }\n}\n\nimpl DesignDoc {\n    pub fn new_blank() -> Self {\n        let form_id = \"node-form-root\";\n        Self {\n            format: DESIGN_FORMAT.into(),\n            format_version: DESIGN_FORMAT_VERSION,\n            meta: DesignMeta::default(),\n            nodes: vec![DesignNode {\n                id: form_id.into(),\n                node_type: \"Form\".into(),\n                parent_id: None,\n                props: serde_json::Map::from_iter([\n                    (\"name\".into(), serde_json::json!(\"Form\")),\n                    (\"x\".into(), serde_json::json!(0)),\n                    (\"y\".into(), serde_json::json!(0)),\n                    (\"w\".into(), serde_json::json!(800)),\n                    (\"h\".into(), serde_json::json!(600)),\n                    (\"zIndex\".into(), serde_json::json!(0)),\n                    (\"layout\".into(), serde_json::json!(\"none\")),\n                ]),\n                bdd_hint: String::new(),\n                tdd_hint: String::new(),\n                behavior_hints: vec![],\n            }],\n            selection: Some(form_id.into()),\n            product_pass: false,\n        }\n    }\n\n    pub fn validate(&self) -> Result<(), HostError> {\n        if self.format != DESIGN_FORMAT {\n            return Err(HostError::Settings(format!(\n                \"invalid design format {:?} — expected {DESIGN_FORMAT}\",\n                self.format\n            )));\n        }\n        if self.format_version != DESIGN_FORMAT_VERSION {\n            return Err(HostError::Settings(format!(\n                \"unsupported formatVersion {} — expected {DESIGN_FORMAT_VERSION}\",\n                self.format_version\n            )));\n        }\n        if self.product_pass {\n            return Err(HostError::Settings(\n                \"design artifact must not set product_pass=true\".into(),\n            ));\n        }\n        Ok(())\n    }\n}\n\npub fn parse_design_json(raw: &str) -> Result<DesignDoc, HostError> {\n    let doc: DesignDoc = serde_json::from_str(raw)\n        .map_err(|e| HostError::Settings(format!(\".sgendesign JSON parse error: {e}\")))?;\n    doc.validate()?;\n    Ok(doc)\n}\n\npub fn serialize_design(doc: &DesignDoc) -> Result<String, HostError> {", "observation": "DesignDoc格式/版本/節點/props/hints；selection也會serialize；meta僅title/updatedAt/targetStack", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs", "line_start": 210, "line_end": 333, "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac", "excerpt": "pub fn build_preview_html(doc: &DesignDoc) -> Result<String, HostError> {\n    doc.validate()?;\n    let title = if doc.meta.title.trim().is_empty() {\n        \"SGenAxis Design Preview\"\n    } else {\n        doc.meta.title.trim()\n    };\n    fn prop_num(n: &DesignNode, key: &str, default: i64) -> i64 {\n        n.props\n            .get(key)\n            .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))\n            .unwrap_or(default)\n    }\n    let mut cards = String::new();\n    for n in &doc.nodes {\n        let name = n\n            .props\n            .get(\"name\")\n            .and_then(|v| v.as_str())\n            .unwrap_or(n.node_type.as_str());\n        let bdd = html_escape(&n.bdd_hint);\n        let tdd = html_escape(&n.tdd_hint);\n        let id = html_escape(&n.id);\n        let ty = html_escape(&n.node_type);\n        let name_e = html_escape(name);\n        let x = prop_num(n, \"x\", 0);\n        let y = prop_num(n, \"y\", 0);\n        let w = prop_num(n, \"w\", 120);\n        let h = prop_num(n, \"h\", 32);\n        let beh = html_escape(&n.behavior_hints.join(\", \"));\n        let style = if n.parent_id.is_none() {\n            String::new()\n        } else {\n            format!(\"left:{x}px;top:{y}px;width:{w}px;height:{h}px;\")\n        };\n        cards.push_str(&format!(\n            r#\"<button type=\"button\" class=\"node\" style=\"{style}\" data-id=\"{id}\" data-type=\"{ty}\" data-name=\"{name_e}\" data-bdd=\"{bdd}\" data-tdd=\"{tdd}\" data-beh=\"{beh}\" data-geom=\"{x},{y},{w},{h}\"><span class=\"tag\">{ty}<\/span><span class=\"nm\">{name_e}<\/span><\/button>\"#\n        ));\n    }\n    Ok(format!(\n        r#\"<!DOCTYPE html>\n<html lang=\"zh-Hant\">\n<head>\n<meta charset=\"utf-8\"/>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>\n<title>{title_e} — communication preview<\/title>\n<style>\nbody{{margin:0;font:14px/1.45 Segoe UI,Microsoft JhengHei,sans-serif;background:#12141a;color:#e8eaef}}\n.banner{{position:sticky;top:0;z-index:9;background:#252117;color:#f2b544;border-bottom:1px solid #5b4b29;padding:8px 12px}}\n.wrap{{display:grid;grid-template-columns:1fr 280px;gap:12px;padding:12px;min-height:70vh}}\n.stage{{background:#1a1d24;border:1px solid #2a3140;border-radius:8px;padding:16px;min-height:360px}}\n.form{{border:1px dashed #5b6a82;border-radius:6px;padding:16px;min-height:280px;background:#0f1218;position:relative}}\n.nodes{{position:relative;min-height:260px;margin-top:12px}}\n.node{{appearance:none;position:absolute;border:1px solid #3a4558;background:#222833;color:#e8eaef;border-radius:6px;padding:8px 10px;cursor:pointer;text-align:left;box-sizing:border-box;overflow:hidden}}\n.node[data-type=\"Form\"]{{position:relative;left:auto;top:auto;width:auto;height:auto;display:block;margin-bottom:8px}}\n.node:hover,.node:focus{{border-color:#6ea8fe;outline:none}}\n.node.is-on{{border-color:#f2b544;box-shadow:0 0 0 1px #f2b54455}}\n.tag{{display:block;font-size:11px;color:#9aa3b2}}\n.nm{{font-weight:600}}\n.side{{background:#1a1d24;border:1px solid #2a3140;border-radius:8px;padding:12px}}\n.side h2{{margin:0 0 8px;font-size:13px;color:#9aa3b2;text-transform:uppercase}}\n.kv{{margin:6px 0;font-size:13px}}\n.kv b{{color:#9aa3b2;font-weight:500;display:inline-block;min-width:4.5rem}}\n.hint{{margin-top:10px;padding:8px;background:#141820;border-radius:6px;white-space:pre-wrap;font-size:12px;color:#c5cad3}}\n.foot{{padding:8px 12px;color:#9aa3b2;font-size:12px}}\n<\/style>\n<\/head>\n<body>\n<div class=\"banner\" role=\"note\">{banner}<\/div>\n<div class=\"wrap\">\n  <main class=\"stage\">\n    <div class=\"form\" id=\"form\">\n      <div><strong>{title_e}<\/strong> <span style=\"color:#9aa3b2\">· {stack}<\/span><\/div>\n      <div class=\"nodes\" id=\"nodes\">{cards}<\/div>\n    <\/div>\n  <\/main>\n  <aside class=\"side\" aria-label=\"選取摘要\">\n    <h2>選取<\/h2>\n    <div class=\"kv\"><b>Name<\/b> <span id=\"pName\">—<\/span><\/div>\n    <div class=\"kv\"><b>Type<\/b> <span id=\"pType\">—<\/span><\/div>\n    <div class=\"kv\"><b>Id<\/b> <span id=\"pId\">—<\/span><\/div>\n    <div class=\"hint\" id=\"pBdd\">點選左側控件檢視 BDD／需求註記<\/div>\n    <div class=\"hint\" id=\"pTdd\" hidden><\/div>\n  <\/aside>\n<\/div>\n<p class=\"foot\">format={fmt} v{ver} · product_pass=false · 非 VERIFY／GA 證據<\/p>\n<script>\n(function(){{\n  var nodes=document.getElementById('nodes');\n  function sel(btn){{\n    nodes.querySelectorAll('.node').forEach(function(b){{b.classList.remove('is-on');}});\n    btn.classList.add('is-on');\n    document.getElementById('pName').textContent=btn.getAttribute('data-name')||'—';\n    document.getElementById('pType').textContent=btn.getAttribute('data-type')||'—';\n    document.getElementById('pId').textContent=btn.getAttribute('data-id')||'—';\n    var bdd=btn.getAttribute('data-bdd')||'';\n    var tdd=btn.getAttribute('data-tdd')||'';\n    document.getElementById('pBdd').textContent=bdd?('BDD: '+bdd):'（無 BDD 註記）';\n    var t=document.getElementById('pTdd');\n    var beh=btn.getAttribute('data-beh')||'';\n    var geom=btn.getAttribute('data-geom')||'';\n    var extra=(geom?('geom '+geom):'')+(beh?(' · behavior '+beh):'');\n    if(tdd||extra){{t.hidden=false;t.textContent=(tdd?('TDD: '+tdd+'\\n'):'')+extra;}} else {{t.hidden=true;}}\n  }}\n  nodes.addEventListener('click',function(ev){{\n    var btn=ev.target.closest('.node');\n    if(!btn) return;\n    sel(btn);\n  }});\n  var first=nodes.querySelector('.node');\n  if(first) sel(first);\n}})();\n<\/script>\n<\/body>\n<\/html>\n\"#,\n        title_e = html_escape(title),\n        banner = html_escape(PREVIEW_BANNER),\n        stack = html_escape(&doc.meta.target_stack),\n        cards = cards,\n        fmt = DESIGN_FORMAT,\n        ver = doc.format_version,\n    ))\n}", "observation": "Build preview將node畫成可選卡片及hint；不能等同完整導覽/表單/錯誤狀態", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "line_start": 5685, "line_end": 5905, "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b", "excerpt": "  function isUiDesignWindowOpen() {\n    if (isUiDesignStandalone()) return true;\n    const win = document.getElementById(\"uidesign-window\");\n    return !!(win && !win.hidden);\n  }\n\n  function applyUiDesignStandaloneShell() {\n    if (!isUiDesignStandalone()) return;\n    document.documentElement.classList.add(\"is-uidesign-standalone\");\n    document.body.classList.add(\"is-uidesign-standalone\");\n    dismissAppSplash({ caption: \"Ready\" });\n    const app = document.getElementById(\"app\");\n    if (app) app.setAttribute(\"hidden\", \"\");\n    const win = document.getElementById(\"uidesign-window\");\n    if (win) {\n      win.hidden = false;\n      win.classList.add(\"is-os-window\");\n    }\n    const chrome = document.getElementById(\"uidesign-window-chrome\");\n    if (chrome) chrome.hidden = true;\n  }\n\n  function closeUiDesignWindow() {\n    if (isUiDesignStandalone()) {\n      const g = window.__TAURI__;\n      const getCurrent =\n        g &&\n        g.webviewWindow &&\n        typeof g.webviewWindow.getCurrentWebviewWindow === \"function\"\n          ? g.webviewWindow.getCurrentWebviewWindow\n          : null;\n      if (getCurrent) {\n        try {\n          const cur = getCurrent();\n          if (cur && typeof cur.close === \"function\") {\n            cur.close();\n            return;\n          }\n        } catch (_e) {\n          /* fall through */\n        }\n      }\n      window.close();\n      return;\n    }\n    const win = document.getElementById(\"uidesign-window\");\n    if (win) win.hidden = true;\n    setDesignInspectorActive(false);\n    setUidesignWidgetsVisible(false);\n    setStatus(\"已關閉 UI 設計工具視窗\");\n  }\n\n  function openUiDesignWindowEmbedded(mode, opts) {\n    const win = document.getElementById(\"uidesign-window\");\n    const titleEl = document.getElementById(\"uidesign-window-title\");\n    const panel = document.getElementById(\"panel-uidesign\");\n    const viewer = mode === \"viewer\";\n    const quiet = opts && opts.quiet;\n    if (win) win.hidden = false;\n    if (panel) {\n      panel.classList.add(\"is-active\");\n      panel.removeAttribute(\"hidden\");\n    }\n    if (titleEl && !isUiDesignStandalone()) {\n      titleEl.textContent = viewer ? \"UI 預覽\" : \"UI 編輯\";\n    }\n    setUidesignMode(viewer ? \"viewer\" : \"designer\");\n    if (opts && opts.path) setUidesignPathDisplay(opts.path);\n    renderDesignCanvas();\n    if (!viewer) {\n      renderUiBhvPalette();\n      ensureUiWidgetPaletteVisible();\n      fillDesignProps();\n      setDesignInspectorActive(true);\n    }\n    if (!quiet) {\n      toast(\n        isUiDesignStandalone()\n          ? viewer\n            ? \"UI 預覽（獨立 OS 視窗）\"\n            : \"UI 編輯（獨立 OS 視窗）\"\n          : viewer\n            ? \"已開啟 UI 預覽視窗（內嵌；無 Tauri 時）\"\n            : \"已開啟 UI 編輯視窗（內嵌；無 Tauri 時）\"\n      );\n    }\n    setStatus(\n      viewer ? \"UI 預覽視窗\" : \"UI 編輯視窗\"\n    );\n  }\n\n  function tryOpenUiDesignOsWindow(mode, opts) {\n    if (isUiDesignStandalone()) {\n      return Promise.resolve(false);\n    }\n    const g = window.__TAURI__;\n    const WW =\n      g && g.webviewWindow && g.webviewWindow.WebviewWindow\n        ? g.webviewWindow.WebviewWindow\n        : null;\n    if (!WW) return Promise.resolve(false);\n    const viewer = mode === \"viewer\";\n    const label = viewer ? \"ui-viewer\" : \"ui-editor\";\n    const path =\n      (opts && opts.path) ||\n      UIDESIGN_DESIGN_REL ||\n      \"design/main.sgendesign\";\n    const title = viewer ? \"EluSlot — UI 預覽\" : \"EluSlot — UI 編輯\";\n    const qs = new URLSearchParams();\n    qs.set(\"standalone\", \"uidesign\");\n    qs.set(\"mode\", viewer ? \"viewer\" : \"designer\");\n    qs.set(\"path\", path);\n\n    function focusExisting(existing) {\n      return Promise.resolve()\n        .then(function () {\n          return existing.setTitle ? existing.setTitle(title) : null;\n        })\n        .catch(function () {\n          /* ignore */\n        })\n        .then(function () {\n          return existing.show ? existing.show() : null;\n        })\n        .catch(function () {\n          /* ignore */\n        })\n        .then(function () {\n          return existing.setFocus ? existing.setFocus() : null;\n        })\n        .catch(function () {\n          /* ignore */\n        })\n        .then(function () {\n          toast(viewer ? \"已聚焦 UI 預覽視窗\" : \"已聚焦 UI 編輯視窗\");\n          setStatus(\n            viewer ? \"UI 預覽（獨立 OS 視窗）\" : \"UI 編輯（獨立 OS 視窗）\"\n          );\n          return true;\n        });\n    }\n\n    return Promise.resolve()\n      .then(function () {\n        return typeof WW.getByLabel === \"function\"\n          ? WW.getByLabel(label)\n          : null;\n      })\n      .then(function (existing) {\n        if (existing) return focusExisting(existing);\n        return new Promise(function (resolve) {\n          let settled = false;\n          function done(ok) {\n            if (settled) return;\n            settled = true;\n            resolve(!!ok);\n          }\n          try {\n            const w = new WW(label, {\n              url: \"index.html?\" + qs.toString(),\n              title: title,\n              width: 1120,\n              height: 780,\n              minWidth: 720,\n              minHeight: 480,\n              center: true,\n              focus: true,\n              resizable: true,\n              decorations: true,\n            });\n            if (w && typeof w.once === \"function\") {\n              w.once(\"tauri://created\", function () {\n                toast(\n                  viewer\n                    ? \"已開啟 UI 預覽（可拖出主視窗）\"\n                    : \"已開啟 UI 編輯（可拖出主視窗）\"\n                );\n                setStatus(\n                  viewer\n                    ? \"UI 預覽（獨立 OS 視窗）\"\n                    : \"UI 編輯（獨立 OS 視窗）\"\n                );\n                done(true);\n              });\n              w.once(\"tauri://error\", function () {\n                done(false);\n              });\n            }\n            setTimeout(function () {\n              done(true);\n            }, 2000);\n          } catch (_err) {\n            done(false);\n          }\n        });\n      })\n      .catch(function () {\n        return false;\n      });\n  }\n\n  function openUiDesignWindow(mode, opts) {\n    opts = opts || {};\n    if (isUiDesignStandalone()) {\n      openUiDesignWindowEmbedded(mode, opts);\n      return;\n    }\n    tryOpenUiDesignOsWindow(mode, opts).then(function (ok) {\n      if (ok) {\n        const win = document.getElementById(\"uidesign-window\");\n        if (win) win.hidden = true;\n        setDesignInspectorActive(false);\n        return;\n      }\n      openUiDesignWindowEmbedded(mode, opts);\n    });\n  }\n\n  function openArchUiLayer(mode, nodeId) {\n    const id = nodeId || archSelectedId;\n    const node = findArchNode(id);", "observation": "已有embedded/OS Editor與Viewer入口；新建成功自動載主要畫面待接", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "line_start": 13323, "line_end": 13356, "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b", "excerpt": "  async function cmdUidesignBuild() {\n    applyPropsFromInputs();\n    if (!invoke) {\n      setUidesignStatus(\n        \"瀏覽器模式：uidesign_build_preview NOT RUN（需 Tauri）\",\n        true\n      );\n      toast(\"Build NOT RUN（無 IPC）\");\n      return;\n    }\n    try {\n      const args = {\n        doc: designDoc,\n        name: \"main\",\n        open_after: true,\n      };\n      if (cachedProjectRoot) args.project_root = cachedProjectRoot;\n      const dto = await invoke(\"uidesign_build_preview\", { args: args });\n      if (dto && dto.product_pass === true) {\n        setUidesignStatus(\"契約違反：preview 不得 product_pass=true\", true);\n        return;\n      }\n      setUidesignStatus(\n        ((dto && dto.message) || \"已 Build\") +\n          (dto && dto.path ? \" → \" + dto.path : \"\") +\n          \"（溝通用 · 非正式 PASS）\",\n        false\n      );\n      setUidesignStatusBadge(\"狀態：預覽已建（非驗收 PASS）\", \"ok\");\n      toast(\"已 Build 溝通預覽\");\n    } catch (err) {\n      setUidesignStatus(\"Build 失敗：\" + String(err), true);\n      toast(\"Build 失敗\");\n    }", "observation": "Build invoke及product_pass=false保護存在；仍需preview revision及過期契約", "evidence": "SOURCE_INSPECTION_ONLY"}], "tests": "NOT RUN", "native_ui": "NOT RUN", "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."}, "gap": {"module": "M03", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "requirements": [{"requirement": "REQ-05", "module": "M03", "feature": "F04", "tests": "BDD-05/06", "acceptance": "AC04", "result": "PLANNED_NOT_RUN"}], "gaps": ["JS metadata如guides與HOST型別往返可能丟欄位，須正式roundtrip fixture", "事件/模擬狀態schema、隔離runtime及跨視圖ID綁定未定", "多視窗JS模型需單一提交authority及revision，不能假設視圖同步"], "bdd_owned": [{"id": "BDD-05", "req": "REQ-05", "name": "有UI自動開窗", "result": "PLANNED_NOT_RUN"}, {"id": "BDD-06", "req": "REQ-05", "name": "無UI不開窗", "result": "PLANNED_NOT_RUN"}], "extra_obligations": [["X03", "M03", "Editor事件隔離、Viewer最新版本／Build失敗、選取同步、無綁定、鍵盤與錯誤定位。"]], "reuse_strategy": "Retain existing scoped behavior and add minimum approved delta; do not rebuild historical green capabilities."}, "envelope": {"module": "M03", "status": "PROPOSED_NOT_APPROVED", "current_authorized_writes": ["docs/requirements-confirmation/phase1-spec/tasks/M03/planning/**", "own PREP board notes and planning status only"], "proposed_existing_production": ["apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "apps/sgenaxis-desktop/ui/app.js", "apps/sgenaxis-desktop/ui/index.html", "apps/sgenaxis-desktop/ui/styles.css"], "proposed_new_production": ["apps/sgenaxis-desktop/crates/sgenaxis-work/src/design_binding.rs", "apps/sgenaxis-desktop/ui/design-preview-runtime.js"], "proposed_tests": ["apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_design_roundtrip.rs", "apps/sgenaxis-desktop/ui/design-preview-runtime.test.cjs"], "protected": "All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.", "shared_files": "app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.", "baseline": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs", "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"}, {"path": "apps/sgenaxis-desktop/ui/index.html", "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"}, {"path": "apps/sgenaxis-desktop/ui/styles.css", "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"}], "new_dependency_cost": "No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.", "new_public_api_cost": "Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.", "file_cost": {"existing_candidates": 9, "new_production_candidates": 2, "new_test_candidates": 2}, "decisions": ["D2", "D3", "D4"]}, "tests": {"module": "M03", "existing_commands": [{"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test -p sgenaxis-host uidesign_doc::tests", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}, {"cwd": "D:/AIAD", "command": "python -m pytest tests/test_pd_uidesigner_edit_p2.py -q", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}], "proposed_commands": [{"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test -p sgenaxis-host --test phase1_design_roundtrip", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "node --test ui/design-preview-runtime.test.cjs", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}], "cases": [{"id": "TDD-05", "bdd": "BDD-05", "requirement": "REQ-05", "title": "有UI自動開窗", "given": "有UI專案成功生成雙骨架", "when": "顯示建立結果", "then": "UI設計視窗載入主要畫面", "fixture": "fixtures.json#BDD-05", "levels": ["L1 component", "L2 module contract", "L3 adapter where applicable"], "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.", "result": "NOT RUN"}, {"id": "TDD-06", "bdd": "BDD-06", "requirement": "REQ-05", "title": "無UI不開窗", "given": "無UI專案成功生成骨架", "when": "顯示建立結果", "then": "不開啟多餘UI設計視窗", "fixture": "fixtures.json#BDD-06", "levels": ["L1 component", "L2 module contract", "L3 adapter where applicable"], "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.", "result": "NOT RUN"}, {"id": "TDD-M03-A", "bdd": "BDD-M03-A", "requirement": "REQ-05,18", "title": "設計欄位往返", "given": "設計含guides與事件等批准欄位", "when": "保存再重開", "then": "語義內容完整或明確拒未知版本，不靜默丟欄位", "fixture": "fixtures.json#BDD-M03-A", "levels": ["L2 module contract", "L4 adjacent regression"], "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.", "result": "NOT RUN"}, {"id": "TDD-M03-B", "bdd": "BDD-M03-B", "requirement": "REQ-05,18", "title": "preview版本隔離", "given": "已有舊版preview與修改後設計", "when": "Build失敗後操作Viewer", "then": "明示舊版且不執行正式副作用", "fixture": "fixtures.json#BDD-M03-B", "levels": ["L2 module contract", "L4 adjacent regression"], "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.", "result": "NOT RUN"}], "B1_B12": [{"id": "B1", "name": "成功", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B2", "name": "邊界", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B3", "name": "非法輸入", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B4", "name": "依賴失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B5", "name": "部分失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B6", "name": "狀態一致性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B7", "name": "交易", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B8", "name": "生命週期", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B9", "name": "回復", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B10", "name": "跨模組", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B11", "name": "相容性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B12", "name": "回歸", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}], "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.", "regression_levels": ["focused new cases", "module public-input contract tests", "adjacent shared-boundary tests", "architecture constraints", "Windows native via M08"], "pending_automation": ["exact approved input DTO/Port bindings", "create listed test target and fixtures after Skeleton gate", "expand per-case fault matrix", "native UI operator + runtime source identity", "real filesystem interruption and rollback-failure coverage"], "stop_conditions": ["unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED", "conflicting specification → SPEC_CONFLICT", "tests compile/fixture/environment errors → not valid RED"], "test_execution": "NOT RUN; no production tests or test files created"}, "ui_schema": {"role": "本機專案作者／設計者", "fields_controls_states": "Editor/Viewer/Build、過期badge、畫面/元件/事件清單、錯誤定位；無UI不開窗。", "validation": "Validate fields, identity, revision and capability before mutation; disabled states name reason", "defaults": "Spec D01-D13 are proposals; no implicit approval here", "empty": "No project/document/template/asset/artifact: show actual empty state and next available action", "accessibility": "Text labels, keyboard focus, field-linked errors; details pending rendered UI review"}, "decisions": [{"id": "D2", "gate": "G01/G03", "title": "文件權威與多視窗同步", "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。", "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。", "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。", "affected_modules": ["M01", "M02", "M03", "M04", "M05", "M06", "M07"], "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"}, {"id": "D3", "gate": "G04", "title": "首版模板、Viewer及媒體矩陣", "observation": "有Vanilla/Tauri與卡片communication preview；尚未見版本化雙骨架模板與完整media codec。", "recommendation": "首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。", "alternatives": "一次全部框架/宿主/媒體需要擴大驗證；只存定義不生成會縮已確認需求，不能自行採用。", "affected_modules": ["M02", "M03", "M05", "M08"], "blocking": "只阻擋對應生成/preview/media；非全域停工。"}, {"id": "D4", "gate": "G02/G03", "title": "文件Undo與穩定capture", "observation": "core EditSession是selection history；UI recovery是volatile清空checkpoint；無素材pin。", "recommendation": "保留selection原契約；WORK加入document before/after revision及compound history，HOST協調pin；M07取stable immutable revision。fingerprint排除selection/viewport/playback及純savedAt。", "alternatives": "擴EditSession管全部文件會混責；只用UI快照無法證明多視窗與素材一致。", "affected_modules": ["M03", "M04", "M07"], "blocking": "Undo/capture lifecycle與test seam需批准。"}], "assumptions": ["Keep existing green slices; source presence is not full acceptance", "Candidate new files and exact signatures require architecture/Skeleton approval", "No new infrastructure dependencies or product behavior changes in PREP"]}</script></html>

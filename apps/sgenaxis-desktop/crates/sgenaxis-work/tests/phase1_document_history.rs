@@ -1,0 +1,474 @@
+//! M04-S1 pure contract tests. Fixtures are plain values, never stub calls.
+use sgenaxis_work::document_edit::*;
+
+// Canonical full-document fixtures; expected hashes computed independently.
+fn payload(label: &str) -> &'static str {
+    match label {
+        "before" => {
+            r#"{"architecture":{"nodes":[{"id":"n1"},{"id":"n2"}],"relations":[["n1","n2"]]},"assetRefs":[{"assetId":"44444444-4444-4444-8444-444444444444","contentDigest":"sha256:19a1ff0ae41668332a62e0844e3470caa08d734a40ba0efb50ed66dcc86b0c24"}],"bindings":[{"id":"button-action","state":"pending","targetId":null}],"blockedCapabilities":["generate.bound-action"],"design":{"nodes":[{"id":"root","type":"Form"},{"id":"button","parentId":"root","type":"Button"}]},"format":"eluslot.ess.v1","meta":{"label":"before"},"work":{"tasks":[{"id":"task-1","title":"Keep source intact"}]}}"#
+        }
+        "cleared" => {
+            r#"{"architecture":{"nodes":[],"relations":[]},"assetRefs":[],"bindings":[],"blockedCapabilities":[],"design":{"nodes":[{"id":"root","type":"Form"}]},"format":"eluslot.ess.v1","meta":{"label":"cleared"},"work":{"tasks":[]}}"#
+        }
+        "R1" => {
+            r#"{"architecture":{"nodes":[{"id":"n1"},{"id":"n2"}],"relations":[["n1","n2"]]},"assetRefs":[{"assetId":"44444444-4444-4444-8444-444444444444","contentDigest":"sha256:19a1ff0ae41668332a62e0844e3470caa08d734a40ba0efb50ed66dcc86b0c24"}],"bindings":[{"id":"button-action","state":"pending","targetId":null}],"blockedCapabilities":["generate.bound-action"],"design":{"nodes":[{"id":"root","type":"Form"},{"id":"button","parentId":"root","type":"Button"}]},"format":"eluslot.ess.v1","meta":{"label":"R1"},"work":{"tasks":[{"id":"task-1","title":"Keep source intact"}]}}"#
+        }
+        "R2" => {
+            r#"{"architecture":{"nodes":[{"id":"n1"},{"id":"n2"}],"relations":[["n1","n2"]]},"assetRefs":[{"assetId":"44444444-4444-4444-8444-444444444444","contentDigest":"sha256:19a1ff0ae41668332a62e0844e3470caa08d734a40ba0efb50ed66dcc86b0c24"}],"bindings":[{"id":"button-action","state":"pending","targetId":null}],"blockedCapabilities":["generate.bound-action"],"design":{"nodes":[{"id":"root","type":"Form"},{"id":"button","parentId":"root","type":"Button"}]},"format":"eluslot.ess.v1","meta":{"label":"R2"},"work":{"tasks":[{"id":"task-1","title":"Keep source intact"}]}}"#
+        }
+        _ => panic!("unknown fixture label: {label}"),
+    }
+}
+
+fn digest(label: &str) -> &'static str {
+    match label {
+        "before" => "sha256:81aa770f2d3e017b042f63977c87e34206f4f84bda1b3a8818a22323b592957c",
+        "cleared" => "sha256:13820c049eaa184a575c86427630f1c631bc7043d0370629b71226998eecb487",
+        "R1" => "sha256:78e4e921ce1b57da691a7a111b16fe2b670e53bffb3aac3ca64001ba8b9a9e9f",
+        "R2" => "sha256:9f0d8e0c0aca15ac254c1f727564d0295b1bebd8896846deb79fdc103e3e2ea6",
+        _ => panic!("unknown fixture label: {label}"),
+    }
+}
+
+fn content(label: &str, with_references: bool) -> DocumentContent {
+    DocumentContent::from_parts(
+        payload(label).as_bytes().to_vec(),
+        digest(label).to_string(),
+        if with_references {
+            vec![AssetVersionRef {
+                asset_id: "44444444-4444-4444-8444-444444444444".into(),
+                content_digest:
+                    "sha256:19a1ff0ae41668332a62e0844e3470caa08d734a40ba0efb50ed66dcc86b0c24".into(),
+            }]
+        } else {
+            vec![]
+        },
+        if with_references {
+            vec![BindingState {
+                id: "button-action".into(),
+                target_id: None,
+                state: BindingStatus::Pending,
+            }]
+        } else {
+            vec![]
+        },
+        if with_references {
+            vec!["generate.bound-action".into()]
+        } else {
+            vec![]
+        },
+    )
+}
+
+fn state() -> DocumentSessionState {
+    DocumentSessionState {
+        project_uuid: "11111111-1111-4111-8111-111111111111".into(),
+        document_uuid: "22222222-2222-4222-8222-222222222222".into(),
+        session_uuid: "33333333-3333-4333-8333-333333333333".into(),
+        content_revision: Revision(0),
+        content: content("before", true),
+        formal_baseline: Some(SavedContentBaseline {
+            revision: Revision(0),
+            semantic_digest: digest("before").into(),
+        }),
+        snapshot_baseline: Some(SavedContentBaseline {
+            revision: Revision(0),
+            semantic_digest: digest("before").into(),
+        }),
+        status: SessionStatus::Editing,
+        undo: vec![],
+        redo: vec![],
+    }
+}
+
+fn plan(before: &DocumentSessionState, after: DocumentContent) -> MutationPlan {
+    MutationPlan {
+        document_uuid: before.document_uuid.clone(),
+        session_uuid: before.session_uuid.clone(),
+        expected_revision: before.content_revision,
+        kind: MutationKind::Clear,
+        before: before.content.clone(),
+        after,
+        required_asset_versions: before.content.asset_refs().to_vec(),
+    }
+}
+
+fn after_clear() -> DocumentSessionState {
+    let before = state();
+    let after = content("cleared", false);
+    let mut current = before.clone();
+    current.content_revision = Revision(1);
+    current.content = after.clone();
+    current.undo = vec![DocumentHistoryEntry {
+        kind: MutationKind::Clear,
+        before: before.content,
+        after,
+    }];
+    current
+}
+
+#[test]
+fn m04_ex01_clear_commit_creates_one_complete_history_entry() {
+    let before = state();
+    let after = content("cleared", false);
+    let operation = plan(&before, after.clone());
+    let mut session = DocumentSession::new(before.clone());
+    let result = session.commit(operation);
+    assert!(result.is_ok(), "single-file clear must commit: {result:?}");
+    assert_eq!(session.state().content, after);
+    assert_eq!(session.state().undo.len(), 1);
+    assert_eq!(session.state().undo[0].before, before.content);
+    assert_eq!(session.state().content_revision, Revision(1));
+}
+
+#[test]
+fn m04_ex01_undo_restores_content_refs_bindings_and_restrictions() {
+    let original = state();
+    let mut session = DocumentSession::new(after_clear());
+    let result = session.undo(Revision(1));
+    assert!(
+        result.is_ok(),
+        "one Undo must restore the whole document: {result:?}"
+    );
+    assert_eq!(session.state().content, original.content);
+    assert!(session.state().undo.is_empty());
+    assert_eq!(session.state().redo.len(), 1);
+}
+
+#[test]
+fn m04_ex02_preparing_then_discarding_a_plan_does_not_mutate_or_add_history() {
+    let before = state();
+    let session = DocumentSession::new(before.clone());
+    let result = session.prepare(Revision(0), MutationKind::Clear, content("cleared", false));
+    assert!(
+        result.is_ok(),
+        "a valid preview must be preparable: {result:?}"
+    );
+    drop(result.unwrap()); // Cancellation discards the pure plan; there is no IO.
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_ex03_stale_plan_rejects_without_changing_content_or_history() {
+    let old = state();
+    let operation = plan(&old, content("cleared", false));
+    let mut current = old;
+    current.content_revision = Revision(2);
+    let before = current.clone();
+    let mut session = DocumentSession::new(current);
+    assert_eq!(session.commit(operation), Err(EditError::RevisionConflict));
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_ex04_plan_for_another_document_cannot_cross_the_mutation_boundary() {
+    let before = state();
+    let mut operation = plan(&before, content("cleared", false));
+    operation.document_uuid = "55555555-5555-4555-8555-555555555555".into();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.commit(operation),
+        Err(EditError::InvalidInput {
+            field: "documentUuid".into()
+        })
+    );
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_ex05_same_semantic_content_is_not_a_new_content_edit() {
+    let before = state();
+    let operation = plan(&before, before.content.clone());
+    let mut session = DocumentSession::new(before.clone());
+    let result = session.commit(operation);
+    assert!(
+        result.is_ok(),
+        "same semantic content is a no-op, not a failure: {result:?}"
+    );
+    assert!(!result.unwrap().changed);
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_ex06_undo_advances_revision_but_can_return_to_a_clean_formal_content() {
+    let mut session = DocumentSession::new(after_clear());
+    let result = session.undo(Revision(1));
+    assert!(
+        result.is_ok(),
+        "Undo is a new revision of restored content: {result:?}"
+    );
+    let projection = result.unwrap();
+    assert_eq!(projection.revision, Revision(2));
+    assert!(!projection.dirty);
+    assert_eq!(session.state().snapshot_baseline, state().snapshot_baseline);
+}
+
+#[test]
+fn m04_ex07_capture_rejects_apply_and_recovery_required_states() {
+    for status in [SessionStatus::Applying, SessionStatus::RecoveryRequired] {
+        let mut current = state();
+        current.status = status;
+        let before = current.clone();
+        let session = DocumentSession::new(current);
+        assert_eq!(session.capture(), Err(EditError::Busy));
+        assert_eq!(session.state(), &before);
+    }
+}
+
+#[test]
+fn m04_ex07_stable_capture_contains_immutable_content_and_identity() {
+    let before = state();
+    let session = DocumentSession::new(before.clone());
+    let captured = session.capture();
+    assert!(
+        captured.is_ok(),
+        "stable content must be capturable: {captured:?}"
+    );
+    let captured = captured.unwrap();
+    assert_eq!(captured.content, before.content);
+    assert_eq!(captured.revision, before.content_revision);
+    assert_eq!(captured.session_uuid, before.session_uuid);
+}
+
+#[test]
+fn m04_ex08_formal_ack_does_not_reset_the_recovery_baseline() {
+    let mut current = state();
+    current.content_revision = Revision(2);
+    current.content = content("R2", true);
+    current.snapshot_baseline = Some(SavedContentBaseline {
+        revision: Revision(1),
+        semantic_digest: digest("R1").into(),
+    });
+    let recovery_before = current.snapshot_baseline.clone();
+    let mut session = DocumentSession::new(current);
+    let result = session.acknowledge_formal_save(Revision(2), digest("R2"));
+    assert!(
+        result.is_ok(),
+        "formal acknowledgment must apply independently: {result:?}"
+    );
+    assert_eq!(
+        session
+            .state()
+            .formal_baseline
+            .as_ref()
+            .unwrap()
+            .semantic_digest,
+        digest("R2")
+    );
+    assert_eq!(session.state().snapshot_baseline, recovery_before);
+    assert!(!result.unwrap().dirty);
+}
+
+#[test]
+fn m04_recovery_ack_does_not_reset_the_formal_baseline() {
+    let mut current = state();
+    current.content_revision = Revision(2);
+    current.content = content("R2", true);
+    let formal_before = current.formal_baseline.clone();
+    let mut session = DocumentSession::new(current);
+    let result = session.acknowledge_recovery_save(Revision(2), digest("R2"));
+    assert!(
+        result.is_ok(),
+        "recovery acknowledgment must not masquerade as formal saving: {result:?}"
+    );
+    assert_eq!(session.state().formal_baseline, formal_before);
+    assert_eq!(
+        session.state().snapshot_baseline.as_ref().unwrap().revision,
+        Revision(2)
+    );
+}
+
+#[test]
+fn m04_ex09_late_formal_ack_preserves_newer_edits_as_dirty() {
+    let mut current = state();
+    current.content_revision = Revision(2);
+    current.content = content("R2", true);
+    let mut session = DocumentSession::new(current.clone());
+    let result = session.acknowledge_formal_save(Revision(1), digest("R1"));
+    assert!(
+        result.is_ok(),
+        "acknowledge exactly the captured revision: {result:?}"
+    );
+    assert!(result.unwrap().dirty);
+    assert_eq!(session.state().content_revision, Revision(2));
+    assert_eq!(session.state().content, current.content);
+    assert_eq!(
+        session.state().formal_baseline.as_ref().unwrap().revision,
+        Revision(1)
+    );
+}
+
+#[test]
+fn m04_late_recovery_ack_cannot_swallow_a_newer_content_revision() {
+    let mut current = state();
+    current.content_revision = Revision(2);
+    current.content = content("R2", true);
+    let mut session = DocumentSession::new(current.clone());
+    let result = session.acknowledge_recovery_save(Revision(1), digest("R1"));
+    assert!(
+        result.is_ok(),
+        "record the captured snapshot, not the current content: {result:?}"
+    );
+    assert!(result.unwrap().needs_snapshot);
+    assert_eq!(
+        session.state().snapshot_baseline.as_ref().unwrap().revision,
+        Revision(1)
+    );
+    assert_eq!(session.state().content, current.content);
+}
+
+#[test]
+fn m04_revision_overflow_cannot_wrap_or_add_a_history_entry() {
+    let mut current = state();
+    current.content_revision = Revision(u64::MAX);
+    let operation = plan(&current, content("cleared", false));
+    let mut session = DocumentSession::new(current.clone());
+    assert_eq!(session.commit(operation), Err(EditError::RevisionOverflow));
+    assert_eq!(session.state(), &current);
+}
+
+#[test]
+fn m04_empty_history_undo_reports_no_undo_and_preserves_state() {
+    let before = state();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(session.undo(Revision(0)), Err(EditError::NoUndo));
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_matching_revision_does_not_authorize_a_forged_before_payload() {
+    let before = state();
+    let mut operation = plan(&before, content("cleared", false));
+    operation.before = content("R1", true);
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(session.commit(operation), Err(EditError::RevisionConflict));
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_plan_for_another_session_cannot_commit() {
+    let before = state();
+    let mut operation = plan(&before, content("cleared", false));
+    operation.session_uuid = "55555555-5555-4555-8555-555555555555".into();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.commit(operation),
+        Err(EditError::InvalidInput {
+            field: "sessionUuid".into()
+        })
+    );
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_future_ack_cannot_change_either_baseline() {
+    let before = state();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.acknowledge_formal_save(Revision(1), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(
+        session.acknowledge_recovery_save(Revision(1), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_old_ack_cannot_rewind_an_already_newer_baseline() {
+    let mut before = state();
+    before.content_revision = Revision(2);
+    before.content = content("R2", true);
+    before.formal_baseline = Some(SavedContentBaseline {
+        revision: Revision(2),
+        semantic_digest: digest("R2").into(),
+    });
+    before.snapshot_baseline = before.formal_baseline.clone();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.acknowledge_formal_save(Revision(1), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(
+        session.acknowledge_recovery_save(Revision(1), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_closed_session_rejects_mutation_and_capture() {
+    let mut before = state();
+    before.status = SessionStatus::Closed;
+    let operation = plan(&before, content("cleared", false));
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(session.commit(operation), Err(EditError::Closed));
+    assert_eq!(session.capture(), Err(EditError::Closed));
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_prepare_carries_asset_versions_needed_by_both_sides() {
+    let before = state();
+    let mut refs = before.content.asset_refs().to_vec();
+    refs.push(AssetVersionRef {
+        asset_id: "55555555-5555-4555-8555-555555555555".into(),
+        content_digest: digest("R1").into(),
+    });
+    let after = DocumentContent::from_parts(r#"{"architecture":{"nodes":[{"id":"n1"},{"id":"n2"}],"relations":[["n1","n2"]]},"assetRefs":[{"assetId":"44444444-4444-4444-8444-444444444444","contentDigest":"sha256:19a1ff0ae41668332a62e0844e3470caa08d734a40ba0efb50ed66dcc86b0c24"},{"assetId":"55555555-5555-4555-8555-555555555555","contentDigest":"sha256:78e4e921ce1b57da691a7a111b16fe2b670e53bffb3aac3ca64001ba8b9a9e9f"}],"bindings":[{"id":"button-action","state":"pending","targetId":null}],"blockedCapabilities":["generate.bound-action"],"design":{"nodes":[{"id":"root","type":"Form"},{"id":"button","parentId":"root","type":"Button"}]},"format":"eluslot.ess.v1","meta":{"label":"R1"},"work":{"tasks":[{"id":"task-1","title":"Keep source intact"}]}}"#.as_bytes().to_vec(), "sha256:a2d5bf651e87108dc61063cce6a7e4676b62a21f229d1a336b40fed60f901f89".into(), refs.clone(), vec![], vec![]);
+    let session = DocumentSession::new(before.clone());
+    let result = session.prepare(Revision(0), MutationKind::Merge, after);
+    assert!(
+        result.is_ok(),
+        "validated merge content must prepare: {result:?}"
+    );
+    assert_eq!(result.unwrap().required_asset_versions, refs);
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_missing_asset_retention_plan_rejects_before_history_mutation() {
+    let before = state();
+    let mut operation = plan(&before, content("cleared", false));
+    operation.required_asset_versions.clear();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.commit(operation),
+        Err(EditError::InvalidInput {
+            field: "requiredAssetVersions".into()
+        })
+    );
+    assert_eq!(session.state(), &before);
+}
+
+#[test]
+fn m04_editing_during_save_remains_possible_and_late_ack_leaves_new_content_dirty() {
+    let mut before = state();
+    before.status = SessionStatus::Saving;
+    let mut session = DocumentSession::new(before);
+    let operation = session.prepare(Revision(0), MutationKind::Edit, content("R1", true));
+    assert!(operation.is_ok());
+    let applied = session.commit(operation.unwrap());
+    assert!(applied.is_ok());
+    assert_eq!(session.state().status, SessionStatus::Saving);
+    let acknowledged = session.acknowledge_formal_save(Revision(0), digest("before"));
+    assert!(acknowledged.is_ok());
+    assert!(acknowledged.unwrap().dirty);
+    assert_eq!(session.state().content, content("R1", true));
+}
+
+#[test]
+fn m04_conflicting_digest_for_current_revision_cannot_replace_a_baseline() {
+    let before = state();
+    let mut session = DocumentSession::new(before.clone());
+    assert_eq!(
+        session.acknowledge_formal_save(Revision(0), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(
+        session.acknowledge_recovery_save(Revision(0), digest("R1")),
+        Err(EditError::RevisionConflict)
+    );
+    assert_eq!(session.state(), &before);
+}

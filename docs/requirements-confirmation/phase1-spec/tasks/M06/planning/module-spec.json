@@ -1,0 +1,855 @@
+{
+  "module": "M06",
+  "task": "PD-P1-M06-PREP-01",
+  "status": "PLANNING_DELIVERED_REVIEW_PENDING",
+  "architecture": {
+    "A1_context": "交換與合併；BIN輸出／新專案還原、ESS匯入及單文件合併",
+    "A2_hexagonal": "UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters",
+    "A3_dependency": "M06 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass",
+    "A4_responsibility": "BIN輸出／新專案還原、ESS匯入及單文件合併",
+    "A5_input_ports": "Inspect/ExportBin/RestoreNewProject/PrepareSingleMerge/ConfirmMerge（提案）",
+    "A6_output_ports": "FileSystemPort＋archive codec外部適配；transaction seam需D5批准。",
+    "A7_driving_adapters": "Vanilla UI / module tests / Windows native operator",
+    "A8_driven_adapters": "Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager",
+    "A9_direction": "Domain must not depend on UI/FS/OS/Tauri/concrete adapters",
+    "A10_ownership": "WORK決定ID與merge plan；HOST讀寫archive；M04提交內容/history；M06不另持SSOT。",
+    "A11_mutation": "All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document",
+    "A12_transaction": "validate format/limits/paths → freeze single target plan → stage immutable assets → M04 commit → one Undo；失敗全回復；新專案還原另流程。",
+    "A13_external": "Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority",
+    "A14_forbidden": "UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape",
+    "status": "PROPOSED_NOT_APPROVED"
+  },
+  "contract": {
+    "preconditions": "Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions",
+    "success": "Result reflects committed version, no error contradiction; design/build status never equals functional acceptance",
+    "failure": "Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5",
+    "ownership": "WORK決定ID與merge plan；HOST讀寫archive；M04提交內容/history；M06不另持SSOT。",
+    "atomicity": "validate format/limits/paths → freeze single target plan → stage immutable assets → M04 commit → one Undo；失敗全回復；新專案還原另流程。",
+    "lifecycle": "Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files",
+    "invariants": [
+      [
+        "INV01",
+        "任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。"
+      ],
+      [
+        "INV02",
+        "文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。"
+      ],
+      [
+        "INV03",
+        "合併及Undo的變更集合固定為一份目標文件加必要素材引用；跨文件更動不得隱含加入。"
+      ],
+      [
+        "INV04",
+        "素材被現行文件、其他文件、Undo歷史、進行中交易或保留快照引用時不得物理刪除。此引用根集合為建議架構細化，待G02/G03批准。"
+      ],
+      [
+        "INV05",
+        "快照基準僅在快照與必要素材完整保存並發布索引成功後更新，與正式基準獨立。"
+      ],
+      [
+        "INV06",
+        "成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。"
+      ],
+      [
+        "INV07",
+        "確認只作用於已預覽且版本相符的內容；過期方案不得覆寫新資料（版本鎖定為建議契約）。"
+      ],
+      [
+        "INV08",
+        "匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。"
+      ]
+    ]
+  },
+  "inventory": {
+    "module": "M06",
+    "task": "PD-P1-M06-PREP-01",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "dirty": true,
+    "evidence": "SOURCE_INSPECTION_ONLY",
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+        "exists": true,
+        "sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+        "exists": true,
+        "sha256": "74af5dba61df135c9585843d309b8a5be47df96f61c914b0679dfd98ec797dbb"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "exists": true,
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+        "exists": true,
+        "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+        "exists": true,
+        "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "exists": true,
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+        "exists": true,
+        "sha256": "7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project.rs",
+        "exists": true,
+        "sha256": "8f9a9caeabaae0d91bb5e9c56f1dd13ac3b4b5d2c81b0533aedf16fd33c071b4"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+        "exists": true,
+        "sha256": "a345a17fe1aca9b22b3f31180daba3fba379d9a25f5697f1ca9c8bd0cf873a01"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "exists": true,
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "exists": true,
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/document_identity.rs",
+        "exists": true,
+        "sha256": "14ea16b234f8bffb9ef1666794ad0f304d9a2e531ae8eee87c28059756330069"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "exists": true,
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "exists": true,
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/tests/project_document_commands.rs",
+        "exists": true,
+        "sha256": "9f683ec9c26a0823f382b523e9a5ee0d116ac6464b08e5930b9a32f1280569bb"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "exists": true,
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "exists": true,
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/project-document-ui.test.cjs",
+        "exists": true,
+        "sha256": "71c154e9d53a40d39e1a3785312d598984442947b81d744b27c1f9593d6b7c13"
+      }
+    ],
+    "findings": [
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "line_start": 359,
+        "line_end": 449,
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+        "excerpt": "  function packSgbBinary(entries) {\n    const chunks = [utf8Encode(SGB_MAGIC)];\n    const countBuf = new Uint8Array(2);\n    new DataView(countBuf.buffer).setUint16(0, entries.length, true);\n    chunks.push(countBuf);\n    entries.forEach(function (ent) {\n      const nameBytes = utf8Encode(ent.name);\n      const dataBytes =\n        ent.data instanceof Uint8Array ? ent.data : utf8Encode(ent.data);\n      const nh = new Uint8Array(2);\n      new DataView(nh.buffer).setUint16(0, nameBytes.length, true);\n      const dh = new Uint8Array(4);\n      new DataView(dh.buffer).setUint32(0, dataBytes.length, true);\n      chunks.push(nh, nameBytes, dh, dataBytes);\n    });\n    return concatUint8(chunks);\n  }\n\n  function unpackSgbBinary(buf) {\n    const bytes =\n      buf instanceof Uint8Array\n        ? buf\n        : new Uint8Array(buf);\n    if (bytes.length < 6) throw new Error(\"SGB too short\");\n    const magic = utf8Decode(bytes.subarray(0, 4));\n    if (magic !== SGB_MAGIC) throw new Error(\"not SGB1 magic\");\n    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);\n    let o = 4;\n    const count = view.getUint16(o, true);\n    o += 2;\n    const map = Object.create(null);\n    for (let i = 0; i < count; i++) {\n      if (o + 2 > bytes.length) throw new Error(\"SGB truncated name len\");\n      const nlen = view.getUint16(o, true);\n      o += 2;\n      if (o + nlen + 4 > bytes.length) throw new Error(\"SGB truncated name\");\n      const name = utf8Decode(bytes.subarray(o, o + nlen));\n      o += nlen;\n      const dlen = view.getUint32(o, true);\n      o += 4;\n      if (o + dlen > bytes.length) throw new Error(\"SGB truncated data\");\n      map[name] = utf8Decode(bytes.subarray(o, o + dlen));\n      o += dlen;\n    }\n    return map;\n  }\n\n  function buildWorkSgJson() {\n    const board =\n      lastBoard && typeof lastBoard === \"object\"\n        ? lastBoard\n        : { tasks: [], active_run_id: null };\n    return JSON.stringify(\n      {\n        format: \"eluslot.es\",\n        formatVersion: 1,\n        encoding: \"json\",\n        meta: {\n          savedAt: new Date().toISOString(),\n          boardFilter: boardFilter || \"overview\",\n          product_pass: false,\n        },\n        board: board,\n      },\n      null,\n      2\n    );\n  }\n\n  function buildDesignSguiJson() {\n    const doc = designDoc && typeof designDoc === \"object\" ? designDoc : blankDesignDoc();\n    const copy = JSON.parse(JSON.stringify(doc));\n    copy.format = \"eluslot.esui\";\n    copy.formatVersion = copy.formatVersion || 1;\n    copy.product_pass = false;\n    if (!copy.meta) copy.meta = {};\n    copy.meta.updatedAt = new Date().toISOString();\n    copy.meta.encoding = \"json\";\n    return JSON.stringify(copy, null, 2);\n  }\n\n  function buildSceneSgbBytes() {\n    const archXml =\n      typeof archDocToXml === \"function\"\n        ? archDocToXml(archDoc)\n        : '<?xml version=\"1.0\"?><eluslotArch/>';\n    return packSgbBinary([\n      { name: SGB_ENTRY_WORK, data: buildWorkSgJson() },\n      { name: SGB_ENTRY_ARCH, data: archXml },\n      { name: SGB_ENTRY_DESIGN, data: buildDesignSguiJson() },\n    ]);",
+        "observation": "SGB三entry pack/unpack不是新版BIN；未含完整manifest及素材集合",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+        "line_start": 38,
+        "line_end": 78,
+        "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691",
+        "excerpt": "struct WireManifest {\n    schema: String,\n    #[serde(rename = \"schemaVersion\")]\n    schema_version: u32,\n    documents: Vec<WireDocument>,\n}\n\n#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]\n#[serde(deny_unknown_fields)]\nstruct WireDocument {\n    #[serde(rename = \"documentId\")]\n    document_id: String,\n    kind: String,\n    reference: String,\n    #[serde(rename = \"revisionId\")]\n    revision_id: String,\n}\n\n/// Explicitly adopt one existing project-local .ess or .sgendesign reference.\n///\n/// WORK computes identity and conflict outcomes. HOST only reads bytes and\n/// persists the returned whole-manifest plan via the existing FileSystemPort.\n/// The UUID candidate is supplied by the outer Tauri adapter; this adapter\n/// does not create identity entropy.\n/// Callers must serialize mutations for a project. The current FileSystemPort\n/// offers atomic replacement but no cross-process compare-and-swap; the read\n/// recheck below does not claim a cross-process transaction.\npub fn adopt_project_document(\n    fs: &dyn FileSystemPort,\n    project: &Project,\n    reference: &str,\n    document_id_candidate: &str,\n) -> Result<DocumentAdoptionOutcome, ProjectManifestStoreError> {\n    use sgenaxis_work::{\n        document_kind_from_str, normalize_project_reference, validate_document_id,\n        validate_revision_id, PROJECT_MANIFEST_SCHEMA, PROJECT_MANIFEST_VERSION,\n    };\n\n    validate_document_id(document_id_candidate).map_err(map_work_error)?;\n    let normalized_reference = normalize_project_reference(reference).map_err(map_work_error)?;\n    let kind =",
+        "observation": "adopt登記documentId/kind/reference/revision，不拷貝payload，不是匯入合併",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/tests/project_document_commands.rs",
+        "line_start": 1,
+        "line_end": 74,
+        "sha256": "9f683ec9c26a0823f382b523e9a5ee0d116ac6464b08e5930b9a32f1280569bb",
+        "excerpt": "#[path = \"../src/dispatch.rs\"] mod dispatch;\n#[path = \"../src/dto.rs\"] mod dto;\n#[path = \"../src/git_index_commit.rs\"] mod git_index_commit;\nuse dispatch::DispatchHost;\nuse dto::{DocumentAdoptArgs,DocumentAdoptErrorDto as E};\nuse sgenaxis_ports::{FileSystemPort,PortError};\nuse std::sync::{Mutex,atomic::{AtomicBool,AtomicUsize,Ordering}};\nuse std::collections::{BTreeMap,BTreeSet};\nconst ROOT:&str=\"/doc-entry/A\";\nconst SOURCE:&str=\"/doc-entry/A/docs/sample.ess\";\nconst MANIFEST:&str=\"/doc-entry/A/.sgenaxis/project-manifest.json\";\nconst UUID:&str=\"a2b7aa65-87e8-4ad1-9f4c-f191401a0c11\";\n#[derive(Default)]\nstruct Fs { files:Mutex<BTreeMap<String,Vec<u8>>>,dirs:Mutex<BTreeSet<String>>,probes:AtomicUsize,reads:AtomicUsize,writes:AtomicUsize,fail_write:AtomicBool,fail_readback:AtomicBool,fail_exists:AtomicBool,fail_is_file:AtomicBool }\nimpl Fs {fn put(&self,p:&str,b:&[u8]){self.files.lock().unwrap().insert(p.into(),b.into());} fn bytes(&self,p:&str)->Option<Vec<u8>>{self.files.lock().unwrap().get(p).cloned()}}\nimpl FileSystemPort for Fs {\n fn exists(&self,p:&str)->Result<bool,PortError>{self.probes.fetch_add(1,Ordering::SeqCst);if self.fail_exists.load(Ordering::SeqCst){return Err(PortError::Io(\"exists\".into()))}Ok(self.bytes(p).is_some()||self.dirs.lock().unwrap().contains(p))}\n fn read(&self,p:&str)->Result<Vec<u8>,PortError>{self.reads.fetch_add(1,Ordering::SeqCst);if self.fail_readback.load(Ordering::SeqCst)&&self.writes.load(Ordering::SeqCst)>0&&p==MANIFEST{return Err(PortError::Io(\"readback\".into()))}self.bytes(p).ok_or_else(||PortError::NotFound(p.into()))}\n fn read_to_string(&self,p:&str)->Result<String,PortError>{String::from_utf8(self.read(p)?).map_err(|_|PortError::Io(\"utf8\".into()))}\n fn write_atomic(&self,p:&str,b:&[u8])->Result<(),PortError>{if self.fail_write.load(Ordering::SeqCst){return Err(PortError::Io(\"before replace\".into()))}self.put(p,b);self.writes.fetch_add(1,Ordering::SeqCst);Ok(())}\n fn create_dir_all(&self,_:&str)->Result<(),PortError>{Ok(())}\n fn is_file(&self,p:&str)->Result<bool,PortError>{self.probes.fetch_add(1,Ordering::SeqCst);if self.fail_is_file.load(Ordering::SeqCst){return Err(PortError::Io(\"is_file\".into()))}Ok(self.bytes(p).is_some())}\n fn remove_file(&self,_:&str)->Result<(),PortError>{panic!(\"adoption must not delete\")}\n}\nfn fixture()->(DispatchHost,Fs,DocumentAdoptArgs){let mut h=DispatchHost::new();let id=h.document_test_register(ROOT);let fs=Fs::default();fs.put(SOURCE,b\"source bytes stay unchanged\");(h,fs,DocumentAdoptArgs{expected_project_id:id,reference:\"docs/sample.ess\".into()})}\n#[test]\nfn doc_e01_adopts_and_preserves_source(){let(mut h,fs,a)=fixture();let v=h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();assert_eq!(v.outcome,\"Adopted\");assert_eq!(v.document_id,UUID);assert_eq!(fs.bytes(SOURCE).unwrap(),b\"source bytes stay unchanged\");assert!(fs.bytes(MANIFEST).is_some());}\n#[test]\nfn doc_e02_untrusted_callers_reject_before_reads(){let(mut h,fs,a)=fixture();for(label,local)in[(\"secondary\",true),(\"main\",false)]{assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,label,local),Err(E::UnauthorizedCaller));}assert_eq!(fs.reads.load(Ordering::SeqCst),0);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}\n#[test]\nfn doc_e02_unbound_and_stale_projects_reject_before_reads(){let(mut h,fs,mut a)=fixture();assert_eq!(h.project_document_adopt(&fs,\"\",&a,UUID,\"main\",true),Err(E::ProjectNotBound));assert_eq!(h.project_document_adopt(&fs,\"/doc-entry/B\",&a,UUID,\"main\",true),Err(E::ProjectMismatch));a.expected_project_id=\"unknown\".into();assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::ProjectNotBound));assert_eq!(fs.reads.load(Ordering::SeqCst),0);}\n#[test]\nfn doc_e03_repeat_is_idempotent_without_write(){let(mut h,fs,a)=fixture();h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();let before=fs.bytes(MANIFEST);let writes=fs.writes.load(Ordering::SeqCst);let v=h.project_document_adopt(&fs,ROOT,&a,\"b2b7aa65-87e8-4ad1-9f4c-f191401a0c11\",\"main\",true).unwrap();assert_eq!(v.outcome,\"AlreadyAdopted\");assert_eq!(v.document_id,UUID);assert_eq!(fs.writes.load(Ordering::SeqCst),writes);assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e04_revision_conflict_preserves_manifest(){let(mut h,fs,a)=fixture();h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();let before=fs.bytes(MANIFEST);fs.put(SOURCE,b\"changed\");assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::RevisionConflict));assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e04_atomic_failure_preserves_manifest(){let(mut h,fs,a)=fixture();fs.put(MANIFEST,br#\"{\"schema\":\"sgenaxis.project-manifest\",\"schemaVersion\":1,\"documents\":[]}\"#);let before=fs.bytes(MANIFEST);fs.fail_write.store(true,Ordering::SeqCst);assert!(matches!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::Write(_))));assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e05_readback_failure_reports_uncertain_commit(){let(mut h,fs,a)=fixture();fs.fail_readback.store(true,Ordering::SeqCst);assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::DurabilityUnverified));assert!(fs.bytes(MANIFEST).is_some());assert_eq!(fs.bytes(SOURCE).unwrap(),b\"source bytes stay unchanged\");}\n#[test]\nfn doc_dto_rejects_caller_root_or_identity_authority(){assert!(serde_json::from_value::<DocumentAdoptArgs>(serde_json::json!({\"expected_project_id\":\"A\",\"reference\":\"docs/a.ess\",\"document_id\":UUID})).is_err());}\n#[test]\nfn doc_e02_fresh_host_requires_existing_work_registration() {\n    let mut host = DispatchHost::new();\n    let fs = Fs::default();\n    let args = DocumentAdoptArgs {\n        expected_project_id: sgenaxis_work::ProjectId::from_canonical_root(ROOT).to_string(),\n        reference: \"docs/sample.ess\".into(),\n    };\n    assert_eq!(host.project_document_adopt(&fs, ROOT, &args, UUID, \"main\", true), Err(E::ProjectNotBound));\n    assert_eq!(fs.reads.load(Ordering::SeqCst), 0);\n    assert_eq!(fs.writes.load(Ordering::SeqCst), 0);\n}\n\nuse dto::{DocumentPrepareArgs,DocumentPrepareErrorDto as P};\nfn prep_fixture()->(DispatchHost,Fs,DocumentPrepareArgs){let fs=Fs::default();fs.dirs.lock().unwrap().insert(ROOT.into());(DispatchHost::new(),fs,DocumentPrepareArgs{expected_project_root:ROOT.into()})}\n#[test]\nfn ui02_prepare_registers_selects_and_repeats_without_manifest_write(){let(mut h,fs,a)=prep_fixture();assert_eq!(h.document_test_projection().0,0);let first=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(first.project_root,ROOT);assert_eq!(h.document_test_projection(),(1,Some(first.project_id.clone())));let second=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(first,second);assert_eq!(h.document_test_projection().0,1);assert_eq!(fs.writes.load(Ordering::SeqCst),0);assert_eq!(fs.reads.load(Ordering::SeqCst),0);}\n#[test]\nfn ui02_caller_rejection_precedes_root_or_filesystem(){let(mut h,fs,a)=prep_fixture();for(label,local)in[(\"secondary\",true),(\"main\",false)]{assert_eq!(h.project_document_prepare(&fs,\"\",&a,label,local),Err(P::UnauthorizedCaller));}assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection().0,0);}\n#[test]\nfn ui02_unbound_and_changed_root_precede_filesystem(){let(mut h,fs,a)=prep_fixture();assert_eq!(h.project_document_prepare(&fs,\"\",&a,\"main\",true),Err(P::ProjectNotBound));assert_eq!(h.project_document_prepare(&fs,\"/other\",&a,\"main\",true),Err(P::ProjectChanged));assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection().0,0);}\n#[test]\nfn ui02_unavailable_root_never_registers_or_changes_selection(){for kind in [\"missing\",\"file\",\"exists_error\",\"is_file_error\"]{let(mut h,fs,a)=prep_fixture();h.document_test_register(\"/prior\");let before=h.document_test_projection();match kind{\"missing\"=>{fs.dirs.lock().unwrap().clear();},\"file\"=>fs.put(ROOT,b\"file\"),\"exists_error\"=>fs.fail_exists.store(true,Ordering::SeqCst),_=>fs.fail_is_file.store(true,Ordering::SeqCst)}assert_eq!(h.project_document_prepare(&fs,ROOT,&a,\"main\",true),Err(P::RootUnavailable),\"{kind}\");assert_eq!(h.document_test_projection(),before);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}}\n#[test]\nfn ui02_all_busy_predicates_reject_before_filesystem(){for kind in [\"run\",\"lease_flag\",\"capture\",\"active_lease\"]{let(mut h,fs,a)=prep_fixture();h.document_test_busy(kind,ROOT);let before=h.document_test_projection();assert_eq!(h.project_document_prepare(&fs,ROOT,&a,\"main\",true),Err(P::Busy),\"{kind}\");assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection(),before);}}\n#[test]\nfn ui02_reserved_and_unresolved_keep_work_error_category(){for kind in [\"reserved\",\"unresolved\"]{let(mut h,fs,a)=prep_fixture();h.document_test_busy(kind,ROOT);let before=h.document_test_projection();let result=h.project_document_prepare(&fs,ROOT,&a,\"main\",true);match result{Err(P::WorkspaceRejected{reason})=>assert!(reason.contains(if kind==\"reserved\"{\"RunBindingReserved\"}else{\"RunBindingUnresolved\"}),\"{reason}\"),other=>panic!(\"{kind}: {other:?}\")}assert_eq!(h.document_test_projection(),before);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}}\n#[test]\nfn ui02_prepare_may_select_bound_project_without_rewriting_settings(){let(mut h,fs,a)=prep_fixture();h.document_test_register(ROOT);let prior=h.document_test_register(\"/prior\");assert_eq!(h.document_test_projection().1,Some(prior));let p=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(h.document_test_projection().1,Some(p.project_id));assert_eq!(p.project_root,ROOT);}\n#[test]\nfn ui02_windows_and_unicode_root_spellings_match_existing_work_identity(){for bound in [\"C:\\\\Fixture\\\\Ä\",\"c:/fixture/ä/\",\"C:/FIXTURE/Ä\"]{let mut h=DispatchHost::new();let id=h.document_test_register(\"C:\\\\Fixture\\\\Ä\");let fs=Fs::default();fs.put(\"C:/Fixture/Ä/docs/sample.ess\",b\"unchanged\");let a=DocumentAdoptArgs{expected_project_id:id,reference:\"docs/sample.ess\".into()};assert!(h.project_document_adopt(&fs,bound,&a,UUID,\"main\",true).is_ok(),\"{bound}\");}}\n#[test]\nfn ui02_sibling_and_drive_mismatch_still_reject_before_reads(){let(mut h,fs,a)=fixture();for root in [\"/doc-entry/AB\",\"D:/doc-entry/A\"]{assert_eq!(h.project_document_adopt(&fs,root,&a,UUID,\"main\",true),Err(E::ProjectMismatch));}assert_eq!(fs.reads.load(Ordering::SeqCst),0);}",
+        "observation": "有來源保全/重送/讀回不確定測試；本輪未執行",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+        "line_start": 9,
+        "line_end": 84,
+        "sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a",
+        "excerpt": "/// Real-ish filesystem adapter via `std::fs`.\n///\n/// Atomic write: exclusively prepare an owned sibling, then rename over target.\n/// Concurrent successful commits use last-commit-wins; no crash durability promise.\n#[derive(Debug, Default, Clone, Copy)]\npub struct StdFileSystem;\n\nimpl StdFileSystem {\n    pub fn new() -> Self {\n        Self\n    }\n}\n\nfn map_io(err: std::io::Error, path: &str) -> PortError {\n    use std::io::ErrorKind;\n    match err.kind() {\n        ErrorKind::NotFound => PortError::NotFound(path.into()),\n        ErrorKind::PermissionDenied => PortError::PermissionDenied(path.into()),\n        ErrorKind::AlreadyExists => PortError::AlreadyExists(path.into()),\n        _ => PortError::Io(format!(\"{path}: {err}\")),\n    }\n}\n\n// Private transaction seams; production supplies a no-op checkpoint closure.\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\nenum WriteCheckpoint { TempCreated, BeforeWrite, BeforeSync, BeforeRename, BeforeCleanup }\n\nfn temp_candidate(target: &Path) -> PathBuf {\n    let mut name = target.as_os_str().to_owned();\n    // Naming assistance only: exclusive creation below determines ownership.\n    static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);\n    let sequence = NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);\n    name.push(format!(\".sgenaxis-tmp-{}-{sequence}\", std::process::id()));\n    PathBuf::from(name)\n}\n\nfn write_atomic_with<C, H>(path: &str, contents: &[u8], mut candidate: C, mut checkpoint: H) -> Result<(), PortError>\nwhere C: FnMut() -> PathBuf, H: FnMut(WriteCheckpoint, &Path) -> std::io::Result<()>,\n{\n    let target = Path::new(path);\n    if let Some(parent) = target.parent() {\n        if !parent.as_os_str().is_empty() {\n            fs::create_dir_all(parent).map_err(|e| map_io(e, path))?;\n        }\n    }\n    let mut prepared = None;\n    for _ in 0..128 {\n        let tmp = candidate();\n        match fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {\n            Ok(file) => { prepared = Some((tmp, file)); break; }\n            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,\n            Err(error) => return Err(map_io(error, path)),\n        }\n    }\n    let (tmp, file) = prepared.ok_or_else(|| PortError::AlreadyExists(path.into()))?;\n    let result = (|| -> std::io::Result<()> {\n        {\n            // Keep the handle inside this scope so every early failure closes it\n            // before outer cleanup, including on Windows.\n            let mut file = file;\n            checkpoint(WriteCheckpoint::TempCreated, &tmp)?;\n            checkpoint(WriteCheckpoint::BeforeWrite, &tmp)?;\n            file.write_all(contents)?;\n            checkpoint(WriteCheckpoint::BeforeSync, &tmp)?;\n            file.sync_all()?;\n        }\n        checkpoint(WriteCheckpoint::BeforeRename, &tmp)?;\n        fs::rename(&tmp, target)\n    })();\n    result.map_err(|error| {\n        if checkpoint(WriteCheckpoint::BeforeCleanup, &tmp).is_ok() {\n            let _ = fs::remove_file(&tmp);\n        }\n        map_io(error, path)\n    })?;\n    Ok(())",
+        "observation": "write_atomic owned temp+rename；last-commit-wins且無crash durability，不是CAS/多檔交易",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      }
+    ],
+    "tests": "NOT RUN",
+    "native_ui": "NOT RUN",
+    "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+  },
+  "gap": {
+    "module": "M06",
+    "status": "PLANNING_DELIVERED_REVIEW_PENDING",
+    "requirements": [
+      {
+        "requirement": "REQ-06",
+        "module": "M06",
+        "feature": "F08",
+        "tests": "BDD-09/10",
+        "acceptance": "AC08",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-09",
+        "module": "M06",
+        "feature": "F07",
+        "tests": "BDD-11/12",
+        "acceptance": "AC07",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-10",
+        "module": "M06",
+        "feature": "F08/F09",
+        "tests": "BDD-09/13; X06",
+        "acceptance": "AC08/AC09",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-11",
+        "module": "M06",
+        "feature": "F09",
+        "tests": "BDD-16/19; X06",
+        "acceptance": "AC09",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-12",
+        "module": "M06",
+        "feature": "F09",
+        "tests": "BDD-15/21",
+        "acceptance": "AC09",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-13",
+        "module": "M06",
+        "feature": "F08",
+        "tests": "BDD-13/14; X06",
+        "acceptance": "AC08",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "requirement": "REQ-14",
+        "module": "M06",
+        "feature": "F09",
+        "tests": "BDD-17/18",
+        "acceptance": "AC09",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "gaps": [
+      "列出host/ports/commands及Cargo依賴範圍未見完整BIN輸入輸出/合併用例",
+      "缺正式archive schema/選型/limits/安全解析",
+      "ID mapping/plan revision與素材/Undo必須同交易，不可把adoption視為完成匯入"
+    ],
+    "bdd_owned": [
+      {
+        "id": "BDD-09",
+        "req": "REQ-06",
+        "name": "ESS獨立副本",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-10",
+        "req": "REQ-06",
+        "name": "同名匯入",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-11",
+        "req": "REQ-09",
+        "name": "按需BIN輸出",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-12",
+        "req": "REQ-09",
+        "name": "完整BIN",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-13",
+        "req": "REQ-13",
+        "name": "拒絕危險匯入",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-14",
+        "req": "REQ-13",
+        "name": "缺外部依賴",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-15",
+        "req": "REQ-12",
+        "name": "跨文件阻擋",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-16",
+        "req": "REQ-11",
+        "name": "無基準人工決策",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-17",
+        "req": "REQ-14",
+        "name": "ID來源不明",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-18",
+        "req": "REQ-14",
+        "name": "另副本映射",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-19",
+        "req": "REQ-11",
+        "name": "合併失敗回復",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "extra_obligations": [
+      [
+        "X06",
+        "M06",
+        "archive重複路徑、大小寫碰撞、父目錄穿越、連結、解開炸彈、版本未知；取消每階段、空間不足、來源不可讀。"
+      ]
+    ],
+    "reuse_strategy": "Retain existing scoped behavior and add minimum approved delta; do not rebuild historical green capabilities."
+  },
+  "envelope": {
+    "module": "M06",
+    "status": "PROPOSED_NOT_APPROVED",
+    "current_authorized_writes": [
+      "docs/requirements-confirmation/phase1-spec/tasks/M06/planning/**",
+      "own PREP board notes and planning status only"
+    ],
+    "proposed_existing_production": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html"
+    ],
+    "proposed_new_production": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/bin_exchange.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/merge_plan.rs"
+    ],
+    "proposed_tests": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_exchange.rs",
+      "apps/sgenaxis-desktop/src-tauri/tests/phase1_exchange_commands.rs"
+    ],
+    "protected": "All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.",
+    "shared_files": "app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.",
+    "baseline": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+        "sha256": "74af5dba61df135c9585843d309b8a5be47df96f61c914b0679dfd98ec797dbb"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+        "sha256": "7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      }
+    ],
+    "new_dependency_cost": "No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.",
+    "new_public_api_cost": "Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.",
+    "file_cost": {
+      "existing_candidates": 10,
+      "new_production_candidates": 2,
+      "new_test_candidates": 2
+    },
+    "decisions": [
+      "D1",
+      "D2",
+      "D5",
+      "D6"
+    ]
+  },
+  "tests": {
+    "module": "M06",
+    "existing_commands": [
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+        "command": "cargo test --test project_document_commands",
+        "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED",
+        "purpose": "Existing source/target present; may only inspect static text, not behavior proof"
+      },
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+        "command": "node --test ui/project-document-ui.test.cjs",
+        "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED",
+        "purpose": "Existing source/target present; may only inspect static text, not behavior proof"
+      }
+    ],
+    "proposed_commands": [
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+        "command": "cargo test -p sgenaxis-host --test phase1_exchange",
+        "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED",
+        "purpose": "Only runnable after approved Skeleton creates exact target"
+      },
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+        "command": "cargo test --test phase1_exchange_commands",
+        "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED",
+        "purpose": "Only runnable after approved Skeleton creates exact target"
+      }
+    ],
+    "cases": [
+      {
+        "id": "TDD-09",
+        "bdd": "BDD-09",
+        "requirement": "REQ-06",
+        "title": "ESS獨立副本",
+        "given": "專案A匯出的ESS已匯入B為副本",
+        "when": "修改保存B副本",
+        "then": "A來源內容不變",
+        "fixture": "fixtures.json#BDD-09",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-10",
+        "bdd": "BDD-10",
+        "requirement": "REQ-06",
+        "title": "同名匯入",
+        "given": "目標已有同名ESS",
+        "when": "預覽匯入",
+        "then": "提供另存新名稱、明確取代與取消且未自動覆寫",
+        "fixture": "fixtures.json#BDD-10",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-11",
+        "bdd": "BDD-11",
+        "requirement": "REQ-09",
+        "title": "按需BIN輸出",
+        "given": "已建立專案但未要求封裝",
+        "when": "完成一般保存",
+        "then": "不自動輸出BIN",
+        "fixture": "fixtures.json#BDD-11",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-12",
+        "bdd": "BDD-12",
+        "requirement": "REQ-09",
+        "title": "完整BIN",
+        "given": "專案含UI及被引用素材",
+        "when": "明確封裝BIN",
+        "then": "內容清單包含定義、ESS、UI及完整被引用素材",
+        "fixture": "fixtures.json#BDD-12",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-13",
+        "bdd": "BDD-13",
+        "requirement": "REQ-13",
+        "title": "拒絕危險匯入",
+        "given": "封裝損毀或宣告越出目標目錄的路徑",
+        "when": "要求匯入",
+        "then": "說明原因，目標不變且未執行包內程式",
+        "fixture": "fixtures.json#BDD-13",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-14",
+        "bdd": "BDD-14",
+        "requirement": "REQ-13",
+        "title": "缺外部依賴",
+        "given": "安全完整封裝缺明確宣告的外部依賴",
+        "when": "確認以待綁定匯入",
+        "then": "可檢視保存，相關執行或生成被阻擋",
+        "fixture": "fixtures.json#BDD-14",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-15",
+        "bdd": "BDD-15",
+        "requirement": "REQ-12",
+        "title": "跨文件阻擋",
+        "given": "單文件合併必須修改另一文件才能一致",
+        "when": "確認合併",
+        "then": "阻擋並說明前置條件，不擴大範圍",
+        "fixture": "fixtures.json#BDD-15",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-16",
+        "bdd": "BDD-16",
+        "requirement": "REQ-11",
+        "title": "無基準人工決策",
+        "given": "兩份內容沒有可靠共同基準",
+        "when": "檢視合併差異",
+        "then": "不自動合併，逐項提供保留本機、採用匯入或另副本",
+        "fixture": "fixtures.json#BDD-16",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-17",
+        "bdd": "BDD-17",
+        "requirement": "REQ-14",
+        "title": "ID來源不明",
+        "given": "相同ID但無法確認同源",
+        "when": "預覽套用",
+        "then": "暫停受影響項目並提供略過或另副本，不猜測重綁",
+        "fixture": "fixtures.json#BDD-17",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-18",
+        "bdd": "BDD-18",
+        "requirement": "REQ-14",
+        "title": "另副本映射",
+        "given": "已預覽新身分及引用調整範圍",
+        "when": "確認另建副本",
+        "then": "只調整副本可確定引用，未解析標待處理，來源既有內容不變",
+        "fixture": "fixtures.json#BDD-18",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-19",
+        "bdd": "BDD-19",
+        "requirement": "REQ-11",
+        "title": "合併失敗回復",
+        "given": "文件及素材已有完整前狀態",
+        "when": "合併在任一提交階段失敗",
+        "then": "回到合併前完整狀態、來源不變且不增加Undo",
+        "fixture": "fixtures.json#BDD-19",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M06-A",
+        "bdd": "BDD-M06-A",
+        "requirement": "REQ-06,09～14",
+        "title": "archive安全矩陣",
+        "given": "包有重複路徑/父目錄穿越/未知schema或超限",
+        "when": "要求匯入",
+        "then": "拒絕且所有目標原檔不變",
+        "fixture": "fixtures.json#BDD-M06-A",
+        "levels": [
+          "L2 module contract",
+          "L4 adjacent regression"
+        ],
+        "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+        "result": "NOT RUN"
+      }
+    ],
+    "B1_B12": [
+      {
+        "id": "B1",
+        "name": "成功",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B2",
+        "name": "邊界",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B3",
+        "name": "非法輸入",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B4",
+        "name": "依賴失敗",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B5",
+        "name": "部分失敗",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B6",
+        "name": "狀態一致性",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B7",
+        "name": "交易",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B8",
+        "name": "生命週期",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B9",
+        "name": "回復",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B10",
+        "name": "跨模組",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B11",
+        "name": "相容性",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B12",
+        "name": "回歸",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.",
+    "regression_levels": [
+      "focused new cases",
+      "module public-input contract tests",
+      "adjacent shared-boundary tests",
+      "architecture constraints",
+      "Windows native via M08"
+    ],
+    "pending_automation": [
+      "exact approved input DTO/Port bindings",
+      "create listed test target and fixtures after Skeleton gate",
+      "expand per-case fault matrix",
+      "native UI operator + runtime source identity",
+      "real filesystem interruption and rollback-failure coverage"
+    ],
+    "stop_conditions": [
+      "unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED",
+      "conflicting specification → SPEC_CONFLICT",
+      "tests compile/fixture/environment errors → not valid RED"
+    ],
+    "test_execution": "NOT RUN; no production tests or test files created"
+  },
+  "ui_schema": {
+    "role": "本機專案作者／設計者",
+    "fields_controls_states": "package清單/素材/依賴，副本與合併分開、單文件選擇、增改刪、ID conflict略過/另副本、待綁定確認、stale重看。",
+    "validation": "Validate fields, identity, revision and capability before mutation; disabled states name reason",
+    "defaults": "Spec D01-D13 are proposals; no implicit approval here",
+    "empty": "No project/document/template/asset/artifact: show actual empty state and next available action",
+    "accessibility": "Text labels, keyboard focus, field-linked errors; details pending rendered UI review"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "gate": "G01",
+      "title": "持久身份與檔案契約",
+      "observation": "目前ProjectId依路徑；ESS v1已含work/architecture/design；manifest只登記文件。",
+      "recommendation": "保留ESS v1讀取相容；新增版本化ProjectDefinition持久UUID及legacy root-key對照；BIN另定manifest含原格式payload，不偷換ESS。",
+      "alternatives": "全面改成單一新ESS格式遷移大；只用root ID不足搬移定位。",
+      "affected_modules": [
+        "M01",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "schema/identity/migration未批准前，不寫新格式。"
+    },
+    {
+      "id": "D2",
+      "gate": "G01/G03",
+      "title": "文件權威與多視窗同步",
+      "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。",
+      "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。",
+      "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。",
+      "affected_modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"
+    },
+    {
+      "id": "D5",
+      "gate": "G02/G03",
+      "title": "完整回復與並發提交",
+      "observation": "write_atomic單檔temp＋rename、last-commit-wins；Port沒有CAS/list/transaction。",
+      "recommendation": "先不可變素材＋pins，後單文件commit pointer，保留舊版本；成功才入Undo。正式檔多程序需OS鎖或具體協定拒過期覆寫，不能把Mutex當跨程序鎖。新能力先列精確Port提案；rollback失敗保留復原資料並阻擋破壞性後續。",
+      "alternatives": "依次寫檔best-effort rollback不滿足完整回復；整個DB框架成本高，先不採。",
+      "affected_modules": [
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "transaction未批准，merge/replace/undo/GC不可實作；失敗保證不可自降為warning。"
+    },
+    {
+      "id": "D6",
+      "gate": "G01/G03",
+      "title": "BIN、素材引用根及保留預設",
+      "observation": "SGB三entry不含新BIN完整manifest/material；快照及GC協定未存在。",
+      "recommendation": "BIN版本化archive＋manifest（ZIP為候選，先固定版本與限額）；roots含活文件/Undo/快照/交易。未處理快照不自動刪；已處理30天/至少10份、2GiB軟警告、歷史50項都是待批准預設；未知root一律保留。",
+      "alternatives": "可選SGB擴充但需安全parser/版本契約；自動刪未處理快照有資料遺失風險不建議。",
+      "affected_modules": [
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "archive/schema阻擋BIN；保留數值只阻擋自動清理，不阻擋保守不刪方案。"
+    }
+  ],
+  "assumptions": [
+    "Keep existing green slices; source presence is not full acceptance",
+    "Candidate new files and exact signatures require architecture/Skeleton approval",
+    "No new infrastructure dependencies or product behavior changes in PREP"
+  ]
+}

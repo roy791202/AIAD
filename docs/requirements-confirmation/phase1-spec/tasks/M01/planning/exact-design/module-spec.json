@@ -1,0 +1,1708 @@
+{
+  "module": "M01",
+  "date": "2026-11-01",
+  "status": "EXACT_DESIGN_PROPOSAL_FOR_REVIEW",
+  "direction_adoption": "D1-D7 ADOPTED",
+  "architecture_approval": "NOT GRANTED FOR EXACT DETAILS",
+  "design": {
+    "status": "EXACT_DESIGN_PROPOSAL_FOR_REVIEW",
+    "directions": "D1-D7 ADOPTED 2026-11-01; exact details not yet approved",
+    "new_dependencies": "WORK remains std-only + existing ports; HOST uses existing serde/serde_json; XML/security parsing may extend existing roxmltree=0.20.0 adapter, no new crate proposed. Existing uuid remains only trusted outer boundary. Windows-sys existing dependency may provide OS lock API; exact feature/API checked during shared adapter design.",
+    "shared_commit_port": "// Shared cross-module output capability, proposed in PORTS, not new Repository.\n// May NOT be silently folded into FileSystemPort.write_atomic default behavior.\npub trait FileCommitPort: Send + Sync {\n    fn create_directory_exclusive(&self, parent: &str, single_name: &str)\n        -> Result<String, CommitError>;\n    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;\n}\npub trait FileWriteLease {\n    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;\n    fn replace_checked(&mut self, expected_digest: Option<&str>, bytes: &[u8])\n        -> Result<CommitReceipt, CommitError>;\n}\n// OS-backed lock remains live until lease Drop; crash releases OS lock.\n// Do NOT reclaim by a timestamp (board FileLock policy is not product guarantee).\n// expected None = require missing; Some(hash) = require same prior raw bytes.\n// replace_checked: stage/sync, preserve previous version, recheck under lock,\n// replace single formal file; restore previous bytes before returning ordinary Err.\n// If restoration itself fails: RecoveryRequired; retained versions + journal paths,\n// block more destructive operations, never claim unchanged or successful.\n// Post-commit notification/projection is not allowed to turn committed save into\n// a false \"failed, unchanged\" result. Uncertain state is distinctly classified.\n// Locks protect cooperating product writers; arbitrary external edits still need\n// digest recheck and observed conflict handling, not a universal filesystem CAS.\n",
+    "error_model": [
+      [
+        "InvalidInput",
+        "欄位/path/內容結構不合法，mutation前拒絕"
+      ],
+      [
+        "UnsupportedSchema",
+        "拒未知版本，不覆寫或靜默丟欄位"
+      ],
+      [
+        "NotBound",
+        "未綁專案/session，不碰FS"
+      ],
+      [
+        "UnauthorizedCaller",
+        "視窗非該session writer，不碰內容"
+      ],
+      [
+        "ExistingTarget",
+        "新建目標已存在，原檔/目錄不動"
+      ],
+      [
+        "RevisionConflict",
+        "期望revision或磁碟digest不符，重新預覽"
+      ],
+      [
+        "Busy",
+        "交易/寫者持有中，不並行執行破壞性操作"
+      ],
+      [
+        "GenerationNotReady",
+        "可存草稿，列缺決策，不生成"
+      ],
+      [
+        "StorageFailure",
+        "普通可回復IO失敗；原有效內容保持"
+      ],
+      [
+        "PartialProjectCreated",
+        "只有新專案已建立部分產物，保留草稿並列殘留；不綁成成功"
+      ],
+      [
+        "RecoveryRequired",
+        "回復本身失敗或耐久不確定：保留版本與journal、停止破壞性操作，不聲稱原狀/PASS"
+      ],
+      [
+        "NoUndo",
+        "無歷史或session已關閉，不改狀態"
+      ]
+    ],
+    "authority": "UI → Tauri Command → DispatchHost → HOST usecase → WORK(domain) → Output Ports ← Adapters",
+    "no_global_state": "Draft/session/plan maps owned inside DispatchHost; UUID candidates from trusted boundary; no static manager/service singleton",
+    "generation_approval": "approvalRefs server-resolved evidence IDs, not UI checkbox authorization; finalizing definition does not generate or execute AI",
+    "module": "M01",
+    "responsibility": "六步定義draft、持久Project UUID、無覆寫新建、草稿續開；不生成骨架或操作文件history",
+    "schema_path": "schema.json",
+    "storage": {
+      "definition": ".sgenaxis/project-definition.json",
+      "identity": "projectUuid is persistent product identity; legacy WORK ProjectId/root registration key retained as alias, never automatically rewritten in run/lease records",
+      "draft": "Save Draft explicitly creates owned project folder and definition on first save. UI previews path and says no skeleton generated. Later resume is explicit open of this saved draft, not a new-project overwrite exception.",
+      "legacy": "Open legacy root read-only with legacy marker; first explicit adopt/save previews new definition only, preserves ESS/preferences/manifest bytes; existing projectUuid conflict blocks.",
+      "copy": "Explicit copy creates new projectUuid + origin reference; same UUID at two roots must be diagnosed and require explicit move/copy choice, not auto remap."
+    },
+    "commands": [
+      {
+        "name": "project_wizard_begin",
+        "request_fields": "{ parent_selection_id: String, name: String }",
+        "response": "WizardDraftDto {draft_id, project_uuid, base_revision, last_step, definition, location_preview}",
+        "caller_rule": "main/local window; parent selection issued by native picker and bound to host session",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "project_wizard_update",
+        "request_fields": "{draft_id, expected_revision: String, last_step, draft: ProjectDefinitionDraftDto}",
+        "response": "DraftProjectionDto; structural validation errors per field",
+        "caller_rule": "main/local owner of draft; provided UUID/approval fields rejected",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "project_wizard_save",
+        "request_fields": "{draft_id, expected_revision, request_id: UUID}",
+        "response": "SaveDefinitionResult {outcome: Saved|Partial, persisted_revision?, actual_paths, retry_action}",
+        "caller_rule": "same owner; first save uses exclusive new directory; resume only server-issued draft binding",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "project_definition_open",
+        "request_fields": "{project_selection_id: String}",
+        "response": "DefinitionProjection {uuid?, revision?, legacy:bool, migration_required:bool}",
+        "caller_rule": "location chosen by native picker; legacy open read-only, no implicit write",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "project_definition_adopt_legacy",
+        "request_fields": "{project_selection_id, expected_legacy_key, request_id}",
+        "response": "DefinitionProjection with persistent UUID; source ESS untouched",
+        "caller_rule": "explicit owner action; reject conflicting existing UUID",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      },
+      {
+        "name": "project_wizard_finalize",
+        "request_fields": "{draft_id, expected_revision, request_id}",
+        "response": "Defined|DraftSavedMissingDecisions {missing_fields}; generation plan NOT executed",
+        "caller_rule": "resumes only own saved draft; no arbitrary existing-folder adoption",
+        "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+      }
+    ],
+    "domain_signatures": "// PROPOSED signatures only. No product Skeleton created.\n// WORK: pure, no serde/OS/UUID RNG dependencies.\npub struct PersistentProjectId(String); // validated lowercase UUID v4\npub struct DefinitionRevision(u64); // checked increment, wire decimal string\npub enum FieldState<T> { Unresolved, Tentative(T), Confirmed(T) }\npub struct ProjectDefinition { /* exact fields in schema.json, domain typed */ }\npub struct DefinitionDraft { /* excludes trusted identity, approvals, revision */ }\npub fn validate_definition(draft: &DefinitionDraft) -> Result<(), DefinitionError>;\npub fn apply_definition(current: &ProjectDefinition, expected: DefinitionRevision,\n    draft: DefinitionDraft) -> Result<ProjectDefinition, DefinitionError>;\npub fn missing_generation_requirements(def: &ProjectDefinition) -> Vec<FieldPath>;\n// HOST: serde DTO/codec maps to pure WORK values, preserving extensions.\npub fn encode_definition(def: &ProjectDefinition) -> Result<Vec<u8>, DefinitionStoreError>;\npub fn decode_definition(bytes: &[u8]) -> Result<ProjectDefinition, DefinitionStoreError>;\n// HOST usecase under DispatchHost, no new global service or authority.\n// generated UUID candidate injected from existing trusted Tauri uuid boundary.\npub fn save_definition(fs: &dyn FileSystemPort, commit: &dyn FileCommitPort,\n    binding: &DefinitionBinding, expected_disk_digest: Option<&str>,\n    def: &ProjectDefinition) -> Result<DefinitionSaveReceipt, DefinitionStoreError>;\n",
+    "states": [
+      "EditingUnsaved",
+      "SavingDraft",
+      "SavedDraft",
+      "MissingDecisions",
+      "Defined",
+      "PartialProjectCreated",
+      "RecoveryRequired"
+    ],
+    "transactions": [
+      [
+        "FirstSave",
+        "validate name/draft/native parent binding → create_directory_exclusive → write definition and optional preference copy → bind only after required write success; partial retain owned artifacts, no recursive delete"
+      ],
+      [
+        "ResumeSave",
+        "acquire project definition write lease → read digest → reject stale → encode pure draft → replace_checked → return exact saved revision"
+      ],
+      [
+        "Finalize",
+        "current owned draft revision + prerequisites checked; unresolved returns DraftSavedMissingDecisions; generated artifacts only M02 separate operation"
+      ]
+    ],
+    "invariants": [
+      "名稱/parent validated before any directory writes",
+      "Already-existing file/directory target never removed",
+      "Persistent UUID distinct from legacy root key; no secret or absolute path in portable definition",
+      "Definition mode draft may be incomplete; mode defined does not itself imply architecture approval or generated artifacts",
+      "No schema mutation to v1 manifest with deny_unknown_fields until separately reviewed"
+    ],
+    "ui": [
+      [
+        "basics",
+        "name,parent path,purpose,preference",
+        "名稱及位置必填；先預覽SaveDraft建目錄效果"
+      ],
+      [
+        "delivery",
+        "per-target form/platform/host/version",
+        "技術可unresolved，宿主條件可未決"
+      ],
+      [
+        "topology",
+        "units/local/remote/mixed links",
+        "不因多目標自動笛卡兒組合"
+      ],
+      [
+        "requirements",
+        "intent/first-scope/acceptance",
+        "新需求未確認不直接變domain module"
+      ],
+      [
+        "technology_ui",
+        "framework/toolchain/hasUi",
+        "不支援/未知明示，不假稱可生成"
+      ],
+      [
+        "preview",
+        "missing decisions/files/mode",
+        "預設雙骨架由M02 gated；本切片只保存定義，不能顯示生成已完成"
+      ]
+    ]
+  },
+  "schema": {
+    "type": "object",
+    "properties": {
+      "schema": {
+        "const": "eluslot.project-definition"
+      },
+      "schemaVersion": {
+        "const": 1
+      },
+      "projectUuid": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      },
+      "definitionRevision": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)$"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 120
+      },
+      "purpose": {
+        "type": "string"
+      },
+      "mode": {
+        "enum": [
+          "draft",
+          "defined"
+        ]
+      },
+      "lastSavedStep": {
+        "enum": [
+          "basics",
+          "delivery",
+          "topology",
+          "requirements",
+          "technology_ui",
+          "preview"
+        ]
+      },
+      "deliveryTargets": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "form": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "platform": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "host": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "hostVersion": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "language": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "framework": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "enum": [
+                    "unresolved",
+                    "tentative",
+                    "confirmed"
+                  ]
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "state",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "toolchain": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "hasUi": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "form",
+            "platform",
+            "host",
+            "hostVersion",
+            "language",
+            "framework",
+            "toolchain",
+            "hasUi"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "topology": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "enum": [
+              "unresolved",
+              "tentative",
+              "confirmed"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "requirements": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "acceptance": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "state": {
+              "enum": [
+                "unresolved",
+                "tentative",
+                "confirmed"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "intent",
+            "acceptance",
+            "state"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "preferenceSource": {
+        "enum": [
+          "skip",
+          "preset",
+          "imported-copy"
+        ]
+      },
+      "template": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceDigest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "sourceDigest"
+        ],
+        "additionalProperties": false
+      },
+      "openDecisions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "approvalRefs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "legacyRootKeys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "extensions": {
+        "type": "object"
+      }
+    },
+    "required": [
+      "schema",
+      "schemaVersion",
+      "projectUuid",
+      "definitionRevision",
+      "name",
+      "purpose",
+      "mode",
+      "lastSavedStep",
+      "deliveryTargets",
+      "topology",
+      "requirements",
+      "preferenceSource",
+      "template",
+      "openDecisions",
+      "approvalRefs",
+      "legacyRootKeys",
+      "extensions"
+    ],
+    "additionalProperties": false,
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Proposed ProjectDefinition v1"
+  },
+  "ipc_schema": {
+    "status": "PROPOSED_FOR_REVIEW",
+    "request_schemas": {
+      "project_wizard_begin": {
+        "type": "object",
+        "properties": {
+          "parent_selection_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "parent_selection_id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "project_wizard_update": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "last_step": {
+            "enum": [
+              "basics",
+              "delivery",
+              "topology",
+              "requirements",
+              "technology_ui",
+              "preview"
+            ]
+          },
+          "draft": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "purpose": {
+                "type": "string"
+              },
+              "lastSavedStep": {
+                "enum": [
+                  "basics",
+                  "delivery",
+                  "topology",
+                  "requirements",
+                  "technology_ui",
+                  "preview"
+                ]
+              },
+              "deliveryTargets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "form": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "platform": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "host": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "hostVersion": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "language": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "framework": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "enum": [
+                            "unresolved",
+                            "tentative",
+                            "confirmed"
+                          ]
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "value"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "toolchain": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "hasUi": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "form",
+                    "platform",
+                    "host",
+                    "hostVersion",
+                    "language",
+                    "framework",
+                    "toolchain",
+                    "hasUi"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "topology": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "unresolved",
+                      "tentative",
+                      "confirmed"
+                    ]
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "state",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "requirements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "intent": {
+                      "type": "string"
+                    },
+                    "acceptance": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "state": {
+                      "enum": [
+                        "unresolved",
+                        "tentative",
+                        "confirmed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "intent",
+                    "acceptance",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "preferenceSource": {
+                "enum": [
+                  "skip",
+                  "preset",
+                  "imported-copy"
+                ]
+              },
+              "template": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sourceDigest": {
+                    "type": "string",
+                    "pattern": "^sha256:[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "sourceDigest"
+                ],
+                "additionalProperties": false
+              },
+              "openDecisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "extensions": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "purpose",
+              "lastSavedStep",
+              "deliveryTargets",
+              "topology",
+              "requirements",
+              "preferenceSource",
+              "template",
+              "openDecisions",
+              "extensions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "draft_id",
+          "expected_revision",
+          "last_step",
+          "draft"
+        ],
+        "additionalProperties": false
+      },
+      "project_wizard_save": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "draft_id",
+          "expected_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "project_definition_open": {
+        "type": "object",
+        "properties": {
+          "project_selection_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "project_selection_id"
+        ],
+        "additionalProperties": false
+      },
+      "project_definition_adopt_legacy": {
+        "type": "object",
+        "properties": {
+          "project_selection_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_legacy_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "project_selection_id",
+          "expected_legacy_key",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "project_wizard_finalize": {
+        "type": "object",
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "expected_revision": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)$"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "draft_id",
+          "expected_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "business_validations": "OS path containment, nonempty trimmed Windows name/reserved names, source parsing, UUID binding, owner, revision and approvalRefs are checked at input/usecase, not merely JSON shape. Required integer revision is encoded as decimal string.",
+    "unknown_fields": "Every request denies unknown fields; no arbitrary root/digest/writer/approval authority accepted."
+  },
+  "envelope": {
+    "module": "M01",
+    "status": "EXACT_CANDIDATE_ENVELOPE_FOR_REVIEW",
+    "current_permission": "planning files + own board note only; no production/tests writes",
+    "slices": [
+      {
+        "id": "M01-S1",
+        "title": "純領域定義與持久ID驗證",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_definition.rs"
+        ],
+        "dependencies": [],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_project_definition",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "No serde/FS/Tauri dependency; does not touch legacy ProjectId or live registry.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M01-S2",
+        "title": "HOST定義codec與新建/遷移儲存",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs"
+        ],
+        "dependencies": [
+          "M01-S1",
+          "IO-PREREQ"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-host --test phase1_project_definition",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Protect existing manifest/ESS/preferences; old delete-file-residue behavior is explicitly superseded by approved no-overwrite requirement.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M01-S3",
+        "title": "六步精靈與Dispatch接線",
+        "existing_files": [
+          "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "apps/sgenaxis-desktop/ui/app.js",
+          "apps/sgenaxis-desktop/ui/index.html",
+          "apps/sgenaxis-desktop/ui/styles.css"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/ui/project-wizard.js"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/ui/project-wizard.test.cjs",
+          "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_definition_commands.rs"
+        ],
+        "dependencies": [
+          "M01-S1",
+          "M01-S2"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "node --test ui/project-wizard.test.cjs",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+            "command": "cargo test --test phase1_project_definition_commands",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Native caller/location binding, request-id idempotency; no generation/AI/Git implementation.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      }
+    ],
+    "shared_output_prerequisite": {
+      "id": "IO-PREREQ",
+      "status": "PROPOSED_CROSS_MODULE_PREREQUISITE_NOT_AUTHORIZED",
+      "files": [
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+        "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_file_commit.rs"
+      ],
+      "port_signatures": "See interfaces.proposed.txt in M01/M04",
+      "dependency_policy": "reuse existing windows-sys pinned dependency; adding features/dependencies requires exact review. No database/framework.",
+      "tests": "cargo test -p sgenaxis-adapters --test phase1_file_commit (TARGET_NOT_CREATED; NOT RUN)",
+      "release_gate": "Exclusive create, cooperating OS lock, old-byte restoration at all injected failure points, lock release on process death, stale raw digest, rollback failure blocks further mutations. Not provided by write_atomic."
+    },
+    "protected": [
+      "all files not enumerated",
+      "core/src/edit.rs selection semantics",
+      "existing tests not explicitly identified for contract migration",
+      "Git/runner/plugin flows",
+      "M05/M06/M07 implementation"
+    ],
+    "existing_source_hashes": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+        "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs",
+        "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+        "sha256": "eb76b016fce8767b67a306238377cf6647e0e23d9c30a1b89bc998a6328d1f5c"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+        "sha256": "6f39bf47aa3862ca14950531abbc760bb1678e0fda877bdfd9132c6b0e1e481d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+        "sha256": "c8324a2e43e3b17d4ff8bae6ab69adaae8a5378b2c1b6014ada3a8955d8ce884"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/styles.css",
+        "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"
+      }
+    ],
+    "contract_migration": {
+      "file": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+      "test": "create_replaces_existing_file_residue",
+      "rule": "Existing deletion expectation explicitly superseded by confirmed no-overwrite; new rejection test first, preserve old test as historical evidence; approved test-intent revision required, never silently weaken."
+    }
+  },
+  "plan": {
+    "module": "M01",
+    "status": "EXACT_PLAN_NOT_EXECUTED",
+    "cases": [
+      {
+        "id": "TDD-M01-EX-01",
+        "bdd": "BDD-M01-EX-01",
+        "title": "空白名稱拒絕",
+        "given": "草稿名稱只有空白",
+        "when": "要求保存",
+        "then": "欄位錯誤且無任何FS寫入",
+        "slice": "M01-S1",
+        "fault": "InvalidInput",
+        "fixture": "fixtures.json#01",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-02",
+        "bdd": "BDD-M01-EX-02",
+        "title": "草稿允許未決",
+        "given": "目標/框架尚未選定",
+        "when": "保存draft",
+        "then": "保留未決資訊且不生成骨架",
+        "slice": "M01-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#02",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-03",
+        "bdd": "BDD-M01-EX-03",
+        "title": "版本前進",
+        "given": "期望revision等於目前",
+        "when": "更新definition",
+        "then": "只更新允許欄位且revision checked加一",
+        "slice": "M01-S1",
+        "fault": "none",
+        "fixture": "fixtures.json#03",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-04",
+        "bdd": "BDD-M01-EX-04",
+        "title": "過期revision拒絕",
+        "given": "草稿已被較新版本更新",
+        "when": "用舊revision保存",
+        "then": "RevisionConflict且原定義不變",
+        "slice": "M01-S1",
+        "fault": "RevisionConflict",
+        "fixture": "fixtures.json#04",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-05",
+        "bdd": "BDD-M01-EX-05",
+        "title": "未確認不能生成",
+        "given": "有tentative或unresolved必要欄位",
+        "when": "finalize",
+        "then": "列缺決策；可存draft，不能宣稱已生成",
+        "slice": "M01-S1",
+        "fault": "GenerationNotReady",
+        "fixture": "fixtures.json#05",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-06",
+        "bdd": "BDD-M01-EX-06",
+        "title": "持久ID不依路徑",
+        "given": "同一projectUuid的定義被搬到新root",
+        "when": "開啟已保存definition",
+        "then": "UUID不變；legacy key只作alias",
+        "slice": "M01-S2",
+        "fault": "none",
+        "fixture": "fixtures.json#06",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-07",
+        "bdd": "BDD-M01-EX-07",
+        "title": "拒既有檔案",
+        "given": "目標路徑已有含資料一般檔案",
+        "when": "從所有新建入口建立",
+        "then": "拒絕且原始bytes不變，不remove_file",
+        "slice": "M01-S2",
+        "fault": "ExistingTarget",
+        "fixture": "fixtures.json#07",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-08",
+        "bdd": "BDD-M01-EX-08",
+        "title": "拒既有目錄",
+        "given": "目標已存在空或非空目錄",
+        "when": "建立新專案",
+        "then": "拒絕並保留目錄；resume需獨立流程",
+        "slice": "M01-S2",
+        "fault": "ExistingTarget",
+        "fixture": "fixtures.json#08",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-09",
+        "bdd": "BDD-M01-EX-09",
+        "title": "首次存草稿",
+        "given": "目標不存在且有效draft",
+        "when": "明確保存draft",
+        "then": "exclusive建立並寫definition；UI事前揭露建立位置",
+        "slice": "M01-S2",
+        "fault": "none",
+        "fixture": "fixtures.json#09",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-10",
+        "bdd": "BDD-M01-EX-10",
+        "title": "部分建立失敗",
+        "given": "新目錄已建立但寫definition或選定偏好失敗",
+        "when": "結束本輪保存",
+        "then": "PartialProjectCreated列本次產物且不綁成功、不刪來源",
+        "slice": "M01-S2",
+        "fault": "StorageFailure",
+        "fixture": "fixtures.json#10",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-11",
+        "bdd": "BDD-M01-EX-11",
+        "title": "遷移不碰來源",
+        "given": "legacy專案含ESS與manifest/preferences",
+        "when": "明確採用持久定義",
+        "then": "只新增definition，其他bytes原樣",
+        "slice": "M01-S2",
+        "fault": "none",
+        "fixture": "fixtures.json#11",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-12",
+        "bdd": "BDD-M01-EX-12",
+        "title": "同UUID兩root",
+        "given": "已開專案UUID出現另一root",
+        "when": "要求開啟",
+        "then": "標示move/copy衝突，不自動重映射",
+        "slice": "M01-S2",
+        "fault": "RevisionConflict",
+        "fixture": "fixtures.json#12",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-13",
+        "bdd": "BDD-M01-EX-13",
+        "title": "schema往返",
+        "given": "含extensions及六步保存位置",
+        "when": "encode再decode",
+        "then": "定義語義一致且未知schema先拒絕",
+        "slice": "M01-S2",
+        "fault": "UnsupportedSchema",
+        "fixture": "fixtures.json#13",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-14",
+        "bdd": "BDD-M01-EX-14",
+        "title": "偽造身分拒絕",
+        "given": "非owner視窗或caller送projectUuid/root/approvalRefs",
+        "when": "提交draft",
+        "then": "caller/DTO驗證先拒絕且不寫檔",
+        "slice": "M01-S3",
+        "fault": "UnauthorizedCaller",
+        "fixture": "fixtures.json#14",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-15",
+        "bdd": "BDD-M01-EX-15",
+        "title": "重複request冪等",
+        "given": "相同session及request_id同payload",
+        "when": "重送建立或保存",
+        "then": "不第二次建立/增加revision；同id異payload拒絕",
+        "slice": "M01-S3",
+        "fault": "RevisionConflict",
+        "fixture": "fixtures.json#15",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M01-EX-16",
+        "bdd": "BDD-M01-EX-16",
+        "title": "六步續作與late回應",
+        "given": "草稿保存於第3步後切換專案",
+        "when": "重開及接收舊回應",
+        "then": "恢復已保存步驟；舊回應不能改新專案",
+        "slice": "M01-S3",
+        "fault": "none",
+        "fixture": "fixtures.json#16",
+        "expected_red": "After a compiling Skeleton, assert observable outcome fails due to missing behavior; compile/target/fixture/environment failures are invalid RED. Existing correct behavior is regression, not forced RED.",
+        "result": "NOT RUN"
+      }
+    ],
+    "commands_by_slice": [
+      {
+        "id": "M01-S1",
+        "title": "純領域定義與持久ID驗證",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_definition.rs"
+        ],
+        "dependencies": [],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-work --test phase1_project_definition",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "No serde/FS/Tauri dependency; does not touch legacy ProjectId or live registry.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M01-S2",
+        "title": "HOST定義codec與新建/遷移儲存",
+        "existing_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs",
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs"
+        ],
+        "dependencies": [
+          "M01-S1",
+          "IO-PREREQ"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "cargo test -p sgenaxis-host --test phase1_project_definition",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Protect existing manifest/ESS/preferences; old delete-file-residue behavior is explicitly superseded by approved no-overwrite requirement.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      },
+      {
+        "id": "M01-S3",
+        "title": "六步精靈與Dispatch接線",
+        "existing_files": [
+          "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "apps/sgenaxis-desktop/ui/app.js",
+          "apps/sgenaxis-desktop/ui/index.html",
+          "apps/sgenaxis-desktop/ui/styles.css"
+        ],
+        "new_files": [
+          "apps/sgenaxis-desktop/ui/project-wizard.js"
+        ],
+        "test_files": [
+          "apps/sgenaxis-desktop/ui/project-wizard.test.cjs",
+          "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_definition_commands.rs"
+        ],
+        "dependencies": [
+          "M01-S1",
+          "M01-S2"
+        ],
+        "commands": [
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+            "command": "node --test ui/project-wizard.test.cjs",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          },
+          {
+            "cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri",
+            "command": "cargo test --test phase1_project_definition_commands",
+            "result": "NOT RUN; TARGET_NOT_CREATED"
+          }
+        ],
+        "notes": "Native caller/location binding, request-id idempotency; no generation/AI/Git implementation.",
+        "entry_gate": "Exact architecture/contract/schema/envelope approved → Skeleton → compile-valid RED; no production implementation before valid RED",
+        "exit_gate": "focused+module GREEN, adjacent regressions classified, architecture review and acceptance evidence; no auto-green"
+      }
+    ],
+    "B1_B12": [
+      {
+        "category": "B1",
+        "name": "成功",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-02",
+          "TDD-M01-EX-03",
+          "TDD-M01-EX-09",
+          "TDD-M01-EX-11"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B2",
+        "name": "邊界",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-01",
+          "TDD-M01-EX-08",
+          "TDD-M01-EX-13"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B3",
+        "name": "非法",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-01",
+          "TDD-M01-EX-14"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B4",
+        "name": "依賴失敗",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-10"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B5",
+        "name": "部分失敗",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-10"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B6",
+        "name": "一致性",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-04",
+          "TDD-M01-EX-06",
+          "TDD-M01-EX-12",
+          "TDD-M01-EX-16"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B7",
+        "name": "交易",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-07",
+          "TDD-M01-EX-08",
+          "TDD-M01-EX-09",
+          "TDD-M01-EX-10",
+          "TDD-M01-EX-15"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B8",
+        "name": "生命週期",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-06",
+          "TDD-M01-EX-11",
+          "TDD-M01-EX-16"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B9",
+        "name": "回復",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-10"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B10",
+        "name": "跨模組",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-10",
+          "TDD-M01-EX-14",
+          "TDD-M01-EX-16"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B11",
+        "name": "相容",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-11",
+          "TDD-M01-EX-13"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      },
+      {
+        "category": "B12",
+        "name": "回歸",
+        "applicable": true,
+        "case_ids": [
+          "TDD-M01-EX-07",
+          "TDD-M01-EX-08",
+          "TDD-M01-EX-14",
+          "TDD-M01-EX-15"
+        ],
+        "coverage": "PLANNED; refine assertions at approved Skeleton; no coverage/PASS claimed"
+      }
+    ],
+    "levels": {
+      "L0": "pure WORK models",
+      "L1": "HOST usecase controlled ports",
+      "L2": "module input command contract",
+      "L3": "real FS/OS lease/codec",
+      "L4": "asset/history/capture interactions",
+      "L5": "M08 native Windows11 x64"
+    },
+    "product_tests": "NOT RUN",
+    "pending_automation": [
+      "actual Rust target creation after architecture approval",
+      "step/fixture adapter binding",
+      "real Windows OS-lock and rollback failure harness",
+      "native UI leave/close interception",
+      "independent architecture and test review"
+    ]
+  },
+  "failure_matrix": [
+    {
+      "stage": "decode/validate",
+      "allowed_effects": "唯讀；尚未發出mutation",
+      "on_failure": "InvalidInput/UnsupportedSchema拒絕，current/original/history不變",
+      "evidence_needed": "malformed與未知欄位/版本fixtures"
+    },
+    {
+      "stage": "acquire/create",
+      "allowed_effects": "OS lease或專屬新目錄",
+      "on_failure": "ExistingTarget/Busy拒絕；新建不得刪既有目標",
+      "evidence_needed": "檔案/空目錄/非空目錄、多writer原始bytes"
+    },
+    {
+      "stage": "prepare",
+      "allowed_effects": "本次owned temp/不可變版本/pins",
+      "on_failure": "StorageFailure保留舊檔及session；新專案Partial列殘留",
+      "evidence_needed": "stage/pin/sync每點注入失敗"
+    },
+    {
+      "stage": "publish",
+      "allowed_effects": "單正式檔替換或一次domain swap",
+      "on_failure": "回復before後才回普通failure；undo不入帳",
+      "evidence_needed": "replace前後失敗及canonical/full byte對比"
+    },
+    {
+      "stage": "restore itself",
+      "allowed_effects": "保留原有效版本/transaction紀錄",
+      "on_failure": "RecoveryRequired且封鎖破壞性後續，不能宣稱原狀或成功",
+      "evidence_needed": "restore失敗、不清理唯一preimage"
+    },
+    {
+      "stage": "postcommit projection",
+      "allowed_effects": "提交已成立；畫面/通知是projection",
+      "on_failure": "不把render錯誤轉成「未寫入」；顯示已提交版本/待更新UI",
+      "evidence_needed": "成功commit後render失敗與重讀"
+    },
+    {
+      "stage": "late completion",
+      "allowed_effects": "僅ack捕獲revision/session",
+      "on_failure": "不能清掉R+1或別session的dirty；已關閉session不寫新project",
+      "evidence_needed": "save中編輯、switch、close生命週期"
+    }
+  ],
+  "traceability": [
+    [
+      "REQ-03",
+      "BDD-01",
+      "EX-02,03,05,09,13,16"
+    ],
+    [
+      "REQ-08",
+      "BDD-02",
+      "EX-01,07,08,10"
+    ],
+    [
+      "D1/D7",
+      "新增架構契約",
+      "EX-06,11,12,14,15"
+    ]
+  ],
+  "review": {
+    "status": "EXACT_DETAILS_REVIEW_REQUIRED",
+    "directions_adopted": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7"
+    ],
+    "proposals_to_review": [
+      "Project definition path/schema v1 and persistent UUID alias migration; Save Draft creates an owned folder explicitly",
+      "WORK immutable canonical content authority and one writer per physical file; ESS embedded design vs standalone design sessions remain distinct",
+      "Shared FileCommitPort/lease and fail/RecoveryRequired contract; cannot use board lock stale reclamation for product safety",
+      "M04 history/pins/capture and exact clear scope, including ESS nested sections",
+      "7 slice envelopes, new test targets, and explicit supersession of legacy file-deletion test expectation"
+    ],
+    "approved_next_step_if_adopted": "Only approved Skeleton and compile-valid RED preparation within named slice; production implementation needs valid RED and separate authorized envelope.",
+    "current_next_step": "Owner review exact proposals as one package; no product changes this turn"
+  },
+  "verification": "document checks only; product tests/native/build NOT RUN"
+}

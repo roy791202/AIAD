@@ -1,0 +1,87 @@
+{
+  "status": "PROPOSED_S3_MIGRATION_VIEW_ONLY_NO_UI_IMPLEMENTATION_AUTHORITY",
+  "component": "Project wizard/legacy creation entry migration",
+  "user_role": "local project author/designer, no Git/programming knowledge assumed",
+  "fields": [
+    {
+      "name": "locationPreview",
+      "mode": "readonly native-selection projection",
+      "validation": "not authority; caller cannot provide authorized root/digest/UUID"
+    },
+    {
+      "name": "name",
+      "mode": "editable in S3 wizard",
+      "validation": "existing domain + raw wire1..120 chars, no illegal Windows name"
+    },
+    {
+      "name": "missingDecisions",
+      "mode": "readonly optional list",
+      "validation": "does not block saving structurally valid Draft"
+    },
+    {
+      "name": "preferenceChoice",
+      "mode": "Skip/Preset/ImportedCopy",
+      "validation": "captured before create; imported source immutable"
+    },
+    {
+      "name": "savedRevision",
+      "mode": "readonly receipt capture",
+      "validation": "cannot clear later revision/session dirty state"
+    }
+  ],
+  "states": [
+    {
+      "state": "S2 legacy valid create",
+      "observable": "existing error response/rejected invoke with WizardRequired before any FS",
+      "actions": "no create/no project switch; S2 alone not releasable"
+    },
+    {
+      "state": "S3 wizard editing",
+      "observable": "six steps with incomplete draft saving allowed",
+      "actions": "explicit save/cancel; no automatic skeleton or BIN"
+    },
+    {
+      "state": "ExistingTarget",
+      "observable": "clear name/location conflict",
+      "actions": "change name/another location/cancel, no overwrite"
+    },
+    {
+      "state": "PartialProjectCreated",
+      "observable": "show actual root/owned artifacts; if proof present say definition saved/preferences incomplete/current project not switched",
+      "actions": "explicit reopen/change location; no blind retry or delete"
+    },
+    {
+      "state": "RecoveryRequired",
+      "observable": "show known recovery paths or unavailable diagnostics without claiming restoration",
+      "actions": "block destructive followup; preserve versions"
+    },
+    {
+      "state": "Saved",
+      "observable": "captured revision persisted, generation not executed",
+      "actions": "install binding only after current S3 owner/session checks"
+    },
+    {
+      "state": "empty/incomplete",
+      "observable": "show unresolved choices; no fabricated defaults",
+      "actions": "save valid Draft; generation gate separate"
+    },
+    {
+      "state": "CommitEvidenceMismatch",
+      "observable": "cannot confirm reported commit evidence; show known receipt/progress, no invented recovery paths",
+      "actions": "block destructive followup; explicit reopen/inspection only"
+    }
+  ],
+  "events_to_bdd": {
+    "save": "M01-S2 store cases",
+    "import": "source-copy/store cases",
+    "name/path conflict": "existing target/race cases",
+    "legacy creation": "three deprecated wrappers, static three-route mapping"
+  },
+  "accessibility": "S3 field-linked errors, keyboard focus and live status; NOT RUN here",
+  "protected_UI_files": [
+    "ui/app.js",
+    "src-tauri/src/commands.rs",
+    "src-tauri/src/dispatch.rs"
+  ],
+  "current_source_inspection": "UI app.js calls host_create_project_with_preferences then bindPickedProjectRoot; rejected invoke reaches outer catch, error status paths return before host_set_settings. This is source inspection only, not live runtime proof."
+}

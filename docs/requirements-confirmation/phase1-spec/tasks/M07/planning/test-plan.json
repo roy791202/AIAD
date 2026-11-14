@@ -1,0 +1,335 @@
+{
+  "module": "M07",
+  "existing_commands": [
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-core dirty::tests",
+      "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED",
+      "purpose": "Existing source/target present; may only inspect static text, not behavior proof"
+    }
+  ],
+  "proposed_commands": [
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-host --test phase1_recovery",
+      "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED",
+      "purpose": "Only runnable after approved Skeleton creates exact target"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "node --test ui/recovery-history.test.cjs",
+      "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED",
+      "purpose": "Only runnable after approved Skeleton creates exact target"
+    }
+  ],
+  "cases": [
+    {
+      "id": "TDD-22",
+      "bdd": "BDD-22",
+      "requirement": "REQ-19",
+      "title": "無變更略過",
+      "given": "內容與上次成功快照相同",
+      "when": "經過下一個60秒檢查點",
+      "then": "不新增復原快照",
+      "fixture": "fixtures.json#BDD-22",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-23",
+      "bdd": "BDD-23",
+      "requirement": "REQ-19",
+      "title": "首次未保存內容",
+      "given": "新文件已有尚未保存的內容且沒有成功快照",
+      "when": "到達60秒檢查點",
+      "then": "該內容及必要素材納入首次快照",
+      "fixture": "fixtures.json#BDD-23",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-24",
+      "bdd": "BDD-24",
+      "requirement": "REQ-20",
+      "title": "寫入期間再變更",
+      "given": "快照版本R正在保存",
+      "when": "使用者再編輯成R加1",
+      "then": "R成功只更新至R基準，R加1留待後續檢查",
+      "fixture": "fixtures.json#BDD-24",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-25",
+      "bdd": "BDD-25",
+      "requirement": "REQ-20",
+      "title": "失敗重試",
+      "given": "已有有效快照且本輪寫入失敗",
+      "when": "到達下一輪檢查",
+      "then": "保留舊快照及待保存狀態並重試，不重疊啟動",
+      "fixture": "fixtures.json#BDD-25",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-26",
+      "bdd": "BDD-26",
+      "requirement": "REQ-20",
+      "title": "不取中間狀態",
+      "given": "清空、合併或Undo尚未完成",
+      "when": "到達檢查點",
+      "then": "延後擷取直到完成或完整回復",
+      "fixture": "fixtures.json#BDD-26",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-27",
+      "bdd": "BDD-27",
+      "requirement": "REQ-21",
+      "title": "正式保存基準獨立",
+      "given": "存在成功快照及後續編輯",
+      "when": "成功保存正式文件",
+      "then": "不改快照基準、不立即刪除既有快照",
+      "fixture": "fixtures.json#BDD-27",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-28",
+      "bdd": "BDD-28",
+      "requirement": "REQ-22",
+      "title": "離線復原",
+      "given": "原磁碟離線但復原內容與素材完整",
+      "when": "從歷史開復原版本並另存",
+      "then": "以未保存狀態開啟且可保存至新位置",
+      "fixture": "fixtures.json#BDD-28",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-29",
+      "bdd": "BDD-29",
+      "requirement": "REQ-22",
+      "title": "移除歷史不刪檔",
+      "given": "歷史中有復原版本",
+      "when": "移除歷史紀錄",
+      "then": "文件、快照與素材仍保留",
+      "fixture": "fixtures.json#BDD-29",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-30",
+      "bdd": "BDD-30",
+      "requirement": "REQ-17",
+      "title": "多session隔離",
+      "given": "同專案有兩個獨立編輯工作階段",
+      "when": "各自保存復原快照",
+      "then": "以各SessionID隔離且互不覆寫",
+      "fixture": "fixtures.json#BDD-30",
+      "levels": [
+        "L1 component",
+        "L2 module contract",
+        "L3 adapter where applicable"
+      ],
+      "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M07-A",
+      "bdd": "BDD-M07-A",
+      "requirement": "REQ-17～22",
+      "title": "索引發布失敗",
+      "given": "前一有效快照存在",
+      "when": "新payload完成但index發布中斷",
+      "then": "舊索引與有效快照保留且baseline不更新",
+      "fixture": "fixtures.json#BDD-M07-A",
+      "levels": [
+        "L2 module contract",
+        "L4 adjacent regression"
+      ],
+      "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M07-B",
+      "bdd": "BDD-M07-B",
+      "requirement": "REQ-17～22",
+      "title": "語義基準排除暫態",
+      "given": "僅savedAt/selection/playback不同",
+      "when": "60秒檢查",
+      "then": "不產生新內容快照",
+      "fixture": "fixtures.json#BDD-M07-B",
+      "levels": [
+        "L2 module contract",
+        "L4 adjacent regression"
+      ],
+      "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "TDD-M07-C",
+      "bdd": "BDD-M07-C",
+      "requirement": "REQ-17～22",
+      "title": "late完成隔離",
+      "given": "A的快照保存中已切換B",
+      "when": "A的保存回報成功",
+      "then": "只更新A/session baseline不更動B",
+      "fixture": "fixtures.json#BDD-M07-C",
+      "levels": [
+        "L2 module contract",
+        "L4 adjacent regression"
+      ],
+      "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+      "result": "NOT RUN"
+    }
+  ],
+  "B1_B12": [
+    {
+      "id": "B1",
+      "name": "成功",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B2",
+      "name": "邊界",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B3",
+      "name": "非法輸入",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B4",
+      "name": "依賴失敗",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B5",
+      "name": "部分失敗",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B6",
+      "name": "狀態一致性",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B7",
+      "name": "交易",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B8",
+      "name": "生命週期",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B9",
+      "name": "回復",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B10",
+      "name": "跨模組",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B11",
+      "name": "相容性",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "B12",
+      "name": "回歸",
+      "applicability": "Applicable",
+      "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+      "result": "PLANNED_NOT_RUN"
+    }
+  ],
+  "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.",
+  "regression_levels": [
+    "focused new cases",
+    "module public-input contract tests",
+    "adjacent shared-boundary tests",
+    "architecture constraints",
+    "Windows native via M08"
+  ],
+  "pending_automation": [
+    "exact approved input DTO/Port bindings",
+    "create listed test target and fixtures after Skeleton gate",
+    "expand per-case fault matrix",
+    "native UI operator + runtime source identity",
+    "real filesystem interruption and rollback-failure coverage"
+  ],
+  "stop_conditions": [
+    "unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED",
+    "conflicting specification → SPEC_CONFLICT",
+    "tests compile/fixture/environment errors → not valid RED"
+  ],
+  "test_execution": "NOT RUN; no production tests or test files created"
+}

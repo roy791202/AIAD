@@ -1,0 +1,1009 @@
+{
+  "identity": {
+    "module": "M03",
+    "task": "PD-P1-M03-PREP-01",
+    "slice": "design_viewer_begin response integration",
+    "status": "PROPOSED_PENDING_OWNER",
+    "author": "m03_preview_begin_packet",
+    "acceptance": "NOT RUN independent reviewer required"
+  },
+  "selection": {
+    "requested_alias": "design_preview_begin",
+    "exact_command": "design_viewer_begin",
+    "overlap": "preview-contract-review is broad older review, not command response integration; no existing preview-begin integration directory at selection",
+    "existing_candidates_preserved": true
+  },
+  "architecture": {
+    "hexagonal": "Trusted native main/editor/viewer → design_viewer_begin → M03 facade → M04 sole owner snapshot input port; C1 validated read projection provider → detached Preview → same native consumer",
+    "dependency": "UI → Tauri input adapter → M03 application facade → M04/C1 abstractions; adapters implement ports; no direct filesystem",
+    "ownership": "M04 is sole document/session owner; M03 owns only ephemeral consumer-bound detached preview. No second owner constructor.",
+    "mutation": "Only ephemeral preview registration after delivery checks; source content/revision/history/dirty/saved baseline/candidates unchanged.",
+    "transaction": "Capture immutable owner snapshot; build temporary projection; revalidate native instance/document/generation/revision; publish atomically or discard. No content transaction.",
+    "forbidden": [
+      "filesystem save",
+      "FileCommit",
+      "ACK",
+      "runtime product claim",
+      "new Skeleton",
+      "new owner",
+      "execute imported code"
+    ]
+  },
+  "premises": [
+    "Native caller/local origin and instance nonce supplied by trusted host, never request fields. Model trusted_local is a premise, not authentication proof.",
+    "M04 provider supplies one immutable snapshot from its unique owner, C1 provider supplies already validated projection. Model does not implement C1, graph validation, material verification or rendering.",
+    "Provider result is not trusted across changed instance/document/generation/revision. Late delivery must revalidate before publication.",
+    "Missing material/binding uses inert placeholder and disabled capability upstream; begin does not fetch bytes or invent IO. Exact material provider integration deferred."
+  ],
+  "schemas": {
+    "request": "request.schema.json",
+    "response": "response.schema.json",
+    "root": "ok/value/replayed OR ok/error/replayed, both closed; replayed false: begin has no request_id replay semantics",
+    "typed_errors": "Closed typed variants reused from corrected response; ResourceLimit uses reviewed resource-action supplement; UnsupportedDocument.nodes restored to original H2 typed array, InvalidRequest reasons original closed enum. These refinements are PROPOSED_PENDING_OWNER.",
+    "u64": "Exact bounded pattern copied from corrected response; all u64 wire values strings including max, no JS Number."
+  },
+  "IO": {
+    "FileCommit": "NOT_APPLICABLE",
+    "ACK": "NOT_APPLICABLE",
+    "actual_outcomes": [
+      "owner.snapshot.read ready/unavailable",
+      "C1.validated_projection.read ready/typed rejection",
+      "delivery.identity.recheck current/late invalidation"
+    ],
+    "material": "No FS/network read in this slice; no fake FileCommit outcomes."
+  },
+  "UI_schema": {
+    "component": "Viewer explicit entry",
+    "role": "trusted native main/ui-editor/ui-viewer",
+    "controls": [
+      "Enter Viewer",
+      "read-only source revision",
+      "stale/error status"
+    ],
+    "validation": "strict binding UUID + exact generation/revision strings",
+    "success": "supported detached preview, sequence1",
+    "error": "show typed reason, do not publish temporary preview",
+    "empty": "empty supported Form has no capability; no manufactured nodes",
+    "accessibility": "keyboard entry and announced status; actual UI NOT RUN"
+  },
+  "contracts": [
+    "PB-I1 authoritative M04 state unchanged",
+    "PB-I2 immutable captured revision and consumer identity gate publication",
+    "PB-I3 no imported code, save, dispatch side effect or authority elevation",
+    "PB-I4 rejected begin creates no preview and preserves candidates",
+    "PB-I5 exact closed wire request/response"
+  ],
+  "coverage": {
+    "B1": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B2": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B3": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B4": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B5": {
+      "status": "Deferred",
+      "reason": "No persisted partial commit or rollback in read-only begin; publish/discard tested instead"
+    },
+    "B6": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B7": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B8": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B9": {
+      "status": "Deferred",
+      "reason": "No persisted partial commit or rollback in read-only begin; publish/discard tested instead"
+    },
+    "B10": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B11": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    },
+    "B12": {
+      "status": "Applicable",
+      "reason": "document model witnesses only; product test pending"
+    }
+  },
+  "trace": [
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-01",
+      "test": "PB-01",
+      "fixture": "PB-01",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": true,
+        "value": {
+          "preview_session": "22222222-2222-4222-8222-222222222222",
+          "source_revision": "9007199254740993",
+          "expected_sequence": "1",
+          "stale": false,
+          "mock_state": [
+            {
+              "node_id": "button",
+              "value": {
+                "kind": "Action"
+              }
+            },
+            {
+              "node_id": "toggle",
+              "value": {
+                "kind": "Toggle",
+                "checked": false
+              }
+            },
+            {
+              "node_id": "text",
+              "value": {
+                "kind": "Text",
+                "text": "<script>inert</script>"
+              }
+            },
+            {
+              "node_id": "number",
+              "value": {
+                "kind": "Number",
+                "number_text": "9007199254740993"
+              }
+            },
+            {
+              "node_id": "combo",
+              "value": {
+                "kind": "Selection",
+                "item_id": "item-A"
+              }
+            }
+          ],
+          "capabilities": [
+            {
+              "node_id": "button",
+              "allowed_actions": [
+                "Activate"
+              ]
+            },
+            {
+              "node_id": "toggle",
+              "allowed_actions": [
+                "SetToggle"
+              ]
+            },
+            {
+              "node_id": "text",
+              "allowed_actions": [
+                "SetText"
+              ]
+            },
+            {
+              "node_id": "number",
+              "allowed_actions": [
+                "SetNumber"
+              ]
+            },
+            {
+              "node_id": "combo",
+              "allowed_actions": [
+                "SelectItem"
+              ]
+            },
+            {
+              "node_id": "form",
+              "allowed_actions": []
+            }
+          ]
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-02",
+      "test": "PB-02",
+      "fixture": "PB-02",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": true,
+        "value": {
+          "preview_session": "22222222-2222-4222-8222-222222222222",
+          "source_revision": "9007199254740993",
+          "expected_sequence": "1",
+          "stale": false,
+          "mock_state": [],
+          "capabilities": [
+            {
+              "node_id": "form",
+              "allowed_actions": []
+            }
+          ]
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-03",
+      "test": "PB-03",
+      "fixture": "PB-03",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": true,
+        "value": {
+          "preview_session": "22222222-2222-4222-8222-222222222222",
+          "source_revision": "9007199254740993",
+          "expected_sequence": "1",
+          "stale": false,
+          "mock_state": [
+            {
+              "node_id": "button",
+              "value": {
+                "kind": "Action"
+              }
+            },
+            {
+              "node_id": "toggle",
+              "value": {
+                "kind": "Toggle",
+                "checked": false
+              }
+            },
+            {
+              "node_id": "text",
+              "value": {
+                "kind": "Text",
+                "text": "<script>inert</script>"
+              }
+            },
+            {
+              "node_id": "number",
+              "value": {
+                "kind": "Number",
+                "number_text": "9007199254740993"
+              }
+            },
+            {
+              "node_id": "combo",
+              "value": {
+                "kind": "Selection",
+                "item_id": "item-A"
+              }
+            }
+          ],
+          "capabilities": [
+            {
+              "node_id": "button",
+              "allowed_actions": [
+                "Activate"
+              ]
+            },
+            {
+              "node_id": "toggle",
+              "allowed_actions": [
+                "SetToggle"
+              ]
+            },
+            {
+              "node_id": "text",
+              "allowed_actions": [
+                "SetText"
+              ]
+            },
+            {
+              "node_id": "number",
+              "allowed_actions": [
+                "SetNumber"
+              ]
+            },
+            {
+              "node_id": "combo",
+              "allowed_actions": [
+                "SelectItem"
+              ]
+            },
+            {
+              "node_id": "form",
+              "allowed_actions": []
+            }
+          ]
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-04",
+      "test": "PB-04",
+      "fixture": "PB-04",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "UnauthorizedCaller",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-05",
+      "test": "PB-05",
+      "fixture": "PB-05",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "MissingBinding",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-06",
+      "test": "PB-06",
+      "fixture": "PB-06",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "StaleOwner",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-07",
+      "test": "PB-07",
+      "fixture": "PB-07",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "StaleRevision",
+          "details": {
+            "expected": "7",
+            "observed": "9007199254740993"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-08",
+      "test": "PB-08",
+      "fixture": "PB-08",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "DependencyNotReady",
+          "details": {
+            "dependency": "M04_OWNER_INTEGRATION"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-09",
+      "test": "PB-09",
+      "fixture": "PB-09",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "ResourceLimit",
+          "details": {
+            "field": "/preview_sessions",
+            "limit": "preview_sessions_per_binding"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-10",
+      "test": "PB-10",
+      "fixture": "PB-10",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "UnsupportedDocument",
+          "details": {
+            "nodes": [
+              {
+                "node_id": "foreign",
+                "type": "Unknown",
+                "reason": "unsupported"
+              }
+            ]
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-11",
+      "test": "PB-11",
+      "fixture": "PB-11",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "CodecRejected",
+          "details": {
+            "message": "invalid design"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-12",
+      "test": "PB-12",
+      "fixture": "PB-12",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "AmbiguousStableId",
+          "details": {
+            "node_id": "same"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-13",
+      "test": "PB-13",
+      "fixture": "PB-13",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "ParentMissing",
+          "details": {
+            "node_id": "child",
+            "parent_id": "absent"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-14",
+      "test": "PB-14",
+      "fixture": "PB-14",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "ParentCycle",
+          "details": {
+            "node_id": "cycle"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-15",
+      "test": "PB-15",
+      "fixture": "PB-15",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "DependencyNotReady",
+          "details": {
+            "dependency": "C1_CODEC"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-16",
+      "test": "PB-16",
+      "fixture": "PB-16",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "StaleOwner",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-17",
+      "test": "PB-17",
+      "fixture": "PB-17",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "StaleRevision",
+          "details": {
+            "expected": "9007199254740993",
+            "observed": "9007199254740994"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-18",
+      "test": "PB-18",
+      "fixture": "PB-18",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "UnauthorizedCaller",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-19",
+      "test": "PB-19",
+      "fixture": "PB-19",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "MissingBinding",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-20",
+      "test": "PB-20",
+      "fixture": "PB-20",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "PreviewClosed",
+          "details": {}
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-21",
+      "test": "PB-21",
+      "fixture": "PB-21",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": true,
+        "value": {
+          "preview_session": "22222222-2222-4222-8222-222222222222",
+          "source_revision": "18446744073709551615",
+          "expected_sequence": "1",
+          "stale": false,
+          "mock_state": [
+            {
+              "node_id": "button",
+              "value": {
+                "kind": "Action"
+              }
+            },
+            {
+              "node_id": "toggle",
+              "value": {
+                "kind": "Toggle",
+                "checked": false
+              }
+            },
+            {
+              "node_id": "text",
+              "value": {
+                "kind": "Text",
+                "text": "<script>inert</script>"
+              }
+            },
+            {
+              "node_id": "number",
+              "value": {
+                "kind": "Number",
+                "number_text": "9007199254740993"
+              }
+            },
+            {
+              "node_id": "combo",
+              "value": {
+                "kind": "Selection",
+                "item_id": "item-A"
+              }
+            }
+          ],
+          "capabilities": [
+            {
+              "node_id": "button",
+              "allowed_actions": [
+                "Activate"
+              ]
+            },
+            {
+              "node_id": "toggle",
+              "allowed_actions": [
+                "SetToggle"
+              ]
+            },
+            {
+              "node_id": "text",
+              "allowed_actions": [
+                "SetText"
+              ]
+            },
+            {
+              "node_id": "number",
+              "allowed_actions": [
+                "SetNumber"
+              ]
+            },
+            {
+              "node_id": "combo",
+              "allowed_actions": [
+                "SelectItem"
+              ]
+            },
+            {
+              "node_id": "form",
+              "allowed_actions": []
+            }
+          ]
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-22",
+      "test": "PB-22",
+      "fixture": "PB-22",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "InvalidRequest",
+          "details": {
+            "field": "/binding_ref",
+            "reason": "MissingField"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    },
+    {
+      "requirement": "M03 Viewer immutable mock entry",
+      "bdd": "PB-23",
+      "test": "PB-23",
+      "fixture": "PB-23",
+      "contract": [
+        "PB-I1",
+        "PB-I2",
+        "PB-I4",
+        "PB-I5"
+      ],
+      "expected": {
+        "ok": false,
+        "error": {
+          "code": "InvalidRequest",
+          "details": {
+            "field": "/native_instance",
+            "reason": "UnknownField"
+          }
+        },
+        "replayed": false
+      },
+      "status": "DOCUMENT_MODEL_ONLY"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PB-DOC",
+      "primary_module": "M03",
+      "allowed_scope": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/preview-begin-integration/**",
+      "acceptance": [
+        "complete schema root accepts positive and rejects mutated negatives",
+        "fixtures match exact response/call ordering",
+        "796 authority hash comparison recorded",
+        "no original/product/board writes"
+      ],
+      "status": "REVIEW_PENDING"
+    }
+  ],
+  "owner_choices": {
+    "status": "PROPOSED_PENDING_OWNER",
+    "all_added_policies_interfaces_schema_choices": "PROPOSED_PENDING_OWNER",
+    "pending_original": [
+      "M03-CP1",
+      "M03-CP2",
+      "M03-CP3",
+      "M03-CP4"
+    ],
+    "original_decisions": {
+      "status": "PENDING_ONE_OWNER_CONFIRMATION",
+      "items": [
+        {
+          "id": "M03-H2-D1",
+          "topic": "Application owner/binding",
+          "proposal": "Adopt one DispatchHost-owned S1 DocumentSession per trusted document, immutable candidates/ephemeral views; no WORK new owner model or identity allocation."
+        },
+        {
+          "id": "M03-H2-D2",
+          "topic": "Raw ingress/candidate transaction",
+          "proposal": "Adopt raw design_json before C1 typed conversion, canonical profile/semantic exclusions and one S1 Edit commit; no implicit filtering/stamping/Form insertion."
+        },
+        {
+          "id": "M03-H2-D3",
+          "topic": "Unsupported/read-only policy",
+          "proposal": "Adopt inert read-only placeholders and disabled edits/mocks/save for unsupported nodes or absent Form, no silent conversion."
+        },
+        {
+          "id": "M03-H2-D4",
+          "topic": "DTO/errors/limits",
+          "proposal": "Adopt13 closed commands, structured exact error fields, decimal u64 revisions and proposed limits/ordering."
+        },
+        {
+          "id": "M03-H2-D5",
+          "topic": "Viewer capability",
+          "proposal": "Adopt six supported node mock types/actions, detached map, exact payload, strict sequence and revocation; no dispatch/IO/AI/Git."
+        },
+        {
+          "id": "M03-H2-D6",
+          "topic": "Permissions/lifecycle",
+          "proposal": "Adopt explicit viewer capability split, role-specific actual sender guard, one writer transfer and native close/reload/root-switch revocation."
+        },
+        {
+          "id": "M03-H2-D7",
+          "topic": "Envelope/legacy migration",
+          "proposal": "Adopt18 exact paths, application owner module/test paths and three legacy typed commands fail-closed, explicit old assertion migration; no dependency/lock changes."
+        },
+        {
+          "id": "M03-H2-D8",
+          "topic": "Persistence/phase gates",
+          "proposal": "Adopt C1 dependency and M04_S2 DependencyNotReady boundary; H2 preview/owner is not full save/open release completion. Build Skeleton/valid RED only after this approval."
+        }
+      ],
+      "preserves": "C1 CP1-CP3 remains separately pending; do not treat H2 adoption as implicit C1 contract adoption; existing S1/IO accepted behavior unchanged."
+    },
+    "effective_decisions": {
+      "status": "PENDING_ONE_OWNER_CONFIRMATION",
+      "items": [
+        {
+          "id": "M03-H2-D1",
+          "topic": "Application owner/binding",
+          "proposal": "Adopt one DispatchHost-owned S1 DocumentSession per trusted document, immutable candidates/ephemeral views; no WORK new owner model or identity allocation."
+        },
+        {
+          "id": "M03-H2-D2",
+          "topic": "Raw ingress/candidate transaction",
+          "proposal": "Adopt raw design_json before C1 typed conversion, canonical profile/semantic exclusions and one S1 Edit commit; no implicit filtering/stamping/Form insertion."
+        },
+        {
+          "id": "M03-H2-D3",
+          "topic": "Unsupported/read-only policy",
+          "proposal": "Adopt inert read-only placeholders and disabled edits/mocks/save for unsupported nodes or absent Form, no silent conversion."
+        },
+        {
+          "id": "M03-H2-D4",
+          "topic": "DTO/errors/limits",
+          "proposal": "Adopt13 closed commands, structured exact error fields, decimal u64 revisions and proposed limits/ordering."
+        },
+        {
+          "id": "M03-H2-D5",
+          "topic": "Viewer capability",
+          "proposal": "Adopt six supported node mock types/actions, detached map, exact payload, strict sequence and revocation; no dispatch/IO/AI/Git."
+        },
+        {
+          "id": "M03-H2-D6",
+          "topic": "Permissions/lifecycle",
+          "proposal": "Adopt explicit viewer capability split, role-specific actual sender guard, one writer transfer and native close/reload/root-switch revocation."
+        },
+        {
+          "id": "M03-H2-D7",
+          "topic": "Envelope/legacy migration",
+          "proposal": "Adopt18 exact paths, application owner module/test paths and three legacy typed commands fail-closed, explicit old assertion migration; no dependency/lock changes."
+        },
+        {
+          "id": "M03-H2-D8",
+          "topic": "Persistence/phase gates",
+          "proposal": "Adopt C1 dependency and M04_S2 DependencyNotReady boundary; H2 preview/owner is not full save/open release completion. Build Skeleton/valid RED only after this approval."
+        }
+      ],
+      "preserves": "C1 CP1-CP3 remains separately pending; do not treat H2 adoption as implicit C1 contract adoption; existing S1/IO accepted behavior unchanged."
+    },
+    "note": "No pending choice adopted or overwritten; original candidates remain intact.",
+    "begin_refinements": [
+      "no begin request_id; replayed=false",
+      "UnsupportedDocument.nodes typed array, not prior descriptor string",
+      "closed original InvalidRequest reason enum",
+      "reviewed ResourceLimit token fragment",
+      "native identity/document/generation/revision delivery recheck; no publication on mismatch",
+      "request validation precedence documented in README"
+    ]
+  },
+  "limits": [
+    "DOCUMENT MODEL is not product implementation, native security proof, domain parser proof or accepted RED/GREEN.",
+    "Checker supports only enumerated schema keywords, fails on unsupported keywords; no claim of full Draft2020 validation.",
+    "Product TDD RED/GREEN/build/package/install/native UI/regression and independent acceptance NOT RUN."
+  ],
+  "product_readiness": "NOT_READY_FOR_IMPLEMENTATION"
+}

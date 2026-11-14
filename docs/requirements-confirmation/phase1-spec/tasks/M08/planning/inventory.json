@@ -1,0 +1,101 @@
+{
+  "module": "M08",
+  "task": "PD-P1-M08-PREP-01",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "dirty": true,
+  "evidence": "SOURCE_INSPECTION_ONLY",
+  "files": [
+    {
+      "path": "apps/sgenaxis-desktop/Cargo.toml",
+      "exists": true,
+      "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/package.json",
+      "exists": true,
+      "sha256": "9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+      "exists": true,
+      "sha256": "a345a17fe1aca9b22b3f31180daba3fba379d9a25f5697f1ca9c8bd0cf873a01"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/tauri.conf.json",
+      "exists": true,
+      "sha256": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2"
+    },
+    {
+      "path": "packaging/windows/portable/EluSlot.exe.sha256",
+      "exists": true,
+      "sha256": "65da5b9f9fbd22a9c1944dceaeb9f336d01f945e05e9007f87deee4bed80952a"
+    },
+    {
+      "path": "packaging/windows/portable/README.md",
+      "exists": true,
+      "sha256": "065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1"
+    },
+    {
+      "path": "packaging/windows/wix/verify-install.ps1",
+      "exists": true,
+      "sha256": "27a0846c5727a831460376db1f0b1cf5f030ae062d30f1465d7339979eee05ac"
+    },
+    {
+      "path": "tests/test_pd_harness_portable_01.py",
+      "exists": true,
+      "sha256": "ce0915e33fa4ebbba33f130be26cb3581e8ec7e16aefd064072dfe17bf791a3a"
+    },
+    {
+      "path": "tests/test_pd_rel_artifacts_01.py",
+      "exists": true,
+      "sha256": "14e7a1e9e5c3b69f3aacbae36f2e4858e5a07039c124d4f3d10575d13a2697ac"
+    },
+    {
+      "path": "tests/test_pd_scene_sgs_01.py",
+      "exists": true,
+      "sha256": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769"
+    }
+  ],
+  "findings": [
+    {
+      "path": "packaging/windows/portable/README.md",
+      "line_start": 1,
+      "line_end": 11,
+      "sha256": "065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1",
+      "excerpt": "﻿# EluSlot portable（免 MSI 安裝）\n\n雙擊 `EluSlot.exe` 即可執行。捷徑圖示可用同目錄 `EluSlot.ico`。\n\n本版含：參考線（量尺拉出）、Tasks 抽屜（Agent／佈版／監聽／報告）、UI 編輯、架構樹、EluSlot 品牌。\n\n相容別名：`SGenAxis.exe`（同 binary）。\n\nSHA-256: c270b330c9262561eb6ea49230c9f79df677b0ce797ff8255b15f4a6c797c7ca\nbytes: 5577728\nbuilt: 2026-10-25T22:39:26+08:00",
+      "observation": "僅2026-10-25歷史binary/hash；不是目前工作樹新需求驗收",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/Cargo.toml",
+      "line_start": 1,
+      "line_end": 30,
+      "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5",
+      "excerpt": "# PD-CARGO-WORKSPACE-01 — desktop Cargo workspace root\n# From this directory: cargo test -p sgenaxis-core (or -p 'sgenaxis-*')\n[workspace]\nresolver = \"2\"\nmembers = [\n    \"crates/sgenaxis-core\",\n    \"crates/sgenaxis-ports\",\n    \"crates/sgenaxis-adapters\",\n    \"crates/sgenaxis-exec\",\n    \"crates/sgenaxis-listen\",\n    \"crates/sgenaxis-guard\",\n    \"crates/sgenaxis-evid\",\n    \"crates/sgenaxis-spec\",\n    \"crates/sgenaxis-work\",\n    \"crates/sgenaxis-host\",\n]\n# Tauri host stays a separate package under src-tauri/ (own Cargo.toml + lock).\n# Run its tests from src-tauri: cargo test --lib\ndefault-members = [\n    \"crates/sgenaxis-core\",\n    \"crates/sgenaxis-ports\",\n    \"crates/sgenaxis-adapters\",\n    \"crates/sgenaxis-exec\",\n    \"crates/sgenaxis-listen\",\n    \"crates/sgenaxis-guard\",\n    \"crates/sgenaxis-evid\",\n    \"crates/sgenaxis-spec\",\n    \"crates/sgenaxis-work\",\n    \"crates/sgenaxis-host\",\n]",
+      "observation": "workspace與src-tauri獨立，命令cwd不同",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "tests/test_pd_scene_sgs_01.py",
+      "line_start": 1,
+      "line_end": 55,
+      "sha256": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769",
+      "excerpt": "\"\"\"TDD — Scene pack .ess (XML) = work + architecture + design in one document.\"\"\"\n\nfrom __future__ import annotations\n\nimport re\nimport xml.etree.ElementTree as ET\nfrom pathlib import Path\n\nROOT = Path(__file__).resolve().parents[1]\nUI = ROOT / \"apps\" / \"sgenaxis-desktop\" / \"ui\"\nHTML = UI / \"index.html\"\nJS = UI / \"app.js\"\nFIXDIR = ROOT / \"fixtures\" / \"sgenaxis-scene\"\nESS = FIXDIR / \"sample.ess\"\n\n\ndef test_scene_ess_ui_and_codec_hooks():\n    html = HTML.read_text(encoding=\"utf-8\")\n    assert 'data-cmd=\"scene.saveXml\"' in html\n    assert 'data-cmd=\"scene.openXml\"' in html\n    assert \".ess\" in html\n    assert 'id=\"toolbar-scene-open\"' in html\n    assert 'id=\"toolbar-scene-save\"' in html\n    js = JS.read_text(encoding=\"utf-8\")\n    assert \"sceneDocToSgsXml\" in js\n    assert \"sceneDocFromSgsXml\" in js\n    assert \"applySceneSgsXml\" in js\n    assert \"saveSceneSgsToProject\" in js\n    assert \"loadSceneSgsFromProject\" in js\n    assert \"SCENE_SGS_REL\" in js\n    assert \"scene/default.ess\" in js\n    assert 'format=\"eluslot.ess\"' in js or \"eluslot.ess\" in js\n    assert 'cmd === \"scene.saveXml\"' in js\n    assert 'cmd === \"scene.openXml\"' in js\n\n\ndef test_sample_ess_fixture_is_xml_scene():\n    assert ESS.is_file()\n    raw = ESS.read_text(encoding=\"utf-8\")\n    assert \"<eluslotScene\" in raw\n    assert 'format=\"eluslot.ess\"' in raw\n    assert 'encoding=\"xml\"' in raw\n    assert \"<work\" in raw\n    assert \"<architecture\" in raw\n    assert \"<eluslotArch\" in raw\n    assert \"<design\" in raw\n    root = ET.fromstring(raw)\n    assert re.sub(r\"\\{.*\\}\", \"\", root.tag) == \"eluslotScene\"\n    assert root.attrib.get(\"format\") == \"eluslot.ess\"\n    work = root.find(\"work\")\n    arch = root.find(\"architecture\")\n    design = root.find(\"design\")\n    assert work is not None\n    assert arch is not None\n    assert design is not None",
+      "observation": "舊UI hook/fixture XML文字檢查不是native behavior證據",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/package.json",
+      "line_start": 1,
+      "line_end": 15,
+      "sha256": "9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8",
+      "excerpt": "{\n  \"name\": \"sgenaxis-desktop\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"description\": \"SGenAxis desktop shell (Tauri 2 + Vanilla Web UI) — M1 stage 1 spike\",\n  \"scripts\": {\n    \"tauri\": \"tauri\",\n    \"dev\": \"tauri dev\",\n    \"build\": \"tauri build\",\n    \"ui:open\": \"echo Open ui/index.html in a browser for interim QA\"\n  },\n  \"devDependencies\": {\n    \"@tauri-apps/cli\": \"^2\"\n  }\n}",
+      "observation": "npm run build→tauri build可重用，但未確認新artifact/環境",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "tests": "NOT RUN",
+  "native_ui": "NOT RUN",
+  "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+}

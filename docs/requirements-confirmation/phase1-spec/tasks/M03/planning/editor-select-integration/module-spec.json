@@ -1,0 +1,53 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "command": "design_editor_select",
+  "status": "PROPOSED_PENDING_OWNER",
+  "scope": "One bounded command, document-only planning. No product implementation.",
+  "authority": "M01/planning/s2-green/source-current.json; current HEAD 5b709343a890503ebbe24a802e43cda5647df124; 31babe historical",
+  "architecture": {
+    "hexagonal": "Native UI -> Tauri command/input port -> selection use case -> domain projection; application -> owner observation/select output port <- M04 adapter",
+    "dependency": "UI -> command -> application -> domain; owner adapter implements port; no domain infrastructure",
+    "ownership": "M04 owns document/revision/history. M03 owns ephemeral selection projection.",
+    "mutation": "Only owner.select_ephemeral; no content mutation",
+    "transaction": "Atomic native identity/current revision check plus ephemeral select is trusted provider premise",
+    "forbidden": [
+      "formal save",
+      "ACK",
+      "pin",
+      "history mutation",
+      "label lookup",
+      "arbitrary dispatch"
+    ]
+  },
+  "contracts": [
+    "content/history/revision/dirty/baseline/pins/ACK unchanged",
+    "exact native binding/document/session/project/root/epoch/window/generation and current projection identity",
+    "failure preserves selection"
+  ],
+  "bdd_categories": {
+    "B1": "Applicable: fixtures",
+    "B2": "Applicable: fixtures",
+    "B3": "Applicable: fixtures",
+    "B4": "Applicable: fixtures",
+    "B5": "Applicable: fixtures",
+    "B6": "Applicable: fixtures",
+    "B7": "Applicable: fixtures",
+    "B8": "Applicable: fixtures",
+    "B9": "Applicable: fixtures",
+    "B10": "Applicable: fixtures",
+    "B11": "Deferred: native platform compatibility NOT RUN",
+    "B12": "Applicable: fixtures"
+  },
+  "cases": 51,
+  "acceptance": [
+    "All document fixture state/call/response expectations pass",
+    "Original/product hashes preserved",
+    "Independent native and Owner adoption remain pending"
+  ],
+  "risks": [
+    "Trusted fixture provider is not authenticity proof",
+    "Atomic observation/select not demonstrated",
+    "Delivery loss after select is uncertain; do not retry automatically"
+  ]
+}

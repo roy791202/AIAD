@@ -1,0 +1,152 @@
+{
+  "module": "agent-execution-mcp-composition",
+  "task": "PD-RUST-MCP-NOTRUN-TDD-01",
+  "status": "READY_FOR_GREEN yellow",
+  "build": "PASS",
+  "red": {
+    "passed": 0,
+    "failed": 5,
+    "reason": "4 simulated Live successes; 1 credential disclosure"
+  },
+  "fixture": {
+    "kind": "in-process private DispatchHost fixture",
+    "endpoint": "http://127.0.0.1:3920/sse",
+    "secrets": "synthetic only",
+    "reserved_targets": [
+      "empty",
+      "8788",
+      "8787"
+    ],
+    "transport": "default fake at RED, explicit NeverDial spy for forbidden checks",
+    "binding": "existing DEMO project root/fingerprint, notrun-work task",
+    "guard": "existing approved sample_guard_packet(true)"
+  },
+  "traceability": [
+    {
+      "test": "default_live_rejects_without_accepted_state",
+      "scenario": "Live request with an otherwise valid target",
+      "contracts": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "matrix": [
+        "T1",
+        "T2"
+      ]
+    },
+    {
+      "test": "repeated_rejection_then_dryrun_recovers",
+      "scenario": "Repeated requests remain unexecuted; Rejection does not block later simulation",
+      "contracts": [
+        "C3",
+        "C6"
+      ],
+      "matrix": [
+        "T3",
+        "T4"
+      ]
+    },
+    {
+      "test": "guarded_implementation_unavailable_keeps_execution_uncommitted",
+      "scenario": "Live request through approved implementation command",
+      "contracts": [
+        "C1",
+        "C2",
+        "C3"
+      ],
+      "matrix": [
+        "T1",
+        "T2"
+      ]
+    },
+    {
+      "test": "unavailable_diagnostics_do_not_echo_credentials",
+      "scenario": "Failure does not disclose credentials",
+      "contracts": [
+        "C4"
+      ],
+      "matrix": [
+        "T5"
+      ]
+    },
+    {
+      "test": "empty_and_reserved_targets_never_contact_transport_or_echo_credentials",
+      "scenario": "Unsafe targets remain inactive; Failure does not disclose credentials",
+      "contracts": [
+        "C4",
+        "C5"
+      ],
+      "matrix": [
+        "T5",
+        "T6"
+      ]
+    },
+    {
+      "test": "live_mcp_via_dispatch_host_is_not_dry_run_only",
+      "scenario": "Explicit simulation fixtures preserve adapter coverage",
+      "contracts": [
+        "C7"
+      ],
+      "matrix": [
+        "T8"
+      ],
+      "note": "Existing assertions preserved, private explicit fake composition"
+    }
+  ],
+  "pending_automation": [
+    {
+      "check": "focused GREEN and library regressions",
+      "status": "PASS"
+    },
+    {
+      "check": "native WebView IPC / UI rendering",
+      "status": "NOT RUN",
+      "reason": "library slice only"
+    },
+    {
+      "check": "real MCP transport",
+      "status": "NOT RUN",
+      "reason": "no transport implementation or network permitted"
+    }
+  ],
+  "architecture": "unchanged public interfaces; tests only inspect private child-module state; no production injection API",
+  "risks": [
+    "No physical network or native UI proof",
+    "Guard authorization pass and internal counters explicitly excluded from accepted-state invariants"
+  ],
+  "green": {
+    "passed": 5,
+    "failed": 0
+  },
+  "regression": {
+    "tauri": {
+      "status": "PASS",
+      "passed": 79,
+      "failed": 0,
+      "log": "tauri.txt"
+    },
+    "workspace": {
+      "status": "PASS",
+      "passed": 277,
+      "failed": 0,
+      "log": "workspace.txt"
+    },
+    "exec-all": {
+      "status": "PASS",
+      "passed": 56,
+      "failed": 0,
+      "log": "exec-all.txt"
+    },
+    "exec-default": {
+      "status": "PASS",
+      "passed": 52,
+      "failed": 0,
+      "log": "exec-default.txt"
+    }
+  },
+  "test_sha256": "c72fb7486cbfd20cd2aae82ccb73284e4e3cc52b754366c44fd8bf3df1628b8a",
+  "dispatch_sha256": "0ae3e2f8063740896a2e3f92552267f2b2bf5954b94c770c453c7e1081ac390c",
+  "acceptance": "OWNER_PENDING; no board green promotion",
+  "classification": "No regression failures observed; no environment failures; native IPC/UI and real transport NOT RUN."
+}

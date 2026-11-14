@@ -1,0 +1,246 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M08 Windows驗收整合準備交付</title><style>body{font:16px/1.75 system-ui;max-width:1250px;margin:30px auto;padding:20px;color:#233044}section,article{border:1px solid #ccd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ccd;padding:9px;text-align:left;vertical-align:top}.scroll{overflow:auto}a{color:#245cb4}h2{color:#254b77}</style><h1>M08 Windows驗收整合 準備交付</h1><p>PLANNING_DELIVERED_REVIEW_PENDING｜Architecture PROPOSED_NOT_APPROVED｜Product tests／RED／GREEN／Native NOT RUN</p><p>免安裝artifact與跨模組證據</p><p>cursor/ui-bhv-arch-layer-editor @ 31babe87a7ef1e40a0d4bedc523077e7a45d63ab；已有WIP，以個別SHA256為來源基準。</p><p><a href="../../M08/planning/index.html">八模組整體審查</a> · <a href="inventory.json">來源證據</a> · <a href="gap-matrix.json">差額矩陣</a> · <a href="envelope.json">精確候選範圍</a></p><section><h2>目前能力與差額</h2><div class="scroll"><table><tr><th>來源行</th><th>SHA256</th><th>觀察</th><th>證據層</th></tr><tr><td>packaging/windows/portable/README.md:1</td><td>065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1</td><td>僅2026-10-25歷史binary/hash；不是目前工作樹新需求驗收</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/Cargo.toml:1</td><td>9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5</td><td>workspace與src-tauri獨立，命令cwd不同</td><td>SOURCE_ONLY</td></tr><tr><td>tests/test_pd_scene_sgs_01.py:1</td><td>083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769</td><td>舊UI hook/fixture XML文字檢查不是native behavior證據</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/package.json:1</td><td>9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8</td><td>npm run build→tauri build可重用，但未確認新artifact/環境</td><td>SOURCE_ONLY</td></tr></table></div><ul><li>新需求無本次RED/GREEN/native行為證據；舊綠卡/binary不可冒用</li><li>需Windows11 x64/WebView2實際環境與artifact lock</li><li>本輪不跑build/package/tests，不產新binary</li></ul><p>Negative findings只限inventory及search-log所列範圍；不宣稱遍歷全repo已證明功能不存在。</p></section><section><h2>View A Hexagonal系統邊界（提案）</h2><pre>Driving UI / Tests
+          ↓
+Tauri Commands → DispatchHost / Input ports
+          ↓
+HOST Application usecase → WORK Domain (authority)
+          ↓ abstractions
+Storage / Transaction / Codec / Clock roles
+          ↑ implements
+Std FS / user paths / archive / preview adapters
+State owner: 只讀版本與驗收證據，不擁有其他模組domain authority。
+Mutation boundary: 隔離test driver/native operator</pre></section><section><h2>View B 模組依賴與交易（提案）</h2><pre>M08 Input → M08 Usecase → domain policy + output ports
+M01 project definition → M02 generation → M03 design projection
+M06 single merge → M04 document commit/history → M05 asset references
+M07 stable capture ← M04 content revision; M07 retained pins → M05
+M08 test drivers → module input ports, no domain ownership
+Transaction: lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。</pre><div class="scroll"><table><tr><th>A1-A14</th><th>內容</th></tr><tr><td>A1_context</td><td>Windows驗收整合；免安裝artifact與跨模組證據</td></tr><tr><td>A2_hexagonal</td><td>UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters</td></tr><tr><td>A3_dependency</td><td>M08 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass</td></tr><tr><td>A4_responsibility</td><td>免安裝artifact與跨模組證據</td></tr><tr><td>A5_input_ports</td><td>隔離test driver/native operator</td></tr><tr><td>A6_output_ports</td><td>隔離FS/程序/artifact讀取；不用自動派工服務。</td></tr><tr><td>A7_driving_adapters</td><td>Vanilla UI / module tests / Windows native operator</td></tr><tr><td>A8_driven_adapters</td><td>Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager</td></tr><tr><td>A9_direction</td><td>Domain must not depend on UI/FS/OS/Tauri/concrete adapters</td></tr><tr><td>A10_ownership</td><td>只讀版本與驗收證據，不擁有其他模組domain authority。</td></tr><tr><td>A11_mutation</td><td>All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document</td></tr><tr><td>A12_transaction</td><td>lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。</td></tr><tr><td>A13_external</td><td>Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority</td></tr><tr><td>A14_forbidden</td><td>UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape</td></tr><tr><td>status</td><td>PROPOSED_NOT_APPROVED</td></tr></table></div></section><section><h2>契約、不變條件與UI schema</h2><pre>{
+  &quot;preconditions&quot;: &quot;Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions&quot;,
+  &quot;success&quot;: &quot;Result reflects committed version, no error contradiction; design/build status never equals functional acceptance&quot;,
+  &quot;failure&quot;: &quot;Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5&quot;,
+  &quot;ownership&quot;: &quot;只讀版本與驗收證據，不擁有其他模組domain authority。&quot;,
+  &quot;atomicity&quot;: &quot;lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。&quot;,
+  &quot;lifecycle&quot;: &quot;Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files&quot;,
+  &quot;invariants&quot;: [
+    [
+      &quot;INV01&quot;,
+      &quot;任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。&quot;
+    ],
+    [
+      &quot;INV02&quot;,
+      &quot;文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。&quot;
+    ],
+    [
+      &quot;INV06&quot;,
+      &quot;成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。&quot;
+    ],
+    [
+      &quot;INV08&quot;,
+      &quot;匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。&quot;
+    ]
+  ]
+}</pre><pre>{
+  &quot;role&quot;: &quot;本機專案作者／設計者&quot;,
+  &quot;fields_controls_states&quot;: &quot;native按精靈/Editor/Viewer/BIN/Undo/history，記artifact/OS/需求；不能用controlled fixture冒充native。&quot;,
+  &quot;validation&quot;: &quot;Validate fields, identity, revision and capability before mutation; disabled states name reason&quot;,
+  &quot;defaults&quot;: &quot;Spec D01-D13 are proposals; no implicit approval here&quot;,
+  &quot;empty&quot;: &quot;No project/document/template/asset/artifact: show actual empty state and next available action&quot;,
+  &quot;accessibility&quot;: &quot;Text labels, keyboard focus, field-linked errors; details pending rendered UI review&quot;
+}</pre></section><section><h2>精確候選檔案與成本（待批准）</h2><pre>{
+  &quot;module&quot;: &quot;M08&quot;,
+  &quot;status&quot;: &quot;PROPOSED_NOT_APPROVED&quot;,
+  &quot;current_authorized_writes&quot;: [
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M08/planning/**&quot;,
+    &quot;own PREP board notes and planning status only&quot;
+  ],
+  &quot;proposed_existing_production&quot;: [],
+  &quot;proposed_new_production&quot;: [],
+  &quot;proposed_tests&quot;: [
+    &quot;tests/test_p1_portable_acceptance.py&quot;
+  ],
+  &quot;protected&quot;: &quot;All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.&quot;,
+  &quot;shared_files&quot;: &quot;app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.&quot;,
+  &quot;baseline&quot;: [],
+  &quot;new_dependency_cost&quot;: &quot;No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.&quot;,
+  &quot;new_public_api_cost&quot;: &quot;Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.&quot;,
+  &quot;file_cost&quot;: {
+    &quot;existing_candidates&quot;: 0,
+    &quot;new_production_candidates&quot;: 0,
+    &quot;new_test_candidates&quot;: 1
+  },
+  &quot;decisions&quot;: [
+    &quot;D3&quot;,
+    &quot;D7&quot;
+  ]
+}</pre><p>以上為針對此模組的候選集合，不是無條件的實作包；G門檻與public API/Skeleton未批准前只能寫planning。跨模組new files的責任歸屬要先拆卡，不可在共用檔改整個產品。</p></section><section><h2>BDD與驗收</h2><div class="scroll"><table><tr><th>BDD</th><th>TDD</th><th>Given</th><th>When</th><th>Then</th><th>結果</th></tr><tr><td>BDD-32</td><td>TDD-32</td><td>Windows11 x64免安裝程式已產生成功快照</td><td>移動程式目錄再啟動</td><td>使用者資料區快照仍可找到與復原</td><td>NOT RUN</td></tr><tr><td>BDD-M08-A</td><td>TDD-M08-A</td><td>已有完整復原版本且原專案離線</td><td>原生歷史開啟後另存</td><td>未保存版本可在新位置保存且來源不變</td><td>NOT RUN</td></tr></table></div><p><a href="module.feature">Gherkin</a> · <a href="steps_pending.py">Step stubs</a> · <a href="fixtures.json">Fixture</a> · <a href="test-plan.json">TDD完整計畫</a></p><pre>{
+  &quot;module&quot;: &quot;M08&quot;,
+  &quot;existing_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test --workspace&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop/src-tauri&quot;,
+      &quot;command&quot;: &quot;cargo test --lib&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;npm run build&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    }
+  ],
+  &quot;proposed_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD&quot;,
+      &quot;command&quot;: &quot;python -m pytest tests/test_p1_portable_acceptance.py -q&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    }
+  ],
+  &quot;cases&quot;: [
+    {
+      &quot;id&quot;: &quot;TDD-32&quot;,
+      &quot;bdd&quot;: &quot;BDD-32&quot;,
+      &quot;requirement&quot;: &quot;REQ-01&quot;,
+      &quot;title&quot;: &quot;免安裝移動&quot;,
+      &quot;given&quot;: &quot;Windows11 x64免安裝程式已產生成功快照&quot;,
+      &quot;when&quot;: &quot;移動程式目錄再啟動&quot;,
+      &quot;then&quot;: &quot;使用者資料區快照仍可找到與復原&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-32&quot;,
+      &quot;levels&quot;: [
+        &quot;L1 component&quot;,
+        &quot;L2 module contract&quot;,
+        &quot;L3 adapter where applicable&quot;
+      ],
+      &quot;valid_red&quot;: &quot;After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-M08-A&quot;,
+      &quot;bdd&quot;: &quot;BDD-M08-A&quot;,
+      &quot;requirement&quot;: &quot;REQ-01,23&quot;,
+      &quot;title&quot;: &quot;原磁碟離線&quot;,
+      &quot;given&quot;: &quot;已有完整復原版本且原專案離線&quot;,
+      &quot;when&quot;: &quot;原生歷史開啟後另存&quot;,
+      &quot;then&quot;: &quot;未保存版本可在新位置保存且來源不變&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-M08-A&quot;,
+      &quot;levels&quot;: [
+        &quot;L2 module contract&quot;,
+        &quot;L4 adjacent regression&quot;
+      ],
+      &quot;valid_red&quot;: &quot;Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    }
+  ],
+  &quot;B1_B12&quot;: [
+    {
+      &quot;id&quot;: &quot;B1&quot;,
+      &quot;name&quot;: &quot;成功&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B2&quot;,
+      &quot;name&quot;: &quot;邊界&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B3&quot;,
+      &quot;name&quot;: &quot;非法輸入&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B4&quot;,
+      &quot;name&quot;: &quot;依賴失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B5&quot;,
+      &quot;name&quot;: &quot;部分失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B6&quot;,
+      &quot;name&quot;: &quot;狀態一致性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B7&quot;,
+      &quot;name&quot;: &quot;交易&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B8&quot;,
+      &quot;name&quot;: &quot;生命週期&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B9&quot;,
+      &quot;name&quot;: &quot;回復&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B10&quot;,
+      &quot;name&quot;: &quot;跨模組&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B11&quot;,
+      &quot;name&quot;: &quot;相容性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B12&quot;,
+      &quot;name&quot;: &quot;回歸&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    }
+  ],
+  &quot;fixture_strategy&quot;: &quot;isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.&quot;,
+  &quot;regression_levels&quot;: [
+    &quot;focused new cases&quot;,
+    &quot;module public-input contract tests&quot;,
+    &quot;adjacent shared-boundary tests&quot;,
+    &quot;architecture constraints&quot;,
+    &quot;Windows native via M08&quot;
+  ],
+  &quot;pending_automation&quot;: [
+    &quot;exact approved input DTO/Port bindings&quot;,
+    &quot;create listed test target and fixtures after Skeleton gate&quot;,
+    &quot;expand per-case fault matrix&quot;,
+    &quot;native UI operator + runtime source identity&quot;,
+    &quot;real filesystem interruption and rollback-failure coverage&quot;
+  ],
+  &quot;stop_conditions&quot;: [
+    &quot;unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED&quot;,
+    &quot;conflicting specification → SPEC_CONFLICT&quot;,
+    &quot;tests compile/fixture/environment errors → not valid RED&quot;
+  ],
+  &quot;test_execution&quot;: &quot;NOT RUN; no production tests or test files created&quot;
+}</pre></section><section><h2>需要集中決策與剩餘風險</h2><div class="scroll"><table><tr><th>ID</th><th>方案建議</th><th>局部阻塞</th></tr><tr><td>D3</td><td>首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。</td><td>只阻擋對應生成/preview/media；非全域停工。</td></tr><tr><td>D7</td><td>依已確認規則統一拒已有目標；若舊test要求刪file，列契約遷移並批准測試revision，不能偷偷改expected。Windows11 x64/WebView2實測＋新artifact lock再驗收。</td><td>不重問是否保護資料，只需精確修改scope/測試遷移及環境驗收計畫。</td></tr></table></div><p>Acceptance：所有相關REQ/BDD有現況或缺口；B1-B12逐項評估；兩圖/authority/mutation/transaction明列；精確檔案與未來命令可審；未跑證據層明示。獨立審查與Owner批准未取得，因此不宣告MODULE_TASK_COMPLETE、不自行綠燈。</p></section><script type="application/json" id="module-spec">{"module": "M08", "task": "PD-P1-M08-PREP-01", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "architecture": {"A1_context": "Windows驗收整合；免安裝artifact與跨模組證據", "A2_hexagonal": "UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters", "A3_dependency": "M08 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass", "A4_responsibility": "免安裝artifact與跨模組證據", "A5_input_ports": "隔離test driver/native operator", "A6_output_ports": "隔離FS/程序/artifact讀取；不用自動派工服務。", "A7_driving_adapters": "Vanilla UI / module tests / Windows native operator", "A8_driven_adapters": "Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager", "A9_direction": "Domain must not depend on UI/FS/OS/Tauri/concrete adapters", "A10_ownership": "只讀版本與驗收證據，不擁有其他模組domain authority。", "A11_mutation": "All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document", "A12_transaction": "lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。", "A13_external": "Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority", "A14_forbidden": "UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape", "status": "PROPOSED_NOT_APPROVED"}, "contract": {"preconditions": "Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions", "success": "Result reflects committed version, no error contradiction; design/build status never equals functional acceptance", "failure": "Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5", "ownership": "只讀版本與驗收證據，不擁有其他模組domain authority。", "atomicity": "lock artifact → isolated extract/launch/move → native流程 → verify來源不變 → report；不發布。", "lifecycle": "Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files", "invariants": [["INV01", "任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。"], ["INV02", "文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。"], ["INV06", "成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。"], ["INV08", "匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。"]]}, "inventory": {"module": "M08", "task": "PD-P1-M08-PREP-01", "branch": "cursor/ui-bhv-arch-layer-editor", "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "dirty": true, "evidence": "SOURCE_INSPECTION_ONLY", "files": [{"path": "apps/sgenaxis-desktop/Cargo.toml", "exists": true, "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5"}, {"path": "apps/sgenaxis-desktop/package.json", "exists": true, "sha256": "9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8"}, {"path": "apps/sgenaxis-desktop/src-tauri/Cargo.toml", "exists": true, "sha256": "a345a17fe1aca9b22b3f31180daba3fba379d9a25f5697f1ca9c8bd0cf873a01"}, {"path": "apps/sgenaxis-desktop/src-tauri/tauri.conf.json", "exists": true, "sha256": "3bf53a7e48817b125e537130d5c329b3f4fb0810604ba450ad7285684e5108c2"}, {"path": "packaging/windows/portable/EluSlot.exe.sha256", "exists": true, "sha256": "65da5b9f9fbd22a9c1944dceaeb9f336d01f945e05e9007f87deee4bed80952a"}, {"path": "packaging/windows/portable/README.md", "exists": true, "sha256": "065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1"}, {"path": "packaging/windows/wix/verify-install.ps1", "exists": true, "sha256": "27a0846c5727a831460376db1f0b1cf5f030ae062d30f1465d7339979eee05ac"}, {"path": "tests/test_pd_harness_portable_01.py", "exists": true, "sha256": "ce0915e33fa4ebbba33f130be26cb3581e8ec7e16aefd064072dfe17bf791a3a"}, {"path": "tests/test_pd_rel_artifacts_01.py", "exists": true, "sha256": "14e7a1e9e5c3b69f3aacbae36f2e4858e5a07039c124d4f3d10575d13a2697ac"}, {"path": "tests/test_pd_scene_sgs_01.py", "exists": true, "sha256": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769"}], "findings": [{"path": "packaging/windows/portable/README.md", "line_start": 1, "line_end": 11, "sha256": "065a13ee44590d37ad178a2bc3d55ef17a4d2df1b445b6cadd5c338fe25149f1", "excerpt": "﻿# EluSlot portable（免 MSI 安裝）\n\n雙擊 `EluSlot.exe` 即可執行。捷徑圖示可用同目錄 `EluSlot.ico`。\n\n本版含：參考線（量尺拉出）、Tasks 抽屜（Agent／佈版／監聽／報告）、UI 編輯、架構樹、EluSlot 品牌。\n\n相容別名：`SGenAxis.exe`（同 binary）。\n\nSHA-256: c270b330c9262561eb6ea49230c9f79df677b0ce797ff8255b15f4a6c797c7ca\nbytes: 5577728\nbuilt: 2026-10-25T22:39:26+08:00", "observation": "僅2026-10-25歷史binary/hash；不是目前工作樹新需求驗收", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/Cargo.toml", "line_start": 1, "line_end": 30, "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5", "excerpt": "# PD-CARGO-WORKSPACE-01 — desktop Cargo workspace root\n# From this directory: cargo test -p sgenaxis-core (or -p 'sgenaxis-*')\n[workspace]\nresolver = \"2\"\nmembers = [\n    \"crates/sgenaxis-core\",\n    \"crates/sgenaxis-ports\",\n    \"crates/sgenaxis-adapters\",\n    \"crates/sgenaxis-exec\",\n    \"crates/sgenaxis-listen\",\n    \"crates/sgenaxis-guard\",\n    \"crates/sgenaxis-evid\",\n    \"crates/sgenaxis-spec\",\n    \"crates/sgenaxis-work\",\n    \"crates/sgenaxis-host\",\n]\n# Tauri host stays a separate package under src-tauri/ (own Cargo.toml + lock).\n# Run its tests from src-tauri: cargo test --lib\ndefault-members = [\n    \"crates/sgenaxis-core\",\n    \"crates/sgenaxis-ports\",\n    \"crates/sgenaxis-adapters\",\n    \"crates/sgenaxis-exec\",\n    \"crates/sgenaxis-listen\",\n    \"crates/sgenaxis-guard\",\n    \"crates/sgenaxis-evid\",\n    \"crates/sgenaxis-spec\",\n    \"crates/sgenaxis-work\",\n    \"crates/sgenaxis-host\",\n]", "observation": "workspace與src-tauri獨立，命令cwd不同", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "tests/test_pd_scene_sgs_01.py", "line_start": 1, "line_end": 55, "sha256": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769", "excerpt": "\"\"\"TDD — Scene pack .ess (XML) = work + architecture + design in one document.\"\"\"\n\nfrom __future__ import annotations\n\nimport re\nimport xml.etree.ElementTree as ET\nfrom pathlib import Path\n\nROOT = Path(__file__).resolve().parents[1]\nUI = ROOT / \"apps\" / \"sgenaxis-desktop\" / \"ui\"\nHTML = UI / \"index.html\"\nJS = UI / \"app.js\"\nFIXDIR = ROOT / \"fixtures\" / \"sgenaxis-scene\"\nESS = FIXDIR / \"sample.ess\"\n\n\ndef test_scene_ess_ui_and_codec_hooks():\n    html = HTML.read_text(encoding=\"utf-8\")\n    assert 'data-cmd=\"scene.saveXml\"' in html\n    assert 'data-cmd=\"scene.openXml\"' in html\n    assert \".ess\" in html\n    assert 'id=\"toolbar-scene-open\"' in html\n    assert 'id=\"toolbar-scene-save\"' in html\n    js = JS.read_text(encoding=\"utf-8\")\n    assert \"sceneDocToSgsXml\" in js\n    assert \"sceneDocFromSgsXml\" in js\n    assert \"applySceneSgsXml\" in js\n    assert \"saveSceneSgsToProject\" in js\n    assert \"loadSceneSgsFromProject\" in js\n    assert \"SCENE_SGS_REL\" in js\n    assert \"scene/default.ess\" in js\n    assert 'format=\"eluslot.ess\"' in js or \"eluslot.ess\" in js\n    assert 'cmd === \"scene.saveXml\"' in js\n    assert 'cmd === \"scene.openXml\"' in js\n\n\ndef test_sample_ess_fixture_is_xml_scene():\n    assert ESS.is_file()\n    raw = ESS.read_text(encoding=\"utf-8\")\n    assert \"<eluslotScene\" in raw\n    assert 'format=\"eluslot.ess\"' in raw\n    assert 'encoding=\"xml\"' in raw\n    assert \"<work\" in raw\n    assert \"<architecture\" in raw\n    assert \"<eluslotArch\" in raw\n    assert \"<design\" in raw\n    root = ET.fromstring(raw)\n    assert re.sub(r\"\\{.*\\}\", \"\", root.tag) == \"eluslotScene\"\n    assert root.attrib.get(\"format\") == \"eluslot.ess\"\n    work = root.find(\"work\")\n    arch = root.find(\"architecture\")\n    design = root.find(\"design\")\n    assert work is not None\n    assert arch is not None\n    assert design is not None", "observation": "舊UI hook/fixture XML文字檢查不是native behavior證據", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/package.json", "line_start": 1, "line_end": 15, "sha256": "9c682e23050b03454c589c30f4bed06681f2b524f81c5222d2b727a7fdec1ba8", "excerpt": "{\n  \"name\": \"sgenaxis-desktop\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"description\": \"SGenAxis desktop shell (Tauri 2 + Vanilla Web UI) — M1 stage 1 spike\",\n  \"scripts\": {\n    \"tauri\": \"tauri\",\n    \"dev\": \"tauri dev\",\n    \"build\": \"tauri build\",\n    \"ui:open\": \"echo Open ui/index.html in a browser for interim QA\"\n  },\n  \"devDependencies\": {\n    \"@tauri-apps/cli\": \"^2\"\n  }\n}", "observation": "npm run build→tauri build可重用，但未確認新artifact/環境", "evidence": "SOURCE_INSPECTION_ONLY"}], "tests": "NOT RUN", "native_ui": "NOT RUN", "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."}, "gap": {"module": "M08", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "requirements": [{"requirement": "REQ-01", "module": "M08", "feature": "F12", "tests": "BDD-32; X08", "acceptance": "A07", "result": "PLANNED_NOT_RUN"}, {"requirement": "REQ-23", "module": "M08", "feature": "F03/F04/F08", "tests": "X02/03/06/08; boundary review", "acceptance": "A06/A08", "result": "PLANNED_NOT_RUN"}], "gaps": ["新需求無本次RED/GREEN/native行為證據；舊綠卡/binary不可冒用", "需Windows11 x64/WebView2實際環境與artifact lock", "本輪不跑build/package/tests，不產新binary"], "bdd_owned": [{"id": "BDD-32", "req": "REQ-01", "name": "免安裝移動", "result": "PLANNED_NOT_RUN"}], "extra_obligations": [["X08", "M08", "實體Windows11 x64；移動portable、唯讀專案、離線磁碟、多程序、程序強制終止；可恢復最後成功快照而非承諾最後未落地編輯。"]], "reuse_strategy": "Retain existing scoped behavior and add minimum approved delta; do not rebuild historical green capabilities."}, "envelope": {"module": "M08", "status": "PROPOSED_NOT_APPROVED", "current_authorized_writes": ["docs/requirements-confirmation/phase1-spec/tasks/M08/planning/**", "own PREP board notes and planning status only"], "proposed_existing_production": [], "proposed_new_production": [], "proposed_tests": ["tests/test_p1_portable_acceptance.py"], "protected": "All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.", "shared_files": "app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.", "baseline": [], "new_dependency_cost": "No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.", "new_public_api_cost": "Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.", "file_cost": {"existing_candidates": 0, "new_production_candidates": 0, "new_test_candidates": 1}, "decisions": ["D3", "D7"]}, "tests": {"module": "M08", "existing_commands": [{"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test --workspace", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop/src-tauri", "command": "cargo test --lib", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "npm run build", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}], "proposed_commands": [{"cwd": "D:/AIAD", "command": "python -m pytest tests/test_p1_portable_acceptance.py -q", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}], "cases": [{"id": "TDD-32", "bdd": "BDD-32", "requirement": "REQ-01", "title": "免安裝移動", "given": "Windows11 x64免安裝程式已產生成功快照", "when": "移動程式目錄再啟動", "then": "使用者資料區快照仍可找到與復原", "fixture": "fixtures.json#BDD-32", "levels": ["L1 component", "L2 module contract", "L3 adapter where applicable"], "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.", "result": "NOT RUN"}, {"id": "TDD-M08-A", "bdd": "BDD-M08-A", "requirement": "REQ-01,23", "title": "原磁碟離線", "given": "已有完整復原版本且原專案離線", "when": "原生歷史開啟後另存", "then": "未保存版本可在新位置保存且來源不變", "fixture": "fixtures.json#BDD-M08-A", "levels": ["L2 module contract", "L4 adjacent regression"], "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.", "result": "NOT RUN"}], "B1_B12": [{"id": "B1", "name": "成功", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B2", "name": "邊界", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B3", "name": "非法輸入", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B4", "name": "依賴失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B5", "name": "部分失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B6", "name": "狀態一致性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B7", "name": "交易", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B8", "name": "生命週期", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B9", "name": "回復", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B10", "name": "跨模組", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B11", "name": "相容性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B12", "name": "回歸", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}], "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.", "regression_levels": ["focused new cases", "module public-input contract tests", "adjacent shared-boundary tests", "architecture constraints", "Windows native via M08"], "pending_automation": ["exact approved input DTO/Port bindings", "create listed test target and fixtures after Skeleton gate", "expand per-case fault matrix", "native UI operator + runtime source identity", "real filesystem interruption and rollback-failure coverage"], "stop_conditions": ["unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED", "conflicting specification → SPEC_CONFLICT", "tests compile/fixture/environment errors → not valid RED"], "test_execution": "NOT RUN; no production tests or test files created"}, "ui_schema": {"role": "本機專案作者／設計者", "fields_controls_states": "native按精靈/Editor/Viewer/BIN/Undo/history，記artifact/OS/需求；不能用controlled fixture冒充native。", "validation": "Validate fields, identity, revision and capability before mutation; disabled states name reason", "defaults": "Spec D01-D13 are proposals; no implicit approval here", "empty": "No project/document/template/asset/artifact: show actual empty state and next available action", "accessibility": "Text labels, keyboard focus, field-linked errors; details pending rendered UI review"}, "decisions": [{"id": "D3", "gate": "G04", "title": "首版模板、Viewer及媒體矩陣", "observation": "有Vanilla/Tauri與卡片communication preview；尚未見版本化雙骨架模板與完整media codec。", "recommendation": "首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。", "alternatives": "一次全部框架/宿主/媒體需要擴大驗證；只存定義不生成會縮已確認需求，不能自行採用。", "affected_modules": ["M02", "M03", "M05", "M08"], "blocking": "只阻擋對應生成/preview/media；非全域停工。"}, {"id": "D7", "gate": "G01/G04", "title": "新建入口遷移與驗收環境", "observation": "主新建拒existing；舊入口remove同路徑file；portable README只是歷史。", "recommendation": "依已確認規則統一拒已有目標；若舊test要求刪file，列契約遷移並批准測試revision，不能偷偷改expected。Windows11 x64/WebView2實測＋新artifact lock再驗收。", "alternatives": "只保護主UI保留舊刪檔入口會不一致；舊binary驗新需求不可採。", "affected_modules": ["M01", "M08"], "blocking": "不重問是否保護資料，只需精確修改scope/測試遷移及環境驗收計畫。"}], "assumptions": ["Keep existing green slices; source presence is not full acceptance", "Candidate new files and exact signatures require architecture/Skeleton approval", "No new infrastructure dependencies or product behavior changes in PREP"]}</script></html>

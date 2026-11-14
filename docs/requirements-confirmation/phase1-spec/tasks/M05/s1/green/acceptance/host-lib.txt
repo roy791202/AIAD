@@ -1,0 +1,166 @@
+warning: struct `StdFileWriteLease` is never constructed
+  --> crates\sgenaxis-adapters\src\file_commit.rs:40:19
+   |
+40 | pub(crate) struct StdFileWriteLease {
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: enum `PipeApiError` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:273:6
+    |
+273 | enum PipeApiError { Unsupported, Create, Transfer, Close }
+    |      ^^^^^^^^^^^^
+
+warning: trait `PrivatePipeApi` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:274:7
+    |
+274 | trait PrivatePipeApi: Send {
+    |       ^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipeEndpoint` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:281:8
+    |
+281 | struct OwnedPipeEndpoint<H> { handle: H, close_attempted: bool, unresolved: bool }
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipePair` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:282:8
+    |
+282 | struct OwnedPipePair<H> { read: OwnedPipeEndpoint<H>, write: OwnedPipeEndpoint<H> }
+    |        ^^^^^^^^^^^^^
+
+warning: struct `PipeLedger` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:285:8
+    |
+285 | struct PipeLedger<H> { pairs: Vec<OwnedPipePair<H>>, cleanup: Cleanup }
+    |        ^^^^^^^^^^
+
+warning: associated function `new` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:286:28
+    |
+286 | impl<H> PipeLedger<H> { fn new() -> Self { Self { pairs: Vec::new(), cleanup: Cleanup::Pending } } }
+    | ---------------------      ^^^
+    | |
+    | associated function in this implementation
+
+warning: struct `PrivatePipeOwner` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:287:8
+    |
+287 | struct PrivatePipeOwner<'a, A: PrivatePipeApi> { api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle> }
+    |        ^^^^^^^^^^^^^^^^
+
+warning: associated items `new`, `create_two_pairs`, `round_trip`, and `release_all` are never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:289:8
+    |
+288 | impl<'a, A: PrivatePipeApi> PrivatePipeOwner<'a, A> {
+    | --------------------------------------------------- associated items in this implementation
+289 |     fn new(api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle>) -> Self { Self { api, ledger } }
+    |        ^^^
+290 |     fn create_two_pairs(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^^^^^^
+...
+308 |     fn round_trip(&mut self, index: usize, bytes: &[u8]) -> Result<Vec<u8>, PipeApiError> {
+    |        ^^^^^^^^^^
+...
+322 |     fn release_all(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^
+
+warning: struct `NativePipeApi` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:354:23
+    |
+354 |     pub(super) struct NativePipeApi;
+    |                       ^^^^^^^^^^^^^
+
+warning: `sgenaxis-adapters` (lib) generated 10 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src\lib.rs (target\debug\deps\sgenaxis_host-7a6c8c7b729fa46d.exe)
+
+running 84 tests
+test board_live::tests::empty_path_errors ... ok
+test board_live::tests::missing_file_errors ... ok
+test board_live::tests::missing_marker_errors ... ok
+test board_live::tests::parse_raw_json_without_html ... ok
+test board_live::tests::extract_and_parse_html_snapshot ... ok
+test board_live::tests::load_via_fake_fs ... ok
+test board_live::tests::unknown_zone_becomes_gray ... ok
+test deploy::tests::status_view_qn_auto_always_false ... ok
+test composition::tests::composition_does_not_expose_shell_ipc ... ok
+test git_board_sync::tests::git_failure_classified_as_git ... ok
+test composition::tests::boot_fake_reaches_ready_with_persisted_settings ... ok
+test composition::tests::boot_fake_exposes_read_only_deploy_commands ... ok
+test deploy::tests::check_warns_without_artifact_manual_when_present ... ok
+test composition::tests::unlabeled_boot_ports_status_is_empty_ok ... ok
+test composition::tests::shutdown_stops_cleanly ... ok
+test guard_cmd::tests::allow_path_passes_write_gate ... ok
+test deploy::tests::unsupported_platform_observable ... ok
+test ipc::tests::allowlist_contains_host_commands_only ... ok
+test git_board_sync::tests::fail_classes_are_distinct_labels ... ok
+test git_board_sync::tests::board_failure_classified_as_board ... ok
+test git_board_sync::tests::board_then_git_isolated_under_one_fixture ... ok
+test git_board_sync::tests::gated_write_still_blocked_no_new_write_semantics ... ok
+test git_board_sync::tests::parse_error_classified_as_board ... ok
+test git_board_sync::tests::git_then_board_isolated_under_one_fixture ... ok
+test guard_cmd::tests::approved_behavioral_allows_exec_pass ... ok
+test guard_cmd::tests::invalid_red_rejects_exec ... ok
+test guard_cmd::tests::protected_path_rejects_with_path_protected_code_detail ... ok
+test guard_cmd::tests::unapproved_start_rejects_with_not_approved_code_detail ... ok
+test composition::tests::settings_update_persists_across_reboot ... ok
+test ipc::tests::authorize_accepts_allowlisted ... ok
+test ipc::tests::authorize_rejects_arbitrary_shell ... ok
+test ports_view::tests::empty_labels_yield_empty_ok ... ok
+test lifecycle::tests::rejects_ready_twice ... ok
+test deploy::tests::list_artifacts_includes_convention ... ok
+test lifecycle::tests::rejects_shutdown_while_booting ... ok
+test ports_view::tests::fake_boot_lists_six_ports_gated_write ... ok
+test composition::tests::boot_fake_ports_status_lists_registered_adapters ... ok
+test lifecycle::tests::starts_booting_then_ready_then_stop ... ok
+test ports_view::tests::approving_write_flag_reflected ... ok
+test project_manifest::tests::malformed_candidate_id_is_rejected_before_any_file_read ... ok
+test project_manifest::tests::atomic_write_failure_preserves_existing_manifest_bytes ... ok
+test project_manifest::tests::candidate_id_already_owned_in_manifest_is_typed_conflict_without_write ... ok
+test project_manifest::tests::changed_payload_for_existing_reference_is_conflict_without_mutation ... ok
+test project_manifest::tests::adoption_persists_v1_record_and_preserves_source_bytes ... ok
+test project_manifest::tests::failed_readback_reports_unverified_durability_without_claiming_rollback ... ok
+test project_manifest::tests::nonlocal_or_unsupported_reference_is_rejected_before_read ... ok
+test project_manifest::tests::malformed_or_unsupported_manifest_is_never_replaced ... ok
+test project_manifest::tests::source_read_failure_does_not_create_or_replace_manifest ... ok
+test project_new::tests::create_rejects_demo_before_fs ... ok
+test project_manifest::tests::repeated_same_reference_and_revision_is_idempotent_without_write ... ok
+test project_new::tests::create_replaces_existing_file_residue ... ok
+test project_new::tests::create_under_parent_name ... ok
+test project_new::tests::create_via_fake_fs ... ok
+test project_new::tests::demo_root_rejected ... ok
+test project_new::tests::empty_name_rejected ... ok
+test project_new::tests::empty_path_is_readable_error ... ok
+test project_new::tests::name_with_separator_rejected ... ok
+test project_new::tests::url_rejected ... ok
+test scene_doc::tests::allows_legacy_sgs_extension ... ok
+test scene_doc::tests::invalid_scene_paths_preserve_existing_document ... ok
+test scene_doc::tests::rejects_outside_scene_dir ... ok
+test scene_doc::tests::roundtrip_ess_text ... ok
+test settings::tests::activate_wires_cli_live_approved_and_dry_run_revocable ... ok
+test settings::tests::agent_projection_omits_secret ... ok
+test settings::tests::load_or_default_creates_and_persists ... ok
+test settings::tests::invalid_path_not_persisted_as_active ... ok
+test settings::tests::probe_live_cli_targets_not_run_when_empty ... ok
+test settings::tests::cli_mcp_partitions_persist_via_host_settings ... ok
+test settings::tests::probe_live_cli_targets_from_settings_omits_secret ... ok
+test settings::tests::rejects_invalid_theme ... ok
+test settings::tests::rejects_board_path_http_or_mailbox ... ok
+test settings::tests::reserved_mcp_port_not_activatable ... ok
+test uidesign_doc::tests::ask_draft_mentions_not_pass ... ok
+test settings::tests::project_root_roundtrips_via_host_settings ... ok
+test settings::tests::valid_path_persisted_as_active ... ok
+test uidesign_doc::tests::build_preview_file_writes ... ok
+test settings::tests::roundtrip_persists_theme_change ... ok
+test uidesign_doc::tests::preview_contains_banner_and_node ... ok
+test uidesign_doc::tests::project_paths_reject_drive_prefixes_and_absolute_paths ... ok
+test uidesign_doc::tests::rejects_product_pass_true ... ok
+test uidesign_doc::tests::preview_includes_geometry_for_child ... ok
+test uidesign_doc::tests::rejects_wrong_format ... ok
+test uidesign_doc::tests::roundtrip_sgendesign ... ok
+test uidesign_doc::tests::save_load_via_fake_fs ... ok
+
+test result: ok. 84 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+

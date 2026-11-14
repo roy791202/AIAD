@@ -1,0 +1,208 @@
+{
+  "status": "EXACT_DESIGN_PROPOSAL_FOR_REVIEW",
+  "directions": "D1-D7 ADOPTED 2026-11-01; exact details not yet approved",
+  "new_dependencies": "WORK remains std-only + existing ports; HOST uses existing serde/serde_json; XML/security parsing may extend existing roxmltree=0.20.0 adapter, no new crate proposed. Existing uuid remains only trusted outer boundary. Windows-sys existing dependency may provide OS lock API; exact feature/API checked during shared adapter design.",
+  "shared_commit_port": "// Shared cross-module output capability, proposed in PORTS, not new Repository.\n// May NOT be silently folded into FileSystemPort.write_atomic default behavior.\npub trait FileCommitPort: Send + Sync {\n    fn create_directory_exclusive(&self, parent: &str, single_name: &str)\n        -> Result<String, CommitError>;\n    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;\n}\npub trait FileWriteLease {\n    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;\n    fn replace_checked(&mut self, expected_digest: Option<&str>, bytes: &[u8])\n        -> Result<CommitReceipt, CommitError>;\n}\n// OS-backed lock remains live until lease Drop; crash releases OS lock.\n// Do NOT reclaim by a timestamp (board FileLock policy is not product guarantee).\n// expected None = require missing; Some(hash) = require same prior raw bytes.\n// replace_checked: stage/sync, preserve previous version, recheck under lock,\n// replace single formal file; restore previous bytes before returning ordinary Err.\n// If restoration itself fails: RecoveryRequired; retained versions + journal paths,\n// block more destructive operations, never claim unchanged or successful.\n// Post-commit notification/projection is not allowed to turn committed save into\n// a false \"failed, unchanged\" result. Uncertain state is distinctly classified.\n// Locks protect cooperating product writers; arbitrary external edits still need\n// digest recheck and observed conflict handling, not a universal filesystem CAS.\n",
+  "error_model": [
+    [
+      "InvalidInput",
+      "欄位/path/內容結構不合法，mutation前拒絕"
+    ],
+    [
+      "UnsupportedSchema",
+      "拒未知版本，不覆寫或靜默丟欄位"
+    ],
+    [
+      "NotBound",
+      "未綁專案/session，不碰FS"
+    ],
+    [
+      "UnauthorizedCaller",
+      "視窗非該session writer，不碰內容"
+    ],
+    [
+      "ExistingTarget",
+      "新建目標已存在，原檔/目錄不動"
+    ],
+    [
+      "RevisionConflict",
+      "期望revision或磁碟digest不符，重新預覽"
+    ],
+    [
+      "Busy",
+      "交易/寫者持有中，不並行執行破壞性操作"
+    ],
+    [
+      "GenerationNotReady",
+      "可存草稿，列缺決策，不生成"
+    ],
+    [
+      "StorageFailure",
+      "普通可回復IO失敗；原有效內容保持"
+    ],
+    [
+      "PartialProjectCreated",
+      "只有新專案已建立部分產物，保留草稿並列殘留；不綁成成功"
+    ],
+    [
+      "RecoveryRequired",
+      "回復本身失敗或耐久不確定：保留版本與journal、停止破壞性操作，不聲稱原狀/PASS"
+    ],
+    [
+      "NoUndo",
+      "無歷史或session已關閉，不改狀態"
+    ]
+  ],
+  "authority": "UI → Tauri Command → DispatchHost → HOST usecase → WORK(domain) → Output Ports ← Adapters",
+  "no_global_state": "Draft/session/plan maps owned inside DispatchHost; UUID candidates from trusted boundary; no static manager/service singleton",
+  "generation_approval": "approvalRefs server-resolved evidence IDs, not UI checkbox authorization; finalizing definition does not generate or execute AI",
+  "module": "M04",
+  "responsibility": "權威文件內容/dirty/正式保存、單文件clear/merge/Undo與穩定capture；不實作BIN解析或快照排程",
+  "schema_path": "schema.json",
+  "domain_signatures": "// PROPOSED signatures; not production code or approved Skeleton.\n// WORK owns canonical content bytes + validated semantic identity, refs, flags.\npub struct DocumentContent { canonical_payload: Vec<u8>, semantic_digest: String,\n    asset_refs: Vec<AssetVersionRef>, bindings: Vec<BindingState>,\n    blocked_capabilities: Vec<String> }\npub struct DocumentSession { /* session-scoped content, baselines, history */ }\npub struct MutationPlan { /* single document, before/after, revision, asset pins */ }\npub enum MutationKind { Edit, Clear, Merge }\nimpl DocumentSession {\n    pub fn prepare(&self, expected: Revision, kind: MutationKind,\n        validated_after: DocumentContent) -> Result<MutationPlan, EditError>;\n    pub fn commit(&mut self, plan: MutationPlan) -> Result<CommitProjection, EditError>;\n    pub fn undo(&mut self, expected: Revision) -> Result<CommitProjection, EditError>;\n    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError>;\n    pub fn acknowledge_formal_save(&mut self, captured: Revision, digest: &str)\n        -> Result<SaveProjection, EditError>;\n    pub fn acknowledge_recovery_save(&mut self, captured: Revision, digest: &str)\n        -> Result<RecoveryProjection, EditError>;\n}\n// Trusted HOST codec validates structure and produces canonical payload;\n// UI-supplied digest / revisions / refs are never trusted without parse checking.\n// Do not reuse packet EssDecoderPort as a full-document serializer without tests.\npub trait DocumentCodecPort: Send + Sync {\n    fn decode(&self, format: DocumentFormat, bytes: &[u8])\n        -> Result<DocumentContent, CodecError>;\n    fn encode(&self, content: &DocumentContent) -> Result<Vec<u8>, CodecError>;\n    fn cleared(&self, before: &DocumentContent) -> Result<DocumentContent, CodecError>;\n}\n// FileCommitPort detailed below; owns OS lock, exclusive creation and replace.\n",
+  "commands": [
+    {
+      "name": "document_open",
+      "request_fields": "{project_uuid, reference: project-relative String}",
+      "response": "DocumentSessionDto {document_uuid, session_uuid, content_revision, content_projection, dirty, can_undo}",
+      "caller_rule": "main or editor window; read allowed, writer lease server-issued",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_submit_draft",
+      "request_fields": "{session_uuid, expected_revision, source_format, source_text}",
+      "response": "DocumentSessionDto; HOST parse/validate, WORK adopts canonical immutable content",
+      "caller_rule": "only host-bound writer webview; content_digest/asset pins not accepted as client authority",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_prepare_clear",
+      "request_fields": "{session_uuid, expected_revision}",
+      "response": "ClearPlanDto {plan_id, affected_sections, reference_changes, before_digest}",
+      "caller_rule": "writer only; no content mutation",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_confirm_clear",
+      "request_fields": "{plan_id, expected_revision, request_id}",
+      "response": "Applied {revision, undo_depth} | typed error",
+      "caller_rule": "one-use plan; stale rejected without mutation",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_save",
+      "request_fields": "{session_uuid, expected_revision, request_id, save_as_selection_id?:String}",
+      "response": "Saved {persisted_digest,captured_revision} | typed error",
+      "caller_rule": "native SaveAs grant; new target does not silently replace; old identity preserved until successful commit",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_undo",
+      "request_fields": "{session_uuid, expected_revision, request_id}",
+      "response": "DocumentSessionDto with new monotonic revision, restored content and refs",
+      "caller_rule": "writer; previous UI selection Undo remains separate",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_request_leave",
+      "request_fields": "{session_uuid, action: close|switch_project|exit}",
+      "response": "LeavePlan {id, dirty, choices: save|discard|cancel}",
+      "caller_rule": "server captures current revision; execution waits async result",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    },
+    {
+      "name": "document_confirm_leave",
+      "request_fields": "{leave_plan_id, choice: save|discard|cancel, request_id}",
+      "response": "Proceed|RemainEditing|Stale; save failure cannot proceed",
+      "caller_rule": "final leave token only after current version saved or explicit discard; another edit invalidates old plan",
+      "common": "deny_unknown_fields; expected project/session/revision server-checked; caller cannot set root authority, trusted digest, approval or writer identity"
+    }
+  ],
+  "storage": {
+    "formal": "existing scene/default.ess XML v1 and design/main.sgendesign stay readable; no forced new ESS internal format",
+    "authority": "one physical document = one session authority. An ESS includes work/architecture/design as one composite physical doc. Embedded design is projection of that ESS; independently opened .sgendesign has separate session; no silent dual write/sync.",
+    "versions": "candidate immutable prior versions in .sgenaxis/document-versions/<documentUuid>/<rawDigest>; journal .sgenaxis/document-transactions/<requestUuid>.json; exact storage mechanics gated by shared commit adapter review",
+    "commit_point": "formal document atomic replace is the single-file publish point. Version/journal supports rollback/recovery; never make a hidden pointer authoritative while showing an old ESS as saved.",
+    "history": "WORK in-memory per-open-session history, not durable Undo; formal save never clears history implicitly. Close/reopen starts empty history.",
+    "baselines": "formal content digest and recovery content digest independent; raw-byte disk digest separately detects outside edits; revision increases even Undo; dirty compares semantic digest to formal baseline, not revision counters."
+  },
+  "canonicalization": {
+    "ESS": "HOST adapter parses supported v1 and maps to domain-owned canonical payload; preserve all unknown supported extension trees/attrs or refuse before mutation. Existing packet tree capture is read-only and may lose XML comment/source formatting; cannot use it as a lossless serializer without new contract tests.",
+    "semantic": "Exclude selection/focus/playback/viewport and volatile savedAt only at explicitly approved fields; never strip arbitrary user fields by name. Include actual nodes, relations, bindings, asset versions and restrictions.",
+    "hashing": "HOST trusted codec computes semantic hash of normalized payload; UI digest not trusted. Original raw bytes/hash kept for exact file rollback and external edit detection. WORK holds Vec<u8> immutable canonical payload and typed refs, not serde_json/OS types.",
+    "clear": "proposal ESS clear removes work tasks, architecture elements, design children/bindings/asset refs, retains format/identity and required root scaffold; standalone design clears only its document. Preview lists all sections; cannot clear project definition or other physical docs."
+  },
+  "states": [
+    "Editing",
+    "PreparedClear",
+    "Applying",
+    "Saving",
+    "RecoveryRequired",
+    "Closed"
+  ],
+  "transactions": [
+    [
+      "Mutation",
+      "validate server writer/session/revision → prepare immutable before/after + pins + reserved history → single content swap → publish one history; failures restore before and add no history"
+    ],
+    [
+      "Save",
+      "captureR+semantic digest → encode outside UI → acquire OS write lease → check old raw digest → stage/sync+retained old version → replace formal file → acknowledge only capturedR; R+1 remains dirty; no postcommit fallible metadata can fake rollback"
+    ],
+    [
+      "Undo",
+      "validate current expected revision/after digest → restore before content, refs, binding restrictions → increment revision, history to redo → release only new unreferenced assets; roots include retained snapshots/undo/transactions"
+    ],
+    [
+      "Leave",
+      "capture revision/action → choice; cancel remains; discard explicit; save waits success for exact leaving revision, new edit invalidates token; native exit follows same flow"
+    ]
+  ],
+  "asset_boundary": {
+    "M05": "required integration seam for pin/release; immutable content versions only; M04 cannot delete shared/pinned assets directly",
+    "M06": "supplies validated single-target merge plan; cross-document modification rejected",
+    "M07": "takes stable immutable captureR; publish success acknowledges R only; no scheduling/FS path work in M04"
+  },
+  "invariants": [
+    "selection EditSession unchanged",
+    "clear and one merge each exactly one content Undo entry",
+    "prepare/cancel/failed apply produce zero history",
+    "undo restores whole payload plus binding/restriction and necessary refs, not mouse or focus",
+    "stable capture blocked during prepare/apply/rollback; no mutable UI references handed to background writer",
+    "source BIN untouched; GC only owned newly-created bytes with zero refs across all roots"
+  ],
+  "ui": [
+    [
+      "dirty",
+      "正式保存/另存/未保存標記",
+      "成功才更新formal baseline"
+    ],
+    [
+      "leave",
+      "保存/不保存/取消",
+      "保存失敗仍編輯；重編輯不得用舊token退出"
+    ],
+    [
+      "clear",
+      "作用文件與區段/素材引用預覽",
+      "與M06單文件限制一致"
+    ],
+    [
+      "undo",
+      "操作名/可用性/一筆compound entry",
+      "selection Undo為另一既有責任"
+    ],
+    [
+      "recovery",
+      "expose captured revision + independent baseline",
+      "排程與最近歷史由M07，不能讓此slice假稱已完成復原"
+    ]
+  ],
+  "asset_retention_contract": {
+    "status": "PROPOSED_SHARED_CONTRACT; M05 implementation outside M04 envelope",
+    "signature": "trait AssetRetentionPort { fn reserve(&self, owner: PinOwner, versions: &[AssetVersionRef]) -> Result<PinSetId, AssetError>; fn replace(&self, owner: PinOwner, expected: PinSetId, versions: &[AssetVersionRef]) -> Result<PinSetId, AssetError>; fn release(&self, owner: PinOwner, expected: PinSetId) -> Result<(), AssetError>; }",
+    "ownership": "M05 owns registry; PinOwner=(projectUuid,documentUuid,sessionUuid,kind,operationId); kind Live|Undo|Capture|Transaction; immutable pin set ids are server-issued",
+    "release": "release only removes named owner roots; physical GC never performed by M04; unknown remaining roots are retained",
+    "failure": "reserve failure before mutation leaves content/history unchanged; later release failure retains excess pins and reports cleanup pending without invalidating committed content"
+  }
+}

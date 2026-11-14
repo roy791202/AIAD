@@ -1,0 +1,511 @@
+{
+  "module": "M02",
+  "task": "PD-P1-M02-PREP-01",
+  "status": "PLANNING_DELIVERED_REVIEW_PENDING",
+  "architecture": {
+    "A1_context": "模板與雙骨架；模板副本、生成門檻、產物預覽與差異",
+    "A2_hexagonal": "UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters",
+    "A3_dependency": "M02 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass",
+    "A4_responsibility": "模板副本、生成門檻、產物預覽與差異",
+    "A5_input_ports": "ListTemplate/PrepareGeneration/ConfirmGeneration（提案）",
+    "A6_output_ports": "FileSystemPort與本機模板；初版不下載/安裝依賴。",
+    "A7_driving_adapters": "Vanilla UI / module tests / Windows native operator",
+    "A8_driven_adapters": "Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager",
+    "A9_direction": "Domain must not depend on UI/FS/OS/Tauri/concrete adapters",
+    "A10_ownership": "WORK持已確認定義/生成plan與版本；HOST寫產物；模板唯讀。",
+    "A11_mutation": "All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document",
+    "A12_transaction": "lock approved revisions → validate → preview exact tree → confirm → stage → commit owned files；過期/衝突拒絕。",
+    "A13_external": "Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority",
+    "A14_forbidden": "UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape",
+    "status": "PROPOSED_NOT_APPROVED"
+  },
+  "contract": {
+    "preconditions": "Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions",
+    "success": "Result reflects committed version, no error contradiction; design/build status never equals functional acceptance",
+    "failure": "Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5",
+    "ownership": "WORK持已確認定義/生成plan與版本；HOST寫產物；模板唯讀。",
+    "atomicity": "lock approved revisions → validate → preview exact tree → confirm → stage → commit owned files；過期/衝突拒絕。",
+    "lifecycle": "Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files",
+    "invariants": [
+      [
+        "INV01",
+        "任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。"
+      ],
+      [
+        "INV02",
+        "文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。"
+      ],
+      [
+        "INV06",
+        "成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。"
+      ],
+      [
+        "INV08",
+        "匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。"
+      ]
+    ]
+  },
+  "inventory": {
+    "module": "M02",
+    "task": "PD-P1-M02-PREP-01",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "dirty": true,
+    "evidence": "SOURCE_INSPECTION_ONLY",
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/Cargo.toml",
+        "exists": true,
+        "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "exists": true,
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        "exists": true,
+        "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/Cargo.toml",
+        "exists": true,
+        "sha256": "954756472c63ee3b36aafb248fcd8e5398cfa80582fcfcfdf441daef5a11fe98"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/lib.rs",
+        "exists": true,
+        "sha256": "bced28cfc4b9f8aa117887fd67decd43e9d97ca15cc485c1e543378c7e0b2558"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "exists": true,
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "exists": true,
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "exists": true,
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "exists": true,
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "exists": true,
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "exists": true,
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "exists": true,
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/project-preferences-ui.js",
+        "exists": true,
+        "sha256": "79c10625722caa2fec829fd62a410a0c75f6a0b31fcd2e8812676461c54afaa8"
+      }
+    ],
+    "findings": [
+      {
+        "path": "apps/sgenaxis-desktop/ui/project-preferences-ui.js",
+        "line_start": 1,
+        "line_end": 65,
+        "sha256": "79c10625722caa2fec829fd62a410a0c75f6a0b31fcd2e8812676461c54afaa8",
+        "excerpt": "(function (global) {\n  \"use strict\";\n  function toDraft(f) {\n    const number = (value, nullable) => {\n      if (nullable && String(value).trim() === \"\") return null;\n      const n = Number(value);\n      if (!Number.isSafeInteger(n) || n <= 0) throw new Error(\"請輸入安全範圍內的正整數；空白預算表示尚未配置。\");\n      return n;\n    };\n    const ids = f.modelIds.split(\",\").map(x => x.trim()).filter(Boolean);\n    const preferred = f.preferred.trim() || null;\n    if (new Set(ids).size !== ids.length || (preferred && !ids.includes(preferred))) throw new Error(\"模型不可重複，偏好模型必須在允許清單內。\");\n    const maxTasks=number(f.tasks), maxConcurrent=number(f.concurrent);\n    if (maxConcurrent>maxTasks) throw new Error(\"並行數不可超過每批 Task 上限。\");\n    return {format:\"sgenaxis.project-preferences\",formatVersion:1,presetId:\"custom\",modelPolicy:{allowedModelIds:ids,preferredModelId:preferred},budget:{maxInputTokens:number(f.input,true),maxOutputTokens:number(f.output,true),maxWallTimeSeconds:number(f.seconds,true)},batch:{mode:\"suggest\",maxTasks,maxConcurrent,onLimit:\"block\"},workflow:{confirmBeforeRun:true}};\n  }\n  const invoke = (name,args) => {\n    const fn=global.__TAURI__?.core?.invoke || global.__TAURI__?.invoke;\n    return fn ? fn(name,args) : Promise.reject(new Error(\"需要正式 Tauri IPC；瀏覽器不會保存專案偏好。\"));\n  };\n  let panel, root=\"\", digest=null, epoch=0, busy=false, dirty=false;\n  const $=id=>panel.querySelector('[data-policy=\"'+id+'\"]');\n  const status=message=>{if(panel)$('status').textContent=message;};\n  function paint(p) {\n    $('modelIds').value=p?.modelPolicy.allowedModelIds.join(\", \")||\"\";\n    $('preferred').value=p?.modelPolicy.preferredModelId||\"\";\n    for (const [field,key] of [[\"input\",\"maxInputTokens\"],[\"output\",\"maxOutputTokens\"],[\"seconds\",\"maxWallTimeSeconds\"]]) $(''+field).value=p?.budget[key]??\"\";\n    $('tasks').value=p?.batch.maxTasks??1; $('concurrent').value=p?.batch.maxConcurrent??1;\n  }\n  function controls() { for (const button of panel.querySelectorAll('button,select,input')) button.disabled=busy||(!root&&button.dataset.policy!==\"refresh\"); }\n  async function refresh() {\n    if (!panel) return;\n    const seq=++epoch;busy=true;controls();\n    try {\n      const settings=await invoke(\"host_get_settings\"); if(seq!==epoch)return;\n      root=(settings.project_root||\"\").trim();digest=null;$('project').textContent=root||\"尚未開啟專案\";\n      dirty=false;paint(null);\n      if(!root){paint(null);status(\"先開啟專案；模型與預算不會寫入本機 mock 設定。\");return;}\n      const view=await invoke(\"host_project_preferences_load\",{expectedProjectRoot:root});if(seq!==epoch)return;\n      digest=view.digest;paint(view.preferences);status(view.configured?\"已讀取專案偏好。修改後按儲存；執行模式僅建議合批。\":\"此專案尚未配置偏好。請選方案並設定模型／預算。\");\n    } catch(error) {if(seq===epoch)status(String(error));}\n    finally {if(seq===epoch){busy=false;controls();}}\n  }\n  async function chooseNewProject() {\n    const dialog=document.createElement(\"dialog\");dialog.setAttribute(\"aria-label\",\"新專案偏好設定\");\n    dialog.innerHTML='<form method=\"dialog\"><h2>是否套用專案偏好設定？</h2><p>模型與預算隨專案保存。預算未配置時不會自動執行。</p><label>方案 <select name=\"choice\"><option value=\"skip\">暫不套用</option><option value=\"conservative\">保守（1／1）</option><option value=\"balanced\">平衡（4／2）</option><option value=\"throughput\">效率優先（8／4）</option><option value=\"import\">匯入既有偏好檔</option></select></label><p role=\"status\"></p><button value=\"cancel\">取消建立</button><button value=\"apply\">繼續</button></form>';\n    document.body.appendChild(dialog);\n    return new Promise(resolve=>{\n      dialog.addEventListener(\"close\",async()=>{\n        const choice=dialog.querySelector(\"select\").value;\n        const accepted=dialog.returnValue===\"apply\";dialog.remove();\n        if(!accepted){resolve(null);return;}\n        try {\n          if(choice===\"import\"){\n            const imported=await invoke(\"host_project_preferences_pick_import\");\n            resolve(imported.status===\"ok\"?{presetId:null,importedJson:imported.json}:null);\n          } else resolve({presetId:choice===\"skip\"?null:choice,importedJson:null});\n        } catch(error){global.alert(\"偏好檔無法套用：\"+String(error));resolve(null);}\n      },{once:true});dialog.showModal();\n    });\n  }\n  function boot() {\n    if(panel||!document.querySelector(\"#settings-ux-root\"))return;\n    panel=document.createElement(\"section\");panel.id=\"project-policy-panel\";panel.style.cssText=\"padding:20px;margin:16px 0;border:1px solid var(--line,#777);border-radius:10px\";\n    panel.innerHTML='<h2>目前專案｜模型與資源政策</h2><p data-policy=\"project\"></p><p>保存至專案 .sgenaxis/preferences.json。預算空白＝尚未配置；不會自動啟動工作。</p><label>系統方案 <select data-policy=\"preset\"><option value=\"conservative\">保守（每批1／並行1）</option><option value=\"balanced\">平衡（每批4／並行2）</option><option value=\"throughput\">效率優先（每批8／並行4）</option></select></label> <button type=\"button\" data-policy=\"apply\">套用方案草稿</button> <button type=\"button\" data-policy=\"import\">匯入偏好草稿</button><div data-policy=\"fields\"></div><p><button type=\"button\" data-policy=\"save\">儲存專案偏好</button> <button type=\"button\" data-policy=\"refresh\">重新載入</button></p><p role=\"status\" aria-live=\"polite\" data-policy=\"status\"></p>';",
+        "observation": "已有偏好presets，不是產品模板或雙骨架生成",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+        "line_start": 335,
+        "line_end": 365,
+        "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac",
+        "excerpt": "pub fn build_preview_file(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    doc: &DesignDoc,\n    name: &str,\n) -> Result<String, HostError> {\n    let safe = name\n        .trim()\n        .chars()\n        .map(|c| {\n            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {\n                c\n            } else {\n                '_'\n            }\n        })\n        .collect::<String>();\n    let safe = if safe.is_empty() { \"main\".into() } else { safe };\n    let rel = format!(\"design/build/{safe}.preview.html\");\n    let path = join_project_rel(project_root, &rel)?;\n    let html = build_preview_html(doc)?;\n    if let Some(parent) = std::path::Path::new(&path).parent() {\n        let parent_s = parent.to_string_lossy();\n        if !parent_s.is_empty() {\n            fs.create_dir_all(&parent_s)\n                .map_err(|e| HostError::Settings(format!(\"mkdir preview: {e}\")))?;\n        }\n    }\n    fs.write_atomic(&path, html.as_bytes())\n        .map_err(|e| HostError::Settings(format!(\"write preview: {e}\")))?;\n    Ok(path)",
+        "observation": "已有預覽HTML file寫出，不是程式模組/介面生成器",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "line_start": 1,
+        "line_end": 80,
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee",
+        "excerpt": "//! SGenAxis **HOST** (PD-HOST-01 + PD-BOARD-LIVE-01 + PD-DEPLOY-CMD-01 + PD-GUARD-CMD-01\n//! + PD-GIT-BOARD-SYNC-01)\n//! — lifecycle, settings, restricted IPC, read-only local board／deploy, GUARD façade,\n//! Git↔board read isolation.\n//!\n//! - [`AppLifecycle`] — start／close phases (no business state)\n//! - [`SettingsStore`] — persistent host prefs via [`FileSystemPort`]\n//! - [`AllowedIpcCommand`] — allowlist; **no** arbitrary shell\n//! - [`CompositionRoot`] — wires Ports at boot\n//! - [`board_live`] — parse `#board-snapshot` from local HTML／JSON（no :8788）\n//! - [`git_board_sync`] — Git summary ↔ board snapshot isolation assertions\n//! - [`deploy`] — façade over [`sgenaxis_ports::DeployPort`]（status／check／list_artifacts）\n//! - [`ports_view`] — registered Port／adapter status projection (PD-REMAIN-PORTS-UI-01)\n//! - [`guard_cmd`] — start_implementation／change-path gate → `CODE:detail` (PD-GUARD-CMD-01)\n//!\n//! Tauri command closures in `src-tauri` must stay thin and call into this crate.\n\n#![forbid(unsafe_code)]\n\npub mod board_live;\npub mod composition;\npub mod deploy;\npub mod error;\npub mod git_board_sync;\npub mod guard_cmd;\npub mod identity_preview;\npub mod ipc;\npub mod lifecycle;\npub mod module_packet;\npub mod packet_admission;\npub mod ports_view;\npub mod project_manifest;\npub mod project_new;\npub mod project_preferences;\npub mod scene_doc;\npub mod settings;\npub mod uidesign_doc;\n\npub use board_live::{\n    extract_snapshot_json, load_board_file, parse_board_snapshot, BoardSnapshot, SnapshotTask,\n};\npub use git_board_sync::{\n    load_git_and_board_isolated, GitBoardSyncViews, SyncFailKind, SyncReadOrder,\n};\npub use composition::{CompositionRoot, APP_NAME};\npub use deploy::{\n    check_view, default_workspace_root, find_workspace_root, focus_platform, list_artifact_views,\n    platform_label, status_view, DeployArtifactView, DeployCheckView, DeployStatusView,\n};\npub use ports_view::{\n    project_ports_status, PortAdapterLabels, PortBindingView, PortsStatusView,\n};\npub use error::HostError;\npub use guard_cmd::{\n    authorize_exec_start, authorize_write_paths, check_changes_view, check_implementation_view,\n    check_start_view, EnvelopeDto, GuardDecisionView, GuardExecPass, GuardPacketDto, RedKindDto,\n};\npub use ipc::{authorize, is_allowed, reject_if_shell, AllowedIpcCommand};\npub use lifecycle::{AppLifecycle, LifecyclePhase};\npub use project_new::{\n    create_new_project_root, create_new_project_under, join_new_project_path,\n    normalize_new_project_path, normalize_project_folder_name,\n};\npub use project_manifest::{\n    adopt_project_document, DocumentAdoptionOutcome, ProjectManifestStoreError,\n};\npub use scene_doc::{\n    load_scene_text, normalize_scene_rel, save_scene_text, scene_file_exists, DEFAULT_SG_REL,\n    DEFAULT_SGML_REL, DEFAULT_SGS_REL, DEFAULT_SGUI_REL, SCENE_DIR,\n};\npub use uidesign_doc::{\n    ask_agent_draft, build_preview_file, build_preview_html, load_design_file, parse_design_json,\n    save_design_file, serialize_design, DesignDoc, DesignMeta, DesignNode, DEFAULT_REL_PATH,\n    DESIGN_FORMAT, DESIGN_FORMAT_VERSION, PREVIEW_BANNER,\n};\npub use settings::{\n    HostSettings, SettingsStore, DEFAULT_BOARD_PATH_HINT, HOST_SETTINGS_FILE, HOST_SETTINGS_VERSION,\n};\n// Live CLI probe types re-exported from exec (PD-LIVE-TARGET-01 consumers).\npub use sgenaxis_exec::{LiveTargetProbeResult, LIVE_TARGET_STATUS_NOT_RUN, LIVE_TARGET_STATUS_PASS};",
+        "observation": "HOST可擴充用例並重用FileSystemPort；沒有理由另加第二authority",
+        "evidence": "SOURCE_INSPECTION_ONLY"
+      }
+    ],
+    "tests": "NOT RUN",
+    "native_ui": "NOT RUN",
+    "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+  },
+  "gap": {
+    "module": "M02",
+    "status": "PLANNING_DELIVERED_REVIEW_PENDING",
+    "requirements": [
+      {
+        "requirement": "REQ-04",
+        "module": "M02",
+        "feature": "F03",
+        "tests": "BDD-03/04; X02",
+        "acceptance": "AC03",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "gaps": [
+      "未在所列host/command/依賴搜尋找到版本化template manifest與雙骨架artifact plan",
+      "批准版本來源、必要契約門檻、再生成diff及模板golden待定",
+      "首個生成框架與模板內容未批准"
+    ],
+    "bdd_owned": [
+      {
+        "id": "BDD-03",
+        "req": "REQ-04",
+        "name": "生成條件不足",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "BDD-04",
+        "req": "REQ-04",
+        "name": "生成雙骨架",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "extra_obligations": [
+      [
+        "X02",
+        "M02",
+        "模板離線、版本變更、再生成衝突／過期、排除必要模組；驗證不安裝依賴。"
+      ]
+    ],
+    "reuse_strategy": "Retain existing scoped behavior and add minimum approved delta; do not rebuild historical green capabilities."
+  },
+  "envelope": {
+    "module": "M02",
+    "status": "PROPOSED_NOT_APPROVED",
+    "current_authorized_writes": [
+      "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/**",
+      "own PREP board notes and planning status only"
+    ],
+    "proposed_existing_production": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "apps/sgenaxis-desktop/ui/app.js",
+      "apps/sgenaxis-desktop/ui/index.html"
+    ],
+    "proposed_new_production": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/template_generation.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/manifest.json",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs"
+    ],
+    "proposed_tests": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_template_generation.rs"
+    ],
+    "protected": "All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.",
+    "shared_files": "app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.",
+    "baseline": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+        "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+      }
+    ],
+    "new_dependency_cost": "No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.",
+    "new_public_api_cost": "Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.",
+    "file_cost": {
+      "existing_candidates": 8,
+      "new_production_candidates": 3,
+      "new_test_candidates": 1
+    },
+    "decisions": [
+      "D2",
+      "D3"
+    ]
+  },
+  "tests": {
+    "module": "M02",
+    "existing_commands": [
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+        "command": "cargo test -p sgenaxis-host uidesign_doc::tests",
+        "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED",
+        "purpose": "Existing source/target present; may only inspect static text, not behavior proof"
+      }
+    ],
+    "proposed_commands": [
+      {
+        "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+        "command": "cargo test -p sgenaxis-host --test phase1_template_generation",
+        "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED",
+        "purpose": "Only runnable after approved Skeleton creates exact target"
+      }
+    ],
+    "cases": [
+      {
+        "id": "TDD-03",
+        "bdd": "BDD-03",
+        "requirement": "REQ-04",
+        "title": "生成條件不足",
+        "given": "缺少必要架構或契約決策",
+        "when": "要求生成雙骨架",
+        "then": "只允許保存定義並明示缺少的決策",
+        "fixture": "fixtures.json#BDD-03",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-04",
+        "bdd": "BDD-04",
+        "requirement": "REQ-04",
+        "title": "生成雙骨架",
+        "given": "已確認必要條件與產物預覽",
+        "when": "確認生成",
+        "then": "程式及UI UX骨架符合預覽且未實作項可辨",
+        "fixture": "fixtures.json#BDD-04",
+        "levels": [
+          "L1 component",
+          "L2 module contract",
+          "L3 adapter where applicable"
+        ],
+        "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M02-A",
+        "bdd": "BDD-M02-A",
+        "requirement": "REQ-04",
+        "title": "模板副本",
+        "given": "已採用特定版本模板",
+        "when": "調整專案副本後重開",
+        "then": "來源不變且可追溯模板版本",
+        "fixture": "fixtures.json#BDD-M02-A",
+        "levels": [
+          "L2 module contract",
+          "L4 adjacent regression"
+        ],
+        "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+        "result": "NOT RUN"
+      },
+      {
+        "id": "TDD-M02-B",
+        "bdd": "BDD-M02-B",
+        "requirement": "REQ-04",
+        "title": "過期生成",
+        "given": "預覽後定義revision改變",
+        "when": "確認舊生成方案",
+        "then": "拒絕且不覆寫既有檔案",
+        "fixture": "fixtures.json#BDD-M02-B",
+        "levels": [
+          "L2 module contract",
+          "L4 adjacent regression"
+        ],
+        "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.",
+        "result": "NOT RUN"
+      }
+    ],
+    "B1_B12": [
+      {
+        "id": "B1",
+        "name": "成功",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B2",
+        "name": "邊界",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B3",
+        "name": "非法輸入",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B4",
+        "name": "依賴失敗",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B5",
+        "name": "部分失敗",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B6",
+        "name": "狀態一致性",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B7",
+        "name": "交易",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B8",
+        "name": "生命週期",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B9",
+        "name": "回復",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B10",
+        "name": "跨模組",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B11",
+        "name": "相容性",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      },
+      {
+        "id": "B12",
+        "name": "回歸",
+        "applicability": "Applicable",
+        "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務",
+        "result": "PLANNED_NOT_RUN"
+      }
+    ],
+    "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.",
+    "regression_levels": [
+      "focused new cases",
+      "module public-input contract tests",
+      "adjacent shared-boundary tests",
+      "architecture constraints",
+      "Windows native via M08"
+    ],
+    "pending_automation": [
+      "exact approved input DTO/Port bindings",
+      "create listed test target and fixtures after Skeleton gate",
+      "expand per-case fault matrix",
+      "native UI operator + runtime source identity",
+      "real filesystem interruption and rollback-failure coverage"
+    ],
+    "stop_conditions": [
+      "unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED",
+      "conflicting specification → SPEC_CONFLICT",
+      "tests compile/fixture/environment errors → not valid RED"
+    ],
+    "test_execution": "NOT RUN; no production tests or test files created"
+  },
+  "ui_schema": {
+    "role": "本機專案作者／設計者",
+    "fields_controls_states": "模板版本/驗證範圍、雙骨架預設選、缺決策時只保存定義、產物樹、未實作及再生成差異。",
+    "validation": "Validate fields, identity, revision and capability before mutation; disabled states name reason",
+    "defaults": "Spec D01-D13 are proposals; no implicit approval here",
+    "empty": "No project/document/template/asset/artifact: show actual empty state and next available action",
+    "accessibility": "Text labels, keyboard focus, field-linked errors; details pending rendered UI review"
+  },
+  "decisions": [
+    {
+      "id": "D2",
+      "gate": "G01/G03",
+      "title": "文件權威與多視窗同步",
+      "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。",
+      "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。",
+      "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。",
+      "affected_modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"
+    },
+    {
+      "id": "D3",
+      "gate": "G04",
+      "title": "首版模板、Viewer及媒體矩陣",
+      "observation": "有Vanilla/Tauri與卡片communication preview；尚未見版本化雙骨架模板與完整media codec。",
+      "recommendation": "首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。",
+      "alternatives": "一次全部框架/宿主/媒體需要擴大驗證；只存定義不生成會縮已確認需求，不能自行採用。",
+      "affected_modules": [
+        "M02",
+        "M03",
+        "M05",
+        "M08"
+      ],
+      "blocking": "只阻擋對應生成/preview/media；非全域停工。"
+    }
+  ],
+  "assumptions": [
+    "Keep existing green slices; source presence is not full acceptance",
+    "Candidate new files and exact signatures require architecture/Skeleton approval",
+    "No new infrastructure dependencies or product behavior changes in PREP"
+  ]
+}

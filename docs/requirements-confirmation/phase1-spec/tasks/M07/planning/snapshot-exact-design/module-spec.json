@@ -1,0 +1,2390 @@
+{
+  "identity": {
+    "module": "M07",
+    "task": "M07-SNAPSHOT-INTEGRATION",
+    "status": "ONE_OWNER_CONFIRMATION_PENDING_NOT_READY_FOR_IMPLEMENTATION",
+    "at": "2026-11-01T09:59:39.797672+00:00",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "source_count": 796
+  },
+  "overview": "快照capture／素材副本與pin／payload-index發布／復原生命週期完整候選；保留已驗收S1。",
+  "architecture": {
+    "purpose": "M07 publishes durable recoverable captured versions independently of formal-save baseline, and restores a verified snapshot as a new unsaved document. Preserve accepted S1 scheduling/state rules exactly.",
+    "hexagonal": "Timer/UI/Test → closed recovery input commands → DispatchHost RecoveryOwner → HOST RecoveryStore orchestration → existing WORK recovery_state policy. Output ports: M04 immutable capture/restore seam, M05 pin/export/import/root seam, new RecoveryStoragePort, existing FileCommitPort for index. Native adapter owns handles/immutable files; domain owns no IO/timer.",
+    "dependencies": "RecoveryOwner → M04 single DocumentOwner, not another content registry. RecoveryOwner → M05 MaterialOwner. HOST → Ports abstractions; WindowsRecoveryStorage implements RecoveryStoragePort. M04/M05 cannot call recovery UI; no cycles via callbacks under locks.",
+    "ownership": {
+      "M07": "Per-project/session policy state, attempt identity/phase, immutable payload/bundle manifests and recovery index. History UI is derived, not retention authority.",
+      "M04": "Only active document session/content/history/baselines and trusted immutable capture; IO-health denies unsafe capture/install.",
+      "M05": "Catalog/version identities, durable Held pins and five-kind root manifests; no M07 policy ACK authority.",
+      "storage adapter": "Verified immutable payload/material copies and safe recovery-store identity. IO adapter retains private index journal ownership.",
+      "UI": "list/preview/confirm only; cannot declare Published or provide trusted payload/roots."
+    },
+    "mutation": "Capture is read-only under document owner stable boundary. Snapshot storage changes under M07 attempt/index lease. Restore installs only through M04 new-unsaved-session seam, not setters/reconstruction of current dirty session.",
+    "transactions": "Immutable material copies and payload → atomic index CAS publication → durable M05 root transfer → M07 Published +M04 recovery ACK. These are separate transactions bridged by durable Held pins; no multi-file atomicity claim.",
+    "scope": "Automatic 60s checks, manual check, payload/material/index publication, restart enumeration, verified restore, mark processed/hide-history lifecycle. Physical deletion, retention expiry, cross-restart Undo, repair and complete product release excluded; requirements preserved as separate tasks.",
+    "forbidden": [
+      "WORK filesystem/timer/framework dependencies",
+      "UI serializer/FS bypass",
+      "recent-history visibility controls retention",
+      "formal save clears recovery baseline/snapshots",
+      "snapshot success before all durable evidence",
+      "M07 owns second M04 session registry",
+      "unverified original path used as restore destination"
+    ],
+    "approval": "All architecture/Port/schema/bounds below PROPOSED_PENDING_OWNER."
+  },
+  "capture_fingerprint": {
+    "scheduler": "Use monotonic elapsed milliseconds per runtime session; no accumulated wall-clock jump catch-up. One check event at most per60000ms according to existing S1. Timer wakes runtime, no domain OS timer. TimeRegressed is classified clock error; do not reset successful baseline. Session close cancels future events; in-flight evidence still reconciles.",
+    "stable_capture": "M04 capture_recovery(context,expected_generation) returns ImmutableCapture {project_uuid,document_uuid,session_uuid,generation,revision,format,canonical_payload,semantic_profile,semantic_digest,asset_pairs,binding_projection,legacy_alias_mapping}. Under owner lock copy one stable S1 capture plus complete resolver evidence; release lock before IO. Mutating/Applying/WriteInFlight/RecoveryBlocked => defer/DependencyNotReady, no partial capture.",
+    "fingerprint": "SGA-RECOVERY-FP-v1 bytes = compact UTF8 JSON [\"SGA-RECOVERY-FP-v1\",format,semantic_profile,semantic_digest,sorted [[asset_id,digest]],sorted [[binding_id,target_id_or_null,state]]]. IDs/strings escaped by SGA-DESIGN-SEM-v1 JSON string policy, literal Unicode, no BOM/newline. SHA256 lowercase. Includes immutable material versions; does not hash selection/time/path. Duplicate IDs/conflicting pair policy must pass adopted M04/M05 validation first.",
+    "baseline_mapping": "S1 successful_fingerprint stores RECOVERY-FP hash; CapturedAttempt.asset_manifest_digest hashes compact JSON sorted pair array; captured_fingerprint is immutable attempt fingerprint. M04 acknowledge_recovery_save receives captured revision +M04 content semantic digest, not RECOVERY-FP or payload raw SHA. M07 fingerprint and M04 recovery baseline are separate projections; formal baseline untouched.",
+    "sequence": "Trusted current fingerprint from stable owner projection → S1 Check. RequestCapture queues one capture job. Obtain complete immutable validated capture and register existing S1 BeginAttempt BEFORE pin/copy; CapturedAttempt authenticates captured data, not publication. Then M05 resolve+Recovery pin exact pairs and revalidate owner identity. Known pin/setup/capture-change failure completes that registered attempt Failed with baseline unchanged and Held evidence retained; never mix versions. If capture temporarily unavailable before BeginAttempt, keep the single capture_requested job pending and service it on later runtime ticks (S1 Check WaitInFlight creates no duplicate); Close cancels it via existing S1. No hidden reset/cancel API. One attempt active per session.",
+    "newer_edit": "After stable capture/pin, immutable bundle publication can continue while live revision advances through normal owner operations unless health guard requires defer. Completion ACK uses old captured revision; live newer content remains pending for next check. Never suppress newer change by using current digest in completion.",
+    "no_assets": "Only complete projector-proven empty manifest may skip blob copying; unknown material dependency is an error, never [] fallback.",
+    "attempt": "Server lowerhex32 attempt_id minted before pin; binds project/document/session/generation/capture fingerprint. M07 tracks phase Capture|Pinned|Copying|PayloadDurable|IndexCommitted|RootsTransferred|Acknowledged|Deferred|RecoveryBlocked. S1 state not extended; application phase registry holds evidence separately."
+  },
+  "schema_storage": {
+    "schema": "SGA-RECOVERY-INDEX-v1; new proposed schema",
+    "layout": "App-private recovery root (trusted environment capability), projects/<project_uuid>/index.v1.json; objects/<sha256>.payload and objects/<sha256>.asset in same project recovery store. Original project path only display metadata, never authority. All directory components server-derived safe IDs; adapter verifies handle identity and rejects aliases/reparse escape.",
+    "payload": "UTF8 compact JSON object fixed field order: schema=\"SGA-RECOVERY-PAYLOAD-v1\", project_uuid,document_uuid,source_session_uuid,owner_generation,revision,format,semantic_profile,semantic_digest,recovery_fingerprint,canonical_payload_base64,asset_manifest,bindings,legacy_alias_mapping. Base64 RFC4648 standard padding, no whitespace; strict decoded-size check. Original exact internal canonical payload carried losslessly; never UI XML/JSON reparse replacing original capture.",
+    "asset_manifest": "sorted [{asset_id,digest,size_bytes,recovery_object_digest}] by asset_id UTF8/digest; recovery_object_digest must equal exact SHA256 material bytes. Dedup copy by digest but retain all identity pairs. All captured versions, including necessary unsaved/imported versions, copied and durably verified before payload publication.",
+    "index": "{schema,project_uuid,generation:u64,entries:Entry[],operations:Operation[]}; entries sorted snapshot_id; entry {snapshot_id,source_document_uuid,source_session_uuid,owner_generation,captured_revision,format,semantic_profile,semantic_digest,recovery_fingerprint,payload_digest,payload_size,asset_manifest_digest,asset_total_bytes,pin_id,state:Unprocessed|Processed,history_visible:bool,created_at_display}. Processing/hiding cannot remove entry or roots. Initial generation0, effective transition checked+1. Operation IDs persisted for replay.",
+    "validation": "Reject raw duplicate/unknown fields, wrong types, malformed IDs/digests, floats for integer fields, UTF8 BOM, wrong schema/project, duplicate snapshot IDs, generation overflow, malformed base64. Validate all exact manifest/context/digests before user preview/restore; do not execute payload props/scripts/links. No arbitrary archive extraction.",
+    "limits": {
+      "canonical_payload_bytes": 16777216,
+      "encoded_payload_bytes": 25165824,
+      "single_asset_bytes": 67108864,
+      "bundle_asset_bytes": 268435456,
+      "asset_pairs": 4096,
+      "index_bytes": 16777216,
+      "index_entries": 4096,
+      "operation_records": 8192,
+      "bindings": 4096,
+      "legacy_aliases": 4096,
+      "id_utf8_bytes": 128,
+      "alias_utf8_bytes": 1024
+    },
+    "limit_rules": "Inclusive; raw UTF8 byte counts before typed parse; base64 encoded length checked before allocating decode and decoded length verified. Request arrays count before dedup; bundle bytes sum unique blob digests checked with overflow-safe u64. Output counting writer checks index/payload caps before IO. Capacity fails without eviction/deleting older snapshots; bounds proposed for Owner.",
+    "durability": "Immutable file receipt requires full bytes hash, flush, durable publication and verified existing object on dedup. Existing corrupt object never overwritten. Payload/index and material catalog are distinct digest domains. Recovery root/list can survive original project relocation because bundle is self-contained; restore still requires authorized destination project."
+  },
+  "ports": {
+    "RecoveryStoragePort": "bind_recovery_root(trusted_app_storage_capability,project_uuid) -> RecoveryStoreHandle; handle.publish_immutable(kind:Payload|Asset,expected_digest,bytes) -> ObjectReceipt; handle.read_verified(kind,digest,max_bytes) -> VerifiedBytes; handle.index_target() -> authorized opaque path for FileCommitPort; handle.inspect_identity() -> StoreIdentity. No delete/repair/execute methods.",
+    "ObjectReceipt": "{store_identity,kind,digest,size_bytes,Created|VerifiedExisting}; caller verifies exact digest/size and expected safe store. Native Windows11 x64 adapter; unsupported platform explicit. No raw arbitrary user path API.",
+    "M04_capture_port": "capture_recovery(context) -> ImmutableCapture; validate_recovery_capture(identity) -> Current|Changed|Unavailable; acknowledge_recovery_capture(identity,verified_publication) -> Acked|Deferred. Existing S1 capture/ack methods reused behind application seam, not changed.",
+    "M04_restore_port": "prepare_recovered_document(trusted_destination,verified_candidate,operation_id) -> RestorePlan; install_recovered_document(plan,current_destination_generation,verified_pin) -> NewUnsavedSession|InstalledRetentionDeferred. Never overwrite current active document automatically; request leave confirmation first if replacement navigation needed.",
+    "M05_extension_export": "read_pinned_version(verified_pin,asset_id,digest,max_bytes) -> verified immutable bytes; requires native safe handle/hash/size. MaterialStorePort StoreHandle gains read_verified_blob(digest,expected_size,max_bytes), only callable by owner under valid pin. Original M05 proposal had verify-only; this is explicit new pending Port amendment, not assumed existing.",
+    "M05_extension_restore": "import_recovery_versions(trusted_destination,verified_material_bundle,operation_id) -> ImportedPinnedManifest; publish all immutable blobs then single catalog index publishes versions+Recovery/Candidate pin+operation. Preserve asset IDs/digests; conflicting identity/legacy alias refuses before document install. Failed import may leave retained orphan blobs; no partial document state.",
+    "M05_root_port": "Existing proposed transfer pin → authoritative RecoverySnapshots root manifest plus publication proof. Recovery entry/payload/material reference set must match exact pin; unavailable/stale provider cannot mark Published. startup observed unverified index => Unknown.",
+    "clock": "Runtime monotonic elapsed input adapter, fake in tests; no injectable clock into WORK type changes. UTC timestamp display only.",
+    "FileCommit_reuse": "Index exclusive lease read_current/replace_checked raw expected digest; verify all receipt fields. Adapter private journal untouched; acquire already performs startup journal inspection and may create lock sidecar."
+  },
+  "transactions_lifecycle": {
+    "publication": [
+      "Authorize stable owner/capture and bind recovery store; receive durable M05 Recovery pin before copying materials. Do not hold document/catalog locks during blob IO.",
+      "Copy every unique pinned material into recovery store; verify each ObjectReceipt and all captured material identity pairs. Publish exact payload only after all copies durable.",
+      "Acquire recovery index FileCommit lease; strict read/schema, verify operation replay; append entry Unprocessed and operation record; replace_checked prior raw digest. Verify target_path, previous_digest, committed_digest hash index bytes and nonempty transaction_id.",
+      "Transfer M05 Held pin to RecoverySnapshots root using authenticated proof {snapshot_id,capture identity,payload receipt,all material receipts,index receipt,asset manifest digest}. No assumption that index+catalog commit atomically.",
+      "Only after transfer receipt verifies feed S1 Complete Published and M04 captured recovery ACK. If owner closed, S1 IgnoreClosedCompletion; durable entry/root retained; no ACK to new session. Formal-save baseline never changes."
+    ],
+    "failure_table": {
+      "before_index_commit": "No visible snapshot entry; S1 Failed only after known failure terminal; successful baseline unchanged; durable Held/orphan objects retained until safe explicit reconciliation.",
+      "index_uncertain": "RecoveryBlocked; retain attempt+pin+all receipts. Never send Failed implying index unchanged; next writes blocked until verified evidence/recovery.",
+      "index_committed_root_transfer_failed": "PublishedRetentionDeferred; index entry visible as pending integrity/retention proof, not recoverable-ready. Held retained, no S1 Published or M04 ACK; explicit reconcile uses same immutable proof, no payload/index rewrite.",
+      "roots_transferred_ack_failed": "PublishedAckDeferred; durable snapshot available, baseline not claimed advanced until matching completion accepted. Replay completion only same attempt/current original owner; no forced reconstruction.",
+      "response_lost": "Read same operation record and validate receipts; no duplicate entry or second ACK.",
+      "newer_revision": "Complete old captured fingerprint; live newer remains dirty/pending; formal baseline unchanged."
+    },
+    "restart": "Read trusted project recovery index through existing IO acquire journal checks; verify payload and all asset objects on demand before Ready/restore. No raw directory guessing as index authority. Reconcile only exact committed index entry+pin proofs from M05; missing proof => PendingVerification/Unknown root, retain. Old session S1 state not reconstructed to fake ACK; new session baseline starts independently.",
+    "restore": [
+      "User selects snapshot_id from authorized index and explicit destination project; verify safe index/payload/material receipts, schema/profile and complete binding/ref projection. Unsupported codec/projector => DependencyNotReady; no raw fallback.",
+      "Create preview plan containing source snapshot fingerprint, destination binding/generation, source index generation, exact material identities and content semantic digest. TTL60seconds monotonic, max32plans/runtime, no eviction; no content mutation during preview.",
+      "On confirm revalidate source/destination/TTL/IO-health and operation replay; M05 imports verified bundle into destination preserving IDs/version digests and returns durable pin. Never use original path metadata to overwrite file.",
+      "M04 installs a new document/session identity, content at initial revision0, no formal baseline, empty Undo/Redo (not cross-restart history). Source identity kept metadata only; content canonical schema IDs preserved unless format requires a new explicit approved remap. New document dirty/unsaved; recovery baseline None until its own snapshot. No original formal file write.",
+      "Publish destination live roots and transfer pin. If install committed but transfer fails: InstalledRetentionDeferred, keep pin and show installed unsaved doc. Mark source Processed only after verified install receipt; if mark fails RestoreInstalledMarkDeferred with source Unprocessed retained. No rollback of installed document claim."
+    ],
+    "lifecycle": "mark_processed and hide_history are independent metadata CAS operations with operation replay; neither removes index entry/assets/roots or ACKs baselines. Formal save never discards snapshots. Session close revokes scheduler and restore plans; in-flight completion retains durable proofs for reconciliation, no force-cancel write. Project switch never adopts old completion into replacement owner.",
+    "cleanup": "No retention expiry, quota eviction, physical file deletion or repair in this slice. Snapshot count/storage warning shown; exhausted capacity blocks new publication and retains prior valid data. Later deletion needs dedicated native fence and root transaction approval.",
+    "locking": "One M07 attempt/session. Catalog pin lease released before recovery index IO. No root/provider callback under index lease; transfer after index lease released. Replay/late completion identity includes project/doc/session/generation/attempt, never just snapshot label."
+  },
+  "errors": {
+    "shape": "RecoveryError {code,stage,path?,reason,attempt_id?,operation_id?,details}; tagged success/error/deferred variants mutually exclusive.",
+    "codes": {
+      "InvalidInput": [
+        "type",
+        "empty",
+        "unknown_field",
+        "duplicate_field",
+        "invalid_id",
+        "invalid_digest",
+        "invalid_base64",
+        "count_limit",
+        "byte_limit"
+      ],
+      "DependencyNotReady": [
+        "stable_capture",
+        "codec",
+        "material_export",
+        "pin_provider",
+        "destination_owner",
+        "binding_projector"
+      ],
+      "PermissionDenied": [
+        "role",
+        "project_binding",
+        "session_owner"
+      ],
+      "CaptureChanged": [
+        "generation",
+        "revision",
+        "fingerprint",
+        "manifest"
+      ],
+      "CapacityExceeded": [
+        "entries",
+        "operations",
+        "plans",
+        "payload_bytes",
+        "bundle_bytes"
+      ],
+      "Busy": [
+        "attempt",
+        "index_lease",
+        "mutation"
+      ],
+      "IntegrityFailure": [
+        "object_digest",
+        "object_size",
+        "manifest_mismatch",
+        "receipt_mismatch",
+        "index_schema",
+        "profile_mismatch"
+      ],
+      "PlanExpired": [
+        "restore"
+      ],
+      "ReplayConflict": [
+        "same_id_different_payload"
+      ],
+      "Storage": [
+        "object_publish",
+        "index_commit",
+        "source_read"
+      ],
+      "RecoveryBlocked": [
+        "uncertain_index",
+        "journal_requires_recovery"
+      ],
+      "Deferred": [
+        "retention_transfer",
+        "owner_detached",
+        "ack_rejected",
+        "mark_processed"
+      ],
+      "UnsupportedPlatform": [
+        "native_storage_unavailable"
+      ]
+    },
+    "precedence": "caller/role/project → closed DTO raw size/type → owner/session/generation/health → operation replay → capture/codec/profile validation → pin/material proof → bounds/objects → index journal/CAS/receipt → root transfer → policy and recovery ACK. Restore validates all source bytes before destination catalog mutation. No IO after first denied precondition.",
+    "details": "Keep exact underlying CommitError and MaterialError variants/fields; Storage stage/path/reason and RecoveryRequired journal/old/new evidence retained in authorized diagnostics. JSON pointer paths for payload/index, object paths replaced with opaque digest for unprivileged UI. No raw content leaked.",
+    "retry": "S1 Failed means known publication failure and baseline unchanged; next60s check retries with new attempt after old terminal classification. Uncertain/committed-deferred attempts reconcile exact prior proof before any new write, no blind retry. No automatic pin expiration or snapshot deletion.",
+    "S1_mapping": "Published only trusted completed all-durable pipeline. Failed only known terminal unsuccessful pipeline; app deferred phases are not new S1 enum variants. IgnoreClosedCompletion respected, never manually reset successful fingerprint/attempt to force progress."
+  },
+  "ui": {
+    "commands": {
+      "recovery_list": [
+        "project_binding",
+        "cursor?"
+      ],
+      "recovery_check_now": [
+        "session_uuid",
+        "operation_id"
+      ],
+      "recovery_prepare_restore": [
+        "snapshot_id",
+        "destination_selection_id"
+      ],
+      "recovery_confirm_restore": [
+        "plan_id",
+        "operation_id"
+      ],
+      "recovery_mark_processed": [
+        "snapshot_id",
+        "expected_index_generation",
+        "operation_id"
+      ],
+      "recovery_hide_history": [
+        "snapshot_id",
+        "expected_index_generation",
+        "operation_id"
+      ],
+      "recovery_get_operation": [
+        "operation_id"
+      ]
+    },
+    "ACL": "Main Editor only; Viewer cannot invoke any recovery command. Timer is trusted runtime input, not UI callback granting Published. IDs ASCII1..128; expected generations u64; deny unknown DTO fields. No filesystem path/payload/receipt/complete flag accepted from UI.",
+    "states": "List PendingVerification|Ready|RetentionDeferred|Blocked plus Unprocessed/Processed and history visibility. Restore disabled until all verified. Preview shows destination is NEW UNSAVED document, material count/bytes and missing dependencies; confirm/cancel. Failed preview preserves active document. Deferred install shows actual installed document and warning, not generic failure.",
+    "history": "Hiding recent-history entry never removes retained snapshots. Listing recovery remains possible via project recovery panel even if recent entry hidden. Processed remains restorable; no deletion action.",
+    "a11y": "Keyboard preview/confirm/cancel; status aria-live; digest/blocked reason accessible; error returns focus without losing draft. No success toast before Ready/install proof.",
+    "pagination": "max100 entries; server cursor bound to index generation; stale cursor returns changed-index error; no mixed-generation pages."
+  },
+  "joint_amendments": {
+    "M04": "capture+recovery ACK+new unsaved restore seams only; no second session, no formal ACK coupling",
+    "M05": "new pinned verified byte export +bundle import +recovery proof transfer, explicit material_store Port amendment",
+    "frozen_revisions": {
+      "M04": "02475492a79010ea17faf899e4aebfc9f0828817445648d5a1e1576f40900999",
+      "M05": "af74df0ce472a9987eee4ca7ea2139369c2bd0f780971c5a2be5a04c963ee131"
+    },
+    "policy": "Original pending packets remain unchanged; these coordinated amendments require adoption, not silently granted by M07."
+  },
+  "decisions": [
+    {
+      "id": "M07-D1",
+      "proposal": "Adopt stable capture/SGA-RECOVERY-FP-v1 and exact existing S1 timing/completion mapping, independent baselines.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D2",
+      "proposal": "Adopt self-contained immutable payload+material bundle schema/bounds and new native RecoveryStoragePort.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D3",
+      "proposal": "Adopt pin→objects→index→root-transfer→Published/ACK sequence and explicit uncertain/deferred outcomes.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D4",
+      "proposal": "Adopt restart verification/reconciliation, root retention and no automatic expiration/deletion/repair.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D5",
+      "proposal": "Adopt preview/confirmed new-unsaved restore, M05 verified bundle import and post-install deferred statuses.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D6",
+      "proposal": "Adopt explicit joint M04/M05 capture/pin-export/import/proof amendments; old packets frozen and S1 protected.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M07-D7",
+      "proposal": "Adopt closed UI/ACL/errors/replay, candidate envelope and test/readiness gates.",
+      "status": "PENDING_OWNER"
+    }
+  ],
+  "envelope": {
+    "primary_module": "M07",
+    "status": "PROPOSED_REQUIRES_OWNER",
+    "integration_children": [
+      "M04 capture/ACK/unsaved restore",
+      "M05 pinned export/import/root transfer"
+    ],
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/recovery_store.rs",
+        "change": "new recovery storage trait/evidence types",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/material_store.rs",
+        "change": "pending M05 shared path: read_verified_blob export amendment only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+        "change": "recovery storage export only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/recovery_store.rs",
+        "change": "new Windows immutable payload/material object adapter",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/material_store.rs",
+        "change": "pending M05 shared path: verified pinned blob read only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+        "change": "recovery adapter export only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_recovery_store.rs",
+        "change": "native durability/identity/failure tests",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/recovery_store.rs",
+        "change": "schema/capture publication/restore use cases and proof validator",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/asset_store.rs",
+        "change": "pending M05 shared path: pinned export/recovery import/root proof only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "change": "recovery module export only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs",
+        "change": "seven recovery command allowlist entries/assertions only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_recovery.rs",
+        "change": "fake-port publication/restore contract cases",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/recovery_owner.rs",
+        "change": "new scheduler/attempt coordinator, ACL and root provider",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/document_owner.rs",
+        "change": "pending M04 shared path: capture/ACK/new-unsaved restore seam only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/material_owner.rs",
+        "change": "pending M05 shared path: pinned export/import coordination only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "change": "seven recovery handlers",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "change": "recovery composition/runtime timer integration only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "change": "closed recovery DTO/result projection",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "change": "module/commands and project/window lifecycle invalidation",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+        "change": "seven exact command permissions",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+        "change": "matching explicit mappings only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+        "change": "main Editor permission entries only, no Viewer expansion",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/tests/phase1_recovery_owner.rs",
+        "change": "capture/pin/late completion/ACL/restore owner integration",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "change": "recovery list/preview/restore/processed/hide status only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "change": "recovery panel controls/status only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/recovery-history.test.cjs",
+        "change": "observable recovery lifecycle cases",
+        "exists_now": false
+      }
+    ],
+    "protected": [
+      "all WORK recovery_state/document_edit/asset_reference sources/public types/tests",
+      "FileCommitPort and adapter private journal/helpers",
+      "all manifests/lockfiles; missing dependency requires replan",
+      "M03 C1/H2 product implementation",
+      "M01 target selection implementation",
+      "all physical deletion/GC/repair code",
+      "unrelated UI/shell/refactors"
+    ],
+    "dependency_gates": "Adopt+accept M04 codec/owner and M05 catalog/pin/store, native storage and trusted destination selection. Fake ports permitted only future approved RED; no real readiness claim until providers accepted. Schedule shared pending files serially under joint revision, never overlapping ownership."
+  },
+  "bdd_tdd": {
+    "cases": [
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-001",
+        "tdd": "TDD-M07-SNAP-001",
+        "contract": "D1",
+        "title": "59999ms",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "NotDue no capture",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "59999ms",
+          "oracle": "NotDue no capture"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-002",
+        "tdd": "TDD-M07-SNAP-002",
+        "contract": "D1",
+        "title": "60000ms",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "stable changed content requests capture",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "60000ms",
+          "oracle": "stable changed content requests capture"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-003",
+        "tdd": "TDD-M07-SNAP-003",
+        "contract": "D1",
+        "title": "60001ms",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "one request only no catchup burst",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "60001ms",
+          "oracle": "one request only no catchup burst"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-004",
+        "tdd": "TDD-M07-SNAP-004",
+        "contract": "D1",
+        "title": "Unchanged",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "SkipUnchanged no pin/IO",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Unchanged",
+          "oracle": "SkipUnchanged no pin/IO"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-005",
+        "tdd": "TDD-M07-SNAP-005",
+        "contract": "D1",
+        "title": "Mutation",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "DeferMutation no intermediate capture",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Mutation",
+          "oracle": "DeferMutation no intermediate capture"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-006",
+        "tdd": "TDD-M07-SNAP-006",
+        "contract": "D1",
+        "title": "In flight",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "WaitInFlight no overlapping attempt",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "In flight",
+          "oracle": "WaitInFlight no overlapping attempt"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-007",
+        "tdd": "TDD-M07-SNAP-007",
+        "contract": "D1",
+        "title": "Clock regressed",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "TimeRegressed baseline unchanged",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Clock regressed",
+          "oracle": "TimeRegressed baseline unchanged"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-008",
+        "tdd": "TDD-M07-SNAP-008",
+        "contract": "D1",
+        "title": "Capture changed",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "CaptureChanged no mixed manifest",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Capture changed",
+          "oracle": "CaptureChanged no mixed manifest"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-009",
+        "tdd": "TDD-M07-SNAP-009",
+        "contract": "D1",
+        "title": "Asset version only change",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "RECOVERY-FP differs even if XML alias text same",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Asset version only change",
+          "oracle": "RECOVERY-FP differs even if XML alias text same"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-010",
+        "tdd": "TDD-M07-SNAP-010",
+        "contract": "D1",
+        "title": "Selection time only",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "fingerprint unchanged",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Selection time only",
+          "oracle": "fingerprint unchanged"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-011",
+        "tdd": "TDD-M07-SNAP-011",
+        "contract": "D1",
+        "title": "Newer edit",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "capturedR7 ACK leavesR8 pending",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Newer edit",
+          "oracle": "capturedR7 ACK leavesR8 pending"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D1",
+        "bdd": "BDD-M07-SNAP-012",
+        "tdd": "TDD-M07-SNAP-012",
+        "contract": "D1",
+        "title": "Formal save",
+        "given": "Fake monotonic clock, stable owner and accepted policy state",
+        "when": "check/capture",
+        "then": "recovery fingerprint/baseline untouched",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Formal save",
+          "oracle": "recovery fingerprint/baseline untouched"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-013",
+        "tdd": "TDD-M07-SNAP-013",
+        "contract": "D2",
+        "title": "canonical_payload_bytes=16777215",
+        "given": "Expanded independent fixture canonical_payload_bytes exact16777215, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "canonical_payload_bytes",
+          "count": 16777215,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-014",
+        "tdd": "TDD-M07-SNAP-014",
+        "contract": "D2",
+        "title": "canonical_payload_bytes=16777216",
+        "given": "Expanded independent fixture canonical_payload_bytes exact16777216, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "canonical_payload_bytes",
+          "count": 16777216,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-015",
+        "tdd": "TDD-M07-SNAP-015",
+        "contract": "D2",
+        "title": "canonical_payload_bytes=16777217",
+        "given": "Expanded independent fixture canonical_payload_bytes exact16777217, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error canonical_payload_bytes observed=16777217 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "canonical_payload_bytes",
+          "count": 16777217,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-016",
+        "tdd": "TDD-M07-SNAP-016",
+        "contract": "D2",
+        "title": "encoded_payload_bytes=25165823",
+        "given": "Expanded independent fixture encoded_payload_bytes exact25165823, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "encoded_payload_bytes",
+          "count": 25165823,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-017",
+        "tdd": "TDD-M07-SNAP-017",
+        "contract": "D2",
+        "title": "encoded_payload_bytes=25165824",
+        "given": "Expanded independent fixture encoded_payload_bytes exact25165824, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "encoded_payload_bytes",
+          "count": 25165824,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-018",
+        "tdd": "TDD-M07-SNAP-018",
+        "contract": "D2",
+        "title": "encoded_payload_bytes=25165825",
+        "given": "Expanded independent fixture encoded_payload_bytes exact25165825, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error encoded_payload_bytes observed=25165825 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "encoded_payload_bytes",
+          "count": 25165825,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-019",
+        "tdd": "TDD-M07-SNAP-019",
+        "contract": "D2",
+        "title": "single_asset_bytes=67108863",
+        "given": "Expanded independent fixture single_asset_bytes exact67108863, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "single_asset_bytes",
+          "count": 67108863,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-020",
+        "tdd": "TDD-M07-SNAP-020",
+        "contract": "D2",
+        "title": "single_asset_bytes=67108864",
+        "given": "Expanded independent fixture single_asset_bytes exact67108864, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "single_asset_bytes",
+          "count": 67108864,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-021",
+        "tdd": "TDD-M07-SNAP-021",
+        "contract": "D2",
+        "title": "single_asset_bytes=67108865",
+        "given": "Expanded independent fixture single_asset_bytes exact67108865, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error single_asset_bytes observed=67108865 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "single_asset_bytes",
+          "count": 67108865,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-022",
+        "tdd": "TDD-M07-SNAP-022",
+        "contract": "D2",
+        "title": "bundle_asset_bytes=268435455",
+        "given": "Expanded independent fixture bundle_asset_bytes exact268435455, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "bundle_asset_bytes",
+          "count": 268435455,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-023",
+        "tdd": "TDD-M07-SNAP-023",
+        "contract": "D2",
+        "title": "bundle_asset_bytes=268435456",
+        "given": "Expanded independent fixture bundle_asset_bytes exact268435456, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "bundle_asset_bytes",
+          "count": 268435456,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-024",
+        "tdd": "TDD-M07-SNAP-024",
+        "contract": "D2",
+        "title": "bundle_asset_bytes=268435457",
+        "given": "Expanded independent fixture bundle_asset_bytes exact268435457, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error bundle_asset_bytes observed=268435457 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "bundle_asset_bytes",
+          "count": 268435457,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-025",
+        "tdd": "TDD-M07-SNAP-025",
+        "contract": "D2",
+        "title": "asset_pairs=4095",
+        "given": "Expanded independent fixture asset_pairs exact4095, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "asset_pairs",
+          "count": 4095,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-026",
+        "tdd": "TDD-M07-SNAP-026",
+        "contract": "D2",
+        "title": "asset_pairs=4096",
+        "given": "Expanded independent fixture asset_pairs exact4096, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "asset_pairs",
+          "count": 4096,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-027",
+        "tdd": "TDD-M07-SNAP-027",
+        "contract": "D2",
+        "title": "asset_pairs=4097",
+        "given": "Expanded independent fixture asset_pairs exact4097, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error asset_pairs observed=4097 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "asset_pairs",
+          "count": 4097,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-028",
+        "tdd": "TDD-M07-SNAP-028",
+        "contract": "D2",
+        "title": "index_bytes=16777215",
+        "given": "Expanded independent fixture index_bytes exact16777215, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "index_bytes",
+          "count": 16777215,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-029",
+        "tdd": "TDD-M07-SNAP-029",
+        "contract": "D2",
+        "title": "index_bytes=16777216",
+        "given": "Expanded independent fixture index_bytes exact16777216, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "index_bytes",
+          "count": 16777216,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-030",
+        "tdd": "TDD-M07-SNAP-030",
+        "contract": "D2",
+        "title": "index_bytes=16777217",
+        "given": "Expanded independent fixture index_bytes exact16777217, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error index_bytes observed=16777217 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "index_bytes",
+          "count": 16777217,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-031",
+        "tdd": "TDD-M07-SNAP-031",
+        "contract": "D2",
+        "title": "index_entries=4095",
+        "given": "Expanded independent fixture index_entries exact4095, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "index_entries",
+          "count": 4095,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-032",
+        "tdd": "TDD-M07-SNAP-032",
+        "contract": "D2",
+        "title": "index_entries=4096",
+        "given": "Expanded independent fixture index_entries exact4096, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "index_entries",
+          "count": 4096,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-033",
+        "tdd": "TDD-M07-SNAP-033",
+        "contract": "D2",
+        "title": "index_entries=4097",
+        "given": "Expanded independent fixture index_entries exact4097, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error index_entries observed=4097 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "index_entries",
+          "count": 4097,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-034",
+        "tdd": "TDD-M07-SNAP-034",
+        "contract": "D2",
+        "title": "operation_records=8191",
+        "given": "Expanded independent fixture operation_records exact8191, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "operation_records",
+          "count": 8191,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-035",
+        "tdd": "TDD-M07-SNAP-035",
+        "contract": "D2",
+        "title": "operation_records=8192",
+        "given": "Expanded independent fixture operation_records exact8192, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "operation_records",
+          "count": 8192,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-036",
+        "tdd": "TDD-M07-SNAP-036",
+        "contract": "D2",
+        "title": "operation_records=8193",
+        "given": "Expanded independent fixture operation_records exact8193, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error operation_records observed=8193 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "operation_records",
+          "count": 8193,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-037",
+        "tdd": "TDD-M07-SNAP-037",
+        "contract": "D2",
+        "title": "bindings=4095",
+        "given": "Expanded independent fixture bindings exact4095, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "bindings",
+          "count": 4095,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-038",
+        "tdd": "TDD-M07-SNAP-038",
+        "contract": "D2",
+        "title": "bindings=4096",
+        "given": "Expanded independent fixture bindings exact4096, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "bindings",
+          "count": 4096,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-039",
+        "tdd": "TDD-M07-SNAP-039",
+        "contract": "D2",
+        "title": "bindings=4097",
+        "given": "Expanded independent fixture bindings exact4097, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error bindings observed=4097 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "bindings",
+          "count": 4097,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-040",
+        "tdd": "TDD-M07-SNAP-040",
+        "contract": "D2",
+        "title": "legacy_aliases=4095",
+        "given": "Expanded independent fixture legacy_aliases exact4095, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "legacy_aliases",
+          "count": 4095,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-041",
+        "tdd": "TDD-M07-SNAP-041",
+        "contract": "D2",
+        "title": "legacy_aliases=4096",
+        "given": "Expanded independent fixture legacy_aliases exact4096, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "legacy_aliases",
+          "count": 4096,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-042",
+        "tdd": "TDD-M07-SNAP-042",
+        "contract": "D2",
+        "title": "legacy_aliases=4097",
+        "given": "Expanded independent fixture legacy_aliases exact4097, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error legacy_aliases observed=4097 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "legacy_aliases",
+          "count": 4097,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-043",
+        "tdd": "TDD-M07-SNAP-043",
+        "contract": "D2",
+        "title": "id_utf8_bytes=127",
+        "given": "Expanded independent fixture id_utf8_bytes exact127, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "id_utf8_bytes",
+          "count": 127,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-044",
+        "tdd": "TDD-M07-SNAP-044",
+        "contract": "D2",
+        "title": "id_utf8_bytes=128",
+        "given": "Expanded independent fixture id_utf8_bytes exact128, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "id_utf8_bytes",
+          "count": 128,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-045",
+        "tdd": "TDD-M07-SNAP-045",
+        "contract": "D2",
+        "title": "id_utf8_bytes=129",
+        "given": "Expanded independent fixture id_utf8_bytes exact129, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error id_utf8_bytes observed=129 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "id_utf8_bytes",
+          "count": 129,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-046",
+        "tdd": "TDD-M07-SNAP-046",
+        "contract": "D2",
+        "title": "alias_utf8_bytes=1023",
+        "given": "Expanded independent fixture alias_utf8_bytes exact1023, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "alias_utf8_bytes",
+          "count": 1023,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-047",
+        "tdd": "TDD-M07-SNAP-047",
+        "contract": "D2",
+        "title": "alias_utf8_bytes=1024",
+        "given": "Expanded independent fixture alias_utf8_bytes exact1024, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "accepted bound",
+        "level": "L0",
+        "fixture": {
+          "token": "alias_utf8_bytes",
+          "count": 1024,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-048",
+        "tdd": "TDD-M07-SNAP-048",
+        "contract": "D2",
+        "title": "alias_utf8_bytes=1025",
+        "given": "Expanded independent fixture alias_utf8_bytes exact1025, other limits below thresholds",
+        "when": "validate payload/index/bundle",
+        "then": "limit error alias_utf8_bytes observed=1025 no publication",
+        "level": "L0",
+        "fixture": {
+          "token": "alias_utf8_bytes",
+          "count": 1025,
+          "self_check": "Compute UTF8/base64 sizes and unique blob sum independently; invalid cross-limit recipe is fixture error, not RED."
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-049",
+        "tdd": "TDD-M07-SNAP-049",
+        "contract": "D2",
+        "title": "Base64 invalid",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "InvalidInput invalid_base64 before destination IO",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Base64 invalid",
+          "oracle": "InvalidInput invalid_base64 before destination IO"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-050",
+        "tdd": "TDD-M07-SNAP-050",
+        "contract": "D2",
+        "title": "Duplicate field",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "raw duplicate rejected before typed decode",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Duplicate field",
+          "oracle": "raw duplicate rejected before typed decode"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-051",
+        "tdd": "TDD-M07-SNAP-051",
+        "contract": "D2",
+        "title": "Wrong project",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "integrity rejection no restore",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Wrong project",
+          "oracle": "integrity rejection no restore"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-052",
+        "tdd": "TDD-M07-SNAP-052",
+        "contract": "D2",
+        "title": "Missing asset copy",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "no payload/index success",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Missing asset copy",
+          "oracle": "no payload/index success"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-053",
+        "tdd": "TDD-M07-SNAP-053",
+        "contract": "D2",
+        "title": "Original project moved",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "verified self-contained bundle readable without original path",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Original project moved",
+          "oracle": "verified self-contained bundle readable without original path"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-054",
+        "tdd": "TDD-M07-SNAP-054",
+        "contract": "D2",
+        "title": "Corrupt dedup object",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "IntegrityFailure no overwrite",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Corrupt dedup object",
+          "oracle": "IntegrityFailure no overwrite"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-055",
+        "tdd": "TDD-M07-SNAP-055",
+        "contract": "D2",
+        "title": "Payload roundtrip",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "exact canonical bytes+manifest preserved",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Payload roundtrip",
+          "oracle": "exact canonical bytes+manifest preserved"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-056",
+        "tdd": "TDD-M07-SNAP-056",
+        "contract": "D2",
+        "title": "Unknown schema",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "no fallback decoder",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Unknown schema",
+          "oracle": "no fallback decoder"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D2",
+        "bdd": "BDD-M07-SNAP-057",
+        "tdd": "TDD-M07-SNAP-057",
+        "contract": "D2",
+        "title": "Bundle overflow",
+        "given": "Known raw payload/material fixtures and independent hashes",
+        "when": "verify/store snapshot",
+        "then": "checked sum rejects before copy",
+        "level": "L0",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Bundle overflow",
+          "oracle": "checked sum rejects before copy"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-058",
+        "tdd": "TDD-M07-SNAP-058",
+        "contract": "D3",
+        "title": "Correct order",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "pin→asset copies→payload→index→root transfer→Published/recovery ACK",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Correct order",
+          "oracle": "pin→asset copies→payload→index→root transfer→Published/recovery ACK"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-059",
+        "tdd": "TDD-M07-SNAP-059",
+        "contract": "D3",
+        "title": "Pin failure",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "zero object/index IO, baseline unchanged",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Pin failure",
+          "oracle": "zero object/index IO, baseline unchanged"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-060",
+        "tdd": "TDD-M07-SNAP-060",
+        "contract": "D3",
+        "title": "Copy failure",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "old index unchanged; Held retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Copy failure",
+          "oracle": "old index unchanged; Held retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-061",
+        "tdd": "TDD-M07-SNAP-061",
+        "contract": "D3",
+        "title": "Payload flush failure",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "old index unchanged; known Failed, Held retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Payload flush failure",
+          "oracle": "old index unchanged; known Failed, Held retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-062",
+        "tdd": "TDD-M07-SNAP-062",
+        "contract": "D3",
+        "title": "Index precommit fails",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "no entry, previous valid index retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Index precommit fails",
+          "oracle": "no entry, previous valid index retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-063",
+        "tdd": "TDD-M07-SNAP-063",
+        "contract": "D3",
+        "title": "Index uncertain",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "RecoveryBlocked no Failed/Published claim",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Index uncertain",
+          "oracle": "RecoveryBlocked no Failed/Published claim"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-064",
+        "tdd": "TDD-M07-SNAP-064",
+        "contract": "D3",
+        "title": "Receipt target mismatch",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "blocked proof retained no baseline ACK",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Receipt target mismatch",
+          "oracle": "blocked proof retained no baseline ACK"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-065",
+        "tdd": "TDD-M07-SNAP-065",
+        "contract": "D3",
+        "title": "Receipt prior mismatch",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "blocked proof retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Receipt prior mismatch",
+          "oracle": "blocked proof retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-066",
+        "tdd": "TDD-M07-SNAP-066",
+        "contract": "D3",
+        "title": "Receipt new mismatch",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "blocked proof retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Receipt new mismatch",
+          "oracle": "blocked proof retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-067",
+        "tdd": "TDD-M07-SNAP-067",
+        "contract": "D3",
+        "title": "Receipt empty transaction",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "blocked proof retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Receipt empty transaction",
+          "oracle": "blocked proof retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-068",
+        "tdd": "TDD-M07-SNAP-068",
+        "contract": "D3",
+        "title": "Root transfer fails",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "PublishedRetentionDeferred no Published/ACK",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Root transfer fails",
+          "oracle": "PublishedRetentionDeferred no Published/ACK"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-069",
+        "tdd": "TDD-M07-SNAP-069",
+        "contract": "D3",
+        "title": "ACK rejects",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "PublishedAckDeferred snapshot retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "ACK rejects",
+          "oracle": "PublishedAckDeferred snapshot retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-070",
+        "tdd": "TDD-M07-SNAP-070",
+        "contract": "D3",
+        "title": "Response lost",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "same proof no duplicate entry",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Response lost",
+          "oracle": "same proof no duplicate entry"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D3",
+        "bdd": "BDD-M07-SNAP-071",
+        "tdd": "TDD-M07-SNAP-071",
+        "contract": "D3",
+        "title": "Replay body differs",
+        "given": "CapturedR7 +pin and fake ports injecting named terminal/failure outcome",
+        "when": "publish snapshot",
+        "then": "ReplayConflict no writes",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Replay body differs",
+          "oracle": "ReplayConflict no writes"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-072",
+        "tdd": "TDD-M07-SNAP-072",
+        "contract": "D4",
+        "title": "Startup unresolved journal",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "existing acquire refuses no publication",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Startup unresolved journal",
+          "oracle": "existing acquire refuses no publication"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-073",
+        "tdd": "TDD-M07-SNAP-073",
+        "contract": "D4",
+        "title": "Restart Held",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "retained pin no automatic release",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Restart Held",
+          "oracle": "retained pin no automatic release"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-074",
+        "tdd": "TDD-M07-SNAP-074",
+        "contract": "D4",
+        "title": "Index entry missing object",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "PendingVerification no restore/Published",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Index entry missing object",
+          "oracle": "PendingVerification no restore/Published"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-075",
+        "tdd": "TDD-M07-SNAP-075",
+        "contract": "D4",
+        "title": "Root provider missing",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "Unknown roots no release",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Root provider missing",
+          "oracle": "Unknown roots no release"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-076",
+        "tdd": "TDD-M07-SNAP-076",
+        "contract": "D4",
+        "title": "Closed completion",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "IgnoreClosedCompletion no new-session ACK",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Closed completion",
+          "oracle": "IgnoreClosedCompletion no new-session ACK"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-077",
+        "tdd": "TDD-M07-SNAP-077",
+        "contract": "D4",
+        "title": "Project switched",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "late evidence stays source project/session",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Project switched",
+          "oracle": "late evidence stays source project/session"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-078",
+        "tdd": "TDD-M07-SNAP-078",
+        "contract": "D4",
+        "title": "Hide history",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "entry/assets/roots retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Hide history",
+          "oracle": "entry/assets/roots retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-079",
+        "tdd": "TDD-M07-SNAP-079",
+        "contract": "D4",
+        "title": "Processed entry",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "still restorable/root retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Processed entry",
+          "oracle": "still restorable/root retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-080",
+        "tdd": "TDD-M07-SNAP-080",
+        "contract": "D4",
+        "title": "Capacity full",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "new snapshot blocked no eviction",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Capacity full",
+          "oracle": "new snapshot blocked no eviction"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-081",
+        "tdd": "TDD-M07-SNAP-081",
+        "contract": "D4",
+        "title": "No delete API",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "zero remove calls",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "No delete API",
+          "oracle": "zero remove calls"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D4",
+        "bdd": "BDD-M07-SNAP-082",
+        "tdd": "TDD-M07-SNAP-082",
+        "contract": "D4",
+        "title": "Reconcile retained proof",
+        "given": "Durable entries and fake startup/session events",
+        "when": "enumerate/reconcile lifecycle",
+        "then": "same index entry and roots no payload rewrite",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Reconcile retained proof",
+          "oracle": "same index entry and roots no payload rewrite"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-083",
+        "tdd": "TDD-M07-SNAP-083",
+        "contract": "D5",
+        "title": "Preview no mutation",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "active doc/catalog unchanged",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Preview no mutation",
+          "oracle": "active doc/catalog unchanged"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-084",
+        "tdd": "TDD-M07-SNAP-084",
+        "contract": "D5",
+        "title": "Preview expiry",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "PlanExpired after60s no install",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Preview expiry",
+          "oracle": "PlanExpired after60s no install"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-085",
+        "tdd": "TDD-M07-SNAP-085",
+        "contract": "D5",
+        "title": "Source index changed",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "stale plan rejected",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Source index changed",
+          "oracle": "stale plan rejected"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-086",
+        "tdd": "TDD-M07-SNAP-086",
+        "contract": "D5",
+        "title": "Destination changed",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "generation mismatch no install",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Destination changed",
+          "oracle": "generation mismatch no install"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-087",
+        "tdd": "TDD-M07-SNAP-087",
+        "contract": "D5",
+        "title": "Destination missing codec",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "DependencyNotReady no raw fallback",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Destination missing codec",
+          "oracle": "DependencyNotReady no raw fallback"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-088",
+        "tdd": "TDD-M07-SNAP-088",
+        "contract": "D5",
+        "title": "Restore valid",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "new unsaved doc/session R0, no formal/recovery baseline, empty history",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Restore valid",
+          "oracle": "new unsaved doc/session R0, no formal/recovery baseline, empty history"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-089",
+        "tdd": "TDD-M07-SNAP-089",
+        "contract": "D5",
+        "title": "Original path malicious",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "never used as destination authority",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Original path malicious",
+          "oracle": "never used as destination authority"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-090",
+        "tdd": "TDD-M07-SNAP-090",
+        "contract": "D5",
+        "title": "Material import fails",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "active document untouched; orphan retention allowed",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Material import fails",
+          "oracle": "active document untouched; orphan retention allowed"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-091",
+        "tdd": "TDD-M07-SNAP-091",
+        "contract": "D5",
+        "title": "Identity collision",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "reject before install, no silent remap",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Identity collision",
+          "oracle": "reject before install, no silent remap"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-092",
+        "tdd": "TDD-M07-SNAP-092",
+        "contract": "D5",
+        "title": "Install root transfer fails",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "InstalledRetentionDeferred pin retained",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Install root transfer fails",
+          "oracle": "InstalledRetentionDeferred pin retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-093",
+        "tdd": "TDD-M07-SNAP-093",
+        "contract": "D5",
+        "title": "Mark processed fails",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "RestoreInstalledMarkDeferred source stays Unprocessed",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Mark processed fails",
+          "oracle": "RestoreInstalledMarkDeferred source stays Unprocessed"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-094",
+        "tdd": "TDD-M07-SNAP-094",
+        "contract": "D5",
+        "title": "Repeated confirm",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "same installed receipt no duplicate doc",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Repeated confirm",
+          "oracle": "same installed receipt no duplicate doc"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D5",
+        "bdd": "BDD-M07-SNAP-095",
+        "tdd": "TDD-M07-SNAP-095",
+        "contract": "D5",
+        "title": "Restore no original file write",
+        "given": "Verified snapshot bundle and explicit destination selection",
+        "when": "preview/confirm restore",
+        "then": "zero formal file replace calls",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Restore no original file write",
+          "oracle": "zero formal file replace calls"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-096",
+        "tdd": "TDD-M07-SNAP-096",
+        "contract": "D6",
+        "title": "M04 semantic distinct",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "ACK semantic A not payload B/index C/recovery FP",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "M04 semantic distinct",
+          "oracle": "ACK semantic A not payload B/index C/recovery FP"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-097",
+        "tdd": "TDD-M07-SNAP-097",
+        "contract": "D6",
+        "title": "M05 export missing",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "DependencyNotReady no incomplete asset snapshot",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "M05 export missing",
+          "oracle": "DependencyNotReady no incomplete asset snapshot"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-098",
+        "tdd": "TDD-M07-SNAP-098",
+        "contract": "D6",
+        "title": "No second owner",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "same M04 registry used for capture/restore",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "No second owner",
+          "oracle": "same M04 registry used for capture/restore"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-099",
+        "tdd": "TDD-M07-SNAP-099",
+        "contract": "D6",
+        "title": "S1 unchanged",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "original policy types/tests preserved",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "S1 unchanged",
+          "oracle": "original policy types/tests preserved"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-100",
+        "tdd": "TDD-M07-SNAP-100",
+        "contract": "D6",
+        "title": "Bindings Pending",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "retain explicit Pending and execution block; no validity fabrication",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Bindings Pending",
+          "oracle": "retain explicit Pending and execution block; no validity fabrication"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D6",
+        "bdd": "BDD-M07-SNAP-101",
+        "tdd": "TDD-M07-SNAP-101",
+        "contract": "D6",
+        "title": "Unmapped legacy alias",
+        "given": "Joint pending interfaces represented by approved future fake seams",
+        "when": "integrate capture/assets/restore",
+        "then": "DependencyNotReady/invalid reference before publish",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Unmapped legacy alias",
+          "oracle": "DependencyNotReady/invalid reference before publish"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-102",
+        "tdd": "TDD-M07-SNAP-102",
+        "contract": "D7",
+        "title": "Viewer denied",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "PermissionDenied before parse/IO",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Viewer denied",
+          "oracle": "PermissionDenied before parse/IO"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-103",
+        "tdd": "TDD-M07-SNAP-103",
+        "contract": "D7",
+        "title": "Forged Published",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "DTO rejected; UI cannot declare success",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Forged Published",
+          "oracle": "DTO rejected; UI cannot declare success"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-104",
+        "tdd": "TDD-M07-SNAP-104",
+        "contract": "D7",
+        "title": "Cursor stale",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "index changed result no mixed page",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Cursor stale",
+          "oracle": "index changed result no mixed page"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-105",
+        "tdd": "TDD-M07-SNAP-105",
+        "contract": "D7",
+        "title": "UI failed preview",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "active draft and focus preserved",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "UI failed preview",
+          "oracle": "active draft and focus preserved"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-106",
+        "tdd": "TDD-M07-SNAP-106",
+        "contract": "D7",
+        "title": "Deferred UI",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "pending state no success toast",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Deferred UI",
+          "oracle": "pending state no success toast"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-107",
+        "tdd": "TDD-M07-SNAP-107",
+        "contract": "D7",
+        "title": "Source unsafe alias",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "native identity rejection",
+        "level": "L3",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Source unsafe alias",
+          "oracle": "native identity rejection"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-108",
+        "tdd": "TDD-M07-SNAP-108",
+        "contract": "D7",
+        "title": "Cross-process index",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "second lease Busy",
+        "level": "L3",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Cross-process index",
+          "oracle": "second lease Busy"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-109",
+        "tdd": "TDD-M07-SNAP-109",
+        "contract": "D7",
+        "title": "Unsupported OS",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "explicit native unavailable",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "Unsupported OS",
+          "oracle": "explicit native unavailable"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M07-D7",
+        "bdd": "BDD-M07-SNAP-110",
+        "tdd": "TDD-M07-SNAP-110",
+        "contract": "D7",
+        "title": "No dependency hidden",
+        "given": "Trusted/forged caller and deterministic adapter seams",
+        "when": "invoke command/native boundary",
+        "then": "missing provider BLOCKED, not valid RED",
+        "level": "L2",
+        "fixture": {
+          "base": "project p1/document d1/session s1/generation3/R7, formalR6/recoveryR5; semantic A, payload raw B, index raw C all distinct; pinned asset x digest d*64",
+          "mutation": "No dependency hidden",
+          "oracle": "missing provider BLOCKED, not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      }
+    ],
+    "coverage": {
+      "B1": "publication+restore",
+      "B2": "all bounds/60s checks",
+      "B3": "raw schema/base64/profile errors",
+      "B4": "pin/copy/index/provider failures",
+      "B5": "index committed+root/ACK deferred",
+      "B6": "baselines+reference roots",
+      "B7": "separate durability boundaries",
+      "B8": "close/switch/restart/replay",
+      "B9": "reconcile proof; repair separate",
+      "B10": "M04/M05/M03 projector",
+      "B11": "fingerprint domains/schema/S1 compatibility",
+      "B12": "no delete/no overwrite/no forged Published"
+    },
+    "valid_red": "Future accepted Skeleton compiles; fixtures self-check independent counts/hash/port call order. Only missing expected behavior counts as RED; unavailable provider/native environment/setup/compile error does not. No executable tests created now.",
+    "commands_planned_NOT_RUN": [
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml --test phase1_recovery",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-adapters/Cargo.toml --test phase1_recovery_store",
+      "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --test phase1_recovery_owner",
+      "node --test apps/sgenaxis-desktop/ui/recovery-history.test.cjs",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-work/Cargo.toml",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-adapters/Cargo.toml"
+    ],
+    "acceptance": [
+      "Owner jointly adopts M07-D1-D7 and explicit M04/M05 amendments before Skeleton",
+      "accepted compilable Skeleton+valid RED precede implementation",
+      "all module contract/new UI tests GREEN with adjacent regressions classified",
+      "native Windows11 durable publication/alias/cross-process/process-kill evidence required separately",
+      "restore verified complete payload+materials as unsaved document, no original file overwrite",
+      "M07-S1 and M04/M05 accepted policies remain unchanged; no fake Published or baseline reset",
+      "architecture and readonly acceptance disclose reviewer identity",
+      "no full module/release/repair/physical-GC claim"
+    ],
+    "pending_automation": [
+      "Implement concrete Gherkin steps and independent byte/count fixtures after adoption",
+      "Native Windows11 process-kill/durability/alias fixture environment",
+      "Real M04/M05 providers and recovery root registration validation"
+    ]
+  },
+  "frozen_sources": {
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/commands.json": "43019916e5919919745d2ada92c49856b12bdd1cd8bceff4b719c0d206036671",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/delivery-evidence.json": "b314123e66509e63b05d36ccfa38baddd880448f720a46a9310337c203e7ac56",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/host-lib.txt": "e41f90e528b784e96a391026670f43169b779f77390cae3129763a409989b946",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/index.html": "73d4f3b631b596a91a693b29ac53aeab0dac088534c24d754e62184faa5101fa",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/review.json": "3ef7f2f2e5183beecc4d49a8a4f2377b382acf22149b6ecfebec1d751f7637b0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/work-build.txt": "dab4e4707b2e6fdbdead361b4487be475974a047edea846dd92bac44f319f872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/s1/green/acceptance/work-full.txt": "ff1ee4d9176e9c4b1b3c44436c0b14b0af710af7f1ff88fcd44a15017df7663a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/pure-policy-design/delivery-evidence.json": "e9ce95d786086b2c531e7f4f3e9524d2e4279c2e05a2e1c65ab9707f434821dd",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/pure-policy-design/index.html": "bcd703ac338052a8720b2f6fd8cdda0dc35f49bea18fd8c3942746ce7ae51ce5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/pure-policy-design/module-spec.json": "bdf5ef0daa1c67279999c6d4715f2e3919268472678d68dc6822dd9fc121bd20",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/delivery-evidence.json": "67e7114af22ac43a61231c80459e7c7ab223b35222f7a419072b48074d67dc66",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/index.html": "3df05c4a81722df5f181b5d18f5e2fe1352dc8fd20be2ce8869376d21d73d625",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/module-review.json": "ab7c05a219c144a45c83625d23011f3495bed7932bd57d824857960f637f8e27",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/module.feature": "f62b96474b1772e3a7867c6c704b41394fef267029fb27a08e2c486b620b5ae0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/review.py": "92b2a4506865919ba5b8a1eacc07995e47466891131b7dfaf0a5695143c40d4b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M07/planning/stable-capture-review/test-plan.json": "46fe030bd548bc0ce7b6620e5f53e83204915aabcbd3a262b768f0eb2c3cfdd4",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/artifact-hashes.json": "fbc6f2cce9c2dbd30c98a5c6d3839303f6b86b621e7368c40ad9b4dcaad80fd2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/board-evidence.json": "a1ed9f33bae6be93672260fd0f3e1645810e51adabfd10d143f982377ef26b30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/build_packet.py": "4233782829a99e08395722e0ff3a57dd0a84cf3e3006045bbeae2f3057a74044",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/envelope.json": "6c2a64dbbda90fe58638e0839d8cc7ee559c4fe1b80ef86ab81142fb6af2c50b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/fixtures.json": "471bf2972b787b9781d870e198b7fc0d6876f2a36b0e163b4d65719ea64aa231",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/index.html": "d23925aac4489b60acb31c2a323f333926dbd7d6e4054a99111e0a05c73d3e24",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module-spec.json": "18e2225595f83bc09a897fc35a622adb6c69e4348a7dcec6588e8e02178780f8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module.feature": "69098048808d9a839c664eb7e0edc1dbb4511797707fad211ef0fd4c2b97aad7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/review-request.json": "50ede96105c2a8f66a8af66a90e3e2b5dc84cdf1df89b672e9ad5ae745dff3d8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/step-definition-stubs.txt": "fce7a8f8889891e51c165fc77179a0fba22effa9395b632ddf927f143e39b466",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/test-plan.json": "a70ade690c4a690a426923e1dc27117bb497a06c1f9a9408bab915c60d585872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/verification.json": "1673b3ac193642e5651241e0b25b44a0e9424361b42143122feb6d45d60cc069",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/artifact-hashes.json": "6af0160ed1c5281abf35fa3fae545a7435d9eaa361c171ed00986a03252389b6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/board-evidence.json": "e3e15b6965a4309c96f91e48ae79239f115483553148141f0e82203d6fc32784",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/build_packet.py": "d881037b29b21b8716c98bfb33c2c54a782b9ecf30952a80d9542f491ca5a136",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/envelope.json": "3386946efcee18f4b30eb2c926c18dda05cb6093d917019c22c69b427979d9e9",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/fixtures.json": "73fab03363d2e0ff700b4f52b76720f7ce124e7d74c527c6cf98926b1343eaec",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/index.html": "def7b5d90226b049a5ad4c09b6fbfbb38166e1490064cc4a86c44b73a79b964d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/module-spec.json": "e8fd306b6419e63ea2bfc2e0744424e46c9586b37a591634ebe113f3dabb4f28",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/module.feature": "75fb21ce8bb4543c96650e5ffca273758872ac1ef33d01f66b41cc15938461b6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/review-request.json": "efb1aa368bcb76effde4912a29ceea879ab710a8d2287f56ce085069c9dc6bb7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/step-definition-stubs.txt": "f52d3856197d17068e0d1b41632d26785bf4b1f6edade5f2940ef9dac9c36515",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/test-plan.json": "bbe21812512acccb6b5b80c275a9c28f52a58496d6a7b129d69214c044385703",
+    "docs/requirements-confirmation/phase1-spec/tasks/M05/planning/catalog-exact-design/verification.json": "67e9c126d913d6aafccf2eb85f85d8e2e315d622b2b80e8a537d54d90722ec8a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/artifact-hashes.json": "4ab43a7a66aaaf34d60db8e48c1fda553e94bd827a3ee94d84cbfa513456dfbc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/build_packet.py": "2a30d4701191fa4ee2809a3018c97557eb2c2a6f3cab28307ad28baf755e6e7b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/index.html": "e9929a0c132c2e7eef4ed5365429146e06c0ddfca3c6260b8f1bb482b59f089e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/module-spec.json": "6287ee18bc57b6868d2a991ab58cc2fcce98d20fc3d42e2a3d8e3629eaac9869",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/profile.json": "e5cea9b75103a1d08c59344f839663e5652ca30e35620d6bc8b3b63043ee3649",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/design-semantic-compatibility/vectors.json": "f403b055a4df40624fc2fc6f8442e3b7f001599ac7c78e5c3c044ce6ef0d4836"
+  },
+  "verification_boundary": "Planning only; compile/tests/build/RED/GREEN/native/independent review NOT RUN. Parent PREP remains yellow; not full product or release acceptance."
+}

@@ -1,0 +1,69 @@
+{
+  "identity": {
+    "module": "M03",
+    "task": "PD-P1-M03-PREP-01",
+    "command": "design_viewer_refresh",
+    "status": "PROPOSED_PENDING_OWNER",
+    "author": "/root/m03_viewer_refresh_packet"
+  },
+  "intent": "Explicit bounded refresh replaces one detached preview after current immutable projection validation. Failure retains visibly stale inert old projection.",
+  "architecture": {
+    "hexagonal": "Viewer UI -> exact Tauri command/input port -> design facade -> M04 owner snapshot output port; C1 validated projection provider; trusted M01 identity adapter. No second owner.",
+    "dependency": "UI -> Command -> application facade -> ports <- M04/C1/M01 adapters",
+    "state_owner": "M04 owns authoritative document; application owns ephemeral per-consumer preview slot only. UI is projection.",
+    "mutation": "Only successful atomic preview slot exchange; failure stale/action-disabled UI status only.",
+    "transaction": "resolve -> capture immutable current owner snapshot -> validate temporary supported projection -> exact delivery identity recheck -> atomic slot replace",
+    "forbidden": [
+      "FileCommit",
+      "ACK",
+      "content mutation",
+      "history mutation",
+      "persistence",
+      "automatic retry",
+      "automatic expiry",
+      "second owner"
+    ]
+  },
+  "contracts": [
+    "Request expected_revision means current owner revision, not old preview source revision; stale preview is a refresh handle while its identity remains resolvable. PROPOSED_PENDING_OWNER.",
+    "New UUID must differ from current old UUID; native UUID allocator guarantees globally fresh/non-reused UUID, authenticity NOT PROVEN by fixtures.",
+    "Success starts sequence1, unchanged preview count even at four-slot capacity; failure does not retire old UUID.",
+    "Typed observations eagerly reject malformed records; error precedence is proposal. Capture/delivery compare consumer, actual window instance, document, owner session, generation, closed, actual bounded revision.",
+    "Immutable projection nodes/mocks/capabilities closed by accepted begin response schema; unsupported arbitrary action strings rejected; provider authenticity and C1 snapshot generation not proven."
+  ],
+  "bdd_categories": {
+    "success": "Applicable: document fixtures only",
+    "boundary": "Applicable: document fixtures only",
+    "invalid": "Applicable: document fixtures only",
+    "dependency": "Applicable: document fixtures only",
+    "partial": "Applicable: document fixtures only",
+    "state": "Applicable: document fixtures only",
+    "transaction": "Applicable: document fixtures only",
+    "lifecycle": "Applicable: document fixtures only",
+    "recovery": "Deferred: native proof NOT RUN",
+    "cross-module": "Applicable: document fixtures only",
+    "compatibility": "Deferred: native proof NOT RUN",
+    "regression": "Applicable: document fixtures only"
+  },
+  "tasks": [
+    {
+      "id": "M03-VR-DOC",
+      "primary_module": "M03",
+      "scope": "new viewer-refresh-integration only",
+      "status": "AUTHOR_DOCUMENT_CHECK_ONLY",
+      "acceptance": "all fixtures exact roots/state/calls;796 preserved; no adoption"
+    }
+  ],
+  "verification": {
+    "native": "NOT RUN",
+    "build": "NOT RUN",
+    "product_tests": "NOT RUN",
+    "valid_RED": "NOT RUN",
+    "independent_review": "NOT RUN",
+    "module_acceptance": "NOT RUN"
+  },
+  "risks": [
+    "Native authenticity, reachability, concurrency atomicity and actual C1 support projection are trusted premises, unproven.",
+    "Root DTO/error/precedence/refresh-current revision policy additions await Owner; no Skeleton/implementation authorization."
+  ]
+}

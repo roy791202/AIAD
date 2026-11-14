@@ -1,0 +1,107 @@
+{
+  "module": "M02",
+  "task": "PD-P1-M02-PREP-01",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "dirty": true,
+  "evidence": "SOURCE_INSPECTION_ONLY",
+  "files": [
+    {
+      "path": "apps/sgenaxis-desktop/Cargo.toml",
+      "exists": true,
+      "sha256": "9fe6a89907d6d8becec7ba9bc28408b236be4a620c1f82eaf3d1335472a605e5"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "exists": true,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "exists": true,
+      "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/Cargo.toml",
+      "exists": true,
+      "sha256": "954756472c63ee3b36aafb248fcd8e5398cfa80582fcfcfdf441daef5a11fe98"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/lib.rs",
+      "exists": true,
+      "sha256": "bced28cfc4b9f8aa117887fd67decd43e9d97ca15cc485c1e543378c7e0b2558"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "exists": true,
+      "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "exists": true,
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "exists": true,
+      "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "exists": true,
+      "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "exists": true,
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "exists": true,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/index.html",
+      "exists": true,
+      "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/project-preferences-ui.js",
+      "exists": true,
+      "sha256": "79c10625722caa2fec829fd62a410a0c75f6a0b31fcd2e8812676461c54afaa8"
+    }
+  ],
+  "findings": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/project-preferences-ui.js",
+      "line_start": 1,
+      "line_end": 65,
+      "sha256": "79c10625722caa2fec829fd62a410a0c75f6a0b31fcd2e8812676461c54afaa8",
+      "excerpt": "(function (global) {\n  \"use strict\";\n  function toDraft(f) {\n    const number = (value, nullable) => {\n      if (nullable && String(value).trim() === \"\") return null;\n      const n = Number(value);\n      if (!Number.isSafeInteger(n) || n <= 0) throw new Error(\"請輸入安全範圍內的正整數；空白預算表示尚未配置。\");\n      return n;\n    };\n    const ids = f.modelIds.split(\",\").map(x => x.trim()).filter(Boolean);\n    const preferred = f.preferred.trim() || null;\n    if (new Set(ids).size !== ids.length || (preferred && !ids.includes(preferred))) throw new Error(\"模型不可重複，偏好模型必須在允許清單內。\");\n    const maxTasks=number(f.tasks), maxConcurrent=number(f.concurrent);\n    if (maxConcurrent>maxTasks) throw new Error(\"並行數不可超過每批 Task 上限。\");\n    return {format:\"sgenaxis.project-preferences\",formatVersion:1,presetId:\"custom\",modelPolicy:{allowedModelIds:ids,preferredModelId:preferred},budget:{maxInputTokens:number(f.input,true),maxOutputTokens:number(f.output,true),maxWallTimeSeconds:number(f.seconds,true)},batch:{mode:\"suggest\",maxTasks,maxConcurrent,onLimit:\"block\"},workflow:{confirmBeforeRun:true}};\n  }\n  const invoke = (name,args) => {\n    const fn=global.__TAURI__?.core?.invoke || global.__TAURI__?.invoke;\n    return fn ? fn(name,args) : Promise.reject(new Error(\"需要正式 Tauri IPC；瀏覽器不會保存專案偏好。\"));\n  };\n  let panel, root=\"\", digest=null, epoch=0, busy=false, dirty=false;\n  const $=id=>panel.querySelector('[data-policy=\"'+id+'\"]');\n  const status=message=>{if(panel)$('status').textContent=message;};\n  function paint(p) {\n    $('modelIds').value=p?.modelPolicy.allowedModelIds.join(\", \")||\"\";\n    $('preferred').value=p?.modelPolicy.preferredModelId||\"\";\n    for (const [field,key] of [[\"input\",\"maxInputTokens\"],[\"output\",\"maxOutputTokens\"],[\"seconds\",\"maxWallTimeSeconds\"]]) $(''+field).value=p?.budget[key]??\"\";\n    $('tasks').value=p?.batch.maxTasks??1; $('concurrent').value=p?.batch.maxConcurrent??1;\n  }\n  function controls() { for (const button of panel.querySelectorAll('button,select,input')) button.disabled=busy||(!root&&button.dataset.policy!==\"refresh\"); }\n  async function refresh() {\n    if (!panel) return;\n    const seq=++epoch;busy=true;controls();\n    try {\n      const settings=await invoke(\"host_get_settings\"); if(seq!==epoch)return;\n      root=(settings.project_root||\"\").trim();digest=null;$('project').textContent=root||\"尚未開啟專案\";\n      dirty=false;paint(null);\n      if(!root){paint(null);status(\"先開啟專案；模型與預算不會寫入本機 mock 設定。\");return;}\n      const view=await invoke(\"host_project_preferences_load\",{expectedProjectRoot:root});if(seq!==epoch)return;\n      digest=view.digest;paint(view.preferences);status(view.configured?\"已讀取專案偏好。修改後按儲存；執行模式僅建議合批。\":\"此專案尚未配置偏好。請選方案並設定模型／預算。\");\n    } catch(error) {if(seq===epoch)status(String(error));}\n    finally {if(seq===epoch){busy=false;controls();}}\n  }\n  async function chooseNewProject() {\n    const dialog=document.createElement(\"dialog\");dialog.setAttribute(\"aria-label\",\"新專案偏好設定\");\n    dialog.innerHTML='<form method=\"dialog\"><h2>是否套用專案偏好設定？</h2><p>模型與預算隨專案保存。預算未配置時不會自動執行。</p><label>方案 <select name=\"choice\"><option value=\"skip\">暫不套用</option><option value=\"conservative\">保守（1／1）</option><option value=\"balanced\">平衡（4／2）</option><option value=\"throughput\">效率優先（8／4）</option><option value=\"import\">匯入既有偏好檔</option></select></label><p role=\"status\"></p><button value=\"cancel\">取消建立</button><button value=\"apply\">繼續</button></form>';\n    document.body.appendChild(dialog);\n    return new Promise(resolve=>{\n      dialog.addEventListener(\"close\",async()=>{\n        const choice=dialog.querySelector(\"select\").value;\n        const accepted=dialog.returnValue===\"apply\";dialog.remove();\n        if(!accepted){resolve(null);return;}\n        try {\n          if(choice===\"import\"){\n            const imported=await invoke(\"host_project_preferences_pick_import\");\n            resolve(imported.status===\"ok\"?{presetId:null,importedJson:imported.json}:null);\n          } else resolve({presetId:choice===\"skip\"?null:choice,importedJson:null});\n        } catch(error){global.alert(\"偏好檔無法套用：\"+String(error));resolve(null);}\n      },{once:true});dialog.showModal();\n    });\n  }\n  function boot() {\n    if(panel||!document.querySelector(\"#settings-ux-root\"))return;\n    panel=document.createElement(\"section\");panel.id=\"project-policy-panel\";panel.style.cssText=\"padding:20px;margin:16px 0;border:1px solid var(--line,#777);border-radius:10px\";\n    panel.innerHTML='<h2>目前專案｜模型與資源政策</h2><p data-policy=\"project\"></p><p>保存至專案 .sgenaxis/preferences.json。預算空白＝尚未配置；不會自動啟動工作。</p><label>系統方案 <select data-policy=\"preset\"><option value=\"conservative\">保守（每批1／並行1）</option><option value=\"balanced\">平衡（每批4／並行2）</option><option value=\"throughput\">效率優先（每批8／並行4）</option></select></label> <button type=\"button\" data-policy=\"apply\">套用方案草稿</button> <button type=\"button\" data-policy=\"import\">匯入偏好草稿</button><div data-policy=\"fields\"></div><p><button type=\"button\" data-policy=\"save\">儲存專案偏好</button> <button type=\"button\" data-policy=\"refresh\">重新載入</button></p><p role=\"status\" aria-live=\"polite\" data-policy=\"status\"></p>';",
+      "observation": "已有偏好presets，不是產品模板或雙骨架生成",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs",
+      "line_start": 335,
+      "line_end": 365,
+      "sha256": "c61df591c0dd13cddea2062c7841db533f47b55073da57eb166a5fd29c86adac",
+      "excerpt": "pub fn build_preview_file(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    doc: &DesignDoc,\n    name: &str,\n) -> Result<String, HostError> {\n    let safe = name\n        .trim()\n        .chars()\n        .map(|c| {\n            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {\n                c\n            } else {\n                '_'\n            }\n        })\n        .collect::<String>();\n    let safe = if safe.is_empty() { \"main\".into() } else { safe };\n    let rel = format!(\"design/build/{safe}.preview.html\");\n    let path = join_project_rel(project_root, &rel)?;\n    let html = build_preview_html(doc)?;\n    if let Some(parent) = std::path::Path::new(&path).parent() {\n        let parent_s = parent.to_string_lossy();\n        if !parent_s.is_empty() {\n            fs.create_dir_all(&parent_s)\n                .map_err(|e| HostError::Settings(format!(\"mkdir preview: {e}\")))?;\n        }\n    }\n    fs.write_atomic(&path, html.as_bytes())\n        .map_err(|e| HostError::Settings(format!(\"write preview: {e}\")))?;\n    Ok(path)",
+      "observation": "已有預覽HTML file寫出，不是程式模組/介面生成器",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "line_start": 1,
+      "line_end": 80,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee",
+      "excerpt": "//! SGenAxis **HOST** (PD-HOST-01 + PD-BOARD-LIVE-01 + PD-DEPLOY-CMD-01 + PD-GUARD-CMD-01\n//! + PD-GIT-BOARD-SYNC-01)\n//! — lifecycle, settings, restricted IPC, read-only local board／deploy, GUARD façade,\n//! Git↔board read isolation.\n//!\n//! - [`AppLifecycle`] — start／close phases (no business state)\n//! - [`SettingsStore`] — persistent host prefs via [`FileSystemPort`]\n//! - [`AllowedIpcCommand`] — allowlist; **no** arbitrary shell\n//! - [`CompositionRoot`] — wires Ports at boot\n//! - [`board_live`] — parse `#board-snapshot` from local HTML／JSON（no :8788）\n//! - [`git_board_sync`] — Git summary ↔ board snapshot isolation assertions\n//! - [`deploy`] — façade over [`sgenaxis_ports::DeployPort`]（status／check／list_artifacts）\n//! - [`ports_view`] — registered Port／adapter status projection (PD-REMAIN-PORTS-UI-01)\n//! - [`guard_cmd`] — start_implementation／change-path gate → `CODE:detail` (PD-GUARD-CMD-01)\n//!\n//! Tauri command closures in `src-tauri` must stay thin and call into this crate.\n\n#![forbid(unsafe_code)]\n\npub mod board_live;\npub mod composition;\npub mod deploy;\npub mod error;\npub mod git_board_sync;\npub mod guard_cmd;\npub mod identity_preview;\npub mod ipc;\npub mod lifecycle;\npub mod module_packet;\npub mod packet_admission;\npub mod ports_view;\npub mod project_manifest;\npub mod project_new;\npub mod project_preferences;\npub mod scene_doc;\npub mod settings;\npub mod uidesign_doc;\n\npub use board_live::{\n    extract_snapshot_json, load_board_file, parse_board_snapshot, BoardSnapshot, SnapshotTask,\n};\npub use git_board_sync::{\n    load_git_and_board_isolated, GitBoardSyncViews, SyncFailKind, SyncReadOrder,\n};\npub use composition::{CompositionRoot, APP_NAME};\npub use deploy::{\n    check_view, default_workspace_root, find_workspace_root, focus_platform, list_artifact_views,\n    platform_label, status_view, DeployArtifactView, DeployCheckView, DeployStatusView,\n};\npub use ports_view::{\n    project_ports_status, PortAdapterLabels, PortBindingView, PortsStatusView,\n};\npub use error::HostError;\npub use guard_cmd::{\n    authorize_exec_start, authorize_write_paths, check_changes_view, check_implementation_view,\n    check_start_view, EnvelopeDto, GuardDecisionView, GuardExecPass, GuardPacketDto, RedKindDto,\n};\npub use ipc::{authorize, is_allowed, reject_if_shell, AllowedIpcCommand};\npub use lifecycle::{AppLifecycle, LifecyclePhase};\npub use project_new::{\n    create_new_project_root, create_new_project_under, join_new_project_path,\n    normalize_new_project_path, normalize_project_folder_name,\n};\npub use project_manifest::{\n    adopt_project_document, DocumentAdoptionOutcome, ProjectManifestStoreError,\n};\npub use scene_doc::{\n    load_scene_text, normalize_scene_rel, save_scene_text, scene_file_exists, DEFAULT_SG_REL,\n    DEFAULT_SGML_REL, DEFAULT_SGS_REL, DEFAULT_SGUI_REL, SCENE_DIR,\n};\npub use uidesign_doc::{\n    ask_agent_draft, build_preview_file, build_preview_html, load_design_file, parse_design_json,\n    save_design_file, serialize_design, DesignDoc, DesignMeta, DesignNode, DEFAULT_REL_PATH,\n    DESIGN_FORMAT, DESIGN_FORMAT_VERSION, PREVIEW_BANNER,\n};\npub use settings::{\n    HostSettings, SettingsStore, DEFAULT_BOARD_PATH_HINT, HOST_SETTINGS_FILE, HOST_SETTINGS_VERSION,\n};\n// Live CLI probe types re-exported from exec (PD-LIVE-TARGET-01 consumers).\npub use sgenaxis_exec::{LiveTargetProbeResult, LIVE_TARGET_STATUS_NOT_RUN, LIVE_TARGET_STATUS_PASS};",
+      "observation": "HOST可擴充用例並重用FileSystemPort；沒有理由另加第二authority",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "tests": "NOT RUN",
+  "native_ui": "NOT RUN",
+  "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+}

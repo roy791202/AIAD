@@ -1,0 +1,52 @@
+[
+  {
+    "event": "open",
+    "authority": "main or ui-editor trusted local + existing project/document binding",
+    "result": "one shared S1 owner, default writer caller; existing owner only grants read view until transfer"
+  },
+  {
+    "event": "prepare",
+    "authority": "current writer revision/generation",
+    "result": "candidate only, no dirty/history change"
+  },
+  {
+    "event": "install",
+    "authority": "current writer + owned unused candidate + same captured revision",
+    "result": "S1 Edit commit once, revoke previews; failure no state change"
+  },
+  {
+    "event": "select",
+    "authority": "authorized view + current revision",
+    "result": "ephemeral per-window selection only"
+  },
+  {
+    "event": "transfer",
+    "authority": "current writer + actual target window exists",
+    "result": "generation+1, preserve content/history, retire candidates/previews"
+  },
+  {
+    "event": "close dirty",
+    "authority": "writer confirms discard_unsaved true",
+    "result": "close/drop owner; no autosave, no clear journal"
+  },
+  {
+    "event": "close without confirmation",
+    "authority": "dirty owner",
+    "result": "Busy/confirmation-required UI, owner retained"
+  },
+  {
+    "event": "destroy/reload",
+    "authority": "trusted Tauri instance event",
+    "result": "revoke nonce and writer; prevent silent unsaved discard via CloseRequested confirmation; crash loss is not recovery proof"
+  },
+  {
+    "event": "project switch",
+    "authority": "successful existing settings root change",
+    "result": "retire affected owner/candidate/preview; failed settings change leaves owner intact"
+  },
+  {
+    "event": "M04 not ready",
+    "authority": "save or integrated formal load requested",
+    "result": "DependencyNotReady, no legacy fallback write"
+  }
+]

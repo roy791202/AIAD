@@ -1,0 +1,16 @@
+--- original/check_documents.py:evaluate
++++ correction/document_oracle.py:evaluate
+@@ -21,11 +21,12 @@
+  raise AssertionError('Unsupported schema keyword type: '+str(t))
+ 
+ def evaluate(x,f):
+- q=x['request'];s=copy.deepcopy(x['state']);b=q['body'];ctx=q['context']
++ q=x.get('request');s=copy.deepcopy(x['state'])
+  calls=dict(ack=0,retry=0,release=0)
+  out=dict(result='Rejected',state=s,calls=calls,local_integrity_ready=True,published=False)
+  def finish(result):out['result']=result;return out
+  if not valid(q,read('request.schema.json')):return finish('Rejected')
++ b=q['body'];ctx=q['context']
+  if not x['proof_available']:return finish('UnverifiedOutcome')
+  if x['root_state']=='Unknown':return finish('UnverifiedOutcome')
+  if x['root_state']!='Transferred':return finish('Deferred')

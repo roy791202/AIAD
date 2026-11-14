@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SGenAxis Windows MSI — WiX Toolset v4+ source (PD-REL-02 / PD-REL-03).
+  Payload: stage Tauri apps/.../release/sgenaxis-desktop.exe as payload\SGenAxis.exe
+           (build-msi.ps1 verifies SHA-256 vs packaging.manifest.json).
+  Build with:  .\build-msi.ps1   (or: wix build SGenAxis.wxs -arch x64 -o out\... -b payload)
+  VERIFY-INSTALL: .\verify-install.ps1  (elevated rows NOT RUN unless -RunElevated + admin)
+  Silent:      msiexec /i SGenAxis-0.1.0-windows-x64.msi /qn /norestart  (operator; not forced for green)
+  Uninstall:   msiexec /x <ProductCode> /qn /norestart
+  Upgrade:     MajorUpgrade removes prior SGenAxis under the same UpgradeCode
+               (including same Version rebuilds via AllowSameVersionUpgrades)
+               before installing the new payload — no side-by-side ARP duplicates.
+  NSIS / Inno are not the primary Windows release channel.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="SGenAxis"
+    Manufacturer="SGenAxis"
+    Version="0.1.0"
+    UpgradeCode="B7E4C2A1-9F83-4D6E-A1B2-C3D4E5F60718"
+    Language="1033"
+    Scope="perMachine">
+
+    <!--
+      RemoveExistingProducts scheduled early so Program Files payload is replaced.
+      AllowSameVersionUpgrades: each MSI build gets a new ProductCode while Version
+      may stay 0.1.0 — without this flag, reinstall leaves the old product installed.
+      Downgrade (newer → older Version) remains blocked.
+    -->
+    <MajorUpgrade
+      Schedule="afterInstallInitialize"
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of SGenAxis is already installed. Remove it before installing this version." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="SGenAxis">
+        <Component Id="MainExecutable" Guid="C8F5D3B2-0A94-5E7F-B2C3-D4E5F6071829">
+          <File
+            Id="SGenAxisExe"
+            Source="!(bindpath.payload)\SGenAxis.exe"
+            KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="SGenAxis">
+        <Component Id="ApplicationShortcut" Guid="D9A6E4C3-1B05-6F80-C3D4-E5F60718293A">
+          <Shortcut
+            Id="ApplicationStartMenuShortcut"
+            Name="SGenAxis"
+            Description="SGenAxis desktop"
+            Target="[!SGenAxisExe]"
+            WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+          <RegistryValue
+            Root="HKCU"
+            Key="Software\SGenAxis"
+            Name="installed"
+            Type="integer"
+            Value="1"
+            KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="SGenAxis" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+  </Package>
+</Wix>

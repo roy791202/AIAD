@@ -1,0 +1,56 @@
+{
+  "verdict": "CHANGES_REQUIRED_DOCUMENT_MODEL_ONLY",
+  "author": "/root/m03_preview_begin_packet",
+  "reviewer": "/root/m03_viewer_begin_review",
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "historical_authority_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "checks": 309,
+  "passed": 308,
+  "failed": 1,
+  "findings": [
+    {
+      "id": "PB-IR-F1",
+      "severity": "P2",
+      "scope": "document model only",
+      "location": "preview-begin-integration/document_model.py:36",
+      "counterexample": {
+        "id": "PB-IR-F1-max-revision-late-delivery",
+        "passed": false,
+        "response": {
+          "ok": false,
+          "error": {
+            "code": "StaleRevision",
+            "details": {
+              "expected": "18446744073709551615",
+              "observed": "18446744073709551616"
+            }
+          },
+          "replayed": false
+        },
+        "request": {
+          "binding_ref": "11111111-1111-4111-8111-111111111111",
+          "expected_generation": "3",
+          "expected_revision": "18446744073709551615"
+        },
+        "premises": {
+          "trusted_local": true,
+          "binding_present": true,
+          "provider_ready": true,
+          "provider_error": null,
+          "delivery_change": "revision"
+        }
+      },
+      "meaning": "A valid max revision combined with the unconstrained late revision observation creates an out-of-range observed diagnostic. No native defect is claimed.",
+      "requested_change": "Represent actual bounded observed revision in trusted delivery premise, or explicitly constrain this combination unreachable and test the constraint. Do not fabricate max+1 as an observed revision."
+    }
+  ],
+  "authority_count": 796,
+  "authority_matched": 796,
+  "owner": "PENDING",
+  "product_tests": "NOT RUN",
+  "build": "NOT RUN",
+  "native": "NOT RUN",
+  "valid_RED": "NOT RUN",
+  "acceptance_scope": "Only begin document proposal; no module or whole H2 acceptance",
+  "trusted_premises": "Owner snapshot, C1 validated projection, native identity observations remain trusted premises; proposed DTO choices not independently adopted."
+}

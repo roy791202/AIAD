@@ -1,0 +1,192 @@
+{
+  "cases": [
+    {
+      "id": "IO-BDD-01",
+      "tdd": "IO-TDD-01",
+      "name": "獨佔建立",
+      "given": "存在父目錄與不存在的新名稱",
+      "when": "建立目錄",
+      "then": "只建立該新目錄並返回位置",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-02",
+      "tdd": "IO-TDD-02",
+      "name": "已有目標不變",
+      "given": "目標為檔案、空目錄或非空目錄",
+      "when": "要求建立",
+      "then": "AlreadyExists；既有bytes及內容不變",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-03",
+      "tdd": "IO-TDD-03",
+      "name": "非法名稱",
+      "given": "名稱空白、保留名、含separator或穿越",
+      "when": "建立目錄",
+      "then": "InvalidPath且不建立任何子目錄",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-04",
+      "tdd": "IO-TDD-04",
+      "name": "同程序競爭",
+      "given": "已有一個同目標lease",
+      "when": "另一adapter instance要求lease",
+      "then": "Busy且不能讀寫提交",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-05",
+      "tdd": "IO-TDD-05",
+      "name": "跨程序競爭",
+      "given": "子程序持有同目標sidecar handle",
+      "when": "父程序要求lease",
+      "then": "Busy；不是只靠同程序Mutex",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-06",
+      "tdd": "IO-TDD-06",
+      "name": "程序死亡釋放",
+      "given": "子程序持有lease且無未完成journal",
+      "when": "終止子程序後再取lease",
+      "then": "OS handle釋放，sidecar仍可再次打開；不按檔案年齡刪鎖",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-07",
+      "tdd": "IO-TDD-07",
+      "name": "新檔提交",
+      "given": "期望不存在且無目標",
+      "when": "replace_checked(None,new)",
+      "then": "完整新bytes與receipt相符",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-08",
+      "tdd": "IO-TDD-08",
+      "name": "既有檔提交",
+      "given": "期望digest等於現行bytes",
+      "when": "replace_checked(Some(old),new)",
+      "then": "寫入完整new，保留old版本直到交易確認",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-09",
+      "tdd": "IO-TDD-09",
+      "name": "過期拒絕",
+      "given": "期望digest不等於目前檔案",
+      "when": "要求替換",
+      "then": "Conflict，不更動正式目標",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-10",
+      "tdd": "IO-TDD-10",
+      "name": "存在性衝突",
+      "given": "期望不存在但檔案已存在，或反之",
+      "when": "要求替換",
+      "then": "Conflict，不能自動覆寫",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-11",
+      "tdd": "IO-TDD-11",
+      "name": "替換前故障",
+      "given": "prepare/backup/temp write/sync任一步失敗",
+      "when": "結束本次提交",
+      "then": "原有效正式bytes不變，清理僅本次owned scratch",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-12",
+      "tdd": "IO-TDD-12",
+      "name": "替換後可回復故障",
+      "given": "正式replace後verify/提交紀錄階段失敗且restore可用",
+      "when": "處理錯誤",
+      "then": "舊bytes恢復後才可回普通Storage錯誤",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-13",
+      "tdd": "IO-TDD-13",
+      "name": "回復本身失敗",
+      "given": "restore/restore verify失敗",
+      "when": "回傳結果",
+      "then": "RecoveryRequired，保留old/new/journal，後續破壞性提交拒絕",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-14",
+      "tdd": "IO-TDD-14",
+      "name": "重啟遇未完成紀錄",
+      "given": "上次journal未到COMMITTED/ROLLED_BACK",
+      "when": "新程序acquire",
+      "then": "拒絕並回RecoveryRequired，不猜測哪版應生效",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-15",
+      "tdd": "IO-TDD-15",
+      "name": "未知或損毀journal",
+      "given": "journal版本未知、校驗不符或含越界路徑",
+      "when": "acquire",
+      "then": "RecoveryRequired，保留所有原資料，不解析成可執行動作",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-16",
+      "tdd": "IO-TDD-16",
+      "name": "lease關閉",
+      "given": "已完成lease的handle正常drop",
+      "when": "另一程序取lease",
+      "then": "成功；不需等待stale timeout",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-17",
+      "tdd": "IO-TDD-17",
+      "name": "目標被外部改動",
+      "given": "prepare後偵測目標digest變更",
+      "when": "commit前重查",
+      "then": "Conflict且不覆寫；不聲稱防止任意非合作writer最後瞬間競爭",
+      "result": "NOT RUN"
+    },
+    {
+      "id": "IO-BDD-18",
+      "tdd": "IO-TDD-18",
+      "name": "失敗不刪他人檔案",
+      "given": "owned temp名碰撞或cleanup失敗",
+      "when": "保存或中止",
+      "then": "不刪非本次create_new成功取得的檔；保留可診斷結果",
+      "result": "NOT RUN"
+    }
+  ],
+  "commands": [
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo build -p sgenaxis-adapters --example file_commit_probe --locked",
+      "status": "TARGET_NOT_CREATED / NOT RUN"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-adapters --test phase1_file_commit --no-run --locked",
+      "status": "TARGET_NOT_CREATED / NOT RUN"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-adapters --test phase1_file_commit --locked",
+      "precondition": "test helper path supplied via explicit FILE_COMMIT_PROBE_PATH; missing helper is invalid fixture, not RED",
+      "status": "TARGET_NOT_CREATED / NOT RUN"
+    },
+    {
+      "cwd": "D:/AIAD/apps/sgenaxis-desktop",
+      "command": "cargo test -p sgenaxis-ports -p sgenaxis-adapters -p sgenaxis-work --locked",
+      "status": "regression planned / NOT RUN"
+    }
+  ],
+  "valid_red": "Compile target+helper succeeds; failure reaches intended observable assertions due to missing commit behavior. Missing target/helper/permissions setup is not valid RED.",
+  "levels": "L0 record codec → L1 controlled adapter faults → L2 Port contract → L3 real temp FS → L4 native multi-process → HOST integration later",
+  "status": "NOT RUN"
+}

@@ -1,0 +1,104 @@
+{
+  "task": "PD-RUST-MCP-TRANSPORT-SMOKE-01",
+  "module": "mcp-transport",
+  "packet_kind": "smoke_design",
+  "generated_at": "2026-10-26T02:26:00+08:00",
+  "live_availability": {
+    "status": "NOT_RUN",
+    "reason": "SGENAXIS_MCP_LIVE_ENDPOINT unset at planning probe; IMPL-01 dispatch report absent",
+    "probe": "sgenaxis_exec::mcp_live_target::probe_mcp_live_smoke_target",
+    "env_keys_secret_free": [
+      "SGENAXIS_MCP_LIVE_ENDPOINT",
+      "SGENAXIS_MCP_LIVE_TOOL",
+      "SGENAXIS_MCP_LIVE_SERVER"
+    ],
+    "forbidden_targets": ["empty", ":8787", ":8788", "undiscovered ports"]
+  },
+  "dependencies": {
+    "required": ["PD-RUST-MCP-TRANSPORT-IMPL-01"],
+    "impl_status": "MISSING_REPORT_GRAY",
+    "decision": "PD-RUST-MCP-TRANSPORT-DEC-01",
+    "decision_gap": "stdio vs loopback HTTP + exact server/argv/tool + timeout/cancel bounds still owner-gated"
+  },
+  "evidence_schema": {
+    "required_fields": ["request", "result", "terminal", "version"],
+    "field_defs": {
+      "request": "Secret-free call identity: transport kind, server_name, tool, args_digest (no raw secrets/tokens/credentials)",
+      "result": "Observable payload digest or typed error class; never raw endpoint credentials",
+      "terminal": "Exactly one terminal class per attempt: success | invalid_tool | reject | timeout | cancel | disconnect | not_run",
+      "version": "Binding: crate/feature/build or protocol negotiation revision used for the attempt"
+    },
+    "claim_rule": "Any Live PASS/FAIL claim must attach all four fields; missing field ⇒ evidence incomplete (not Live PASS)"
+  },
+  "prohibitions": {
+    "fake_as_live": "FakeMcpClient / in-process simulation is fixture-only; never recorded as Live smoke PASS",
+    "stub_as_live": "StubMcpClient RealMcpDisabled proves unavailability, not Live transport",
+    "dry_run_as_live": "DryRun AgentChunk stream is simulation; label Simulated, never Live",
+    "static_html_as_live": "module.html / this matrix are design artifacts; opening them is not Live execution",
+    "auto_product_accept": "Smoke outcomes never set product green or release acceptance"
+  },
+  "scenarios": [
+    {
+      "id": "SMOKE-S1",
+      "name": "success",
+      "given": "IMPL Live composition ready; activatable approved endpoint/tool; controlled harmless args",
+      "when": "One Live connect + approved call_tool completes within policy timeout",
+      "then": "terminal=success; request/result/terminal/version recorded; no product green",
+      "execution_now": "NOT_RUN"
+    },
+    {
+      "id": "SMOKE-S2",
+      "name": "invalidtool",
+      "given": "Live target configured; tool not on approved_tools (or server unknown tool)",
+      "when": "Live call_tool requested for the invalid tool",
+      "then": "terminal=invalid_tool; no successful tool result claim; secrets not echoed",
+      "execution_now": "NOT_RUN"
+    },
+    {
+      "id": "SMOKE-S3",
+      "name": "reject",
+      "given": "Unactivatable or policy-rejected target (empty/reserved) or Guard/host rejection before dial",
+      "when": "Live execution is requested",
+      "then": "terminal=reject or not_run; no socket/stdio dial for forbidden targets",
+      "execution_now": "NOT_RUN"
+    },
+    {
+      "id": "SMOKE-S4",
+      "name": "timeout",
+      "given": "Live target that does not complete initialize/tool within approved bound (proposed 10_000ms until DEC locks)",
+      "when": "Live call waits past timeout",
+      "then": "terminal=timeout; exactly one terminal; no auto-retry inventing success",
+      "execution_now": "NOT_RUN"
+    },
+    {
+      "id": "SMOKE-S5",
+      "name": "cancel",
+      "given": "An in-flight Live session under approved cancel policy (proposed disconnect/cancel bound 2_000ms)",
+      "when": "Operator/host cancel is requested",
+      "then": "terminal=cancel; session closed best-effort; no force-kill of unrelated processes",
+      "execution_now": "NOT_RUN"
+    },
+    {
+      "id": "SMOKE-S6",
+      "name": "disconnect",
+      "given": "Open Live session then peer drop or explicit disconnect",
+      "when": "Disconnect path runs (or transport drops)",
+      "then": "terminal=disconnect; subsequent call_tool cannot claim success on dead session",
+      "execution_now": "NOT_RUN"
+    }
+  ],
+  "proposed_policy_from_dec_not_guarantees": {
+    "initialize_tool_timeout_ms": 10000,
+    "cancel_disconnect_bound_ms": 2000,
+    "concurrency": "one_request_at_a_time",
+    "auto_retry": false,
+    "note": "PROPOSED values from DEC packet; not current runtime guarantees until IMPL + owner lock"
+  },
+  "gate_before_live_execution": [
+    "PD-RUST-MCP-TRANSPORT-IMPL-01 delivers real McpClientPort composition (not Stub default alone)",
+    "Owner-approved explicit target (stdio argv or activatable loopback endpoint + tool)",
+    "probe_mcp_live_smoke_target() returns Some(...) or equivalent DEC-locked stdio probe",
+    "Evidence writer ready for request/result/terminal/version",
+    "Feature/build identity recorded in version field"
+  ]
+}

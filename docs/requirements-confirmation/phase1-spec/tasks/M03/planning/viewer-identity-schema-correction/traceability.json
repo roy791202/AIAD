@@ -1,0 +1,90 @@
+{
+  "finding": "VIS-RF1",
+  "scope": "five property domains only; original mapper loaded at original path bytewise, dependency paths unchanged",
+  "guard": "viewer-close-integration/document_model.py:identity/u64",
+  "schema_evaluator": "viewer-refresh-integration/schema_eval.py:valid uses re.search on actual parsed patterns",
+  "pattern_source": "viewer-refresh-integration/request.schema.json properties preview_session and expected_revision",
+  "definitions": "full observation root properties/required/additionalProperties audited; no refs or defs exist",
+  "diff": "schema-diff.json",
+  "fixtures": "fixtures.json",
+  "original_counterexamples": [
+    {
+      "field": "generation",
+      "value": "18446744073709551616",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/generation",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    },
+    {
+      "field": "generation",
+      "value": "17\n",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/generation",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    },
+    {
+      "field": "project_uuid",
+      "value": "not-a-uuid",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/project_uuid",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    },
+    {
+      "field": "document_uuid",
+      "value": "not-a-uuid",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/document_uuid",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    },
+    {
+      "field": "session_uuid",
+      "value": "not-a-uuid",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/session_uuid",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    },
+    {
+      "field": "preview_session",
+      "value": "not-a-uuid",
+      "schema_accepts": true,
+      "guard_error": "DependencyNotReady",
+      "schema_pointer": "/properties/preview_session",
+      "guard_pointer": "document_model.py:admit -> viewer-close-integration/document_model.py:identity"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "VIS-D1",
+      "choice": "M04 is sole authority for document/session/generation/revision; native M01 caller provider owns consumer/window/project/root/runtime epoch and live/revoked observations. M03 owns only derived ephemeral preview slot, mock/capability and sequence referencing that authority. No second document registry; S1 untouched.",
+      "options": [
+        "Recommended: M04 identity authority plus M03 derived preview records, coordinated through existing owner integration after exact signature approval.",
+        "M04 also owns preview lifecycle; requires explicit revised ownership and independently reviewed envelope, not adopted here.",
+        "Keep existing isolated command candidates; CIH-G1 remains unresolved and cross-command composition blocked."
+      ]
+    },
+    {
+      "id": "VIS-D2",
+      "choice": "Full immutable native observation admitted at capture and delivery, correlated to one owner snapshot and preview handle. No web DTO trust booleans; typed records are synthetic premises here. Existing input/output public schemas remain unchanged. Exact internal observation API/port placement pending Owner; no new public Port silently approved."
+    },
+    {
+      "id": "VIS-D3",
+      "choice": "One preview mutation fence per owner binding with generation/root epoch token; verify native authority and owner revision at linearization before publish/replace/mock commit. Snapshot→validate→recheck→commit under adopted fence, no check/use gap. Begin capacity 4; refresh atomically exchanges one slot even at capacity; close retires exactly once. Epoch changes invalidate observations. Fence implementation and lock/await ordering require architecture approval."
+    },
+    {
+      "id": "VIS-D4",
+      "choice": "Refresh failure before exchange preserves old handle/mock/slot while disabling actions (stale=true,can_act=false); successful exchange retires old handle, resets new sequence=1 and detached mock. Unknown provider outcome cannot promise rollback. Close unknown after commit stays CloseUncertain, no retry, no false Closed; committed retirement remains. Late response never reinstalls old root or UI state."
+    },
+    {
+      "id": "VIS-D5",
+      "choice": "Full identity guard precedence: malformed→DependencyNotReady; dead/revoked→PreviewClosed; consumer/window→UnauthorizedCaller; project/root/epoch/document/session→MissingBinding; generation→StaleOwner; handle→PreviewClosed. Revision uses existing exact bounded u64 string errors and is not reconstructed from generation. Proposed precedence requires Owner confirmation, not source-derived authority."
+    }
+  ],
+  "Owner": "PENDING",
+  "VIS-D1..D5": "UNCHANGED",
+  "admission_parity": "Schema validates tuple grammar only; well-typed mismatches/live/revoked still yield existing semantic admission errors; only malformed parity is claimed."
+}

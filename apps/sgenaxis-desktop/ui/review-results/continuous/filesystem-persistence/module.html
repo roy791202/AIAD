@@ -1,0 +1,170 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Filesystem persistence proposal</title><style>body{max-width:1100px;margin:32px auto;font:16px system-ui;line-height:1.6;padding:16px;color:#182435}pre{white-space:pre-wrap;background:#eef2f7;padding:18px}h2{border-bottom:1px solid #ccd;padding-top:20px}</style><h1>Filesystem persistence: minimal safe-write proposal</h1><p>[Phase: Green] [Status: OK] OWNER_APPROVED_A — verified RED completed; final helper implemented; independent focused13/workspace290/EXEC56/Tauri79 PASS; architecture review PASS; owner acceptance pending.</p><p>Keep the existing FileSystemPort. Fix only the real adapter’s shared temporary path and failure cleanup. No new patterns or layers.</p><h2>Two architecture views</h2><pre>UI / CLI driving adapters
+  ↓ existing HOST use cases (application)
+  ↓ FileSystemPort input boundary
+  ↑ StdFileSystem driven adapter implements port
+  ↓ std::fs / OS
+Domain: no filesystem dependency</pre><pre>HOST ──depends──► sgenaxis-ports ◄──implements── sgenaxis-adapters
+                                                    │
+                                                    ▼
+                                                  std / OS
+Transaction: exclusive sibling → write → sync → close → rename(commit)
+Failure before commit: target unchanged; cleanup owned temp only</pre><h2>Architecture A1-A14</h2><h3>A1 System context</h3><p>Existing HOST document/settings save callers invoke FileSystemPort. Only real StdFileSystem implementation changes; no UI or generic save redesign.</p><h3>A2 Hexagonal system boundary</h3><p>Driving UI/CLI -&gt; existing HOST use cases -&gt; FileSystemPort &lt;- StdFileSystem -&gt; OS filesystem. Domain has no filesystem dependency.</p><h3>A3 Module dependency</h3><p>HOST -&gt; sgenaxis-ports; sgenaxis-adapters -&gt; sgenaxis-ports and std. No application -&gt; concrete adapter dependency added.</p><h3>A4 Responsibilities</h3><p>Caller owns save intent and payload. FileSystemPort owns opaque IO contract. StdFileSystem owns one write transaction and temporary file lifecycle. OS implements rename.</p><h3>A5 Input ports</h3><p>Existing FileSystemPort::write_atomic(path:&amp;str, contents:&amp;[u8])-&gt;Result&lt;(),PortError&gt;; no signature changes.</p><h3>A6 Output ports</h3><p>No new output ports; adapter calls std::fs/OpenOptions/Write behind existing IO boundary.</p><h3>A7 Driving adapters</h3><p>Existing UI/CLI/HOST callers unchanged; tests call FileSystemPort.</p><h3>A8 Driven adapters</h3><p>StdFileSystem only. FakeFileSystem unchanged; real adapter tests establish OS-specific guarantees.</p><h3>A9 Dependency direction</h3><p>Caller -&gt; existing port &lt;- real adapter -&gt; standard library/OS. Domain and HOST never acquire concrete filesystem dependency.</p><h3>A10 State ownership</h3><p>Destination is committed persistent state; caller owns submitted byte slice. Each invocation exclusively owns its temp path and open handle; no authoritative global state. Atomic counter, if used, is naming assistance only; create_new decides ownership.</p><h3>A11 Mutation boundary</h3><p>Only owning invocation writes/removes its temporary file. Destination changes only at successful rename. Never delete destination as replacement fallback.</p><h3>A12 Transaction boundary</h3><p>Create sibling exclusively -&gt; write all -&gt; sync file -&gt; close -&gt; rename over destination. Before successful rename, prior destination bytes remain unchanged. Error cleanup removes only owned temp, best effort; cannot promise cleanup if OS denies removal.</p><h3>A13 External system boundary</h3><p>Local filesystem behavior; Windows machine probe only. Network filesystems, adversarial directory mutation, symlink sandboxing, power loss and parent-directory fsync excluded.</p><h3>A14 Forbidden dependencies</h3><p>No new Manager/service/port/crate, per-target lock table, serialization change, CAS/version arbitration, background cleanup daemon, caller rewrite, public error variant, or remove-destination fallback.</p><h2>Contracts / invariants</h2><pre>[
+  [
+    &quot;FS-C1&quot;,
+    &quot;Success means destination contains exactly one complete submitted payload at this invocation commit; later successful writers may replace it.&quot;
+  ],
+  [
+    &quot;FS-C2&quot;,
+    &quot;Concurrent successful writes use last successful commit wins, not request-start order. No merged/torn payload.&quot;
+  ],
+  [
+    &quot;FS-C3&quot;,
+    &quot;Before commit failure leaves previous destination unchanged; existing parent-directory creation remains allowed and is not rolled back.&quot;
+  ],
+  [
+    &quot;FS-C4&quot;,
+    &quot;Exclusive create collision never truncates existing temp. Retry bounded at 128 candidates; exhaustion returns existing PortError mapping and preserves destination.&quot;
+  ],
+  [
+    &quot;FS-C5&quot;,
+    &quot;Owned temp is closed then cleanup attempted on write/sync/rename failure. Cleanup never targets peer files or replaces primary error. Residual temp may remain if cleanup is denied.&quot;
+  ],
+  [
+    &quot;FS-C6&quot;,
+    &quot;No CAS, locking, multi-file transaction, power-loss durability or universal filesystem atomicity guarantee. Supported Windows local filesystem overwrite is tested; additional platforms require own evidence.&quot;
+  ]
+]</pre><h2>BDD coverage</h2><pre>{
+  &quot;B1&quot;: &quot;Applicable success&quot;,
+  &quot;B2&quot;: &quot;Applicable empty/large bytes and path&quot;,
+  &quot;B3&quot;: &quot;Applicable invalid/missing path&quot;,
+  &quot;B4&quot;: &quot;Applicable create/write/sync/rename&quot;,
+  &quot;B5&quot;: &quot;Applicable partial write&quot;,
+  &quot;B6&quot;: &quot;Applicable old/new intact&quot;,
+  &quot;B7&quot;: &quot;Applicable commit only&quot;,
+  &quot;B8&quot;: &quot;Applicable handle close/cleanup&quot;,
+  &quot;B9&quot;: &quot;Applicable owned cleanup&quot;,
+  &quot;B10&quot;: &quot;Applicable existing HOST saves&quot;,
+  &quot;B11&quot;: &quot;Applicable Windows; other OS deferred until runner available&quot;,
+  &quot;B12&quot;: &quot;Applicable existing swap/save/settings regressions&quot;
+}</pre><h2>TDD / traceability</h2><pre>[
+  [
+    &quot;FS-T01&quot;,
+    &quot;Create missing destination and replace existing destination with nonempty and zero-byte payloads; byte equality, no owned leftovers.&quot;,
+    &quot;FS-C1&quot;
+  ],
+  [
+    &quot;FS-T02&quot;,
+    &quot;Deterministic barrier after both exclusively-created temp handles: both writers must reach barrier; assert different owned paths; release A commit then B commit and final bytes B; reverse ordering final A. Timeout is harness failure, not valid RED.&quot;,
+    &quot;FS-C1,FS-C2&quot;
+  ],
+  [
+    &quot;FS-T03&quot;,
+    &quot;Place candidate collision sentinel; force first private candidate then next unused candidate; sentinel bytes unchanged and successful retry. Force 128 collisions -&gt; error, target/sentinels unchanged.&quot;,
+    &quot;FS-C4&quot;
+  ],
+  [
+    &quot;FS-T04&quot;,
+    &quot;Inject write failure after partial owned temp bytes, and sync failure independently; close, cleanup attempted, previous target exact. Inject cleanup denial -&gt; original error retained, residue reported by harness only.&quot;,
+    &quot;FS-C3,FS-C5&quot;
+  ],
+  [
+    &quot;FS-T05&quot;,
+    &quot;Inject rename denial; existing destination remains; owned temp removed when permitted. Never remove destination.&quot;,
+    &quot;FS-C3,FS-C5&quot;
+  ],
+  [
+    &quot;FS-T06&quot;,
+    &quot;Peer prepares temp at barrier; failing invocation cleans up; peer temp survives and peer commits intact.&quot;,
+    &quot;FS-C2,FS-C5&quot;
+  ],
+  [
+    &quot;FS-T07&quot;,
+    &quot;Real Windows replacement integration: existing file -&gt; new complete bytes; target directory failure preserves directory; no owned leftovers.&quot;,
+    &quot;FS-C1,FS-C3&quot;
+  ],
+  [
+    &quot;FS-T08&quot;,
+    &quot;Distinct target paths, nested missing parents, unicode/spaces path, bytes containing zero/invalid UTF8 preserve exact bytes; regression existing swap/host save/settings tests.&quot;,
+    &quot;FS-C1&quot;
+  ]
+]</pre><h2>Acceptance</h2><pre>[
+  &quot;All FS-T01..08 pass; planned normal/error/controlled concurrency assertions execute&quot;,
+  &quot;Independent behavioral RED demonstrated after approved skeleton; compile/setup failure not RED&quot;,
+  &quot;Existing adapter and HOST save/settings regressions pass or individually classified&quot;,
+  &quot;No public API/dependency/state owner changes; source scope reviewed&quot;,
+  &quot;Report generated from this structured model with actual result metadata&quot;
+]</pre><h2>Skeleton envelope</h2><pre>[
+  &quot;apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs&quot;,
+  &quot;one private adapter test module and lib test registration only if needed&quot;
+]</pre><h2>Protected scope</h2><pre>[
+  &quot;ports API&quot;,
+  &quot;HOST&quot;,
+  &quot;Domain&quot;,
+  &quot;UI&quot;,
+  &quot;Cargo manifests&quot;,
+  &quot;other adapters&quot;
+]</pre><h2>Risks</h2><pre>[
+  &quot;OS denies cleanup: residual owned temp may remain&quot;,
+  &quot;Open target sharing modes may reject rename; report error and preserve target&quot;,
+  &quot;No validation on non-Windows or remote filesystem yet&quot;
+]</pre><h2>Deferred work</h2><pre>[
+  &quot;Crash recovery/durability&quot;,
+  &quot;CAS/conflict UI&quot;,
+  &quot;Cross-process lock service&quot;,
+  &quot;Transactional multi-file persistence&quot;
+]</pre><h2>BDD specification</h2><pre>Feature: Safe concurrent file persistence
+  Background:
+    Given an isolated writable local directory
+  Rule: Each writer owns its preparation and commits a complete payload
+    Scenario: Replace an existing file
+      Given a file containing old bytes
+      When new bytes are saved successfully
+      Then the file contains exactly the new bytes
+    Scenario: Concurrent saves commit complete payloads
+      Given two saves are preparing different complete payloads for one file
+      When both saves commit successfully in a controlled order
+      Then the file contains exactly the last committed payload
+    Scenario: Failure before commit preserves old bytes
+      Given a file containing old bytes
+      When saving fails before commit
+      Then the file still contains exactly the old bytes
+    Scenario: One failed save cannot damage another preparing save
+      Given two saves are preparing independent payloads for one file
+      When one save fails before commit and the other succeeds
+      Then the file contains exactly the successful payload
+    Scenario: Existing preparation collision is preserved
+      Given an existing file conflicts with a preparation candidate
+      When new bytes are saved successfully using another candidate
+      Then the existing conflicting file remains unchanged
+    Scenario: Empty payload is valid
+      Given a file containing old bytes
+      When an empty payload is saved successfully
+      Then the file contains zero bytes
+    Scenario: Replacement is denied
+      Given replacement of the existing destination is denied
+      When a save is attempted
+      Then saving reports failure
+      And the previous destination remains unchanged
+</pre><h2>Minimal skeleton after approval</h2><pre>write_atomic: keep public signature
+private candidate naming: pid + AtomicU64 sequence; create_new is ownership authority; retry max128
+private transaction helper: prepare / write_all / sync_all / close / rename
+private test-only phase/failure callback: deterministic barriers and failure injection
+error: close then best-effort cleanup owned temp; preserve original PortError
+no public hook, global lock table, dependency, port, or manager</pre><h2>Task sequence</h2><p>Owner decision → architecture approved → lock contracts/BDD → private skeleton/test seams → independent executable RED → adapter implementation → focused GREEN → adapter/HOST regressions → independent architecture and acceptance review. This package does not approve itself.</p><h2>Pattern ROI</h2><p>Pattern: none. Cost: one production file, one test module; zero ports/crates/managers; about 60–100 private production lines. Benefit: isolate temp ownership and cleanup with no caller migration. Extra abstraction DEFERRED: no test forces it.</p><h2>Experiment / evidence</h2><pre>{
+  &quot;independent_test_report&quot;: &quot;../filesystem-persistence-tests/module.html&quot;,
+  &quot;independent_review&quot;: &quot;../filesystem-persistence-review/module.html&quot;,
+  &quot;verified_counts&quot;: {
+    &quot;focused&quot;: 13,
+    &quot;workspace&quot;: 290,
+    &quot;exec_allfeatures&quot;: 56,
+    &quot;tauri&quot;: 79
+  },
+  &quot;owner_light&quot;: &quot;YELLOW; READY_FOR_GREEN is not owner acceptance&quot;,
+  &quot;historical_date&quot;: &quot;2026-10-26 Asia/Taipei; counts belong to completed FS slice before later process changes&quot;,
+  &quot;source_sha256&quot;: {
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs&quot;: &quot;97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs&quot;: &quot;aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a&quot;
+  },
+  &quot;windows_probe&quot;: &quot;PASS existing regular-file replacement and create_new collision preservation on this Windows machine; no concurrency/error-injection claim; not behavioral RED; no production edits&quot;,
+  &quot;git_head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;
+}</pre><p>Windows probe PASS is an isolated std experiment only; independent RED is recorded separately and implementation focused GREEN is 13/13; independent FS slice regressions passed (13/290/56/79); non-Windows, remote-filesystem and hardware failure checks NOT RUN.</p><h2>Owner-approved scope</h2><p>No remaining A decision; approved scope: existing FileSystemPort unchanged; exclusive unique sibling temp; last successful commit wins complete payload; precommit preserves prior target; best-effort owned-temp cleanup; Windows local replacement verified; no CAS/power-loss durability?</p><h2>Module health</h2><p>READY_FOR_GREEN yellow; independent behavior and architecture review PASS; owner acceptance pending. No acceptance or release claim.</p><script type="application/json" id="module-spec">{"module": "filesystem-persistence", "task": "PD-RUST-FS-PLAN-02", "decision": "PD-RUST-FS-DEC-01", "date": "2026-10-26 Asia/Taipei", "state": "READY_FOR_GREEN", "architecture_status": "OWNER_APPROVED_A", "implementation": "IMPLEMENTATION_COMPLETE_OWNER_ACCEPTANCE_PENDING", "tests": "Independent RED 13 compiled, 4 PASS/9 intended FAIL; independent focused13/workspace290/EXEC56/Tauri79 PASS; architecture review PASS", "intent": "Avoid same-process concurrent save temp collision and preserve old destination before commit without new architecture.", "assumptions": ["Local filesystem ordinary file target", "Callers accept last successful commit wins", "Existing error enum unchanged"], "architecture": {"A1 System context": "Existing HOST document/settings save callers invoke FileSystemPort. Only real StdFileSystem implementation changes; no UI or generic save redesign.", "A2 Hexagonal system boundary": "Driving UI/CLI -> existing HOST use cases -> FileSystemPort \u003c- StdFileSystem -> OS filesystem. Domain has no filesystem dependency.", "A3 Module dependency": "HOST -> sgenaxis-ports; sgenaxis-adapters -> sgenaxis-ports and std. No application -> concrete adapter dependency added.", "A4 Responsibilities": "Caller owns save intent and payload. FileSystemPort owns opaque IO contract. StdFileSystem owns one write transaction and temporary file lifecycle. OS implements rename.", "A5 Input ports": "Existing FileSystemPort::write_atomic(path:&str, contents:&[u8])->Result\u003c(),PortError>; no signature changes.", "A6 Output ports": "No new output ports; adapter calls std::fs/OpenOptions/Write behind existing IO boundary.", "A7 Driving adapters": "Existing UI/CLI/HOST callers unchanged; tests call FileSystemPort.", "A8 Driven adapters": "StdFileSystem only. FakeFileSystem unchanged; real adapter tests establish OS-specific guarantees.", "A9 Dependency direction": "Caller -> existing port \u003c- real adapter -> standard library/OS. Domain and HOST never acquire concrete filesystem dependency.", "A10 State ownership": "Destination is committed persistent state; caller owns submitted byte slice. Each invocation exclusively owns its temp path and open handle; no authoritative global state. Atomic counter, if used, is naming assistance only; create_new decides ownership.", "A11 Mutation boundary": "Only owning invocation writes/removes its temporary file. Destination changes only at successful rename. Never delete destination as replacement fallback.", "A12 Transaction boundary": "Create sibling exclusively -> write all -> sync file -> close -> rename over destination. Before successful rename, prior destination bytes remain unchanged. Error cleanup removes only owned temp, best effort; cannot promise cleanup if OS denies removal.", "A13 External system boundary": "Local filesystem behavior; Windows machine probe only. Network filesystems, adversarial directory mutation, symlink sandboxing, power loss and parent-directory fsync excluded.", "A14 Forbidden dependencies": "No new Manager/service/port/crate, per-target lock table, serialization change, CAS/version arbitration, background cleanup daemon, caller rewrite, public error variant, or remove-destination fallback."}, "contracts": [["FS-C1", "Success means destination contains exactly one complete submitted payload at this invocation commit; later successful writers may replace it."], ["FS-C2", "Concurrent successful writes use last successful commit wins, not request-start order. No merged/torn payload."], ["FS-C3", "Before commit failure leaves previous destination unchanged; existing parent-directory creation remains allowed and is not rolled back."], ["FS-C4", "Exclusive create collision never truncates existing temp. Retry bounded at 128 candidates; exhaustion returns existing PortError mapping and preserves destination."], ["FS-C5", "Owned temp is closed then cleanup attempted on write/sync/rename failure. Cleanup never targets peer files or replaces primary error. Residual temp may remain if cleanup is denied."], ["FS-C6", "No CAS, locking, multi-file transaction, power-loss durability or universal filesystem atomicity guarantee. Supported Windows local filesystem overwrite is tested; additional platforms require own evidence."]], "bdd_categories": {"B1": "Applicable success", "B2": "Applicable empty/large bytes and path", "B3": "Applicable invalid/missing path", "B4": "Applicable create/write/sync/rename", "B5": "Applicable partial write", "B6": "Applicable old/new intact", "B7": "Applicable commit only", "B8": "Applicable handle close/cleanup", "B9": "Applicable owned cleanup", "B10": "Applicable existing HOST saves", "B11": "Applicable Windows; other OS deferred until runner available", "B12": "Applicable existing swap/save/settings regressions"}, "tests_planned": [["FS-T01", "Create missing destination and replace existing destination with nonempty and zero-byte payloads; byte equality, no owned leftovers.", "FS-C1"], ["FS-T02", "Deterministic barrier after both exclusively-created temp handles: both writers must reach barrier; assert different owned paths; release A commit then B commit and final bytes B; reverse ordering final A. Timeout is harness failure, not valid RED.", "FS-C1,FS-C2"], ["FS-T03", "Place candidate collision sentinel; force first private candidate then next unused candidate; sentinel bytes unchanged and successful retry. Force 128 collisions -> error, target/sentinels unchanged.", "FS-C4"], ["FS-T04", "Inject write failure after partial owned temp bytes, and sync failure independently; close, cleanup attempted, previous target exact. Inject cleanup denial -> original error retained, residue reported by harness only.", "FS-C3,FS-C5"], ["FS-T05", "Inject rename denial; existing destination remains; owned temp removed when permitted. Never remove destination.", "FS-C3,FS-C5"], ["FS-T06", "Peer prepares temp at barrier; failing invocation cleans up; peer temp survives and peer commits intact.", "FS-C2,FS-C5"], ["FS-T07", "Real Windows replacement integration: existing file -> new complete bytes; target directory failure preserves directory; no owned leftovers.", "FS-C1,FS-C3"], ["FS-T08", "Distinct target paths, nested missing parents, unicode/spaces path, bytes containing zero/invalid UTF8 preserve exact bytes; regression existing swap/host save/settings tests.", "FS-C1"]], "cost": {"production_files_modified": 1, "test_files_expected": 1, "new_ports": 0, "new_crates": 0, "new_managers": 0, "estimated_private_lines": "60-100 plus tests", "pattern": "none; retain current adapter, private helper and test-only seam"}, "allowed_after_approval": ["apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs", "one private adapter test module and lib test registration only if needed"], "protected": ["ports API", "HOST", "Domain", "UI", "Cargo manifests", "other adapters"], "acceptance": ["All FS-T01..08 pass; planned normal/error/controlled concurrency assertions execute", "Independent behavioral RED demonstrated after approved skeleton; compile/setup failure not RED", "Existing adapter and HOST save/settings regressions pass or individually classified", "No public API/dependency/state owner changes; source scope reviewed", "Report generated from this structured model with actual result metadata"], "owner_approval": "Owner approved exact A: 核准最小方案，接續 RED 與實作.", "remaining_question": "No remaining A decision; approved scope: existing FileSystemPort unchanged; exclusive unique sibling temp; last successful commit wins complete payload; precommit preserves prior target; best-effort owned-temp cleanup; Windows local replacement verified; no CAS/power-loss durability?", "evidence": {"independent_test_report": "../filesystem-persistence-tests/module.html", "independent_review": "../filesystem-persistence-review/module.html", "verified_counts": {"focused": 13, "workspace": 290, "exec_allfeatures": 56, "tauri": 79}, "owner_light": "YELLOW; READY_FOR_GREEN is not owner acceptance", "historical_date": "2026-10-26 Asia/Taipei; counts belong to completed FS slice before later process changes", "source_sha256": {"apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a", "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"}, "windows_probe": "PASS existing regular-file replacement and create_new collision preservation on this Windows machine; no concurrency/error-injection claim; not behavioral RED; no production edits", "git_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab"}, "risks": ["OS denies cleanup: residual owned temp may remain", "Open target sharing modes may reject rename; report error and preserve target", "No validation on non-Windows or remote filesystem yet"], "deferred": ["Crash recovery/durability", "CAS/conflict UI", "Cross-process lock service", "Transactional multi-file persistence"]}</script></html>

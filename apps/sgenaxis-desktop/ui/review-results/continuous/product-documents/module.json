@@ -1,0 +1,230 @@
+{
+  "identity": {
+    "module": "product-documents",
+    "task": "PD-RUST-DOCUMENT-CONTRACT-01",
+    "decision": "PD-RUST-DOCUMENT-DEC-01",
+    "date": "2026-10-26 Asia/Taipei",
+    "state": "READ_ONLY_CONTRACT_AUDIT",
+    "architecture": "CURRENT_STRUCTURE_DOCUMENTED; changes not approved",
+    "behavior_verification": "NOT RUN",
+    "implementation": "NOT STARTED"
+  },
+  "executive_meaning": "The product already has several formats with different validation and roundtrip behavior. Preserve these formats. First make current guarantees and gaps explicit; do not invent one universal schema or automatically migrate documents. The Rust .ess packet is a strict read-only consumer, not the frontend scene loader or a replacement serializer.",
+  "format_inventory": [
+    {
+      "extension": ".ess",
+      "representation": "XML UTF-8 eluslotScene, emitted format=eluslot.ess / formatVersion=1 / encoding=xml",
+      "contents": "work(eluslot.es/XML), architecture(eluslotArch/eluslot.esml/v1), design(eluslot.esui/XML)",
+      "writer": "app.js sceneDocToSgsXml:700",
+      "reader": "sceneDocFromSgsXml:917; legacy sgenaxisScene and sgenaxisArch accepted",
+      "version_policy": "Frontend scene parser does not enforce root format/version/encoding; packet reader strictly requires current .ess v1/XML."
+    },
+    {
+      "extension": ".esml",
+      "representation": "XML UTF-8 eluslotArch, emitted format=eluslot.esml / formatVersion from doc (default 1)",
+      "contents": "nodes/ports/modules/edges/events/meta",
+      "writer": "archDocToXml:3673",
+      "reader": "archDocFromXml:3991; accepts sgenaxisArch and nested arch roots",
+      "version_policy": "Parser defaults Number(version)||1; no allowed-version rejection in this codec."
+    },
+    {
+      "extension": ".es",
+      "representation": "JSON format=eluslot.es / formatVersion=1 / encoding=json",
+      "contents": "meta and board object",
+      "writer": "buildWorkSgJson:313",
+      "reader": "applyWorkSgJson:444 accepts eluslot.es, sgenaxis.sg or a truthy board without matching format",
+      "version_policy": "No version/encoding validation in applyWorkSgJson."
+    },
+    {
+      "extension": ".esui",
+      "representation": "JSON format=eluslot.esui / version retained-or-1; meta.encoding=json",
+      "contents": "design document, filtered to known UI types on apply",
+      "writer": "buildDesignSguiJson:336",
+      "reader": "applyDesignSguiJson:455 requires nodes array, does not enforce format/version",
+      "version_policy": "Distinct from the .ess embedded design XML representation."
+    },
+    {
+      "extension": ".sgendesign",
+      "representation": "JSON format=sgenaxis.design / formatVersion=1",
+      "contents": "Rust DesignDoc/DesignMeta/DesignNode DTOs; arbitrary props map",
+      "writer": "serialize_design:132 via dedicated IPC",
+      "reader": "parse_design_json:124; rejects other format/version and product_pass=true",
+      "version_policy": "Strict supported format/version but not a full identity/reference validator."
+    },
+    {
+      "extension": ".sgb",
+      "representation": "SGB1 binary container with u16 LE entry count/name length, u32 LE data length",
+      "contents": "default.es JSON + default.esml XML + default.esui JSON",
+      "writer": "packSgbBinary:274",
+      "reader": "unpackSgbBinary:294; legacy entry-name aliases accepted",
+      "version_policy": "Not a new XML schema; container is separate from .ess."
+    }
+  ],
+  "architecture_current_views": {
+    "hexagonal_roles_actual": "Browser UI commands [driving]\n -> JS scene/arch/design encode/decode + mutable document state [frontend application, combined in app.js]\n -> Tauri scene_save/scene_load or uidesign_* [input boundary]\n -> HOST scene_doc / uidesign_doc [application]\n -> FileSystemPort [output port]\n <- filesystem adapter [driven infrastructure]\nSeparate .ess packet CLI -> HOST module_packet -> SPEC pure projection + EssDecoderPort <- ProductEssDecoder XML adapter.\nThis describes current responsibilities; frontend codec/state/UI concerns are not physically separated into hexagonal modules.",
+    "dependency_map_actual": "app.js -> Tauri IPC names -> HOST functions -> FileSystemPort\nuidesign_doc -> typed serde JSON DTOs\nscene_doc -> opaque UTF-8 text persistence (no product XML validation)\nmodule_packet -> SPEC SourceElement projection + FileSystemPort + EssDecoderPort\nProductEssDecoder -> XML library; SPEC does not depend on XML SDK.\nNo dependency from Domain to DOM or filesystem is proposed.",
+    "ownership": "Frontend archDoc/designDoc/board projection state lives in app.js. HOST saves supplied scene text without parsing. Dedicated design save/load uses typed Rust DTOs. Packet has derived source-hashed projection only; it cannot own or mutate the source.",
+    "mutation": "Frontend apply functions mutate local documents and UI; scene_save writes a project-scoped text file through write_atomic. Packet performs no writes. Raw design hints/flags are not acceptance authority.",
+    "transactions": "Integrated .ess parser builds scene object before apply. Rendering/apply failures after mutation have no explicit rollback. Split load applies work then arch then design, so late parse failure can leave earlier state changed. Split save performs three separate atomic file calls; there is no declared three-file atomic commit. No new transaction semantics are approved here.",
+    "boundaries": "Document formats are external contracts. No automatic format unification, migration service, new parser, repository, port or manager is justified by this audit."
+  },
+  "identity_and_reference_current": [
+    "Architecture node.id, edge.id, port ids and Layer.modules[{slotId,moduleId,memberIds}] are distinct source concepts; moduleId is semantic identity, slotId is UI placement identity. They must not be assumed interchangeable.",
+    "Frontend arch decode defaults missing moduleId to slotId, fills absent ports and legacy members; ensureArchDocUuids uses a shared used-ID set across nodes/slots/modules/edges/events and replaces missing/duplicate IDs. The helper does not itself remap all references. This is compatibility normalization, not strict validation or proof of valid graph identity.",
+    "Frontend syncArchAssignmentsFromModules assigns moduleRef/layerRef from membership. The strict packet instead validates module/slot uniqueness separately, member existence and matching moduleRef/layerRef plus edge-node/direction-specific port references; it does not repair IDs.",
+    "Dedicated DesignDoc.validate checks format/version/product_pass only. Duplicate design node IDs, missing parents, selection references or parent cycles are not validated there.",
+    "UI architecture uiDefinitionRef is a document reference/hint; it does not prove a subset of design node ownership. Existing readonly packets emit UI_SCOPE_UNRESOLVED and UI_DOCUMENT_UNRESOLVED, remain NOT_READY and do not open external design files."
+  ],
+  "unknown_fields_and_roundtrip": [
+    {
+      "path": ".ess work/task",
+      "current": "Unknown task object fields are encoded in <extra encoding=json> CDATA and merged back. Bad extra JSON is silently ignored. Unknown board/root/meta fields do not have general preservation logic.",
+      "risk": "Not an arbitrary XML-preserving serializer; extra merge can overwrite known task keys."
+    },
+    {
+      "path": ".esml architecture",
+      "current": "Writer and parser enumerate known attributes/children. specProps string values and known payload JSON are supported; arbitrary unknown XML elements/attributes are not retained in a general extension store.",
+      "risk": "Unknown content and unsupported node kinds can disappear during decode/re-save. Missing/duplicate identity may be regenerated."
+    },
+    {
+      "path": ".ess design",
+      "current": "Known node fields/hints and props only. Scalar props serialized as attributes; decoder converts true/false to bool and decimal-looking strings to Number. null props are omitted. Object/array props use JSON CDATA; invalid JSON is ignored.",
+      "risk": "String '001'/'true', null and arbitrary node/meta fields cannot be promised type-preserving roundtrip. Non-UI node types filtered; empty designs may become blank Form."
+    },
+    {
+      "path": ".esui JSON",
+      "current": "JSON deep-copy writer generally retains existing object fields; apply filters node types and stamps UI fields. It rewrites format/product_pass/meta.updatedAt/encoding.",
+      "risk": "Unknown UI node types removed; exact bytes/timestamps not stable; scope/UI stamps are added."
+    },
+    {
+      "path": ".sgendesign Rust JSON",
+      "current": "Typed serde DTOs without flattened extension storage or deny_unknown_fields ignore unrecognized top-level/Meta/Node keys; arbitrary props JSON preserved. Frontend design fields meta.gridSize/formSize, node.scope/uiExclusive are not declared Rust fields.",
+      "risk": "Those fields can be lost across dedicated IPC DTO roundtrip. This is distinct from merely saving scene text."
+    },
+    {
+      "path": "CDATA text",
+      "current": "boardTaskToXml extra and designNodeToXml object props concatenate JSON directly inside CDATA.",
+      "risk": "A JSON string containing literal ]]> can terminate CDATA and produce malformed XML. Static candidate; no behavior reproduction executed in this task."
+    },
+    {
+      "path": "packet projection",
+      "current": "SourceElement retains arbitrary attrs/text/ordered children within selected module facts and source selectors; exact source bytes bound by SHA256. Unrelated bodies intentionally excluded.",
+      "risk": "Packet is a bounded read-only subset, not a lossless load/save migration document or approval source."
+    }
+  ],
+  "current_behavior_BDD_inventory": [
+    {
+      "id": "BDD-DOC-01",
+      "meaning": "Current .ess sample has work/architecture/design XML and can be inspected structurally",
+      "evidence": "tests/test_pd_scene_sgs_01.py:test_sample_ess_fixture_is_xml_scene",
+      "level": "Fixture XML parse; not JS runtime"
+    },
+    {
+      "id": "BDD-DOC-02",
+      "meaning": "Malformed XML returns no decoded scene before apply; strict packet rejects malformed/unsupported input",
+      "evidence": "app.js:917-961; host/tests/module_packet.rs",
+      "level": "Frontend static trace; Rust executable tests exist, not rerun here"
+    },
+    {
+      "id": "BDD-DOC-03",
+      "meaning": "Legacy scene/arch root and split names are accepted by frontend compatibility paths",
+      "evidence": "app.js:498-520,917-944,3991-4016",
+      "level": "Static only; JS compatibility fixture matrix gap"
+    },
+    {
+      "id": "BDD-DOC-04",
+      "meaning": "Dedicated .sgendesign rejects wrong format or product_pass=true",
+      "evidence": "uidesign_doc.rs tests rejects_wrong_format/rejects_product_pass_true",
+      "level": "Rust test inventory; not rerun here"
+    },
+    {
+      "id": "BDD-DOC-05",
+      "meaning": "Scene save/load opaque text stays inside project scene/ paths",
+      "evidence": "scene_doc.rs tests roundtrip_ess_text, invalid_scene_paths_preserve_existing_document",
+      "level": "Rust FS-port tests, not frontend semantic roundtrip"
+    },
+    {
+      "id": "BDD-DOC-06",
+      "meaning": "Strict packet rejects duplicate/dangling identity and missing module; successful subset remains NOT_READY",
+      "evidence": "host/tests/module_packet.rs, packet.rs",
+      "level": "Module-contract tests exist, no editable roundtrip guarantee"
+    },
+    {
+      "id": "BDD-DOC-07",
+      "meaning": "Failed late split design parse may leave board/arch already applied; failed third save may leave earlier files new",
+      "evidence": "app.js:477-490,536-549",
+      "level": "Observed code sequencing; behavioral failure-injection gap"
+    },
+    {
+      "id": "BDD-DOC-08",
+      "meaning": "Unknown fields/types, scalar strings/null, CDATA delimiter and identity fallback behavior need explicit characterization",
+      "evidence": "app.js:620-915,3247-3283,3991-4299; uidesign_doc DTOs",
+      "level": "Coverage gap, not newly approved preservation semantics"
+    }
+  ],
+  "test_inventory_and_trace_gaps": {
+    "existing": "Scene SGS/arch XML Python tests inspect hooks/source strings and parse sample fixtures; Rust scene_doc tests prove text/path behavior; Rust uidesign_doc tests prove typed JSON/format rejection and fake-FS persistence; readonly packet tests prove packet behavior. These are separate levels, never aggregated into full product roundtrip PASS.",
+    "important_test_side_effect": "tests/test_pd_scene_sgb_01.py:test_sample_sgb_fixture_roundtrip writes fixtures/sgenaxis-scene/sample.sgb. It was read only, NOT RUN, to avoid mutating protected fixture scope. Its own Python pack/unpack does not execute JS codecs.",
+    "missing_executable": "JS real-codec decode/encode semantic comparison, unknown version/field matrix, module/slot/reference repair, late load/apply failure preservation, three-file save partial failure, design JSON-vs-XML type fidelity, ]]> CDATA case, actual native UI load/save.",
+    "next_minimal_tests": "After contract decision, independent characterization suite executes existing codec functions against disposable fixtures without UI/IPC; expectations explicitly distinguish current behavior, desired preservation, and schema-changing cases. No extra parser/framework required by this audit.",
+    "pending_automation": "Step binding and fixture data are proposed below. No test file or product fixture was created/changed."
+  },
+  "coverage_category_review": {
+    "success": "Applicable: six current representations",
+    "boundary": "Applicable: missing/version/scalar/empty XML",
+    "invalid": "Applicable: parse/format and path errors",
+    "dependency_failure": "Applicable: IPC/read/write failure",
+    "partial_failure": "Applicable: split multi-step load/save",
+    "state_consistency": "Applicable: IDs/references/design filter",
+    "transaction": "Applicable: integrated parse-before-apply versus split mutation",
+    "lifecycle": "Applicable: dirty flags/project switching",
+    "rollback": "Applicable: no current global rollback guarantee",
+    "cross_module": "Applicable: frontend/HOST/FS and strict packet",
+    "compatibility": "Applicable: legacy names/root normalization",
+    "regression": "Applicable: existing format tests plus true JS characterization gap"
+  },
+  "smallest_decision_PROPOSED": {
+    "question": "是否核准 DOCUMENT A：保留現有 .ess/.esml XML 與 .es/.esui/.sgendesign JSON，不改 schema、不自動 migration；先把讀寫/版本/ID/未知欄位差異鎖成相容性契約與獨立 characterization 測試，Rust 封包維持嚴格 v1 且不替原檔補 ID，UI 歸屬維持 unresolved？",
+    "scope_cost": "This audit/report adds 0 production files/dependencies/types. Proposed next slice is tests and contract clarification only; no schema/serializer rewrite. Test harness selection waits for smallest available local JS/DOM capability; no new framework pre-authorized.",
+    "not_implicitly_approved": "Changing frontend version rejection, lossless unknown-field storage, strict graph validation, multi-file atomic save, atomic scene apply or identity migrations each requires a separate measurable contract and valid RED. This question authorizes none of them.",
+    "recommendation": "First characterize actual codecs and lock expected compatibility. Then separate small bugs (e.g. delimiter escaping preserving schema) from structural transaction/schema changes. Never silently normalize missing UI ownership."
+  },
+  "acceptance_current_audit": [
+    "AC-DOC-01 every claimed format links current codec/fixture evidence and records source hashes.",
+    "AC-DOC-02 actual strict/permissive version and identity behavior separated; no lossless-roundtrip assertion from source-string tests.",
+    "AC-DOC-03 state ownership/mutation/transaction and both architecture views included.",
+    "AC-DOC-04 module BDD/test coverage gaps distinguish inspection, existing evidence and NOT RUN.",
+    "AC-DOC-05 canonical module.json renders HTML deterministically; no production/test/fixture/board/index modification.",
+    "AC-DOC-06 DOCUMENT decision remains pending; report makes no architecture/implementation/acceptance approval."
+  ],
+  "status": {
+    "static_inventory": "Prepared; source-bound",
+    "behavior_tests": "NOT RUN",
+    "native_UI": "NOT RUN",
+    "new_skeleton_RED_implementation": "NOT STARTED",
+    "health": "Current contract differs across formats; characterization needed",
+    "architecture_conformance": "Read-only audit inside permitted report folder",
+    "owner_decision": "PENDING PD-RUST-DOCUMENT-DEC-01",
+    "commit_push": "NOT RUN"
+  },
+  "source_snapshot": {
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "note": "Exact reviewed working bytes. HEAD is not proof of unrelated WIP. Static observations only.",
+    "sha256": {
+      "apps/sgenaxis-desktop/ui/app.js": "8434f2b2c9b3878e46ff30d962367ef6a3cebebb5de7ae51ba435afd3a99c5c7",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs": "54905e157a6ddd0a059eeaebe29b12dd9fe25e283d1f6e7d37a47daabbafa214",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/uidesign_doc.rs": "8e24acfb794aeb36a2164085d1a2fef3a8e47f38ac734012be39ae2ea65b549b",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/src/module_packet.rs": "553b0a119b2b139ae3036c3fa26a7500fb1d67592a2e50dda8e45e28e0d52f6c",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/packet.rs": "445c5819af85b0d83022c06b91c05267c7213253c4d45d31f875b799f85d3cd3",
+      "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/ess_codec.rs": "902fe25316b3cbabc27acf1951bad024ac12612437c74449739a93665896da06",
+      "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/module_packet.rs": "0676a746e681ead93072dc3707ef5ece44a34480bffd7ccaaafd89a215629a23",
+      "fixtures/sgenaxis-scene/sample.ess": "ff5ecdd084de406badae653aabddc8c7ef19e60b6f497b9e1e524007253fc317",
+      "fixtures/sgenaxis-arch/sample.sgenarch.xml": "5c4cbe2a616d9b75216df01c3018c34cf64a6f289aef52f779e01de2da51fbba",
+      "fixtures/sgenaxis-design/sample.sgendesign": "0a0f077ad877848d24c7a344590005f3598a0fbcdf03c19b58ef2f861f3bb89b",
+      "tests/test_pd_scene_sgs_01.py": "083eec6b4e344a3fd751f00afd17164263d28c34dda22dd6011f02c1abb65769",
+      "tests/test_pd_scene_sgb_01.py": "5dacc5a8b045f46ac9a01c7e6a48dd5a4969d08ac7042967a5cde8dfc6f5113c",
+      "tests/test_pd_arch_xml_format_01.py": "d58232149e68a270060552893efc0393c78c71c4e0b054ebd27c88fde9235292",
+      "tests/test_pd_scene_project_scope_01.py": "a38af0bbb0be61516b158e3e6b457a3dcf85c75b655948c34c19fe6e76b34124"
+    }
+  }
+}

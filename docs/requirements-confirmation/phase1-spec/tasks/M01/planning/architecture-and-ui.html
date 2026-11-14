@@ -1,0 +1,359 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M01 專案定義與新建準備交付</title><style>body{font:16px/1.75 system-ui;max-width:1250px;margin:30px auto;padding:20px;color:#233044}section,article{border:1px solid #ccd;padding:20px;margin:20px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}table{border-collapse:collapse;width:100%;font-size:14px}td,th{border:1px solid #ccd;padding:9px;text-align:left;vertical-align:top}.scroll{overflow:auto}a{color:#245cb4}h2{color:#254b77}</style><h1>M01 專案定義與新建 準備交付</h1><p>PLANNING_DELIVERED_REVIEW_PENDING｜Architecture PROPOSED_NOT_APPROVED｜Product tests／RED／GREEN／Native NOT RUN</p><p>六步精靈、草稿、專案切換及建立結果</p><p>cursor/ui-bhv-arch-layer-editor @ 31babe87a7ef1e40a0d4bedc523077e7a45d63ab；已有WIP，以個別SHA256為來源基準。</p><p><a href="../../M08/planning/index.html">八模組整體審查</a> · <a href="inventory.json">來源證據</a> · <a href="gap-matrix.json">差額矩陣</a> · <a href="envelope.json">精確候選範圍</a></p><section><h2>目前能力與差額</h2><div class="scroll"><table><tr><th>來源行</th><th>SHA256</th><th>觀察</th><th>證據層</th></tr><tr><td>apps/sgenaxis-desktop/ui/app.js:1269</td><td>ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b</td><td>新建UI走名稱＋父目錄＋偏好，未見六步精靈</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs:40</td><td>5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205</td><td>新建偏好主路徑先validate且拒ExistingTarget；偏好保存失敗列DirectoryCreatedPreferencesFailed</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs:84</td><td>050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4</td><td>舊create_new_project_root會remove_file；create_dir_all可接受existing目錄，與新禁止覆寫要求不一致</td><td>SOURCE_ONLY</td></tr><tr><td>apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs:1</td><td>c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1</td><td>ProjectId由canonical root雜湊，不能直接宣稱是跨搬移持久ID</td><td>SOURCE_ONLY</td></tr></table></div><ul><li>六步定義、各步草稿、重開續填與生成門檻缺整合路徑</li><li>所有對外新建入口必須一致拒既有目標；主路徑安全不代表舊入口安全</li><li>保留偏好已交付能力，不重做schema/presets</li></ul><p>Negative findings只限inventory及search-log所列範圍；不宣稱遍歷全repo已證明功能不存在。</p></section><section><h2>View A Hexagonal系統邊界（提案）</h2><pre>Driving UI / Tests
+          ↓
+Tauri Commands → DispatchHost / Input ports
+          ↓
+HOST Application usecase → WORK Domain (authority)
+          ↓ abstractions
+Storage / Transaction / Codec / Clock roles
+          ↑ implements
+Std FS / user paths / archive / preview adapters
+State owner: WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。
+Mutation boundary: Prepare/SaveDraft/Create/BindProject（提案）</pre></section><section><h2>View B 模組依賴與交易（提案）</h2><pre>M01 Input → M01 Usecase → domain policy + output ports
+M01 project definition → M02 generation → M03 design projection
+M06 single merge → M04 document commit/history → M05 asset references
+M07 stable capture ← M04 content revision; M07 retained pins → M05
+M08 test drivers → module input ports, no domain ownership
+Transaction: validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。</pre><div class="scroll"><table><tr><th>A1-A14</th><th>內容</th></tr><tr><td>A1_context</td><td>專案定義與新建；六步精靈、草稿、專案切換及建立結果</td></tr><tr><td>A2_hexagonal</td><td>UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters</td></tr><tr><td>A3_dependency</td><td>M01 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass</td></tr><tr><td>A4_responsibility</td><td>六步精靈、草稿、專案切換及建立結果</td></tr><tr><td>A5_input_ports</td><td>Prepare/SaveDraft/Create/BindProject（提案）</td></tr><tr><td>A6_output_ports</td><td>FileSystemPort、既有project preference parser/store；不新建Repository。</td></tr><tr><td>A7_driving_adapters</td><td>Vanilla UI / module tests / Windows native operator</td></tr><tr><td>A8_driven_adapters</td><td>Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager</td></tr><tr><td>A9_direction</td><td>Domain must not depend on UI/FS/OS/Tauri/concrete adapters</td></tr><tr><td>A10_ownership</td><td>WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。</td></tr><tr><td>A11_mutation</td><td>All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document</td></tr><tr><td>A12_transaction</td><td>validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。</td></tr><tr><td>A13_external</td><td>Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority</td></tr><tr><td>A14_forbidden</td><td>UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape</td></tr><tr><td>status</td><td>PROPOSED_NOT_APPROVED</td></tr></table></div></section><section><h2>契約、不變條件與UI schema</h2><pre>{
+  &quot;preconditions&quot;: &quot;Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions&quot;,
+  &quot;success&quot;: &quot;Result reflects committed version, no error contradiction; design/build status never equals functional acceptance&quot;,
+  &quot;failure&quot;: &quot;Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5&quot;,
+  &quot;ownership&quot;: &quot;WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。&quot;,
+  &quot;atomicity&quot;: &quot;validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。&quot;,
+  &quot;lifecycle&quot;: &quot;Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files&quot;,
+  &quot;invariants&quot;: [
+    [
+      &quot;INV01&quot;,
+      &quot;任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。&quot;
+    ],
+    [
+      &quot;INV02&quot;,
+      &quot;文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。&quot;
+    ],
+    [
+      &quot;INV06&quot;,
+      &quot;成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。&quot;
+    ],
+    [
+      &quot;INV08&quot;,
+      &quot;匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。&quot;
+    ]
+  ]
+}</pre><pre>{
+  &quot;role&quot;: &quot;本機專案作者／設計者&quot;,
+  &quot;fields_controls_states&quot;: &quot;六步導覽、名稱/父路徑/完整路徑、目的/偏好/目標/技術待決狀態、草稿/返回/下一步/建立；雙擊防重送。&quot;,
+  &quot;validation&quot;: &quot;Validate fields, identity, revision and capability before mutation; disabled states name reason&quot;,
+  &quot;defaults&quot;: &quot;Spec D01-D13 are proposals; no implicit approval here&quot;,
+  &quot;empty&quot;: &quot;No project/document/template/asset/artifact: show actual empty state and next available action&quot;,
+  &quot;accessibility&quot;: &quot;Text labels, keyboard focus, field-linked errors; details pending rendered UI review&quot;
+}</pre></section><section><h2>精確候選檔案與成本（待批准）</h2><pre>{
+  &quot;module&quot;: &quot;M01&quot;,
+  &quot;status&quot;: &quot;PROPOSED_NOT_APPROVED&quot;,
+  &quot;current_authorized_writes&quot;: [
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M01/planning/**&quot;,
+    &quot;own PREP board notes and planning status only&quot;
+  ],
+  &quot;proposed_existing_production&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/commands.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/dto.rs&quot;,
+    &quot;apps/sgenaxis-desktop/src-tauri/src/lib.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/app.js&quot;,
+    &quot;apps/sgenaxis-desktop/ui/index.html&quot;,
+    &quot;apps/sgenaxis-desktop/ui/styles.css&quot;
+  ],
+  &quot;proposed_new_production&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/project-wizard.js&quot;
+  ],
+  &quot;proposed_tests&quot;: [
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs&quot;,
+    &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_identity.rs&quot;,
+    &quot;apps/sgenaxis-desktop/ui/project-wizard.test.cjs&quot;
+  ],
+  &quot;protected&quot;: &quot;All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.&quot;,
+  &quot;shared_files&quot;: &quot;app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.&quot;,
+  &quot;baseline&quot;: [
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs&quot;,
+      &quot;sha256&quot;: &quot;d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs&quot;,
+      &quot;sha256&quot;: &quot;050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs&quot;,
+      &quot;sha256&quot;: &quot;5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs&quot;,
+      &quot;sha256&quot;: &quot;c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs&quot;,
+      &quot;sha256&quot;: &quot;851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs&quot;,
+      &quot;sha256&quot;: &quot;7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/commands.rs&quot;,
+      &quot;sha256&quot;: &quot;90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dispatch.rs&quot;,
+      &quot;sha256&quot;: &quot;6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/dto.rs&quot;,
+      &quot;sha256&quot;: &quot;6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/src-tauri/src/lib.rs&quot;,
+      &quot;sha256&quot;: &quot;8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/app.js&quot;,
+      &quot;sha256&quot;: &quot;ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/index.html&quot;,
+      &quot;sha256&quot;: &quot;5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2&quot;
+    },
+    {
+      &quot;path&quot;: &quot;apps/sgenaxis-desktop/ui/styles.css&quot;,
+      &quot;sha256&quot;: &quot;40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42&quot;
+    }
+  ],
+  &quot;new_dependency_cost&quot;: &quot;No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.&quot;,
+  &quot;new_public_api_cost&quot;: &quot;Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.&quot;,
+  &quot;file_cost&quot;: {
+    &quot;existing_candidates&quot;: 13,
+    &quot;new_production_candidates&quot;: 3,
+    &quot;new_test_candidates&quot;: 3
+  },
+  &quot;decisions&quot;: [
+    &quot;D1&quot;,
+    &quot;D2&quot;,
+    &quot;D7&quot;
+  ]
+}</pre><p>以上為針對此模組的候選集合，不是無條件的實作包；G門檻與public API/Skeleton未批准前只能寫planning。跨模組new files的責任歸屬要先拆卡，不可在共用檔改整個產品。</p></section><section><h2>BDD與驗收</h2><div class="scroll"><table><tr><th>BDD</th><th>TDD</th><th>Given</th><th>When</th><th>Then</th><th>結果</th></tr><tr><td>BDD-01</td><td>TDD-01</td><td>已填基本資料且主要框架尚未決定</td><td>保存定義並重新開啟</td><td>已保存欄位與未決事項仍在，未生成未確認部分</td><td>NOT RUN</td></tr><tr><td>BDD-02</td><td>TDD-02</td><td>目標目錄已有檔案</td><td>要求新建專案</td><td>不覆寫，提供修改名稱、另選位置或取消</td><td>NOT RUN</td></tr><tr><td>BDD-M01-A</td><td>TDD-M01-A</td><td>目標同路徑已有一般檔案</td><td>從任一新建入口要求建立</td><td>原檔bytes不變且提供修改名稱/另選位置/取消</td><td>NOT RUN</td></tr><tr><td>BDD-M01-B</td><td>TDD-M01-B</td><td>已保存定義的專案移至新路徑</td><td>開啟專案並查復原歷史</td><td>依批准持久身份定位，不錯綁其他專案</td><td>NOT RUN</td></tr></table></div><p><a href="module.feature">Gherkin</a> · <a href="steps_pending.py">Step stubs</a> · <a href="fixtures.json">Fixture</a> · <a href="test-plan.json">TDD完整計畫</a></p><pre>{
+  &quot;module&quot;: &quot;M01&quot;,
+  &quot;existing_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test -p sgenaxis-host --test project_preferences_creation&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;node --test ui/project-preferences-ui.test.cjs&quot;,
+      &quot;status&quot;: &quot;NOT RUN / EXISTING_TARGET_SOURCE_CHECKED&quot;,
+      &quot;purpose&quot;: &quot;Existing source/target present; may only inspect static text, not behavior proof&quot;
+    }
+  ],
+  &quot;proposed_commands&quot;: [
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test -p sgenaxis-host --test phase1_project_definition&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;cargo test -p sgenaxis-work --test phase1_project_identity&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    },
+    {
+      &quot;cwd&quot;: &quot;D:/AIAD/apps/sgenaxis-desktop&quot;,
+      &quot;command&quot;: &quot;node --test ui/project-wizard.test.cjs&quot;,
+      &quot;status&quot;: &quot;NOT RUN / PROPOSED_TARGET_NOT_CREATED&quot;,
+      &quot;purpose&quot;: &quot;Only runnable after approved Skeleton creates exact target&quot;
+    }
+  ],
+  &quot;cases&quot;: [
+    {
+      &quot;id&quot;: &quot;TDD-01&quot;,
+      &quot;bdd&quot;: &quot;BDD-01&quot;,
+      &quot;requirement&quot;: &quot;REQ-03&quot;,
+      &quot;title&quot;: &quot;保存未完成精靈&quot;,
+      &quot;given&quot;: &quot;已填基本資料且主要框架尚未決定&quot;,
+      &quot;when&quot;: &quot;保存定義並重新開啟&quot;,
+      &quot;then&quot;: &quot;已保存欄位與未決事項仍在，未生成未確認部分&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-01&quot;,
+      &quot;levels&quot;: [
+        &quot;L1 component&quot;,
+        &quot;L2 module contract&quot;,
+        &quot;L3 adapter where applicable&quot;
+      ],
+      &quot;valid_red&quot;: &quot;After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-02&quot;,
+      &quot;bdd&quot;: &quot;BDD-02&quot;,
+      &quot;requirement&quot;: &quot;REQ-08&quot;,
+      &quot;title&quot;: &quot;非空目錄&quot;,
+      &quot;given&quot;: &quot;目標目錄已有檔案&quot;,
+      &quot;when&quot;: &quot;要求新建專案&quot;,
+      &quot;then&quot;: &quot;不覆寫，提供修改名稱、另選位置或取消&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-02&quot;,
+      &quot;levels&quot;: [
+        &quot;L1 component&quot;,
+        &quot;L2 module contract&quot;,
+        &quot;L3 adapter where applicable&quot;
+      ],
+      &quot;valid_red&quot;: &quot;After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-M01-A&quot;,
+      &quot;bdd&quot;: &quot;BDD-M01-A&quot;,
+      &quot;requirement&quot;: &quot;REQ-02,03,07,08&quot;,
+      &quot;title&quot;: &quot;既有檔案保全&quot;,
+      &quot;given&quot;: &quot;目標同路徑已有一般檔案&quot;,
+      &quot;when&quot;: &quot;從任一新建入口要求建立&quot;,
+      &quot;then&quot;: &quot;原檔bytes不變且提供修改名稱/另選位置/取消&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-M01-A&quot;,
+      &quot;levels&quot;: [
+        &quot;L2 module contract&quot;,
+        &quot;L4 adjacent regression&quot;
+      ],
+      &quot;valid_red&quot;: &quot;Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;TDD-M01-B&quot;,
+      &quot;bdd&quot;: &quot;BDD-M01-B&quot;,
+      &quot;requirement&quot;: &quot;REQ-02,03,07,08&quot;,
+      &quot;title&quot;: &quot;跨搬移身分&quot;,
+      &quot;given&quot;: &quot;已保存定義的專案移至新路徑&quot;,
+      &quot;when&quot;: &quot;開啟專案並查復原歷史&quot;,
+      &quot;then&quot;: &quot;依批准持久身份定位，不錯綁其他專案&quot;,
+      &quot;fixture&quot;: &quot;fixtures.json#BDD-M01-B&quot;,
+      &quot;levels&quot;: [
+        &quot;L2 module contract&quot;,
+        &quot;L4 adjacent regression&quot;
+      ],
+      &quot;valid_red&quot;: &quot;Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.&quot;,
+      &quot;result&quot;: &quot;NOT RUN&quot;
+    }
+  ],
+  &quot;B1_B12&quot;: [
+    {
+      &quot;id&quot;: &quot;B1&quot;,
+      &quot;name&quot;: &quot;成功&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B2&quot;,
+      &quot;name&quot;: &quot;邊界&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B3&quot;,
+      &quot;name&quot;: &quot;非法輸入&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B4&quot;,
+      &quot;name&quot;: &quot;依賴失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B5&quot;,
+      &quot;name&quot;: &quot;部分失敗&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B6&quot;,
+      &quot;name&quot;: &quot;狀態一致性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B7&quot;,
+      &quot;name&quot;: &quot;交易&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B8&quot;,
+      &quot;name&quot;: &quot;生命週期&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B9&quot;,
+      &quot;name&quot;: &quot;回復&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B10&quot;,
+      &quot;name&quot;: &quot;跨模組&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B11&quot;,
+      &quot;name&quot;: &quot;相容性&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    },
+    {
+      &quot;id&quot;: &quot;B12&quot;,
+      &quot;name&quot;: &quot;回歸&quot;,
+      &quot;applicability&quot;: &quot;Applicable&quot;,
+      &quot;reason&quot;: &quot;此模組具相應輸入/生命週期/依賴與整合驗收義務&quot;,
+      &quot;result&quot;: &quot;PLANNED_NOT_RUN&quot;
+    }
+  ],
+  &quot;fixture_strategy&quot;: &quot;isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.&quot;,
+  &quot;regression_levels&quot;: [
+    &quot;focused new cases&quot;,
+    &quot;module public-input contract tests&quot;,
+    &quot;adjacent shared-boundary tests&quot;,
+    &quot;architecture constraints&quot;,
+    &quot;Windows native via M08&quot;
+  ],
+  &quot;pending_automation&quot;: [
+    &quot;exact approved input DTO/Port bindings&quot;,
+    &quot;create listed test target and fixtures after Skeleton gate&quot;,
+    &quot;expand per-case fault matrix&quot;,
+    &quot;native UI operator + runtime source identity&quot;,
+    &quot;real filesystem interruption and rollback-failure coverage&quot;
+  ],
+  &quot;stop_conditions&quot;: [
+    &quot;unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED&quot;,
+    &quot;conflicting specification → SPEC_CONFLICT&quot;,
+    &quot;tests compile/fixture/environment errors → not valid RED&quot;
+  ],
+  &quot;test_execution&quot;: &quot;NOT RUN; no production tests or test files created&quot;
+}</pre></section><section><h2>需要集中決策與剩餘風險</h2><div class="scroll"><table><tr><th>ID</th><th>方案建議</th><th>局部阻塞</th></tr><tr><td>D1</td><td>保留ESS v1讀取相容；新增版本化ProjectDefinition持久UUID及legacy root-key對照；BIN另定manifest含原格式payload，不偷換ESS。</td><td>schema/identity/migration未批准前，不寫新格式。</td></tr><tr><td>D2</td><td>漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。</td><td>ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。</td></tr><tr><td>D7</td><td>依已確認規則統一拒已有目標；若舊test要求刪file，列契約遷移並批准測試revision，不能偷偷改expected。Windows11 x64/WebView2實測＋新artifact lock再驗收。</td><td>不重問是否保護資料，只需精確修改scope/測試遷移及環境驗收計畫。</td></tr></table></div><p>Acceptance：所有相關REQ/BDD有現況或缺口；B1-B12逐項評估；兩圖/authority/mutation/transaction明列；精確檔案與未來命令可審；未跑證據層明示。獨立審查與Owner批准未取得，因此不宣告MODULE_TASK_COMPLETE、不自行綠燈。</p></section><script type="application/json" id="module-spec">{"module": "M01", "task": "PD-P1-M01-PREP-01", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "architecture": {"A1_context": "專案定義與新建；六步精靈、草稿、專案切換及建立結果", "A2_hexagonal": "UI/Test → Input Tauri commands → DispatchHost → HOST usecase → WORK/domain → output abstractions ← adapters", "A3_dependency": "M01 orchestrates its own domain; shared roles coordinated via explicit ports, no UI→adapter bypass", "A4_responsibility": "六步精靈、草稿、專案切換及建立結果", "A5_input_ports": "Prepare/SaveDraft/Create/BindProject（提案）", "A6_output_ports": "FileSystemPort、既有project preference parser/store；不新建Repository。", "A7_driving_adapters": "Vanilla UI / module tests / Windows native operator", "A8_driven_adapters": "Std/FakeFileSystem; any OS/codec/clock capability must be approved, not invented manager", "A9_direction": "Domain must not depend on UI/FS/OS/Tauri/concrete adapters", "A10_ownership": "WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。", "A11_mutation": "All authoritative mutations through approved input/usecase; projections/codec cannot mutate another document", "A12_transaction": "validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。", "A13_external": "Untrusted package/media/path inputs; no AI/Git/plugin/startup execution authority", "A14_forbidden": "UI→FS/Git/MCP/adapters; Domain→framework; recovery/asset silently changing active content; cross-file merge escape", "status": "PROPOSED_NOT_APPROVED"}, "contract": {"preconditions": "Bound project and correct document/session identity, supported input and approved current revision; proposal details await decisions", "success": "Result reflects committed version, no error contradiction; design/build status never equals functional acceptance", "failure": "Refuse/cancel preserves originals; single-document merge rolls back complete before-state; rollback-failure safeguards require D5", "ownership": "WORK持定義/身份；HOST保存協調；UI只有可丟棄draft。", "atomicity": "validate target+draft → prepare → create owned target → persist → bind；partial outcome列明，既有檔不刪。", "lifecycle": "Per-open document history; no cross-document or restart Undo; session IDs isolate recovery, not permission to overwrite formal files", "invariants": [["INV01", "任一拒絕／取消／失敗不得破壞原有效資料；合併要求回到完整合併前狀態。"], ["INV02", "文件權威狀態由所屬文件模型持有；UI、序列化、預覽、差異方案及快照均非第二個可任意寫回的SSOT。"], ["INV06", "成功結果與錯誤結果互斥；NOT RUN、生成完成、預覽可操作與正式功能驗證分開。"], ["INV08", "匯入及預覽不執行包內程式，不洩露憑證，不寫出指定目錄。"]]}, "inventory": {"module": "M01", "task": "PD-P1-M01-PREP-01", "branch": "cursor/ui-bhv-arch-layer-editor", "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "dirty": true, "evidence": "SOURCE_INSPECTION_ONLY", "files": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs", "exists": true, "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs", "exists": true, "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs", "exists": true, "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs", "exists": true, "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/project_preferences_creation.rs", "exists": true, "sha256": "f2c2760a7d275a5b6e70f845cb312fe9f3f5e0d82d3270f522da6b9d0be0b548"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs", "exists": true, "sha256": "c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "exists": true, "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs", "exists": true, "sha256": "7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project.rs", "exists": true, "sha256": "8f9a9caeabaae0d91bb5e9c56f1dd13ac3b4b5d2c81b0533aedf16fd33c071b4"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "exists": true, "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "exists": true, "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "exists": true, "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "exists": true, "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"}, {"path": "apps/sgenaxis-desktop/src-tauri/tests/project_preferences_commands.rs", "exists": true, "sha256": "b4a8d33cd1f8b4012f68dcc40ea69bed0985c3fcf57de9511d203d97611be855"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "exists": true, "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"}, {"path": "apps/sgenaxis-desktop/ui/index.html", "exists": true, "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"}, {"path": "apps/sgenaxis-desktop/ui/project-preferences-ui.test.cjs", "exists": true, "sha256": "4a1e0bfe73df412154234f1b34a236e9e332e1d7e32a787aadeee3fc7a619d29"}, {"path": "apps/sgenaxis-desktop/ui/styles.css", "exists": true, "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"}], "findings": [{"path": "apps/sgenaxis-desktop/ui/app.js", "line_start": 1269, "line_end": 1327, "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b", "excerpt": "  async function cmdNewProject() {\n    if (!invoke) {\n      toast(\"新增專案需 Tauri IPC（瀏覽器模式無法建立本機目錄／NOT RUN）\");\n      setStatus(\"新增專案：無 IPC／NOT RUN\");\n      return;\n    }\n    try {\n      const nameRaw = window.prompt(\"新專案資料夾名稱\", \"NewProject\");\n      if (nameRaw === null) {\n        toast(\"已取消新增專案\");\n        setStatus(\"新增專案：已取消（名稱）\");\n        return;\n      }\n      const name = String(nameRaw).trim();\n      if (!name) {\n        toast(\"新增專案失敗：名稱不可為空\");\n        setStatus(\"新增專案失敗：空名稱\");\n        return;\n      }\n      setStatus(\"新增專案：請選擇父資料夾…\");\n      const parentPick = await invoke(\"host_pick_project_directory\");\n      if (!parentPick || parentPick.status === \"cancelled\") {\n        const msg =\n          (parentPick && parentPick.message) || \"已取消新增專案（父目錄）\";\n        toast(msg);\n        setStatus(msg);\n        return;\n      }\n      if (parentPick.status !== \"ok\" || !(parentPick.path || \"\").trim()) {\n        const msg =\n          (parentPick && parentPick.message) || \"新增專案失敗：父目錄無效\";\n        toast(msg);\n        setStatus(msg);\n        return;\n      }\n      const preferenceChoice = await window.ProjectPreferencesUI.chooseNewProject();\n      if (!preferenceChoice) {\n        toast(\"已取消新增專案（偏好設定）\");\n        return;\n      }\n      const created = await invoke(\"host_create_project_with_preferences\", {\n        args: {\n          parent: String(parentPick.path).trim(),\n          name: name,\n          presetId: preferenceChoice.presetId,\n          importedJson: preferenceChoice.importedJson,\n        },\n      });\n      try {\n        await bindPickedProjectRoot(created, \"新增專案\");\n      } catch (bindError) {\n        const msg=\"專案目錄已建立，但未完成專案綁定：\"+String(bindError);\n        toast(msg);setStatus(msg);\n      }\n    } catch (err) {\n      const msg = \"新增專案失敗：\" + String(err);\n      toast(msg);\n      setStatus(msg);\n    }", "observation": "新建UI走名稱＋父目錄＋偏好，未見六步精靈", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs", "line_start": 40, "line_end": 78, "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205", "excerpt": "pub fn create_project_with_preferences(\n    fs: &dyn FileSystemPort,\n    root: &str,\n    choice: PreferenceChoice<'_>,\n) -> Result<CreationOutcome, ProjectPreferenceError> {\n    let (root, _) = root_path(root)?;\n    // Validate before creating anything. Imported data is already captured; this\n    // use case has no source-path write capability and never copies credentials.\n    let prepared = match choice {\n        PreferenceChoice::Skip => None,\n        PreferenceChoice::Preset(id) => Some(\n            sgenaxis_spec::project_preferences::preset(id)\n                .map_err(ProjectPreferenceError::Policy)?,\n        ),\n        PreferenceChoice::Imported(bytes) => {\n            Some(parse_project_preferences(bytes).map_err(ProjectPreferenceError::Policy)?)\n        }\n    };\n    if fs.exists(&root).map_err(ProjectPreferenceError::Storage)? {\n        return Err(ProjectPreferenceError::ExistingTarget);\n    }\n    fs.create_dir_all(&root)\n        .map_err(ProjectPreferenceError::Storage)?;\n    match prepared {\n        None => Ok(CreationOutcome::Created {\n            project_root: root,\n            preferences: None,\n        }),\n        Some(draft) => match save_project_preferences(fs, &root, None, &draft) {\n            Ok(view) => Ok(CreationOutcome::Created {\n                project_root: root,\n                preferences: Some(view),\n            }),\n            Err(error) => Ok(CreationOutcome::DirectoryCreatedPreferencesFailed {\n                project_root: root,\n                error,\n            }),\n        },\n    }", "observation": "新建偏好主路徑先validate且拒ExistingTarget；偏好保存失敗列DirectoryCreatedPreferencesFailed", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs", "line_start": 84, "line_end": 115, "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4", "excerpt": "/// Create (or ensure) a project directory through [`FileSystemPort`].\n///\n/// If `path` already exists as a **file** (e.g. Save-dialog residue), removes it\n/// via [`FileSystemPort::remove_file`] then [`FileSystemPort::create_dir_all`].\n///\n/// Returns the normalized absolute／local path string suitable for\n/// `HostSettings.project_root`. Does **not** mutate settings.\npub fn create_new_project_root(fs: &dyn FileSystemPort, raw: &str) -> Result<String, HostError> {\n    let path = normalize_new_project_path(raw)?;\n    if fs.is_file(&path).unwrap_or(false) {\n        fs.remove_file(&path).map_err(|e| {\n            HostError::Settings(format!(\"無法移除殘留檔「{path}」以便建立目錄：{e}\"))\n        })?;\n    }\n    fs.create_dir_all(&path)\n        .map_err(|e| HostError::Settings(format!(\"無法建立專案目錄「{path}」：{e}\")))?;\n    Ok(path)\n}\n\n/// Create under `parent`/`name` (PD-BUG-FILE-NEW-01).\npub fn create_new_project_under(\n    fs: &dyn FileSystemPort,\n    parent: &str,\n    name: &str,\n) -> Result<String, HostError> {\n    let path = join_new_project_path(parent, name)?;\n    create_new_project_root(fs, &path)\n}\n\n#[cfg(test)]\nmod tests {\n    use super::*;", "observation": "舊create_new_project_root會remove_file；create_dir_all可接受existing目錄，與新禁止覆寫要求不一致", "evidence": "SOURCE_INSPECTION_ONLY"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs", "line_start": 1, "line_end": 35, "sha256": "c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1", "excerpt": "//! Stable [`ProjectId`] from canonical root (deterministic; no OS UUID).\n\nuse std::fmt;\n\n/// Opaque project identity. Stable across rebinds; derived once at first register.\n#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]\npub struct ProjectId(String);\n\nimpl ProjectId {\n    pub fn new(raw: impl Into<String>) -> Self {\n        Self(raw.into())\n    }\n\n    /// Deterministic id from a canonical root path (WORK-001: stable Project ID).\n    pub fn from_canonical_root(canonical: &str) -> Self {\n        let digest = fnv1a64(canonical.as_bytes());\n        Self(format!(\"proj_{digest:016x}\"))\n    }\n\n    pub fn as_str(&self) -> &str {\n        &self.0\n    }\n}\n\nimpl fmt::Display for ProjectId {\n    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {\n        f.write_str(&self.0)\n    }\n}\n\nimpl AsRef<str> for ProjectId {\n    fn as_ref(&self) -> &str {\n        &self.0\n    }\n}", "observation": "ProjectId由canonical root雜湊，不能直接宣稱是跨搬移持久ID", "evidence": "SOURCE_INSPECTION_ONLY"}], "tests": "NOT RUN", "native_ui": "NOT RUN", "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."}, "gap": {"module": "M01", "status": "PLANNING_DELIVERED_REVIEW_PENDING", "requirements": [{"requirement": "REQ-02", "module": "M01/M04", "feature": "F01/F05", "tests": "BDD-01; X04", "acceptance": "AC01/AC05", "result": "PLANNED_NOT_RUN"}, {"requirement": "REQ-03", "module": "M01", "feature": "F01", "tests": "BDD-01; X01", "acceptance": "AC01", "result": "PLANNED_NOT_RUN"}, {"requirement": "REQ-08", "module": "M01", "feature": "F01", "tests": "BDD-02; X01", "acceptance": "AC01", "result": "PLANNED_NOT_RUN"}], "gaps": ["六步定義、各步草稿、重開續填與生成門檻缺整合路徑", "所有對外新建入口必須一致拒既有目標；主路徑安全不代表舊入口安全", "保留偏好已交付能力，不重做schema/presets"], "bdd_owned": [{"id": "BDD-01", "req": "REQ-03", "name": "保存未完成精靈", "result": "PLANNED_NOT_RUN"}, {"id": "BDD-02", "req": "REQ-08", "name": "非空目錄", "result": "PLANNED_NOT_RUN"}], "extra_obligations": [["X01", "M01", "名稱空白／Windows保留名、不可寫路徑、重複按建立、草稿取消與重開；六步各自值保全。"]], "reuse_strategy": "Retain existing scoped behavior and add minimum approved delta; do not rebuild historical green capabilities."}, "envelope": {"module": "M01", "status": "PROPOSED_NOT_APPROVED", "current_authorized_writes": ["docs/requirements-confirmation/phase1-spec/tasks/M01/planning/**", "own PREP board notes and planning status only"], "proposed_existing_production": ["apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs", "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs", "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs", "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "apps/sgenaxis-desktop/ui/app.js", "apps/sgenaxis-desktop/ui/index.html", "apps/sgenaxis-desktop/ui/styles.css"], "proposed_new_production": ["apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_definition.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs", "apps/sgenaxis-desktop/ui/project-wizard.js"], "proposed_tests": ["apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_definition.rs", "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_project_identity.rs", "apps/sgenaxis-desktop/ui/project-wizard.test.cjs"], "protected": "All other paths. Current authorization excludes ALL product/tests/packaging modifications. No broad production wildcard.", "shared_files": "app.js/commands/dispatch/dto/lib are shared composition seams, only named module handlers may change after approval; changes in other modules require that module task.", "baseline": [{"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs", "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_new.rs", "sha256": "050f4f0b59e1c685d761a60e047ca3a7498b43a53130b900165b02bb18fc48f4"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_preferences.rs", "sha256": "5f2ff4fb9d8100adb9cefce90f358b7740203f96142c5dd0ba1e52f384078205"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/id.rs", "sha256": "c58e4aaed721c46ddc63366bcf109f999b167f42be1da90be6a679a3848500a1"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs", "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"}, {"path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs", "sha256": "7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs", "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs", "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs", "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"}, {"path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs", "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"}, {"path": "apps/sgenaxis-desktop/ui/app.js", "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"}, {"path": "apps/sgenaxis-desktop/ui/index.html", "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"}, {"path": "apps/sgenaxis-desktop/ui/styles.css", "sha256": "40b966b8fdf2c03b2a8b177101508a5ac971b48d349ea18093260adf333acb42"}], "new_dependency_cost": "No new dependency approved; archive/media/OS lock capability requires explicit pinned choice.", "new_public_api_cost": "Proposed role names only; exact DTO/signatures/type count remain pending Skeleton review; this envelope cannot authorize implementation.", "file_cost": {"existing_candidates": 13, "new_production_candidates": 3, "new_test_candidates": 3}, "decisions": ["D1", "D2", "D7"]}, "tests": {"module": "M01", "existing_commands": [{"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test -p sgenaxis-host --test project_preferences_creation", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "node --test ui/project-preferences-ui.test.cjs", "status": "NOT RUN / EXISTING_TARGET_SOURCE_CHECKED", "purpose": "Existing source/target present; may only inspect static text, not behavior proof"}], "proposed_commands": [{"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test -p sgenaxis-host --test phase1_project_definition", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "cargo test -p sgenaxis-work --test phase1_project_identity", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}, {"cwd": "D:/AIAD/apps/sgenaxis-desktop", "command": "node --test ui/project-wizard.test.cjs", "status": "NOT RUN / PROPOSED_TARGET_NOT_CREATED", "purpose": "Only runnable after approved Skeleton creates exact target"}], "cases": [{"id": "TDD-01", "bdd": "BDD-01", "requirement": "REQ-03", "title": "保存未完成精靈", "given": "已填基本資料且主要框架尚未決定", "when": "保存定義並重新開啟", "then": "已保存欄位與未決事項仍在，未生成未確認部分", "fixture": "fixtures.json#BDD-01", "levels": ["L1 component", "L2 module contract", "L3 adapter where applicable"], "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.", "result": "NOT RUN"}, {"id": "TDD-02", "bdd": "BDD-02", "requirement": "REQ-08", "title": "非空目錄", "given": "目標目錄已有檔案", "when": "要求新建專案", "then": "不覆寫，提供修改名稱、另選位置或取消", "fixture": "fixtures.json#BDD-02", "levels": ["L1 component", "L2 module contract", "L3 adapter where applicable"], "valid_red": "After approved Skeleton, exact target must compile and reach assertions, failing only for missing target behavior; already present behavior is regression and may pass. No compile/fixture/environment error counts as RED.", "result": "NOT RUN"}, {"id": "TDD-M01-A", "bdd": "BDD-M01-A", "requirement": "REQ-02,03,07,08", "title": "既有檔案保全", "given": "目標同路徑已有一般檔案", "when": "從任一新建入口要求建立", "then": "原檔bytes不變且提供修改名稱/另選位置/取消", "fixture": "fixtures.json#BDD-M01-A", "levels": ["L2 module contract", "L4 adjacent regression"], "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.", "result": "NOT RUN"}, {"id": "TDD-M01-B", "bdd": "BDD-M01-B", "requirement": "REQ-02,03,07,08", "title": "跨搬移身分", "given": "已保存定義的專案移至新路徑", "when": "開啟專案並查復原歷史", "then": "依批准持久身份定位，不錯綁其他專案", "fixture": "fixtures.json#BDD-M01-B", "levels": ["L2 module contract", "L4 adjacent regression"], "valid_red": "Test target compiled after approved Skeleton; failure must match missing behavior, not unavailable test target or dependency.", "result": "NOT RUN"}], "B1_B12": [{"id": "B1", "name": "成功", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B2", "name": "邊界", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B3", "name": "非法輸入", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B4", "name": "依賴失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B5", "name": "部分失敗", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B6", "name": "狀態一致性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B7", "name": "交易", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B8", "name": "生命週期", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B9", "name": "回復", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B10", "name": "跨模組", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B11", "name": "相容性", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}, {"id": "B12", "name": "回歸", "applicability": "Applicable", "reason": "此模組具相應輸入/生命週期/依賴與整合驗收義務", "result": "PLANNED_NOT_RUN"}], "fixture_strategy": "isolated TEMP_ROOT A/B projects; source bytes/hash immutable; document before/after canonical hash excludes focus/playback; fake FS fault at read/validate/stage/commit/history/index/rollback; controlled clock 59/60/61/120s; immutable assets pinned across docs/undo/snapshot.", "regression_levels": ["focused new cases", "module public-input contract tests", "adjacent shared-boundary tests", "architecture constraints", "Windows native via M08"], "pending_automation": ["exact approved input DTO/Port bindings", "create listed test target and fixtures after Skeleton gate", "expand per-case fault matrix", "native UI operator + runtime source identity", "real filesystem interruption and rollback-failure coverage"], "stop_conditions": ["unapproved schema/port/ownership/transaction changes → REPLAN_REQUIRED", "conflicting specification → SPEC_CONFLICT", "tests compile/fixture/environment errors → not valid RED"], "test_execution": "NOT RUN; no production tests or test files created"}, "ui_schema": {"role": "本機專案作者／設計者", "fields_controls_states": "六步導覽、名稱/父路徑/完整路徑、目的/偏好/目標/技術待決狀態、草稿/返回/下一步/建立；雙擊防重送。", "validation": "Validate fields, identity, revision and capability before mutation; disabled states name reason", "defaults": "Spec D01-D13 are proposals; no implicit approval here", "empty": "No project/document/template/asset/artifact: show actual empty state and next available action", "accessibility": "Text labels, keyboard focus, field-linked errors; details pending rendered UI review"}, "decisions": [{"id": "D1", "gate": "G01", "title": "持久身份與檔案契約", "observation": "目前ProjectId依路徑；ESS v1已含work/architecture/design；manifest只登記文件。", "recommendation": "保留ESS v1讀取相容；新增版本化ProjectDefinition持久UUID及legacy root-key對照；BIN另定manifest含原格式payload，不偷換ESS。", "alternatives": "全面改成單一新ESS格式遷移大；只用root ID不足搬移定位。", "affected_modules": ["M01", "M03", "M04", "M05", "M06", "M07"], "blocking": "schema/identity/migration未批准前，不寫新格式。"}, {"id": "D2", "gate": "G01/G03", "title": "文件權威與多視窗同步", "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。", "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。", "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。", "affected_modules": ["M01", "M02", "M03", "M04", "M05", "M06", "M07"], "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"}, {"id": "D7", "gate": "G01/G04", "title": "新建入口遷移與驗收環境", "observation": "主新建拒existing；舊入口remove同路徑file；portable README只是歷史。", "recommendation": "依已確認規則統一拒已有目標；若舊test要求刪file，列契約遷移並批准測試revision，不能偷偷改expected。Windows11 x64/WebView2實測＋新artifact lock再驗收。", "alternatives": "只保護主UI保留舊刪檔入口會不一致；舊binary驗新需求不可採。", "affected_modules": ["M01", "M08"], "blocking": "不重問是否保護資料，只需精確修改scope/測試遷移及環境驗收計畫。"}], "assumptions": ["Keep existing green slices; source presence is not full acceptance", "Candidate new files and exact signatures require architecture/Skeleton approval", "No new infrastructure dependencies or product behavior changes in PREP"]}</script></html>

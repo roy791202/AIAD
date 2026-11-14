@@ -1,0 +1,677 @@
+{
+  "module": "M06",
+  "task": "PD-P1-M06-PREP-01",
+  "status": "PREPARATION_SECURITY_GAPS_IDENTIFIED_NOT_IMPLEMENTATION_READY",
+  "recorded_at": "2026-11-01T09:34:36.575947+08:00",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "authority": "Only original M06 planning envelope and own board evidence. User-provided AGENTS workflow applies; repository AGENTS.md absent. No product edits, new dependencies or architecture approval.",
+  "confirmed": [
+    "Validate version, integrity, references and target path safety before ESS/BIN import",
+    "Format/integrity/path failures block; only missing external dependency may be explicitly accepted as incomplete/pending binding",
+    "Never execute imported content",
+    "One merge modifies one target document plus necessary assets/references only",
+    "Cancellation/failure restores full target and preserves source BIN",
+    "Uncertain matching IDs pause affected items; no name guessing or silent remapping",
+    "One successful merge equals one Undo; failed/cancelled unapplied operation adds no history",
+    "BIN restore as new project is separate from merge and has no cross-document Undo"
+  ],
+  "source_evidence": {
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+        "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+        "sha256": "74af5dba61df135c9585843d309b8a5be47df96f61c914b0679dfd98ec797dbb"
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+        "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"
+      }
+    ],
+    "old_inventory_hash_drift": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "fresh_source_files_checked": 788,
+    "observations": [
+      "Legacy unpackSgbBinary performs bounded-offset truncation checks but assigns map[name] directly, decodes entries as UTF-8 text and returns without an explicit final-offset equality check. Static inspection does not establish full BIN safe-import compliance.",
+      "Legacy packSgbBinary layout is a custom SGB1 container, not the proposed versioned BIN manifest with assets. Do not silently relabel it as BIN.",
+      "HOST adopt_project_document adopts an existing project-local reference and persists manifest; its comment explicitly disclaims cross-process CAS. Adoption is not content copy, safe extraction or compound merge.",
+      "Current HOST dependency list contains no approved ZIP decoder. Archive choice/version and decoder limits remain to be frozen. No package lookup or dependency addition performed."
+    ]
+  },
+  "findings": [
+    {
+      "id": "M06-GAP1",
+      "priority": "P0",
+      "issue": "Container-level malformed data and absent internal entry cannot take the incomplete-external-dependency exception.",
+      "next": "Separate BlockingValidationFailure from MissingExternalDependency in exact outcome model."
+    },
+    {
+      "id": "M06-GAP2",
+      "priority": "P1",
+      "issue": "Validation then source reopen or target mutation permits time-of-check/time-of-use drift.",
+      "next": "Freeze verified immutable source capture, target revision binding and commit exclusion; generic write_atomic is not multi-content transaction."
+    },
+    {
+      "id": "M06-GAP3",
+      "priority": "P1",
+      "issue": "Per-entry map overwrite and unchecked ambiguous layouts in a legacy parser cannot be reused as a complete safety contract.",
+      "next": "Versioned parser contract rejects duplicate/casefold/prefix/link/unknown-size ambiguity before mutation; preserve legacy compatibility as a separate bounded reader."
+    },
+    {
+      "id": "M06-GAP4",
+      "priority": "P2",
+      "issue": "Existing broad candidate envelope omits exact validation DTO, archive resource caps and transactional failure seam.",
+      "next": "Propose isolated validation/planning first; do not build extraction or merge now."
+    }
+  ],
+  "architecture_proposal": {
+    "hexagonal": "UI/Test -> Tauri input -> DispatchHost -> HOST inspect/prepare/apply -> WORK pure import decision policy; HOST -> immutable source reader / decoder / safe staged transaction abstractions <- native/archive adapters.",
+    "module_dependencies": "M01 identities + M04 document transaction/history + M05 material references -> M06 plan bound to exactly one target. M07 sees only completed or fully rolled-back document revision, never intermediate extraction.",
+    "ownership": "Package bytes are immutable external input; target document owner remains SSOT. M06 plan/diff/validation report is a projection. Decoder cannot mutate documents or approve missing dependencies.",
+    "mutation": "Inspect and prepare are read-only. Confirm authorizes only bound, previewed changes via target transaction. No UI-to-FS, direct package execution or hidden additional target.",
+    "transaction": "Validated source snapshot -> complete temporary graph/reference plan -> explicit confirmation -> recheck source identity and target revision/safety -> stage owned bytes -> single-document coordinated commit/history -> receipt. Failure before commit preserves original; uncertain rollback keeps recovery evidence and blocks destructive follow-up. Exact transaction seam must be separately approved.",
+    "forbidden": [
+      "Extract then validate",
+      "Name-based provenance guesses",
+      "Treat incomplete internal manifest as optional external dependency",
+      "Best-effort partial merge",
+      "Automatically execute scripts",
+      "Remove shared materials during Undo"
+    ]
+  },
+  "recommended_defaults_not_approved": {
+    "container": "Keep existing ESS and legacy SGB1 reader contracts separate; BIN versioned manifest/container selection remains pending exact proposal, not auto-adopt ZIP.",
+    "external_dependency": "External references carry explicit logical identity and pending-binding state; no automatic network download, mount or install.",
+    "bounds": "Specify compressed bytes, expanded bytes, per-entry bytes, entry count, nesting and path length before parser Skeleton. Every cap needs max-1/max/max+1 fixtures. Numeric defaults are not invented as approved in this review.",
+    "first_slice": "Pure decision/plan validation may be isolated without actual archive extraction, but exact types/signatures and file envelope must be approved before Skeleton."
+  },
+  "cases": [
+    {
+      "id": "M06-V01",
+      "given": "a valid supported package with all referenced assets",
+      "when": "inspect import",
+      "then": "report exact content and no target mutation",
+      "coverage": [
+        "B1"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V02",
+      "given": "unknown format or schema version",
+      "when": "inspect import",
+      "then": "block with unsupported-version reason",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V03",
+      "given": "payload digest or required entry is invalid",
+      "when": "inspect import",
+      "then": "block integrity failure; target remains unchanged",
+      "coverage": [
+        "B3",
+        "B6"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V04",
+      "given": "external dependency missing but container structurally valid",
+      "when": "inspect import",
+      "then": "request explicit incomplete-import choice; no automatic bypass",
+      "coverage": [
+        "B4",
+        "B10"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V05",
+      "given": "author explicitly accepts missing external dependency",
+      "when": "apply validated import",
+      "then": "save as incomplete/pending binding and prohibit dependent execution or generation",
+      "coverage": [
+        "B1",
+        "B10"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V06",
+      "given": "path contains parent traversal, absolute root, drive, UNC or device prefix",
+      "when": "inspect import",
+      "then": "block before creating any target path",
+      "coverage": [
+        "B3",
+        "B7"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V07",
+      "given": "duplicate entry or case-insensitive destination collision",
+      "when": "inspect import",
+      "then": "block ambiguity; never last-entry-wins",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V08",
+      "given": "file and directory prefix collide",
+      "when": "inspect import",
+      "then": "block unsafe layout",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V09",
+      "given": "archive link/reparse destination escapes target root",
+      "when": "inspect import",
+      "then": "block, including after destination changes before commit",
+      "coverage": [
+        "B3",
+        "B7"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V10",
+      "given": "declared size, count or expanded bytes exceed approved cap",
+      "when": "inspect import",
+      "then": "block without silent truncation or unbounded extraction",
+      "coverage": [
+        "B2",
+        "B3"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V11",
+      "given": "input has truncated header/body or trailing unexplained bytes",
+      "when": "inspect import",
+      "then": "block malformed container",
+      "coverage": [
+        "B3"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V12",
+      "given": "manifest references absent internal payload",
+      "when": "inspect import",
+      "then": "block completeness failure; do not classify as missing external dependency",
+      "coverage": [
+        "B3",
+        "B4"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V13",
+      "given": "package identity matches but provenance cannot be established",
+      "when": "prepare merge",
+      "then": "mark conflict and pause affected items; offer skip or copy",
+      "coverage": [
+        "B6",
+        "B10"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V14",
+      "given": "author chooses new copy for unresolved identity conflict",
+      "when": "preview copy",
+      "then": "show new identities and certain reference adjustment scope before applying",
+      "coverage": [
+        "B1",
+        "B6"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V15",
+      "given": "reference inside selected copy cannot be resolved",
+      "when": "prepare copy",
+      "then": "mark pending resolution; do not rewrite source or existing data",
+      "coverage": [
+        "B3",
+        "B10"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V16",
+      "given": "preview was prepared for a document that has changed",
+      "when": "confirm merge",
+      "then": "reject stale preview with no target mutation",
+      "coverage": [
+        "B6",
+        "B7"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V17",
+      "given": "merge requires changing a second target document",
+      "when": "prepare merge",
+      "then": "block and explain prerequisite; never silently expand scope",
+      "coverage": [
+        "B7",
+        "B10"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V18",
+      "given": "author cancels a prepared import",
+      "when": "cancel",
+      "then": "preserve source BIN and complete target state; no Undo entry",
+      "coverage": [
+        "B8"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V19",
+      "given": "apply fails after one staged change",
+      "when": "complete operation",
+      "then": "restore full before-state; no successful history entry",
+      "coverage": [
+        "B5",
+        "B9"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V20",
+      "given": "one validated merge succeeds for one document",
+      "when": "Undo once",
+      "then": "restore that document/references/binding restrictions; retain other referenced materials",
+      "coverage": [
+        "B1",
+        "B10",
+        "B12"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V21",
+      "given": "new project name conflicts or destination is nonempty",
+      "when": "restore BIN as new project",
+      "then": "offer rename, other location or cancel; never direct overwrite",
+      "coverage": [
+        "B2",
+        "B8"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V22",
+      "given": "input package changes after validation",
+      "when": "confirm import",
+      "then": "reject changed source or use previously captured verified bytes; never mix revisions",
+      "coverage": [
+        "B6",
+        "B7"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V23",
+      "given": "untrusted scripts or executable payload exist",
+      "when": "inspect or import",
+      "then": "never execute package contents or installation hooks",
+      "coverage": [
+        "B3"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V24",
+      "given": "a filesystem or decoding dependency fails",
+      "when": "inspect import",
+      "then": "report failure and keep target/source hashes unchanged",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    },
+    {
+      "id": "M06-V25",
+      "given": "application closes after failed staging before commit",
+      "when": "restart",
+      "then": "retain diagnostic/recovery evidence and original target; no false success",
+      "coverage": [
+        "B5",
+        "B8",
+        "B9"
+      ],
+      "fixture": {
+        "source": "isolated A package",
+        "target": "isolated B project",
+        "before": "canonical target content and referenced-material hashes",
+        "fault": "per-case untrusted bytes, source revision or injected adapter failure"
+      },
+      "status": "PLANNED_NOT_RUN",
+      "valid_red": "Approved Skeleton must compile, fixture setup succeeds and expected public behavior fails only because behavior is absent. Compile/dependency/setup failure never counts."
+    }
+  ],
+  "B1_B12": {
+    "B1": [
+      "M06-V01",
+      "M06-V05",
+      "M06-V14",
+      "M06-V20"
+    ],
+    "B2": [
+      "M06-V10",
+      "M06-V21"
+    ],
+    "B3": [
+      "M06-V02",
+      "M06-V03",
+      "M06-V06",
+      "M06-V07",
+      "M06-V08",
+      "M06-V09",
+      "M06-V10",
+      "M06-V11",
+      "M06-V12",
+      "M06-V15",
+      "M06-V23"
+    ],
+    "B4": [
+      "M06-V04",
+      "M06-V12",
+      "M06-V24"
+    ],
+    "B5": [
+      "M06-V19",
+      "M06-V25"
+    ],
+    "B6": [
+      "M06-V03",
+      "M06-V13",
+      "M06-V14",
+      "M06-V16",
+      "M06-V22"
+    ],
+    "B7": [
+      "M06-V06",
+      "M06-V09",
+      "M06-V16",
+      "M06-V17",
+      "M06-V22"
+    ],
+    "B8": [
+      "M06-V18",
+      "M06-V21",
+      "M06-V25"
+    ],
+    "B9": [
+      "M06-V19",
+      "M06-V24",
+      "M06-V25"
+    ],
+    "B10": [
+      "M06-V04",
+      "M06-V05",
+      "M06-V13",
+      "M06-V15",
+      "M06-V17",
+      "M06-V20"
+    ],
+    "B11": [
+      "M06-V02",
+      "M06-V07",
+      "M06-V08"
+    ],
+    "B12": [
+      "M06-V20"
+    ]
+  },
+  "traceability": {
+    "BDD-09": [
+      "M06-V14",
+      "M06-V15"
+    ],
+    "BDD-10": [
+      "M06-V07",
+      "M06-V21"
+    ],
+    "BDD-11/12": [
+      "M06-V01",
+      "M06-V03",
+      "M06-V12"
+    ],
+    "BDD-13/14": [
+      "M06-V02",
+      "M06-V04",
+      "M06-V05",
+      "M06-V06",
+      "M06-V10"
+    ],
+    "BDD-15/16": [
+      "M06-V17",
+      "M06-V19",
+      "M06-V20"
+    ],
+    "BDD-17/18": [
+      "M06-V13",
+      "M06-V14",
+      "M06-V15"
+    ],
+    "BDD-19": [
+      "M06-V16",
+      "M06-V18"
+    ]
+  },
+  "acceptance_for_next_preparation": [
+    "Exact blocking/incomplete/error outcomes distinguish all validation classes",
+    "Explicit source/target freshness and one-document mutation contract",
+    "All listed unsafe layouts and parser limits have deterministic fixture descriptions",
+    "Native source/target path protection and rollback failure are separate tested capabilities",
+    "Product execution, compile and RED are never inferred from static parser inspection"
+  ],
+  "next": [
+    "Freeze container/manifest/limits proposal in M06 exact design",
+    "Freeze pure validation decision DTO and exact candidate three-file slice",
+    "Coordinate apply transaction and Undo/material claims with M04/M05 before runtime",
+    "No owner question required by this gap review; consolidate exact-design choices later"
+  ],
+  "verification": {
+    "JSON_and_traceability": "PASS (static)",
+    "product_tests": "NOT RUN",
+    "Skeleton_RED": "NOT RUN",
+    "native_path_checks": "NOT RUN",
+    "full_card_acceptance": "NOT RUN",
+    "source_changes_this_round": 0
+  }
+}

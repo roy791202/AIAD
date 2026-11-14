@@ -1,0 +1,23 @@
+{
+  "status": "PROPOSED_PENDING_OWNER",
+  "limits": {
+    "input_bytes": 16777216,
+    "depth_root0": 64,
+    "xml_nodes": 100000,
+    "decoded_string_utf8": 1048576,
+    "attributes_per_element": 1024
+  },
+  "counting": "xml_nodes counts root/element/text/comment nodes in lexical order, including whitespace text; excludes declaration, attribute names/values. depth increments only nested child element, text/comment inherit containing element depth. Attribute count checked independently per element before values. Each decoded attribute/text/comment string checked individually; XML attributes remain strings, no JSON number-token rule.",
+  "error_shape": "CodecError::ResourceLimit {path:XML path,token:input_bytes|depth|xml_nodes|string_bytes|attributes}; input_bytes path=/; child element pointers use /tag[index] 1-based among same-tag siblings; text/comment use /text()[index] or /comment()[index]; attribute uses /@name. No truncated path equality assertions.",
+  "precedence": [
+    "input UTF8 bytes cap first",
+    "strict UTF8/no BOM per proposed encoding profile",
+    "token grammar; actual DOCTYPE/namespace/general entity/PI feature reject before expansion or full AST allocation",
+    "on start-element: depth -> xml_nodes -> attributes count -> decoded attribute strings in source order",
+    "on text/comment: xml_nodes -> decoded string bytes",
+    "after guarded full parse: format/version/required unique sections",
+    "only after representation validation: semantic projection, trusted dependency validation, owner install"
+  ],
+  "security": "DTD/external/general entities and namespace/PI unsupported profile. Detect tokens using lexer context, never substring-scan comments/text. A comment containing literal <!DOCTYPE is inert text if otherwise legal. No network/filesystem callbacks in codec.",
+  "fixture_policy": "Resource recipes must expand exact input and verify counts before product call; wrong recipe or unavailable dependency is fixture failure, never valid RED. Unknown extra payload element is preserved/unsupported view per unapproved R2 profile, not silently discarded."
+}

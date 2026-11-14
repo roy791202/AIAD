@@ -1,0 +1,69 @@
+{
+  "reviewer": "/root/m07_recovery_ack_review",
+  "author": "/root/m07_recovery_ack_packet",
+  "verdict": "FINDINGS_DOCUMENT_ORACLE_COVERAGE",
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "inventory_files": 796,
+  "source_pointer_checks": 12,
+  "proposal_seal_entries": 17,
+  "document_probes": 70,
+  "passed": 66,
+  "failed": 4,
+  "response_relation_counterexamples": 7,
+  "replay_sequences": 1,
+  "findings": [
+    {
+      "id": "RA-R1",
+      "priority": "P2",
+      "title": "Admission accesses body/context before validation",
+      "counterexamples": [
+        "IR-MISSING-context",
+        "IR-MISSING-body"
+      ],
+      "impact": "Missing body/context raises KeyError rather than deterministic Rejected. Move admission validation before field access in a future corrected packet; current originals remain sealed."
+    }
+  ],
+  "proof_limits": [
+    {
+      "id": "RA-L1",
+      "title": "Ordinal/hash specification consistency needs clarification",
+      "counterexample": "IR-MALFORMED-ordinal: ordinal 1 is admitted and ACKs",
+      "source": "/hash/operation_id in module-spec.json specifies UUIDv5(workflow_id, UTF8 ack-recovery/0), while request.schema.json admits any u64 ordinal.",
+      "classification": "Potential ambiguity, not proven behavior defect: fixed operation0 could intentionally coexist with admitted ordinal1; Owner/author must state intended relation. No reviewer architecture decision."
+    },
+    {
+      "id": "RA-L2",
+      "title": "Response and replay evidence are narrower than proposed lifecycle",
+      "counterexample": "7 relationally wrong responses pass shape schema; evaluate repeated request ACKs again and changed body returns Rejected.",
+      "classification": "Proof limit, not native implementation defect: response schema is shape-only; replay dictionary proves hash difference and retained-value equality, no stateful replay transition. Retained store/provider remain pending Owner."
+    },
+    {
+      "id": "RA-L3",
+      "title": "Malformed issuer record outside trusted fixture premise",
+      "counterexample": "IR-ISSUER-index-evidence: replacing evidence with {} raises KeyError.",
+      "classification": "Robustness limit only, not admitted caller request defect. Authentic immutable issuer structure is assumed, never authenticated by this fixture."
+    }
+  ],
+  "board_management": {
+    "actual": "14caa0723f52e25da93b86eb6322f4dc4ae72778d08b93e426babe057f38ef1c",
+    "prior_review_actual": "73f0896ca5cccc9f8fbab4502a44a1cd7913bca5a845f92dbe46f7c0a6d8ceb3",
+    "classification": "management diff separate from 796 source authority; no mutation"
+  },
+  "premises": [
+    "Full equality and body hashes are consumed for capture/index/transfer records; this is not label-only classification.",
+    "Issuer tuple is compared against a single trusted immutable fixture, not authenticated provider lookup. Authenticity remains premise; forged self-consistent fixture is not runtime authorization.",
+    "protocol/role/schema/hash Owner options remain proposed; effective formal ACK and accepted S1 untouched.",
+    "PH-G2..4 remain open; PH-G1 candidate not adopted."
+  ],
+  "not_run": [
+    "native",
+    "build",
+    "product tests",
+    "valid RED/GREEN",
+    "full Draft2020-12",
+    "module acceptance"
+  ],
+  "module_pass": false,
+  "next_action": "Author creates a new correction packet for RA-R1 and clarifies RA-L1..3 evidence limits; independent review of corrected evidence, then Owner selects protocol/role/hash and confirms contracts. Preserve Yellow; no API/Skeleton implementation approval."
+}

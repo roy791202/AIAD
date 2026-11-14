@@ -1,0 +1,124 @@
+{
+  "status": "PROPOSED_WHOLE_PACKET_REVIEW_REQUIRED",
+  "routes": [
+    {
+      "command": "host_new_project_directory",
+      "current": "native save dialog → create_new_project_root removes file residue",
+      "S2": "same command/signature; HOST pure path validation then HostError::Settings with WIZARD_REQUIRED stable code, before any FS method",
+      "S3": "native-selection-backed wizard begin, no legacy direct-create or file deletion"
+    },
+    {
+      "command": "host_create_project_directory",
+      "current": "UI parent/name → create_new_project_under",
+      "S2": "HOST pure name/path validation then same WizardRequired before FS",
+      "S3": "server/native selection capability not UI raw parent, begin wizard rather than create immediately"
+    },
+    {
+      "command": "host_create_project_with_preferences",
+      "current": "DispatchHost::project_policy_create → create_project_with_preferences uses exists→create_dir_all + weak save helper",
+      "S2": "deprecated HOST creator returns new ProjectPreferenceError::WizardRequired before any FS/preset/import mutation; API signature retained",
+      "S3": "capture selected preference plan inside wizard, first explicit save calls S2 authoritative store; distinguish committed/partial/recovery"
+    }
+  ],
+  "recommendation": "S2 fail-closed then S3 routes all three entries to six-step wizard. No interim direct-create bypass. S2 alone not deployable/releasable until S3 migration accepted. NEW proposed transition detail, not current UI behavior or previously confirmed implementation.",
+  "compatibility": "Three legacy HOST creation signatures retained. Two root wrappers use existing HostError::Settings(\"WIZARD_REQUIRED: ...\"); ProjectPreferenceError gains WizardRequired. Existing CreationOutcome type kept for source compatibility, deprecated function no longer yields success. Existing preference load/save/digest formats unchanged.",
+  "unit_migration": [
+    {
+      "old_test": "create_via_fake_fs",
+      "new_assertion": "valid legacy request returns WizardRequired, zero FS methods; existing bytes/dirs unchanged. Validation-only legacy tests retain original intent.",
+      "archive": "legacy-history/project_new.rs.before.txt"
+    },
+    {
+      "old_test": "create_under_parent_name",
+      "new_assertion": "valid legacy request returns WizardRequired, zero FS methods; existing bytes/dirs unchanged. Validation-only legacy tests retain original intent.",
+      "archive": "legacy-history/project_new.rs.before.txt"
+    },
+    {
+      "old_test": "create_replaces_existing_file_residue",
+      "new_assertion": "valid legacy request returns WizardRequired, zero FS methods; existing bytes/dirs unchanged. Validation-only legacy tests retain original intent.",
+      "archive": "legacy-history/project_new.rs.before.txt"
+    }
+  ],
+  "integration_migration": [
+    {
+      "old_test": "real_filesystem_project_preference_roundtrip",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "skip_creates_only_directory_without_inherited_policy",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "skip skips only prefs; explicit draft save persists definition. Old only-directory/write_count0 semantics explicitly superseded by six-step baseline",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "chosen_preset_persists_and_reopens_same_version",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "importing_makes_independent_copy_without_changing_source",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "invalid_import_or_unknown_preset_does_not_create_directory",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "existing_file_is_not_deleted_and_existing_directory_is_not_adopted",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "preference_failure_is_partial_not_success_or_recursive_rollback",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    },
+    {
+      "old_test": "directory_failure_is_explicit_and_no_policy_is_written",
+      "archive": "legacy-history/project_preferences_creation.rs.before.txt",
+      "new_home": "phase1_project_definition.rs new flow, plus phase1_project_creation_legacy.rs denial coverage",
+      "intent": "preserve original success/failure/source-copy/no-overwrite checks in new explicit save flow; legacy creator separately fails before IO",
+      "must_not_silently_delete": true
+    }
+  ],
+  "fixture_migration": [
+    "Real-FS preference roundtrip now starts from new definition-save receipt then existing preference edit load/save remains regression; fixture owns and cleans new definition/lock sidecars explicitly",
+    "Private FakeCommitPort double shares the same fixture FS as FileSystemPort; spy fails if HOST invokes write_atomic/create_dir_all/remove_file; native guarantees not inferred from double",
+    "Unknown preset/import remains a pre-create validation test through prepare_definition_preferences, not an always-Err assertion",
+    "Existing target race injected inside exclusive create; assert original complete tree unchanged, not just a precheck return",
+    "Archive original source/hash before changing expected legacy residue deletion; new expected no-overwrite/ WizardRequired intent requires this packet approval"
+  ],
+  "S3_follow_up_files": [
+    "apps/sgenaxis-desktop/src-tauri/src/commands.rs (only three listed handlers)",
+    "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs (wizard ownership/authorized selection/legacy route projection)",
+    "original S3 UI/IPC/envelope targets remain governed by their own precise packet"
+  ],
+  "release_gates": [
+    "all three UI entry routes reach wizard, preserve cancellation and structured errors",
+    "native selection/session binding and request-id idempotency/late completion tested in S3",
+    "no current-project switch for partial or RecoveryRequired",
+    "conflict choices rename/another location/cancel tested; no filesystem action on cancelled preview"
+  ],
+  "not_in_S2": [
+    "UI/IPC shape changes",
+    "DispatchHost state maps or authorization implementation",
+    "all old preference edit paths upgraded to CAS",
+    "standalone release"
+  ]
+}

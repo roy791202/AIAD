@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Report Call Isolation</title><style>body{font:16px system-ui;background:#101827;color:#e2e8f0;max-width:1080px;margin:40px auto;padding:24px}section{background:#172338;padding:18px;margin:18px 0;border-radius:10px}pre{white-space:pre-wrap;line-height:1.6}h1,h2{color:#93c5fd}.status{color:#fbbf24}svg{background:#172338;width:100%;height:210px}text{fill:#e2e8f0;font:14px system-ui}</style><h1>PD Report Call — Concurrent Artifact Isolation</h1><p class="status">READY_FOR_GREEN yellow · Independent acceptance pending</p><p>The Rust report adapter preserves each default invocation's generated artifacts. Public API and explicit output paths are unchanged.</p><h2>Hexagonal system and module dependency views</h2><svg viewBox="0 0 950 210"><text x="20" y="35">Driving adapter: UI / tests</text><text x="20" y="70">↓ input boundary: project_pd_report(args)</text><text x="20" y="105">Rust call orchestration → output boundary: fixed Python invocation</text><text x="20" y="140">↓ driven adapter: pd_report → reserved output directory → HTML / Markdown</text><text x="20" y="180">Dependency map: UI → Rust adapter → Python projector; SPEC/EVID read-only</text></svg><section><h2>Identity</h2><pre>{
+  &quot;module&quot;: &quot;pd-report-call&quot;,
+  &quot;task&quot;: &quot;PD-RUST-REPORT-ISO-01&quot;,
+  &quot;date&quot;: &quot;2026-10-25&quot;,
+  &quot;status&quot;: &quot;READY_FOR_GREEN yellow&quot;
+}</pre></section><section><h2>Intent</h2><pre>&quot;Concurrent default report calls retain independent artifacts consistent with their returned DTO.&quot;</pre></section><section><h2>Assumptions</h2><pre>[
+  &quot;Explicit out_dir remains caller-controlled and unchanged.&quot;,
+  &quot;No automatic output cleanup policy is introduced.&quot;
+]</pre></section><section><h2>Architecture</h2><pre>{
+  &quot;classification&quot;: &quot;CONTRACT_PRESERVING_REFACTOR&quot;,
+  &quot;approval&quot;: &quot;Existing call boundary retained; no new architecture approval claimed&quot;,
+  &quot;owner&quot;: &quot;pd_report_call Rust adapter owns invocation orchestration; SPEC/EVID remain read-only&quot;,
+  &quot;input_port&quot;: &quot;project_pd_report(ProjectPdReportArgs)&quot;,
+  &quot;output_boundary&quot;: &quot;fixed python -m pd_report argv; filesystem report projection&quot;,
+  &quot;mutation_boundary&quot;: &quot;Output report directories only&quot;,
+  &quot;transaction_boundary&quot;: &quot;Reserve directory, invoke projector, validate input immutability, read resulting artifacts&quot;
+}</pre></section><section><h2>Contracts</h2><pre>[
+  &quot;Default calls never share report output paths.&quot;,
+  &quot;HTML and Markdown bodies match returned file paths and source fingerprint.&quot;,
+  &quot;SPEC/EVID bytes unchanged and write_back=false.&quot;,
+  &quot;Explicit out_dir and public DTO API preserved.&quot;
+]</pre></section><section><h2>Bdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;BDD-RI-01&quot;,
+    &quot;given&quot;: &quot;not_run and happy source fixtures&quot;,
+    &quot;when&quot;: &quot;two reports are requested concurrently without an output directory&quot;,
+    &quot;then&quot;: &quot;each has an independent artifact path and matching status, content and fingerprint&quot;
+  }
+]</pre></section><section><h2>Tdd</h2><pre>[
+  {
+    &quot;id&quot;: &quot;TDD-RI-01&quot;,
+    &quot;test&quot;: &quot;concurrent_default_reports_keep_independent_artifacts&quot;,
+    &quot;level&quot;: &quot;Module adapter integration&quot;,
+    &quot;red&quot;: &quot;Built successfully; assert_ne failed because both paths were Temp/sgenaxis-pd-report/report.html&quot;,
+    &quot;green&quot;: &quot;PASS; focused suite 3 passed, 0 failed, 0 ignored using 3 threads&quot;
+  }
+]</pre></section><section><h2>Acceptance</h2><pre>[
+  &quot;Independent default HTML and Markdown paths&quot;,
+  &quot;Both artifact contents equal returned bodies and contain returned fingerprint&quot;,
+  &quot;Existing NOT RUN and PASS fixture checks pass concurrently&quot;,
+  &quot;No API/Port/explicit output destination change&quot;
+]</pre></section><section><h2>Results</h2><pre>{
+  &quot;focused&quot;: &quot;PASS&quot;,
+  &quot;independent_gate&quot;: &quot;NOT RUN by this agent; required parent independent review&quot;,
+  &quot;full_regression&quot;: &quot;NOT RUN by this agent&quot;,
+  &quot;formatter&quot;: &quot;BLOCKED: rustfmt component is not installed&quot;,
+  &quot;dcc_install_package&quot;: &quot;NOT RUN; outside this slice&quot;
+}</pre></section><section><h2>Risks</h2><pre>[
+  &quot;Per-call default report directories accumulate as existing outputs did; cleanup policy deferred.&quot;,
+  &quot;Concurrent callers explicitly choosing the same out_dir remain caller responsibility.&quot;,
+  &quot;PID reuse directory collisions are retried using atomic filesystem create_dir.&quot;
+]</pre></section><section><h2>Scope</h2><pre>[
+  &quot;apps/sgenaxis-desktop/src-tauri/src/pd_report_call.rs&quot;,
+  &quot;reports/rust-improvements/report-isolation/&quot;
+]</pre></section><section><h2>Decisions</h2><pre>[
+  &quot;Use AtomicU64 for in-process names and atomic create_dir for cross-process/PID-reuse collision prevention.&quot;,
+  &quot;Retain successful output paths after return so UI can open artifacts.&quot;,
+  &quot;Existing silent test returns replaced with expect so missing fixtures/interpreter fail visibly.&quot;
+]</pre></section><script type="application/json" id="module-spec">{"identity": {"module": "pd-report-call", "task": "PD-RUST-REPORT-ISO-01", "date": "2026-10-25", "status": "READY_FOR_GREEN yellow"}, "intent": "Concurrent default report calls retain independent artifacts consistent with their returned DTO.", "assumptions": ["Explicit out_dir remains caller-controlled and unchanged.", "No automatic output cleanup policy is introduced."], "architecture": {"classification": "CONTRACT_PRESERVING_REFACTOR", "approval": "Existing call boundary retained; no new architecture approval claimed", "owner": "pd_report_call Rust adapter owns invocation orchestration; SPEC/EVID remain read-only", "input_port": "project_pd_report(ProjectPdReportArgs)", "output_boundary": "fixed python -m pd_report argv; filesystem report projection", "mutation_boundary": "Output report directories only", "transaction_boundary": "Reserve directory, invoke projector, validate input immutability, read resulting artifacts"}, "contracts": ["Default calls never share report output paths.", "HTML and Markdown bodies match returned file paths and source fingerprint.", "SPEC/EVID bytes unchanged and write_back=false.", "Explicit out_dir and public DTO API preserved."], "bdd": [{"id": "BDD-RI-01", "given": "not_run and happy source fixtures", "when": "two reports are requested concurrently without an output directory", "then": "each has an independent artifact path and matching status, content and fingerprint"}], "tdd": [{"id": "TDD-RI-01", "test": "concurrent_default_reports_keep_independent_artifacts", "level": "Module adapter integration", "red": "Built successfully; assert_ne failed because both paths were Temp/sgenaxis-pd-report/report.html", "green": "PASS; focused suite 3 passed, 0 failed, 0 ignored using 3 threads"}], "acceptance": ["Independent default HTML and Markdown paths", "Both artifact contents equal returned bodies and contain returned fingerprint", "Existing NOT RUN and PASS fixture checks pass concurrently", "No API/Port/explicit output destination change"], "results": {"focused": "PASS", "independent_gate": "NOT RUN by this agent; required parent independent review", "full_regression": "NOT RUN by this agent", "formatter": "BLOCKED: rustfmt component is not installed", "dcc_install_package": "NOT RUN; outside this slice"}, "risks": ["Per-call default report directories accumulate as existing outputs did; cleanup policy deferred.", "Concurrent callers explicitly choosing the same out_dir remain caller responsibility.", "PID reuse directory collisions are retried using atomic filesystem create_dir."], "scope": ["apps/sgenaxis-desktop/src-tauri/src/pd_report_call.rs", "reports/rust-improvements/report-isolation/"], "decisions": ["Use AtomicU64 for in-process names and atomic create_dir for cross-process/PID-reuse collision prevention.", "Retain successful output paths after return so UI can open artifacts.", "Existing silent test returns replaced with expect so missing fixtures/interpreter fail visibly."]}</script></html>

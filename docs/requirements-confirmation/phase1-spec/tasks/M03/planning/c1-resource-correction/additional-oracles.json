@@ -1,0 +1,50 @@
+[
+  {
+    "id": "M03-C1-R04",
+    "input_recipe": "props key a/b~c with decoded 1048577 ASCII bytes as string value",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/a~1b~0c:string_bytes"
+  },
+  {
+    "id": "M03-C1-R05",
+    "input_recipe": "props string is é repeated 524288 times (1048576 decoded UTF8 bytes), all other guards healthy",
+    "expected": "Ok, exact decoded text preserved"
+  },
+  {
+    "id": "M03-C1-R06",
+    "input_recipe": "same as R05 plus ASCII x (1048577 bytes)",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/k:string_bytes",
+    "pointer_binding": "place string at /nodes/0/props/k"
+  },
+  {
+    "id": "M03-C1-R07",
+    "input_recipe": "same decoded short props key serialized first as literal a, second as escaped \\u0061",
+    "expected": "DESIGN_CODEC_DUPLICATE_KEY:/nodes/0/props/a"
+  },
+  {
+    "id": "M03-C1-R08",
+    "input_recipe": "JSON root object /nodes array /0 object /props object /deep nested array: deep value depth4; add 61 single-element nested arrays so innermost scalar global depth65. Add enough earlier valid values that this scalar is also value100001. Other guards healthy.",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/deep/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0/0:depth",
+    "required_checks": "Count actual fully generated tree, assert leaf depth65 and value index100001 before product call; otherwise fixture failure, not RED."
+  },
+  {
+    "id": "M03-C1-R09",
+    "input_recipe": "raw input 16777217 UTF8 bytes and unknown root field",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT::input_bytes"
+  },
+  {
+    "id": "M03-C1-R10",
+    "input_recipe": "unknown root field encountered early, later props string exceeds limit; guarded parse otherwise valid",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/k:string_bytes"
+  },
+  {
+    "id": "M03-C1-R11",
+    "input_recipe": "valid number token 0.5 + 4094 zeroes, length4097 at /nodes/0/props/n",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:/nodes/0/props/n:number_token_bytes"
+  },
+  {
+    "id": "M03-C1-R12",
+    "input_recipe": "props object has key k with 1048577 decoded UTF8 bytes; value null; other guards healthy",
+    "expected": "DESIGN_CODEC_RESOURCE_LIMIT:<escaped complete key member pointer>:string_bytes",
+    "pointer_recipe": "/nodes/0/props/ + RFC6901(key); store exact generated pointer in future fixture, never truncate error assertion"
+  }
+]

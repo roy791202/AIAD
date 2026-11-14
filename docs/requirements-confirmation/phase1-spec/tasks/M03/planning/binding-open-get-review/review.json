@@ -1,0 +1,41 @@
+{
+  "verdict": "CHANGES_REQUIRED_OPEN_GET_DOCUMENT_ONLY",
+  "author": "/root/m03_binding_lifecycle_packet",
+  "reviewer": "/root/m03_binding_open_get_review",
+  "scope": "Four complete Open/Get roots; parsed lexical patterns; seven typed DomainRejected variants; M04 sole owner, native instance identity, immutable projection, delivery revocation. Not full binding lifecycle.",
+  "findings": [
+    {
+      "id": "BG-R1",
+      "priority": "P2",
+      "pointer": "binding-lifecycle-integration/document_model.py:47-53 (reduce / except AssertionError request diagnostic path)",
+      "counterexample": "Authorized live native caller invokes open with JSON null, false, 17, [1], or [document_reference]. The closed request schema rejects correctly, but diagnostic construction iterates/indexes the invalid root and raises TypeError/AttributeError.",
+      "expected": "Return typed InvalidRequest with a root type diagnostic; no M04 calls and no state change. The document oracle must define malformed complete-root behavior rather than crash.",
+      "evidence": "new-probes.json NEW-root-*",
+      "boundary": "Document-model gap only; no claim the product Tauri deserializer is vulnerable. No production code reviewed or changed."
+    },
+    {
+      "id": "BG-R2",
+      "priority": "P2",
+      "pointer": "binding-lifecycle-integration/document_model.py:10-19,22,33; module-spec.json:69 /contract/C7 and :88 /lifecycle/close",
+      "counterexample": "A pending successful get response has matching binding/document/session/generation. Its attachment is externally revoked while its native window remains live and the M04 document owner remains unchanged. The oracle current context has no attachment-validity seam; an explicit attachment_active=false observation is ignored and InstalledProjectionOnly is returned.",
+      "expected": "Represent trusted derived attachment revocation in the delivery context and discard the pending response after revocation. Add a case where native instance is still live; the existing closed case only sets live=false and proves window retirement.",
+      "evidence": "new-probes.json NEW-live-window-revoked-attachment",
+      "boundary": "This concerns delivery after external revocation promised by C7, not implementation of deferred close/transfer commands. Trusted M04 fixture observations were neither forged nor replaced."
+    }
+  ],
+  "positive_checks": [
+    "All four parsed complete roots and saved lexical fixtures replay without mismatch; all physical patterns independently receive 84 new control/Unicode suffix negatives.",
+    "Seven DomainRejected variants have structured exact details; saved positive/Debug-string negative probes replay; no new string fields representation.",
+    "Existing M04 cx-v3 declares a single registry/S1 session, M03 facade-only. Candidate preserves that ownership and uses fixture dependency observations, not a new runtime issuer/registry.",
+    "M03 H2 cx-v3 common context and original command owner-binding require trusted M04 integration; unavailable integration fails closed. No mutable S1 escapes through get.",
+    "Same role label with different native instance rejects; returned projection is deep copied. Viewer reads require explicit attachment, viewer open is denied. Project/document/adopt/session/generation checks remain covered.",
+    "Late ACK is not invoked by Open/Get; stale generation/session/root/restart delivery checks remain explicit. Binding references are ephemeral and not replay credentials.",
+    "Original card remains bounded planning; current-state remains pending Owner; live board card is Yellow/In Progress. No state or approval writes performed."
+  ],
+  "limits": [
+    "Close and transfer command definitions are explicitly outside this slice; no full-lifecycle completeness verdict.",
+    "New policies BG-P1..P6 remain proposed and require Owner adoption. Independent document review does not approve architecture or authorize implementation.",
+    "Full Draft 2020-12 engine, native, product, valid RED, build, UI, install, cross-module runtime acceptance: NOT RUN.",
+    "Historical M01 S2 authority HEAD 31babe87 is distinct from live/candidate HEAD 5b709343. All 796 authority paths match live hashes; zero drift."
+  ]
+}

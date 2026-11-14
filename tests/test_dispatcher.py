@@ -371,23 +371,26 @@ def test_window_agent_timeout_never_kills_the_window():
 # ── launch request (INV-BD-15..18) ─────────────────────────
 
 
-def test_launch_request_carries_env_prompt_file_and_board_path():
-    store, clock, launcher, dispatcher = _setup([_item("R1", "red")], logs_dir=r"D:\P\.sgenaxis\logs", repo=r"D:\P")
-    store.location = r"D:\P\.sgenaxis\tasks.json"
+def test_launch_request_carries_env_prompt_file_and_board_path(tmp_path):
+    repo = str(tmp_path)
+    logs = tmp_path / ".sgenaxis" / "logs"
+    board_path = str(tmp_path / ".sgenaxis" / "tasks.json")
+    store, clock, launcher, dispatcher = _setup([_item("R1", "red")], logs_dir=str(logs), repo=repo)
+    store.location = board_path
     lane = dispatcher.add_lane("cursor-agent")
     dispatcher.start_lane(lane.lane_id)
     request = launcher.launched[0]
     run_id = request.run_id
-    assert request.prompt_file == rf"D:\P\.sgenaxis\logs\{run_id}\prompt.md"
-    assert request.prompt_via == "arg" and request.cwd == r"D:\P"
-    assert request.env["HB_BOARD_TASKS"] == r"D:\P\.sgenaxis\tasks.json"
+    assert request.prompt_file == str(logs / run_id / "prompt.md")
+    assert request.prompt_via == "arg" and request.cwd == repo
+    assert request.env["HB_BOARD_TASKS"] == board_path
     assert request.env["HB_DISPATCH_RUN_ID"] == run_id
     assert request.env["HB_DISPATCH_CARD"] == "R1"
     assert request.env["HB_DISPATCH_REPORT_FILE"].endswith(f"{run_id}.json")
     assert request.env["PYTHONIOENCODING"] == "utf-8"
     assert request.prompt_file in request.argv[-1]
     assert "看板 JSON（必須更新）" in request.prompt
-    assert r"D:\P\.sgenaxis\tasks.json" in request.prompt
+    assert board_path in request.prompt
     assert request.env["HB_DISPATCH_REPORT_FILE"] in request.prompt
 
 

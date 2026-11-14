@@ -1,0 +1,145 @@
+{
+  "module": "M04",
+  "status": "REOPEN_OPTIONS_PROPOSED_EXISTING_PORT_CAPABILITY_RECONCILED",
+  "at": "2026-11-01T08:25:07.903120+00:00",
+  "facts": [
+    {
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+      "lines": [
+        359,
+        386,
+        411,
+        441
+      ],
+      "fact": "Existing acquire_write invokes adapter-private inspect before returning lease. It rejects nonterminal/invalid journal and terminal target/artifact mismatch. No new Port is necessarily required merely to refuse unresolved transactions at reopen."
+    },
+    {
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+      "lines": [
+        413,
+        423,
+        424
+      ],
+      "fact": "acquire creates/preserves an exclusive .eluslot-lock sidecar. It is not a zero-write read-only API; proposed UI must disclose lock sidecar side effect."
+    },
+    {
+      "source": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "lines": [
+        22,
+        58
+      ],
+      "fact": "Port returns lease/current bytes, not explicit repair/clear attestation; successful acquire is bounded current adapter observation, not proof of universal target identity or repaired prior receipt mismatch."
+    }
+  ],
+  "options": [
+    {
+      "id": "M04-RO-A",
+      "recommendation": "Preferred minimal proposed integration, not adopted",
+      "scope": "Use existing FileCommitPort acquire_write + lease.read_current for explicit verified reopen before enabling save; keep lease through capture/proof installation and drop on detach. Validate exact bytes through future approved codec before installing baseline. No HOST journal access/new IO API.",
+      "results": [
+        "Busy -> keep blocked/not ready; no content replacement",
+        "RecoveryRequired -> keep exact diagnostics and block; no automatic repair/delete/retry",
+        "ordinary acquire/read failure -> blocked/not verified; no unchanged-byte claim from failed observation",
+        "Ok lease/read + codec validation + current owner/target capture -> install new read-derived baseline for fresh session only according to approved reopen contract; never replay old ACK",
+        "in-runtime CommitEvidenceMismatch record remains blocked even if later acquire succeeds; explicit reconciliation of original captured proof required, not erased by reopen"
+      ],
+      "limitations": "Native alias-safe binding and full codec R2 still required; current Windows11/native-alias gates remain pending. This option refuses unresolved recovery, it does not implement recovery/repair."
+    },
+    {
+      "id": "M04-RO-B",
+      "recommendation": "Only if Owner requires actual repair/unblock of unresolved transaction",
+      "scope": "Separate IO-owned recovery-attestation operation, new approved Port/error/transaction/ownership envelope plus failure injection. Keep M04 consumer-only; no changes in this delivery.",
+      "limitations": "Not needed solely for startup refusal using existing acquire; must not selfintroduce a new API as implementation convenience."
+    }
+  ],
+  "tests": [
+    {
+      "id": "M04-RO-01",
+      "given": "nonterminal journal",
+      "when": "explicit startup/reopen verification requested",
+      "then": "existing adapter RecoveryRequired retained; no HOST inspect/repair",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-02",
+      "given": "terminal target hash mismatch",
+      "when": "explicit startup/reopen verification requested",
+      "then": "RecoveryRequired; no baseline install",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-03",
+      "given": "terminal valid journal",
+      "when": "explicit startup/reopen verification requested",
+      "then": "lease/current bytes allowed for codec validation only, not automatic ACK",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-04",
+      "given": "lock held elsewhere",
+      "when": "explicit startup/reopen verification requested",
+      "then": "Busy; no parallel verification or timeout theft",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-05",
+      "given": "sidecar missing",
+      "when": "explicit startup/reopen verification requested",
+      "then": "acquire may create sidecar; UI does not describe zero-write inspection",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-06",
+      "given": "codec rejects current bytes",
+      "when": "explicit startup/reopen verification requested",
+      "then": "no content/baseline install; keep not-ready",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-07",
+      "given": "owner changed during read",
+      "when": "explicit startup/reopen verification requested",
+      "then": "no install on replacement owner; release owned lease",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-08",
+      "given": "earlier runtime receipt mismatch exists",
+      "when": "explicit startup/reopen verification requested",
+      "then": "acquire success alone cannot clear block",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-09",
+      "given": "same request replay",
+      "when": "explicit startup/reopen verification requested",
+      "then": "retained result; no new acquire/ACK",
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "M04-RO-10",
+      "given": "native target identity unverified",
+      "when": "explicit startup/reopen verification requested",
+      "then": "not-ready before permitting document mutation",
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "reconciles": "Previous HG proposal correctly required a complete startup/clear lifecycle; blanket inference that startup refusal always needs a new IO Port would be wrong. Existing acquire already rejects unresolved journal. Actual repair attestation and mismatch reconciliation remain separate missing contracts.",
+  "architecture": "HOST reopen usecase -> existing FileCommitPort/lease <- IO adapter private inspect; HOST codec/owner capture separate. S1 state ownership unchanged.",
+  "write_scope": "Only original M04 planning and own card evidence. No adapter/Port/S1/test changes.",
+  "remaining": [
+    "R2 full ESS/design canonical codec + exact baseline creation",
+    "alias-safe target/caller binding and detach lifecycle",
+    "full precise option-A owner/lease lifetime/envelope/BDD-TDD adoption before Skeleton",
+    "separate option-B scope only if actual repair required"
+  ],
+  "verification": {
+    "source_files_unchanged": 796,
+    "source_sha256": "6002fc8cee6156555cc944f6faeea2e1b8c36e6e600926a79b2337b224e25181",
+    "product_tests": "NOT RUN",
+    "RED": "NOT RUN",
+    "build": "NOT RUN",
+    "native": "NOT RUN"
+  },
+  "next": "Integrate preferred option-A existing-Port reopen with SP/HG/R2 exact packet. Ask Owner once after complete proposal, do not selfapprove RO-A/B. Other ready work continues."
+}

@@ -1,0 +1,81 @@
+{
+  "card": "PD-REL-03",
+  "bdd": "BDD-PD-REL-03",
+  "prior_cards": [
+    "PD-REL-01",
+    "PD-REL-02"
+  ],
+  "packager": {
+    "primary": "wix",
+    "forbidden_primary": [
+      "nsis",
+      "inno"
+    ],
+    "product": "SGenAxis",
+    "version": "0.1.0",
+    "artifact_name_pattern": "SGenAxis-{version}-windows-x64.msi",
+    "upgrade_code": "B7E4C2A1-9F83-4D6E-A1B2-C3D4E5F60718"
+  },
+  "payload": {
+    "stage_name": "SGenAxis.exe",
+    "source_relpath": "apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe",
+    "sha256": "c270b330c9262561eb6ea49230c9f79df677b0ce797ff8255b15f4a6c797c7ca",
+    "bytes": 5577728
+  },
+  "targets": {
+    "windows": {
+      "status": "supported",
+      "format": "msi",
+      "arch": [
+        "x64"
+      ]
+    },
+    "macos": {
+      "status": "unsupported",
+      "reason": "M4 - not WiX"
+    },
+    "linux": {
+      "status": "unsupported",
+      "reason": "M4 - not WiX"
+    }
+  },
+  "toolchain": {
+    "wix": {
+      "preferred": true,
+      "role": "v4+/v5/v7 CLI: wix build"
+    },
+    "candle": {
+      "preferred": false,
+      "role": "WiX v3 compiler - optional legacy; not required"
+    },
+    "light": {
+      "preferred": false,
+      "role": "WiX v3 linker - optional legacy; not required"
+    }
+  },
+  "silent": {
+    "install": "msiexec /i SGenAxis-0.1.0-windows-x64.msi /qn /norestart",
+    "uninstall": "msiexec /x SGenAxis-0.1.0-windows-x64.msi /qn /norestart"
+  },
+  "verify_install": {
+    "checklist": "verify-install.checklist.json",
+    "script": "verify-install.ps1",
+    "categories": [
+      "exit",
+      "log",
+      "files",
+      "shortcut"
+    ],
+    "elevated_required_for_live": true,
+    "non_elevated_status": "NOT RUN",
+    "non_elevated_policy": "Elevated msiexec /qn checks are NOT RUN without elevation — never forge PASS for CI green."
+  },
+  "files": {
+    "SGenAxis.wxs": "460822346d6c08e4d429efcbc7efe37371bfc84f005308b69eb0db826b498d9c",
+    "README.md": "9a6b7c986aabf6219d59447927b178b3d942423d4b9ae12b4fb809f0c9d757a5",
+    "build-msi.ps1": "989175d65cbe15fc1b59fa337994ed71f7554e25b74b094c64a622a444a93524",
+    "refresh_manifest_hashes.py": "b0e006b9942668c873871cf9cbb49d44997aabe5e8205cd5087ef2508227ec4c",
+    "verify-install.ps1": "27a0846c5727a831460376db1f0b1cf5f030ae062d30f1465d7339979eee05ac",
+    "verify-install.checklist.json": "b25cf62b9cf14b2c5ed671a21f25afe760d49da2d34cf7c3e3c688f0812792aa"
+  }
+}

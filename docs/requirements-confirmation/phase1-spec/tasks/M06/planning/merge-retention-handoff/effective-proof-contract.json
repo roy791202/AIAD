@@ -1,0 +1,834 @@
+{
+  "replay_protocol": {
+    "workflow_id": "Server UUID minted once per immutable top-level capture. Context equality includes workflow_id; request replay maps authorized caller+session+command+request_id to same workflow. New capture/new authorized request => new workflow.",
+    "operation_id": "Internal UUIDv5(namespace=workflow_id, name=UTF8 role + \"/\" + decimal transition ordinal). Closed role: resolve|pin|import|install|undo|transfer-live|transfer-formal|transfer-recovery|release|publish|ack. Ordinal starts0; request body changes require a new operation ordinal only after explicit new transition, never to bypass conflict.",
+    "key": "(issuer,store_identity,workflow_id,operation_id); expected role and immutable context must match. Same key + same request digest returns same persisted receipt. Same key + different digest => ReplayConflict before IO. Prepared/InFlight => InProgress, never another commit.",
+    "request_digest": {
+      "schema_root": "transition-request.schema.json",
+      "algorithm": "SHA256 of canonical UTF8 of ENTIRE validated request value, including body recursively. No field projection, ignored fields, defaults or post-hash enrichment. Authentication resolves every opaque handle before frozen body assembly. Server resolved identity/content/evidence fields shown in schema are mandatory.",
+      "canonicalization": [
+        "Reject duplicates before object construction; unknown/missing/null outside declared union reject before replay lookup and IO.",
+        "Object names sorted by UTF8 bytes. All scalar text valid Unicode scalar values; no normalization.",
+        "Strings: quote and backslash escaped, backspace/tab/newline/formfeed/carriage-return as \\b/\\t/\\n/\\f/\\r; remaining U+0000..001F as lowercase \\u00xx; other scalars literal UTF8; no slash escaping/BOM/whitespace.",
+        "All integers U64Decimal strings checked in range. No numeric JSON tokens in transition hash schema.",
+        "Arrays preserve admitted order, including resolve requests, entries, aliases, roots, evidence and assets. Order changes conflict; do not sort/deduplicate after hashing.",
+        "Same key and valid changed body => ReplayConflict before IO; exact same bytes replay retained receipt. Invalid body => InvalidRequest before key lookup. SHA collision resistance assumed, not proved by vectors."
+      ],
+      "per_role_closed_bodies": {
+        "resolve": {
+          "type": "object",
+          "properties": {
+            "ordered_requests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "asset_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "requested_digest": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "asset_id",
+                  "requested_digest"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "catalog_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "ordered_requests",
+            "catalog_identity",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "pin": {
+          "type": "object",
+          "properties": {
+            "resolution": {
+              "$ref": "#/$defs/Resolution"
+            },
+            "purpose": {
+              "enum": [
+                "Candidate",
+                "Save",
+                "Undo",
+                "Redo",
+                "Recovery",
+                "Import",
+                "Export"
+              ]
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "resolution",
+            "purpose",
+            "store_identity",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "import": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "Selection"
+                  ]
+                },
+                "source": {
+                  "$ref": "#/$defs/SourceSelection"
+                },
+                "metadata": {
+                  "$ref": "#/$defs/ImportMetadata"
+                },
+                "purpose": {
+                  "enum": [
+                    "Candidate",
+                    "Save",
+                    "Undo",
+                    "Redo",
+                    "Recovery",
+                    "Import",
+                    "Export"
+                  ]
+                },
+                "store_identity": {
+                  "$ref": "#/$defs/NativeIdentity"
+                },
+                "expected_catalog_generation": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "mode",
+                "source",
+                "metadata",
+                "purpose",
+                "store_identity",
+                "expected_catalog_generation"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "VerifiedBundle"
+                  ]
+                },
+                "bundle": {
+                  "$ref": "#/$defs/Bundle"
+                },
+                "purpose": {
+                  "enum": [
+                    "Candidate",
+                    "Save",
+                    "Undo",
+                    "Redo",
+                    "Recovery",
+                    "Import",
+                    "Export"
+                  ]
+                },
+                "store_identity": {
+                  "$ref": "#/$defs/NativeIdentity"
+                },
+                "expected_catalog_generation": {
+                  "$ref": "#/$defs/U64Decimal"
+                }
+              },
+              "required": [
+                "mode",
+                "bundle",
+                "purpose",
+                "store_identity",
+                "expected_catalog_generation"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "install": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidate_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidate_semantic_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "candidate_raw_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "expected_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "expected_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "pin_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "binding_ref",
+            "candidate_ref",
+            "candidate_semantic_digest",
+            "candidate_raw_digest",
+            "expected_revision",
+            "expected_generation",
+            "pin_receipt"
+          ],
+          "additionalProperties": false
+        },
+        "undo": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "binding_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "history_entry_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "history_content_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "expected_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "expected_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "pin_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "binding_ref",
+            "history_entry_id",
+            "history_content_digest",
+            "expected_revision",
+            "expected_generation",
+            "pin_receipt"
+          ],
+          "additionalProperties": false
+        },
+        "release": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_bundle": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/RootManifest"
+              }
+            },
+            "provider_fences": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ReceiptRef"
+              }
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_bundle",
+            "provider_fences",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "publish": {
+          "type": "object",
+          "properties": {
+            "registration_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "provider_capability_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_epoch": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "registration_id",
+            "provider_capability_id",
+            "expected_epoch",
+            "manifest",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "ack": {
+          "type": "object",
+          "properties": {
+            "owner_handle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "captured_revision": {
+              "$ref": "#/$defs/U64Decimal"
+            },
+            "captured_semantic_digest": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "formal_target_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "file_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "transfer_receipt": {
+              "$ref": "#/$defs/ReceiptRef"
+            }
+          },
+          "required": [
+            "owner_handle",
+            "captured_revision",
+            "captured_semantic_digest",
+            "formal_target_identity",
+            "file_receipt",
+            "transfer_receipt"
+          ],
+          "additionalProperties": false
+        },
+        "transfer-live": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "transfer-formal": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        },
+        "transfer-recovery": {
+          "type": "object",
+          "properties": {
+            "pin_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "store_identity": {
+              "$ref": "#/$defs/NativeIdentity"
+            },
+            "root_manifest": {
+              "$ref": "#/$defs/RootManifest"
+            },
+            "external_proof": {
+              "$ref": "#/$defs/ReceiptRef"
+            },
+            "expected_catalog_generation": {
+              "$ref": "#/$defs/U64Decimal"
+            }
+          },
+          "required": [
+            "pin_id",
+            "store_identity",
+            "root_manifest",
+            "external_proof",
+            "expected_catalog_generation"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "excluded": "Transport correlation, UI display strings outside declared operation, transient read handles and secrets are not request inputs. Any new behavior-affecting input requires schema/replan; cannot silently exclude.",
+      "generated_outputs": "Pin id created by pin/import is OUTPUT, never caller input. Existing pin_id mandatory for transfer/release. Selection handles freeze full native identity/raw digest/metadata before hash; bundle entries include all admitted metadata and alias mapping.",
+      "read_only_calls": "validate_pin/read_pinned_version/register_roots do not use transition receipt key; authorization and bounds still apply. Provider registration lifecycle unchanged."
+    },
+    "runtime_commands": "Existing H2 request records remain runtime-only 128/binding,1024/runtime; no eviction and no durable exactly-once claim. Runtime loss => UnverifiedOutcome; never reconstruct mutation success from pin receipt alone.",
+    "resume": "Verify issuer durable store + exact target identity/raw/catalog evidence. Terminal receipt returns retained result; uncertain prepared record stays Indeterminate/Held. No automatic IO retry, rollback, ACK or release on missing evidence.",
+    "new_persistence": "M05 transition_receipts map joins the same single catalog index CAS as pin/root state. New pending schema change, not existing capability. Other issuers retain actual existing durable IO/recovery/copy receipts; do not introduce a global proof database."
+  },
+  "proof_registry_record": {
+    "schema": "SGA-MATERIAL-RECEIPT-v1 (new catalog index transition_receipts record; pending schema adoption)",
+    "fields": {
+      "issuer": "M05",
+      "receipt_id": "UUID",
+      "workflow_id": "UUID",
+      "operation_id": "UUIDv5",
+      "role": "closed transition role",
+      "ordinal": "u64 internal",
+      "request_digest": "SHA256 of full validated SGA-TRANSITION-v2 request; no v1 projected digest accepted as v2 proof",
+      "context": "WorkflowContext",
+      "store_identity": "native identity binding",
+      "target_identity": "native catalog target identity",
+      "expected_generation": "u64",
+      "committed_generation": "u64",
+      "source_receipt_ids": "ordered typed issuer IDs",
+      "pin_id": "UUID|null",
+      "asset_pairs": "sorted exact immutable pairs",
+      "root_manifest_ids": "sorted unique UUIDs",
+      "external_proof": "{issuer,receipt_id,kind,context_digest,target_identity,raw_digest,projection_digest}|null",
+      "result": "Tagged terminal Pin|Imported|Transferred|Released; no runtime DocumentMutation success here",
+      "request_protocol": "SGA-TRANSITION-v2; new candidate field, existing pending schema proposal only"
+    },
+    "atomicity": "Record and pin/root transition in same catalog raw commit. Logical catalog_generation/target_identity verify inclusion without circular embedding of own raw digest. External raw CommitReceipt kept as issuer evidence, not hashed into the same committed bytes.",
+    "trust": "Resolve receipt_id only server-side under native store identity+verified catalog raw bytes. UI-supplied receipt body never authoritative. Cross-store/context/action mismatch => ProofMismatch.",
+    "retention": "No receipt eviction or pin timeout in this slice. Input/index limits from M05 remain; full index => CapacityExceeded before mutation; compaction/GC separate proposal.",
+    "external_issuers": {
+      "M04": "FormalSaveProof requires IO receipt+M05 transfer+captured semantic ACK; runtime owner replay loss => UnverifiedOutcome unless all issuer evidence actually revalidated. MutationReceipt runtime only.",
+      "M07": "Immutable attempt/payload/index receipt; LocalIntegrityReady independent source ACK.",
+      "M01": "final path Ready marker and matching digests; not inherited source approval."
+    }
+  },
+  "mutation_wire_result": {
+    "tag": "outcome",
+    "closed": true,
+    "Applied": {
+      "outcome": "Applied",
+      "projection": "BindingProjection",
+      "before_revision": "U64Decimal",
+      "after_revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "mutation_proof_ref": "opaque",
+      "pin_id": "UUID|null",
+      "replayed": "bool"
+    },
+    "NoChange": {
+      "outcome": "NoChange",
+      "projection": "BindingProjection",
+      "revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "replayed": "bool"
+    },
+    "AppliedRetentionDeferred": {
+      "outcome": "AppliedRetentionDeferred",
+      "projection": "BindingProjection",
+      "before_revision": "U64Decimal",
+      "after_revision": "U64Decimal",
+      "history_depth": "U64Decimal",
+      "pin_id": "UUID",
+      "mutation_proof_ref": "opaque",
+      "stage": [
+        "LiveRoots",
+        "UndoRoots",
+        "RedoRoots"
+      ],
+      "reason": [
+        "DependencyNotReady",
+        "StaleRoots",
+        "IoFailure",
+        "ProofMismatch",
+        "Indeterminate"
+      ],
+      "replayed": "bool"
+    },
+    "precommit_error": "{ok:false,error:closed existing error}; zero content commit. Once S1 commit occurred cannot use ErrorUnchanged, undo rollback or failed toast implying no effect.",
+    "ui": "Show installed revision plus material retention pending; preserve Held, disable unsafe pin release/export until proofs complete. Replay returns original result, never reapply or overwrite newer projection. Writer transfer has separate BindingProjection result, never fabricate mutation/history."
+  },
+  "h2_error_lifecycle": {
+    "closed_errors": {
+      "UnauthorizedCaller": {},
+      "MissingBinding": {},
+      "IdentityConflict": {
+        "reference": "string"
+      },
+      "UnsupportedDocument": {
+        "nodes": "[{node_id,type,reason}]"
+      },
+      "StaleOwner": {},
+      "StaleRevision": {
+        "expected": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "observed": {
+          "$ref": "#/$defs/U64Decimal"
+        }
+      },
+      "WriterRequired": {},
+      "MissingWindow": {},
+      "CandidateMissing": {},
+      "CandidateUsed": {},
+      "RequestConflict": {},
+      "Busy": {},
+      "ResourceLimit": {
+        "field": "JSON pointer",
+        "limit": "named token"
+      },
+      "CodecRejected": {
+        "message": "exact C1 HostError::Settings string; inert plain text"
+      },
+      "InvalidRequest": {
+        "field": "JSON pointer",
+        "reason": "UnknownField|MissingField|Type|Range|InvalidUuid|InvalidNumber|InvalidActionPayload"
+      },
+      "AmbiguousStableId": {
+        "node_id": "string"
+      },
+      "NodeMissing": {
+        "node_id": "string"
+      },
+      "ParentMissing": {
+        "node_id": "string",
+        "parent_id": "string"
+      },
+      "ParentCycle": {
+        "node_id": "string"
+      },
+      "UnsupportedAction": {
+        "node_id": "string",
+        "action": "closed enum"
+      },
+      "MissingMaterial": {
+        "node_id": "string",
+        "asset_id": "string"
+      },
+      "MissingBindingTarget": {
+        "node_id": "string",
+        "target_id": "string"
+      },
+      "PreviewClosed": {},
+      "SequenceConflict": {
+        "expected": {
+          "$ref": "#/$defs/U64Decimal"
+        },
+        "received": {
+          "$ref": "#/$defs/U64Decimal"
+        }
+      },
+      "SequenceOverflow": {},
+      "DependencyNotReady": {
+        "dependency": {
+          "enum": [
+            "M04_S2",
+            "C1_CODEC",
+            "M04_OWNER_INTEGRATION",
+            "M05_MATERIAL",
+            "M01_NATIVE_IDENTITY",
+            "ESS_PROJECTOR",
+            "ROOT_PROVIDER"
+          ]
+        }
+      },
+      "DomainRejected": {
+        "code": "exact existing EditError variant",
+        "fields": "exact existing named fields, no Debug parsing"
+      },
+      "UnverifiedOutcome": {
+        "request_id": {
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "RuntimeRecordLost",
+            "IssuerEvidenceMissing",
+            "CommitOutcomeUnknown"
+          ]
+        },
+        "retry_allowed": {
+          "const": false
+        }
+      },
+      "ReplayConflict": {
+        "request_id": {
+          "type": "string"
+        }
+      },
+      "InProgress": {
+        "request_id": {
+          "type": "string"
+        }
+      },
+      "MaterialReadRejected": {
+        "reason": {
+          "enum": [
+            "PinNotReadable",
+            "GrantMismatch",
+            "LimitExceeded",
+            "BlobMissing",
+            "SizeMismatch",
+            "IntegrityFailure",
+            "IdentityChanged",
+            "AliasRejected",
+            "UnsupportedPlatform"
+          ]
+        }
+      },
+      "ProofMismatch": {},
+      "CapacityExceeded": {},
+      "IoFailure": {},
+      "Indeterminate": {}
+    },
+    "mapping": [
+      {
+        "source": "ReplayConflict",
+        "before_content_commit": "ReplayConflict; zero IO",
+        "after_verified_content_commit": "Return retained committed result for original digest; changed digest ReplayConflict with no second commit",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "InProgress",
+        "before_content_commit": "InProgress; no second IO",
+        "after_verified_content_commit": "InProgress for still-running original delivery; query retained result only",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "RuntimeRecordLost|IssuerEvidenceMissing",
+        "before_content_commit": "UnverifiedOutcome; no mutation retry",
+        "after_verified_content_commit": "UnverifiedOutcome; cannot manufacture MutationReceipt from material receipt",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "PinNotReadable",
+        "before_content_commit": "MaterialReadRejected(reason=PinNotReadable)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "GrantMismatch",
+        "before_content_commit": "MaterialReadRejected(reason=GrantMismatch)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "LimitExceeded",
+        "before_content_commit": "MaterialReadRejected(reason=LimitExceeded)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "BlobMissing",
+        "before_content_commit": "MaterialReadRejected(reason=BlobMissing)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "SizeMismatch",
+        "before_content_commit": "MaterialReadRejected(reason=SizeMismatch)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "IntegrityFailure",
+        "before_content_commit": "MaterialReadRejected(reason=IntegrityFailure)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "IdentityChanged",
+        "before_content_commit": "MaterialReadRejected(reason=IdentityChanged)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "AliasRejected",
+        "before_content_commit": "MaterialReadRejected(reason=AliasRejected)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "Busy",
+        "before_content_commit": "Busy",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "UnsupportedPlatform",
+        "before_content_commit": "MaterialReadRejected(reason=UnsupportedPlatform)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "IoFailure",
+        "before_content_commit": "IoFailure",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=IoFailure); actual revision/proof/pin preserved",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "ProofMismatch",
+        "before_content_commit": "ProofMismatch",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "CapacityExceeded",
+        "before_content_commit": "CapacityExceeded",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "DependencyNotReady",
+        "before_content_commit": "DependencyNotReady",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "StaleRoots",
+        "before_content_commit": "DependencyNotReady(dependency=ROOT_PROVIDER)",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=StaleRoots); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "Indeterminate",
+        "before_content_commit": "Indeterminate",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=Indeterminate); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      },
+      {
+        "source": "IoFailure",
+        "before_content_commit": "IoFailure",
+        "after_verified_content_commit": "AppliedRetentionDeferred(reason=IoFailure); retain Held and committed revision",
+        "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+      }
+    ],
+    "lifecycle": [
+      {
+        "event": "same authorized request, binding current, identical body",
+        "result": "Retained exact outcome; replayed=true; do not reapply, downgrade newer UI projection or revalidate new revision in place of captured revision."
+      },
+      {
+        "event": "same key, different valid body",
+        "result": "ReplayConflict before any dependency IO; no new ordinal to evade conflict."
+      },
+      {
+        "event": "old binding closed, writer transferred or window instance replaced",
+        "result": "Validate caller/instance/binding first: UnauthorizedCaller or MissingBinding or StaleOwner; old runtime result is not disclosed to new authority. No resubmit on fresh binding."
+      },
+      {
+        "event": "inflight binding/window loss",
+        "result": "Owner finishes already admitted operation under captured authority only; keep evidence/Held. No delivery to stale window. New binding cannot claim same runtime request."
+      },
+      {
+        "event": "process restart or runtime record missing",
+        "result": "UnverifiedOutcome if admitted request cannot be authenticated in current runtime; old binding normally MissingBinding first. No automatic mutation retry or recreation. Durable issuer lookup is internal authenticated reconciliation only, not new H2 command."
+      },
+      {
+        "event": "authenticated durable material lookup succeeds after restart",
+        "result": "May establish material transition only; cannot establish runtime install/Undo success or ACK. Fresh owner open and explicit new intent required; prior uncertainty remains recorded."
+      },
+      {
+        "event": "known content commit, roots fail",
+        "result": "AppliedRetentionDeferred with original revisions, pin and mutation proof; never rollback, unchanged failure, automatic release or fabricated success."
+      }
+    ],
+    "precedence": [
+      "caller+instance",
+      "closed DTO/range",
+      "binding+generation",
+      "retained request full body",
+      "new request revision",
+      "candidate/pin/dependency preflight",
+      "content commit",
+      "retention delivery"
+    ],
+    "postcommit_stage": "LiveRoots for install; UndoRoots for Undo outgoing retention; RedoRoots for retained redo root, according to actual failed root target. Multi-root failure reports first failed stage in declared order LiveRoots,UndoRoots,RedoRoots; retain all unresolved pins.",
+    "uncertainty": "UnverifiedOutcome does not assert zero changes. UI shows outcome unknown and requires reconciliation, preserves draft and disables blind retry. Other precommit failures assert zero content commit only when commit is positively known not attempted."
+  }
+}

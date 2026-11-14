@@ -1,0 +1,210 @@
+{
+  "state": "DESCRIBED_NOT_PRODUCT_FIXTURES",
+  "base_examples": "fixtures.json is schema-only; full renderer/native fixtures must be created after approved Skeleton",
+  "rows": [
+    {
+      "id": "T01",
+      "given": "完整M01 typed definition與matching verified context",
+      "expected": "Prepared plan同時含program/ui_ux且輸入前後相等",
+      "fault": "none"
+    },
+    {
+      "id": "T02",
+      "given": "缺topology/confirmed requirement/approval各獨立列",
+      "expected": "SaveOnly列sorted/dedup missing，不渲染不寫檔",
+      "fault": "none"
+    },
+    {
+      "id": "T03",
+      "given": "approval_refs非空但HOST未核實足夠approval",
+      "expected": "SaveOnly approval門檻不放行，不把字串當批准",
+      "fault": "none"
+    },
+    {
+      "id": "T04",
+      "given": "target/template id/version/source_digest各自不符",
+      "expected": "typed mismatch，無plan",
+      "fault": "none"
+    },
+    {
+      "id": "T05",
+      "given": "選中非本模板支援矩陣target",
+      "expected": "UnsupportedTarget，不默認換框架或忽略has_ui",
+      "fault": "none"
+    },
+    {
+      "id": "T06",
+      "given": "relative path空/穿越/反斜線/保留名/大小寫碰撞/dir-prefix collision各列",
+      "expected": "InvalidArtifactPath/DuplicateArtifact，輸入不變",
+      "fault": "none"
+    },
+    {
+      "id": "T07",
+      "given": "計畫後revision/typed digest/target/template/approval/base各改一欄",
+      "expected": "逐列StaleBinding，精確指出欄位",
+      "fault": "none"
+    },
+    {
+      "id": "T08",
+      "given": "產物0/1/2/128/129、path bytes0/1/239/240/241、component16/17、digest不合法",
+      "expected": "逐界限符合限制；缺雙產品拒絕；不截斷",
+      "fault": "none"
+    },
+    {
+      "id": "T09",
+      "given": "定義與context project_uuid不符或target重複ID",
+      "expected": "InvalidInput/BindingMismatch而非名稱猜測",
+      "fault": "none"
+    },
+    {
+      "id": "T10",
+      "given": "相同不可變輸入重複prepare",
+      "expected": "同一有序意圖/相等binding；不讀clock或環境",
+      "fault": "none"
+    },
+    {
+      "id": "T11",
+      "given": "四schema example與raw JSON",
+      "expected": "嚴格型別版本、duplicate keys、UTF8/BOM、未知keys及bytes限制分開驗",
+      "fault": "none"
+    },
+    {
+      "id": "T12",
+      "given": "revision=0/1/u64MAX/u64MAX+1、activation_sequence=0/1/MAX、含float值",
+      "expected": "decimal字串精確保留，不損失JS整數精度；越界/float拒絕",
+      "fault": "none"
+    },
+    {
+      "id": "T13",
+      "given": "manifest欄位及每檔字節篡改、missing/excess file",
+      "expected": "raw manifest hash或source hash不符拒絕；不執行任何template script",
+      "fault": "none"
+    },
+    {
+      "id": "T14",
+      "given": "SPEC revision不是Approved/失效/content_hash不匹配",
+      "expected": "不可生成；可信來源重查而非UI布林",
+      "fault": "none"
+    },
+    {
+      "id": "T15",
+      "given": "未知variable、引號/小於號/反斜線/非ASCII顯示名",
+      "expected": "未知token拒絕，其他只進安全literal/text，檔名仍UUID衍生ASCII",
+      "fault": "none"
+    },
+    {
+      "id": "T16",
+      "given": "prepare時namespace不存在",
+      "expected": "0 FS mutation；只消耗session plan，沒有bootstrap",
+      "fault": "none"
+    },
+    {
+      "id": "T17",
+      "given": "兩個confirm預覽共用同一base與後來active變動",
+      "expected": "writer lease內recheck，第二個Conflict且不建/覆寫產物",
+      "fault": "none"
+    },
+    {
+      "id": "T18",
+      "given": "任一第一/第二產品write/sync/verify/seal注入故障",
+      "expected": "舊active bytes一致；owned stage處理可診斷，無半棵新可見樹",
+      "fault": "all named stages independently"
+    },
+    {
+      "id": "T19",
+      "given": "seal成功但active普通Storage/RecoveryRequired各列",
+      "expected": "沿IO語意回結果；sealed新版本保留，無成功/error矛盾",
+      "fault": "FileCommit before/after publish/rollback"
+    },
+    {
+      "id": "T20",
+      "given": "cancel在stage前/中/已seal/activate臨界點分列",
+      "expected": "前段不啟用且owned abort；activate開始後等結果，不成功卻Cancelled",
+      "fault": "none"
+    },
+    {
+      "id": "T21",
+      "given": "切project/session或關閉後late result",
+      "expected": "不更新別的project UI或權威定義；已進入activate的job完成交易後才釋放owner",
+      "fault": "none"
+    },
+    {
+      "id": "T22",
+      "given": "store根 absent/相同Ready/別UUID/缺marker/壞marker/未知entries",
+      "expected": "唯讀inspect無建立；init獨佔/idempotent或fail closed，原資料不動",
+      "fault": "none"
+    },
+    {
+      "id": "T23",
+      "given": "stage file/版本目的地已有同名file/空dir/非空dir",
+      "expected": "AlreadyExists，絕不覆寫；owned/foreign hash都可驗",
+      "fault": "none"
+    },
+    {
+      "id": "T24",
+      "given": "staging/manifest含reparse、hardlink、ADS、path穿越",
+      "expected": "拒絕並保留外部sentinel，不能只用string prefix證明根",
+      "fault": "none"
+    },
+    {
+      "id": "T25",
+      "given": "兩reader與一writer、writer已發布active但尚未驗證",
+      "expected": "read共享；writer獨占；reader看不到未終結active，Busy不降級直讀",
+      "fault": "none"
+    },
+    {
+      "id": "T26",
+      "given": "active未完成/損毀IOjournal、合法committed/rolledback各列",
+      "expected": "沿IO方案A只讀fail closed或terminal一致；不清理、不恢復",
+      "fault": "none"
+    },
+    {
+      "id": "T27",
+      "given": "initialize完成後project唯讀且側檔存在/缺失各列",
+      "expected": "只讀驗證成功或明確錯誤，不create側檔或繞過協調",
+      "fault": "none"
+    },
+    {
+      "id": "T28",
+      "given": "每檔0/4MiB/4MiB+1、總32MiB/32MiB+1、manifest 1MiB/1MiB+1",
+      "expected": "限制在配置/驗證邊界生效，不用超大真實OS路徑當parser測例",
+      "fault": "none"
+    },
+    {
+      "id": "T29",
+      "given": "stage cancel/delete失敗、seal後job中斷、Drop",
+      "expected": "只清本次owned未seal物；錯誤給owned_paths；sealed保留，Drop不隱式刪",
+      "fault": "none"
+    },
+    {
+      "id": "T30",
+      "given": "writer持lease child死亡，reader持lease child死亡",
+      "expected": "OS釋放handle，sidecar仍存在；不以file age刪鎖",
+      "fault": "none"
+    },
+    {
+      "id": "T31",
+      "given": "UI傳root/files/approval_passed或錯session plan",
+      "expected": "拒多餘欄位及跨project/session，薄handler經HOST",
+      "fault": "none"
+    },
+    {
+      "id": "T32",
+      "given": "missing/Busy/Prepared/Publishing/RecoveryRequired各狀態",
+      "expected": "disabled原因清楚、可取消邊界正確；成功只標骨架已啟用",
+      "fault": "none"
+    },
+    {
+      "id": "T33",
+      "given": "consumer有舊snapshot且writer忙或新版hash損毀",
+      "expected": "保留舊已驗證snapshot並標未刷新；無file URL或外部exec",
+      "fault": "none"
+    },
+    {
+      "id": "T34",
+      "given": "完整產品版本樹＋Windows11 x64/WebView2受控環境",
+      "expected": "生成、build、preview、功能及release各自證據，不以歷史binary冒充",
+      "fault": "none"
+    }
+  ]
+}

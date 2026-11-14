@@ -1,0 +1,298 @@
+{
+  "closed_errors": {
+    "UnauthorizedCaller": {},
+    "MissingBinding": {},
+    "IdentityConflict": {
+      "reference": "string"
+    },
+    "UnsupportedDocument": {
+      "nodes": "[{node_id,type,reason}]"
+    },
+    "StaleOwner": {},
+    "StaleRevision": {
+      "expected": {
+        "$ref": "#/$defs/U64Decimal"
+      },
+      "observed": {
+        "$ref": "#/$defs/U64Decimal"
+      }
+    },
+    "WriterRequired": {},
+    "MissingWindow": {},
+    "CandidateMissing": {},
+    "CandidateUsed": {},
+    "RequestConflict": {},
+    "Busy": {},
+    "ResourceLimit": {
+      "field": "JSON pointer",
+      "limit": "named token"
+    },
+    "CodecRejected": {
+      "message": "exact C1 HostError::Settings string; inert plain text"
+    },
+    "InvalidRequest": {
+      "field": "JSON pointer",
+      "reason": "UnknownField|MissingField|Type|Range|InvalidUuid|InvalidNumber|InvalidActionPayload"
+    },
+    "AmbiguousStableId": {
+      "node_id": "string"
+    },
+    "NodeMissing": {
+      "node_id": "string"
+    },
+    "ParentMissing": {
+      "node_id": "string",
+      "parent_id": "string"
+    },
+    "ParentCycle": {
+      "node_id": "string"
+    },
+    "UnsupportedAction": {
+      "node_id": "string",
+      "action": "closed enum"
+    },
+    "MissingMaterial": {
+      "node_id": "string",
+      "asset_id": "string"
+    },
+    "MissingBindingTarget": {
+      "node_id": "string",
+      "target_id": "string"
+    },
+    "PreviewClosed": {},
+    "SequenceConflict": {
+      "expected": {
+        "$ref": "#/$defs/U64Decimal"
+      },
+      "received": {
+        "$ref": "#/$defs/U64Decimal"
+      }
+    },
+    "SequenceOverflow": {},
+    "DependencyNotReady": {
+      "dependency": {
+        "enum": [
+          "M04_S2",
+          "C1_CODEC",
+          "M04_OWNER_INTEGRATION",
+          "M05_MATERIAL",
+          "M01_NATIVE_IDENTITY",
+          "ESS_PROJECTOR",
+          "ROOT_PROVIDER"
+        ]
+      }
+    },
+    "DomainRejected": {
+      "code": "exact existing EditError variant",
+      "fields": "exact existing named fields, no Debug parsing"
+    },
+    "UnverifiedOutcome": {
+      "request_id": {
+        "type": "string"
+      },
+      "reason": {
+        "enum": [
+          "RuntimeRecordLost",
+          "IssuerEvidenceMissing",
+          "CommitOutcomeUnknown"
+        ]
+      },
+      "retry_allowed": {
+        "const": false
+      }
+    },
+    "ReplayConflict": {
+      "request_id": {
+        "type": "string"
+      }
+    },
+    "InProgress": {
+      "request_id": {
+        "type": "string"
+      }
+    },
+    "MaterialReadRejected": {
+      "reason": {
+        "enum": [
+          "PinNotReadable",
+          "GrantMismatch",
+          "LimitExceeded",
+          "BlobMissing",
+          "SizeMismatch",
+          "IntegrityFailure",
+          "IdentityChanged",
+          "AliasRejected",
+          "UnsupportedPlatform"
+        ]
+      }
+    },
+    "ProofMismatch": {},
+    "CapacityExceeded": {},
+    "IoFailure": {},
+    "Indeterminate": {}
+  },
+  "mapping": [
+    {
+      "source": "ReplayConflict",
+      "before_content_commit": "ReplayConflict; zero IO",
+      "after_verified_content_commit": "Return retained committed result for original digest; changed digest ReplayConflict with no second commit",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "InProgress",
+      "before_content_commit": "InProgress; no second IO",
+      "after_verified_content_commit": "InProgress for still-running original delivery; query retained result only",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "RuntimeRecordLost|IssuerEvidenceMissing",
+      "before_content_commit": "UnverifiedOutcome; no mutation retry",
+      "after_verified_content_commit": "UnverifiedOutcome; cannot manufacture MutationReceipt from material receipt",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "PinNotReadable",
+      "before_content_commit": "MaterialReadRejected(reason=PinNotReadable)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "GrantMismatch",
+      "before_content_commit": "MaterialReadRejected(reason=GrantMismatch)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "LimitExceeded",
+      "before_content_commit": "MaterialReadRejected(reason=LimitExceeded)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "BlobMissing",
+      "before_content_commit": "MaterialReadRejected(reason=BlobMissing)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "SizeMismatch",
+      "before_content_commit": "MaterialReadRejected(reason=SizeMismatch)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "IntegrityFailure",
+      "before_content_commit": "MaterialReadRejected(reason=IntegrityFailure)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "IdentityChanged",
+      "before_content_commit": "MaterialReadRejected(reason=IdentityChanged)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "AliasRejected",
+      "before_content_commit": "MaterialReadRejected(reason=AliasRejected)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "Busy",
+      "before_content_commit": "Busy",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "UnsupportedPlatform",
+      "before_content_commit": "MaterialReadRejected(reason=UnsupportedPlatform)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "IoFailure",
+      "before_content_commit": "IoFailure",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=IoFailure); actual revision/proof/pin preserved",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "ProofMismatch",
+      "before_content_commit": "ProofMismatch",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=ProofMismatch); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "CapacityExceeded",
+      "before_content_commit": "CapacityExceeded",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "DependencyNotReady",
+      "before_content_commit": "DependencyNotReady",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=DependencyNotReady); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "StaleRoots",
+      "before_content_commit": "DependencyNotReady(dependency=ROOT_PROVIDER)",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=StaleRoots); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "Indeterminate",
+      "before_content_commit": "Indeterminate",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=Indeterminate); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    },
+    {
+      "source": "IoFailure",
+      "before_content_commit": "IoFailure",
+      "after_verified_content_commit": "AppliedRetentionDeferred(reason=IoFailure); retain Held and committed revision",
+      "unknown_commit": "UnverifiedOutcome(reason=CommitOutcomeUnknown); retain Held, block resubmission; never ErrorUnchanged"
+    }
+  ],
+  "lifecycle": [
+    {
+      "event": "same authorized request, binding current, identical body",
+      "result": "Retained exact outcome; replayed=true; do not reapply, downgrade newer UI projection or revalidate new revision in place of captured revision."
+    },
+    {
+      "event": "same key, different valid body",
+      "result": "ReplayConflict before any dependency IO; no new ordinal to evade conflict."
+    },
+    {
+      "event": "old binding closed, writer transferred or window instance replaced",
+      "result": "Validate caller/instance/binding first: UnauthorizedCaller or MissingBinding or StaleOwner; old runtime result is not disclosed to new authority. No resubmit on fresh binding."
+    },
+    {
+      "event": "inflight binding/window loss",
+      "result": "Owner finishes already admitted operation under captured authority only; keep evidence/Held. No delivery to stale window. New binding cannot claim same runtime request."
+    },
+    {
+      "event": "process restart or runtime record missing",
+      "result": "UnverifiedOutcome if admitted request cannot be authenticated in current runtime; old binding normally MissingBinding first. No automatic mutation retry or recreation. Durable issuer lookup is internal authenticated reconciliation only, not new H2 command."
+    },
+    {
+      "event": "authenticated durable material lookup succeeds after restart",
+      "result": "May establish material transition only; cannot establish runtime install/Undo success or ACK. Fresh owner open and explicit new intent required; prior uncertainty remains recorded."
+    },
+    {
+      "event": "known content commit, roots fail",
+      "result": "AppliedRetentionDeferred with original revisions, pin and mutation proof; never rollback, unchanged failure, automatic release or fabricated success."
+    }
+  ],
+  "precedence": [
+    "caller+instance",
+    "closed DTO/range",
+    "binding+generation",
+    "retained request full body",
+    "new request revision",
+    "candidate/pin/dependency preflight",
+    "content commit",
+    "retention delivery"
+  ],
+  "postcommit_stage": "LiveRoots for install; UndoRoots for Undo outgoing retention; RedoRoots for retained redo root, according to actual failed root target. Multi-root failure reports first failed stage in declared order LiveRoots,UndoRoots,RedoRoots; retain all unresolved pins.",
+  "uncertainty": "UnverifiedOutcome does not assert zero changes. UI shows outcome unknown and requires reconciliation, preserves draft and disables blind retry. Other precommit failures assert zero content commit only when commit is positively known not attempted."
+}

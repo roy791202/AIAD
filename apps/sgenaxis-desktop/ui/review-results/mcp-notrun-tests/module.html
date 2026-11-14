@@ -1,0 +1,152 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>MCP NOT RUN independent test gate</title><style>body{font:16px system-ui;max-width:1200px;margin:40px auto;background:#101827;color:#e2e8f0}td,th{padding:12px;border:1px solid #475569}table{border-collapse:collapse}a{color:#7dd3fc}pre{white-space:pre-wrap}</style><h1>MCP NOT RUN - Independent test gate</h1><p>READY_FOR_GREEN yellow. Owner acceptance pending.</p><p>Behavioral RED: 5 intended failures. Frozen tests then GREEN: 5/5. Tauri 79; Workspace 277; EXEC all features 56; EXEC default 52 PASS.</p><h2>Architecture and ownership</h2><p>Private test module exercises existing host input ports, snapshots accepted state, and supplies explicit test-only transport fixtures. Production public seams unchanged. Existing fake Live simulation assertions pass unchanged.</p><h2>BDD / TDD traceability</h2><table><tr><th>Test</th><th>Observable behavior</th><th>Contract</th></tr><tr><td>default_live_rejects_without_accepted_state</td><td>Live request with an otherwise valid target</td><td>C1,C2,C3</td></tr><tr><td>repeated_rejection_then_dryrun_recovers</td><td>Repeated requests remain unexecuted; Rejection does not block later simulation</td><td>C3,C6</td></tr><tr><td>guarded_implementation_unavailable_keeps_execution_uncommitted</td><td>Live request through approved implementation command</td><td>C1,C2,C3</td></tr><tr><td>unavailable_diagnostics_do_not_echo_credentials</td><td>Failure does not disclose credentials</td><td>C4</td></tr><tr><td>empty_and_reserved_targets_never_contact_transport_or_echo_credentials</td><td>Unsafe targets remain inactive; Failure does not disclose credentials</td><td>C4,C5</td></tr><tr><td>live_mcp_via_dispatch_host_is_not_dry_run_only</td><td>Explicit simulation fixtures preserve adapter coverage</td><td>C7</td></tr></table><h2>Evidence</h2><p><a href="build.txt">build.txt</a> | <a href="red.txt">red.txt</a> | <a href="green.txt">green.txt</a> | <a href="tauri.txt">tauri.txt</a> | <a href="workspace.txt">workspace.txt</a> | <a href="exec-all.txt">exec-all.txt</a> | <a href="exec-default.txt">exec-default.txt</a></p><h2>Fixture, verification, pending checks and risks</h2><pre>{
+  &quot;module&quot;: &quot;agent-execution-mcp-composition&quot;,
+  &quot;task&quot;: &quot;PD-RUST-MCP-NOTRUN-TDD-01&quot;,
+  &quot;status&quot;: &quot;READY_FOR_GREEN yellow&quot;,
+  &quot;build&quot;: &quot;PASS&quot;,
+  &quot;red&quot;: {
+    &quot;passed&quot;: 0,
+    &quot;failed&quot;: 5,
+    &quot;reason&quot;: &quot;4 simulated Live successes; 1 credential disclosure&quot;
+  },
+  &quot;fixture&quot;: {
+    &quot;kind&quot;: &quot;in-process private DispatchHost fixture&quot;,
+    &quot;endpoint&quot;: &quot;http://127.0.0.1:3920/sse&quot;,
+    &quot;secrets&quot;: &quot;synthetic only&quot;,
+    &quot;reserved_targets&quot;: [
+      &quot;empty&quot;,
+      &quot;8788&quot;,
+      &quot;8787&quot;
+    ],
+    &quot;transport&quot;: &quot;default fake at RED, explicit NeverDial spy for forbidden checks&quot;,
+    &quot;binding&quot;: &quot;existing DEMO project root/fingerprint, notrun-work task&quot;,
+    &quot;guard&quot;: &quot;existing approved sample_guard_packet(true)&quot;
+  },
+  &quot;traceability&quot;: [
+    {
+      &quot;test&quot;: &quot;default_live_rejects_without_accepted_state&quot;,
+      &quot;scenario&quot;: &quot;Live request with an otherwise valid target&quot;,
+      &quot;contracts&quot;: [
+        &quot;C1&quot;,
+        &quot;C2&quot;,
+        &quot;C3&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T1&quot;,
+        &quot;T2&quot;
+      ]
+    },
+    {
+      &quot;test&quot;: &quot;repeated_rejection_then_dryrun_recovers&quot;,
+      &quot;scenario&quot;: &quot;Repeated requests remain unexecuted; Rejection does not block later simulation&quot;,
+      &quot;contracts&quot;: [
+        &quot;C3&quot;,
+        &quot;C6&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T3&quot;,
+        &quot;T4&quot;
+      ]
+    },
+    {
+      &quot;test&quot;: &quot;guarded_implementation_unavailable_keeps_execution_uncommitted&quot;,
+      &quot;scenario&quot;: &quot;Live request through approved implementation command&quot;,
+      &quot;contracts&quot;: [
+        &quot;C1&quot;,
+        &quot;C2&quot;,
+        &quot;C3&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T1&quot;,
+        &quot;T2&quot;
+      ]
+    },
+    {
+      &quot;test&quot;: &quot;unavailable_diagnostics_do_not_echo_credentials&quot;,
+      &quot;scenario&quot;: &quot;Failure does not disclose credentials&quot;,
+      &quot;contracts&quot;: [
+        &quot;C4&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T5&quot;
+      ]
+    },
+    {
+      &quot;test&quot;: &quot;empty_and_reserved_targets_never_contact_transport_or_echo_credentials&quot;,
+      &quot;scenario&quot;: &quot;Unsafe targets remain inactive; Failure does not disclose credentials&quot;,
+      &quot;contracts&quot;: [
+        &quot;C4&quot;,
+        &quot;C5&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T5&quot;,
+        &quot;T6&quot;
+      ]
+    },
+    {
+      &quot;test&quot;: &quot;live_mcp_via_dispatch_host_is_not_dry_run_only&quot;,
+      &quot;scenario&quot;: &quot;Explicit simulation fixtures preserve adapter coverage&quot;,
+      &quot;contracts&quot;: [
+        &quot;C7&quot;
+      ],
+      &quot;matrix&quot;: [
+        &quot;T8&quot;
+      ],
+      &quot;note&quot;: &quot;Existing assertions preserved, private explicit fake composition&quot;
+    }
+  ],
+  &quot;pending_automation&quot;: [
+    {
+      &quot;check&quot;: &quot;focused GREEN and library regressions&quot;,
+      &quot;status&quot;: &quot;PASS&quot;
+    },
+    {
+      &quot;check&quot;: &quot;native WebView IPC / UI rendering&quot;,
+      &quot;status&quot;: &quot;NOT RUN&quot;,
+      &quot;reason&quot;: &quot;library slice only&quot;
+    },
+    {
+      &quot;check&quot;: &quot;real MCP transport&quot;,
+      &quot;status&quot;: &quot;NOT RUN&quot;,
+      &quot;reason&quot;: &quot;no transport implementation or network permitted&quot;
+    }
+  ],
+  &quot;architecture&quot;: &quot;unchanged public interfaces; tests only inspect private child-module state; no production injection API&quot;,
+  &quot;risks&quot;: [
+    &quot;No physical network or native UI proof&quot;,
+    &quot;Guard authorization pass and internal counters explicitly excluded from accepted-state invariants&quot;
+  ],
+  &quot;green&quot;: {
+    &quot;passed&quot;: 5,
+    &quot;failed&quot;: 0
+  },
+  &quot;regression&quot;: {
+    &quot;tauri&quot;: {
+      &quot;status&quot;: &quot;PASS&quot;,
+      &quot;passed&quot;: 79,
+      &quot;failed&quot;: 0,
+      &quot;log&quot;: &quot;tauri.txt&quot;
+    },
+    &quot;workspace&quot;: {
+      &quot;status&quot;: &quot;PASS&quot;,
+      &quot;passed&quot;: 277,
+      &quot;failed&quot;: 0,
+      &quot;log&quot;: &quot;workspace.txt&quot;
+    },
+    &quot;exec-all&quot;: {
+      &quot;status&quot;: &quot;PASS&quot;,
+      &quot;passed&quot;: 56,
+      &quot;failed&quot;: 0,
+      &quot;log&quot;: &quot;exec-all.txt&quot;
+    },
+    &quot;exec-default&quot;: {
+      &quot;status&quot;: &quot;PASS&quot;,
+      &quot;passed&quot;: 52,
+      &quot;failed&quot;: 0,
+      &quot;log&quot;: &quot;exec-default.txt&quot;
+    }
+  },
+  &quot;test_sha256&quot;: &quot;c72fb7486cbfd20cd2aae82ccb73284e4e3cc52b754366c44fd8bf3df1628b8a&quot;,
+  &quot;dispatch_sha256&quot;: &quot;0ae3e2f8063740896a2e3f92552267f2b2bf5954b94c770c453c7e1081ac390c&quot;,
+  &quot;acceptance&quot;: &quot;OWNER_PENDING; no board green promotion&quot;,
+  &quot;classification&quot;: &quot;No regression failures observed; no environment failures; native IPC/UI and real transport NOT RUN.&quot;
+}</pre><script type="application/json" id="module-spec">{"module": "agent-execution-mcp-composition", "task": "PD-RUST-MCP-NOTRUN-TDD-01", "status": "READY_FOR_GREEN yellow", "build": "PASS", "red": {"passed": 0, "failed": 5, "reason": "4 simulated Live successes; 1 credential disclosure"}, "fixture": {"kind": "in-process private DispatchHost fixture", "endpoint": "http://127.0.0.1:3920/sse", "secrets": "synthetic only", "reserved_targets": ["empty", "8788", "8787"], "transport": "default fake at RED, explicit NeverDial spy for forbidden checks", "binding": "existing DEMO project root/fingerprint, notrun-work task", "guard": "existing approved sample_guard_packet(true)"}, "traceability": [{"test": "default_live_rejects_without_accepted_state", "scenario": "Live request with an otherwise valid target", "contracts": ["C1", "C2", "C3"], "matrix": ["T1", "T2"]}, {"test": "repeated_rejection_then_dryrun_recovers", "scenario": "Repeated requests remain unexecuted; Rejection does not block later simulation", "contracts": ["C3", "C6"], "matrix": ["T3", "T4"]}, {"test": "guarded_implementation_unavailable_keeps_execution_uncommitted", "scenario": "Live request through approved implementation command", "contracts": ["C1", "C2", "C3"], "matrix": ["T1", "T2"]}, {"test": "unavailable_diagnostics_do_not_echo_credentials", "scenario": "Failure does not disclose credentials", "contracts": ["C4"], "matrix": ["T5"]}, {"test": "empty_and_reserved_targets_never_contact_transport_or_echo_credentials", "scenario": "Unsafe targets remain inactive; Failure does not disclose credentials", "contracts": ["C4", "C5"], "matrix": ["T5", "T6"]}, {"test": "live_mcp_via_dispatch_host_is_not_dry_run_only", "scenario": "Explicit simulation fixtures preserve adapter coverage", "contracts": ["C7"], "matrix": ["T8"], "note": "Existing assertions preserved, private explicit fake composition"}], "pending_automation": [{"check": "focused GREEN and library regressions", "status": "PASS"}, {"check": "native WebView IPC / UI rendering", "status": "NOT RUN", "reason": "library slice only"}, {"check": "real MCP transport", "status": "NOT RUN", "reason": "no transport implementation or network permitted"}], "architecture": "unchanged public interfaces; tests only inspect private child-module state; no production injection API", "risks": ["No physical network or native UI proof", "Guard authorization pass and internal counters explicitly excluded from accepted-state invariants"], "green": {"passed": 5, "failed": 0}, "regression": {"tauri": {"status": "PASS", "passed": 79, "failed": 0, "log": "tauri.txt"}, "workspace": {"status": "PASS", "passed": 277, "failed": 0, "log": "workspace.txt"}, "exec-all": {"status": "PASS", "passed": 56, "failed": 0, "log": "exec-all.txt"}, "exec-default": {"status": "PASS", "passed": 52, "failed": 0, "log": "exec-default.txt"}}, "test_sha256": "c72fb7486cbfd20cd2aae82ccb73284e4e3cc52b754366c44fd8bf3df1628b8a", "dispatch_sha256": "0ae3e2f8063740896a2e3f92552267f2b2bf5954b94c770c453c7e1081ac390c", "acceptance": "OWNER_PENDING; no board green promotion", "classification": "No regression failures observed; no environment failures; native IPC/UI and real transport NOT RUN."}</script></html>

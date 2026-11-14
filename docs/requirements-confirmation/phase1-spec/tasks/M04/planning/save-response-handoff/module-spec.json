@@ -1,0 +1,97 @@
+{
+  "id": "M04-SAVE-RESPONSE-HANDOFF",
+  "parent": "PD-P1-M04-PREP-01",
+  "status": "PROPOSED_PENDING_OWNER_NOT_READY_FOR_IMPLEMENTATION",
+  "primary_module": "M04",
+  "sole_document_owner": "M04 DocumentOwner; S1 owns content/history/formal and snapshot baselines",
+  "M03": "facade only; cannot create session registry or ACK independently",
+  "operation": "design_document_save; unintegrated operation, not a native provider claim",
+  "intent": "Reconcile M04 captured-save result with M03 caller response without losing file-commit/root-deferred distinctions.",
+  "scope": "Only this new planning directory; no product, original packet, board, current-state, role, hook, commit or cleanup changes.",
+  "architecture": {
+    "hexagonal": "UI → M03 facade → M04 sole DocumentOwner → existing FileCommitPort / proposed M05 retention boundary ← infrastructure adapters",
+    "dependency": "M04 orchestration → S1 semantic ACK; M05 retention owns material roots, not document content. M03 projects authorized response.",
+    "transaction": "Capture+encode+pin → IO replace_checked → four-field verification → M05 root result verification → ACK captured semantic → authorized response",
+    "mutation": "Only S1 formal ACK mutates formal baseline; never recovery ACK; no content/Undo mutation.",
+    "retention": "Keep actual captured versions, pin and issuer evidence on deferred/uncertain result; no automatic release, retry or inferred Held state.",
+    "forbidden": [
+      "second registry",
+      "new private journal",
+      "Port change",
+      "invented native provider",
+      "new document SSOT"
+    ]
+  },
+  "delta": [
+    {
+      "old": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/cx-revision-v3/module-spec.json#/effective_spec/architecture/transaction",
+      "new": "this module-spec.json /architecture/transaction",
+      "gap": "Original M04 summary omits root-transfer outcome between verified receipt and ACK; do not adopt M03 proposal silently."
+    },
+    {
+      "old": "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-save-proof-contract/module-spec.json#/contracts",
+      "new": "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/command-contract.json /wire_choices and docs/requirements-confirmation/phase1-spec/tasks/M03/planning/save-proof-correction/response.schema.json",
+      "gap": "M04 outcome labels do not define M03 full envelope, decimal U64 strings, opaque proof_id, typed stage/reason or authorized delivery. M03 candidate is independently reviewed document-only, not adopted."
+    }
+  ],
+  "owner_gates": [
+    {
+      "id": "G1",
+      "owner": "M04+M03",
+      "decision": "Adopt exact request capture identity and full closed response encoding; no local response DTO introduced."
+    },
+    {
+      "id": "G2",
+      "owner": "M04+M05",
+      "decision": "Adopt issuer-bound root receipt/pin semantics and retention provider envelope; internal 17-field projection is not a public Port."
+    },
+    {
+      "id": "G3",
+      "owner": "M04+M01+IO",
+      "decision": "Approve canonical target identity and requested/raw receipt mapping, exact stage outcomes and destructive-call gate."
+    },
+    {
+      "id": "G4",
+      "owner": "M04+S1",
+      "decision": "Confirm captured ACK and newer-baseline rejection mapping before Skeleton/valid RED."
+    }
+  ],
+  "premises": [
+    "Capture is trusted immutable application evidence; caller cannot replace seal. Model does not prove isolation/authenticity.",
+    "Post-file seal obtains actual transaction ID only after verified IO receipt.",
+    "Root attestation is a supplied model premise, not a fabricated native M05 capability.",
+    "Live content may advance. S1 rejects ACK older than formal baseline; snapshot baseline is independent."
+  ],
+  "pending_automation": [
+    "Owner-approved native orchestration/DTO provider integration",
+    "compiled valid RED then GREEN",
+    "independent document review",
+    "native UI/IPC, product tests, build/package/install",
+    "full Draft 2020-12 validator"
+  ],
+  "next_ready_action": "Independent bounded document review of new witnesses, then owners G1-G4 decide exact mappings. No production implementation before approved Skeleton and valid RED.",
+  "module_complete": false,
+  "acceptance": [
+    "All 11 new witnesses satisfy exact candidate classification and preserve snapshot/live content.",
+    "Receipt mismatches invoke neither root transfer nor ACK.",
+    "Verified file/root-deferred retains evidence and never returns Saved.",
+    "Captured R10 may ACK while live R11 remains dirty; late R10 cannot replace formal R11.",
+    "796 authority hashes and frozen input hashes remain unchanged.",
+    "Full response field encoding and native provider mapping remain G1-G4 pending."
+  ],
+  "tasks": [
+    {
+      "id": "M04-SRH-DOC-01",
+      "primary_module": "M04",
+      "status": "DOCUMENT_MODEL_CHECKED_PENDING_INDEPENDENT_REVIEW",
+      "scope": "new save-response-handoff only",
+      "tests": "python -B check_documents.py",
+      "no_production": true
+    }
+  ],
+  "risks": [
+    "The witness compares orchestration propositions, not executable production state or cryptographic issuer isolation.",
+    "Symbolic root_capture equality assumes issuer-bound full capture verified; it does not implement the M03 17-field seal or M05 protocol.",
+    "No response.schema.json is invented here. Exact M03 candidate schemas are pinned inputs and remain pending joint adoption."
+  ]
+}

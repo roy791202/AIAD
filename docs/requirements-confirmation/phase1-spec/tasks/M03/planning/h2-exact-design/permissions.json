@@ -1,0 +1,46 @@
+{
+  "commands": [
+    "design_binding_open",
+    "design_binding_get",
+    "design_binding_transfer",
+    "design_candidate_prepare",
+    "design_candidate_install",
+    "design_document_undo",
+    "design_document_save",
+    "design_editor_select",
+    "design_viewer_begin",
+    "design_viewer_intent",
+    "design_viewer_refresh",
+    "design_viewer_close",
+    "design_binding_close"
+  ],
+  "new_groups": {
+    "design-owner-read": [
+      "design_binding_get",
+      "design_editor_select"
+    ],
+    "design-owner-write": [
+      "design_binding_open",
+      "design_binding_transfer",
+      "design_candidate_prepare",
+      "design_candidate_install",
+      "design_document_undo",
+      "design_document_save",
+      "design_binding_close"
+    ],
+    "design-viewer-mock": [
+      "design_binding_get",
+      "design_viewer_begin",
+      "design_viewer_intent",
+      "design_viewer_refresh",
+      "design_viewer_close"
+    ]
+  },
+  "main": "default capability adds design owner read/write and viewer group; actual handler still checks caller/binding/role. Existing main generic privileges unchanged outside this task.",
+  "editor": "uidesign-window.json windows becomes [ui-editor]; retain old unrelated privilege sets only as historical editor capability, add design groups; every old design mutation entry now DESIGN_OWNER_REQUIRED. No generic action dispatch from runtime.",
+  "viewer": "New capabilities/design-viewer.json windows=[ui-viewer], only core window chrome + design-viewer-mock. Remove ui-viewer from prior broad uidesign-window group; no host-default/dispatch-default/core webview-create. app bootstrap for viewer must use binding projection only, not privileged main initialization.",
+  "native_guard": "Injected WebviewWindow with trusted instance nonce; allow local tauri://localhost or http(s)://tauri.localhost without explicit port, role-specific labels main/ui-editor/ui-viewer. Remote/dev origins reject. Do not reuse main-only guard by silently weakening its existing policy for other commands; add a dedicated design caller policy.",
+  "legacy": "uidesign_save_design/load_design/build_preview kept registered for source/ACL compatibility but return DESIGN_OWNER_REQUIRED for old authoritative args; no typed doc path reaches filesystem. Exported communication preview generation is deferred compatibility artifact path, not a backdoor to Viewer privileges. uidesign_ask_agent does not become a Viewer action.",
+  "host_allowlist": "Add exactly listed13 commands to AllowedIpcCommand parse/enum; no wildcard. Main/editor role authority is native application gate beyond allowlist.",
+  "test_migration": "commands.rs existing guard_owner_caller_tests assertion windows=[ui-editor,ui-viewer] changes explicitly to editor-only plus separate viewer capability assertions; preserve all original main-only guard denial tests. Archive old test snippet/hash in implementation-stage evidence before changing assertion."
+}

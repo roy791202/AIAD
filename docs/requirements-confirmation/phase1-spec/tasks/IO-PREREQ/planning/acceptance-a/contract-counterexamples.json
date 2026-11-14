@@ -1,0 +1,34 @@
+[
+  {
+    "id": "A-COUNTEREXAMPLE-1",
+    "approved_trace": [
+      "Publish fails",
+      "Restore old/absence",
+      "VerifyRestored succeeds",
+      "Write+verify ROLLED_BACK",
+      "Delete owned old/new artifacts",
+      "Delete journal.v1 last",
+      "Return ordinary Storage at original failure stage"
+    ],
+    "contract_result": "Allowed by adopted cleanup/failure table; authoritative formal state restored and verified",
+    "current_test": "ordinary_fault(post=true), lines736-741, unconditionally reads journal.v1 after return",
+    "test_result": "Would fail despite contract-compliant cleanup; 14 post=true cases affected",
+    "recommended_test_only_change": "Capture verified ROLLED_BACK at an approved checkpoint before cleanup; after return verify formal bytes/absence and assert either fully cleaned transaction area or valid retained owned terminal artifacts according to actual cleanup result. No business/architecture change."
+  },
+  {
+    "id": "A-COUNTEREXAMPLE-2",
+    "approved_trace": [
+      "Publish verify fails",
+      "Restore+verify complete formal OLD",
+      "Write+verify ROLLED_BACK",
+      "Remove owned old.bin succeeds",
+      "Remove owned new.bin hits injected cleanup failure",
+      "Keep valid terminal journal and remaining owned artifacts",
+      "Return error with verified OLD intact"
+    ],
+    "contract_result": "old.bin is no longer the unique preimage once formal OLD is restored/verified; approved cleanup may delete it before another removal fails",
+    "current_test": "cleanup_case(false), lines1336-1339, asserts old.bin exists for generic cleanup.remove fault",
+    "test_result": "Rejects legal partial cleanup order; one case affected",
+    "recommended_test_only_change": "Assert formal OLD remains complete and foreign data untouched; validate terminal journal/remaining artifacts without forcing deleted non-unique backup to exist, or explicitly inject failure before the identified preimage-removal point if testing preservation of that still-unique version."
+  }
+]

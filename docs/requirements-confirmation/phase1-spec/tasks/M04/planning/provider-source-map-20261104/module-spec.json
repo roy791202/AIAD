@@ -1,0 +1,154 @@
+{
+  "author": "/root/yellow_next_provider",
+  "card": "PD-P1-M04-PREP-01",
+  "status": "DOCUMENT_SOURCE_MAP_ONLY_PENDING_INDEPENDENT_REVIEW",
+  "generated_at": "2026-11-04T00:49:36.295368+08:00",
+  "head": "5b709343a890503ebbe24a802e43cda5647df124",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "authority_count": 796,
+  "authority_drift": [],
+  "historical_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "head_same_as_historical": false,
+  "new_source_facts": [
+    {
+      "id": "SRC-01",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "sha256": "22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c",
+      "start": 21,
+      "end": 27,
+      "text": "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct CommitReceipt {\n    pub target_path: String,\n    pub previous_digest: Option<String>,\n    pub committed_digest: String,\n    pub transaction_id: String,\n}",
+      "meaning": "四欄單檔 CommitReceipt：沒有 document/session/revision/semantic digest、Held issuer、root-transfer或ACK欄位"
+    },
+    {
+      "id": "SRC-02",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "sha256": "22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c",
+      "start": 58,
+      "end": 74,
+      "text": "pub trait FileCommitPort: Send + Sync {\n    fn create_directory_exclusive(\n        &self,\n        parent: &str,\n        single_name: &str,\n    ) -> Result<String, CommitError>;\n    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError>;\n}\n\npub trait FileWriteLease {\n    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError>;\n    fn replace_checked(\n        &mut self,\n        expected_digest: Option<&str>,\n        bytes: &[u8],\n    ) -> Result<CommitReceipt, CommitError>;\n}",
+      "meaning": "FileWriteLease read/replace 單檔輸出埠，不定義 M05 root-transfer 或 M04 ACK"
+    },
+    {
+      "id": "SRC-03",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+      "sha256": "6002fc8cee6156555cc944f6faeea2e1b8c36e6e600926a79b2337b224e25181",
+      "start": 967,
+      "end": 998,
+      "text": "            self.stage(CommitStage::VerifyPublished)?;\n            self.point(\"target.verify\", CommitStage::VerifyPublished)?;\n            if read_optional(Path::new(&self.target_path))?.as_deref() != Some(bytes) {\n                return Err(storage(\n                    CommitStage::VerifyPublished,\n                    Path::new(&self.target_path),\n                    \"published bytes mismatch\",\n                ));\n            }\n            self.journal(&mut tx, JournalState::Committed, \"committed\")?;\n            if read_optional(Path::new(&self.target_path))?.as_deref() != Some(bytes) {\n                return Err(recovery(\n                    &self.target_path,\n                    \"committed target changed\",\n                    Some(&tx.record),\n                ));\n            }\n            Ok(())\n        })();\n        match result {\n            Ok(()) => {\n                let receipt = CommitReceipt {\n                    target_path: self.target_path.clone(),\n                    previous_digest: previous,\n                    committed_digest: tx.record.new_digest.clone(),\n                    transaction_id: tx.record.transaction_id.clone(),\n                };\n                if self.cleanup_publish_temps(&tx).is_ok() {\n                    let _ = self.cleanup_terminal(&tx.record);\n                }\n                Ok(receipt)\n            }",
+      "meaning": "成功分支先核對發布 bytes 與 journal，再構造四欄 receipt；raw byte digest 不等 document semantic digest"
+    },
+    {
+      "id": "SRC-04",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/scene_doc.rs",
+      "sha256": "a966c10cace2207fd800224c42fb8128c4bd84aac0cdf85135e87ee2ae28646a",
+      "start": 61,
+      "end": 79,
+      "text": "pub fn save_scene_text(\n    fs: &dyn FileSystemPort,\n    project_root: &str,\n    rel_path: &str,\n    text: &str,\n) -> Result<String, HostError> {\n    let rel = normalize_scene_rel(Some(rel_path), DEFAULT_SGS_REL)?;\n    let path = join_project_rel(project_root, &rel)?;\n    if let Some(parent) = std::path::Path::new(&path).parent() {\n        let parent_s = parent.to_string_lossy();\n        if !parent_s.is_empty() {\n            fs.create_dir_all(&parent_s)\n                .map_err(|e| HostError::Settings(format!(\"mkdir for scene save: {e}\")))?;\n        }\n    }\n    fs.write_atomic(&path, text.as_bytes())\n        .map_err(|e| HostError::Settings(format!(\"write scene file: {e}\")))?;\n    Ok(path)\n}",
+      "meaning": "目前 scene save helper 透過 FileSystemPort.write_atomic 回傳 path；此函式未呼叫 FileCommitPort/root-transfer/semantic ACK"
+    },
+    {
+      "id": "SRC-05",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+      "start": 272,
+      "end": 295,
+      "text": "    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError> {\n        self.check_editable()?;\n        Ok(ImmutableDocumentSnapshot {\n            document_uuid: self.state.document_uuid.clone(),\n            session_uuid: self.state.session_uuid.clone(),\n            revision: self.state.content_revision,\n            content: self.state.content.clone(),\n        })\n    }\n\n    pub fn acknowledge_formal_save(\n        &mut self,\n        captured: Revision,\n        digest: &str,\n    ) -> Result<SaveProjection, EditError> {\n        self.check_ack(captured, digest, self.state.formal_baseline.as_ref())?;\n        self.state.formal_baseline = Some(SavedContentBaseline {\n            revision: captured,\n            semantic_digest: digest.into(),\n        });\n        Ok(SaveProjection {\n            captured_revision: captured,\n            dirty: self.dirty(),\n        })",
+      "meaning": "capture 為 immutable document/session/revision/content；formal ACK 接收 revision+digest 並更新 formal_baseline"
+    },
+    {
+      "id": "SRC-06",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+      "start": 298,
+      "end": 311,
+      "text": "    pub fn acknowledge_recovery_save(\n        &mut self,\n        captured: Revision,\n        digest: &str,\n    ) -> Result<RecoveryProjection, EditError> {\n        self.check_ack(captured, digest, self.state.snapshot_baseline.as_ref())?;\n        self.state.snapshot_baseline = Some(SavedContentBaseline {\n            revision: captured,\n            semantic_digest: digest.into(),\n        });\n        Ok(RecoveryProjection {\n            captured_revision: captured,\n            needs_snapshot: self.state.content.semantic_digest != digest,\n        })",
+      "meaning": "recovery ACK 更新 snapshot_baseline，與 formal baseline 分離"
+    },
+    {
+      "id": "SRC-07",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+      "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+      "start": 354,
+      "end": 384,
+      "text": "    fn check_ack(\n        &self,\n        captured: Revision,\n        digest: &str,\n        baseline: Option<&SavedContentBaseline>,\n    ) -> Result<(), EditError> {\n        self.check_editable()?;\n        if !valid_digest(digest) {\n            return Err(EditError::InvalidInput {\n                field: \"semanticDigest\".into(),\n            });\n        }\n        if captured.0 > self.state.content_revision.0\n            || (captured == self.state.content_revision\n                && digest != self.state.content.semantic_digest)\n            || baseline.is_some_and(|saved| {\n                captured.0 < saved.revision.0\n                    || (captured == saved.revision && digest != saved.semantic_digest)\n            })\n        {\n            return Err(EditError::RevisionConflict);\n        }\n        Ok(())\n    }\n\n    fn dirty(&self) -> bool {\n        self.state\n            .formal_baseline\n            .as_ref()\n            .map(|saved| saved.semantic_digest != self.state.content.semantic_digest)\n            .unwrap_or(true)",
+      "meaning": "ACK 校驗 editable/digest/future revision/baseline monotonic；dirty 比較 semantic digest"
+    },
+    {
+      "id": "SRC-08",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs",
+      "sha256": "a69b1a1eccd8a53a639c1ebc4d1b5f57604e35b54384f8838b8ab58cf68d222e",
+      "start": 1,
+      "end": 58,
+      "text": "//! M05-S1 pure retention policy. No physical cleanup behavior.\n//! Root projections are supplied by their authoritative owners through HOST.\n//! Eligibility is never permission to delete; no paths, leases or IO enter here.\n\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct AssetCandidate {\n    pub asset_id: String,\n    pub content_digest: String,\n    pub owned_by_operation: Option<String>,\n}\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub enum RootKind {\n    LiveDocuments,\n    UndoHistory,\n    RedoHistory,\n    RecoverySnapshots,\n    InFlightTransactions,\n}\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub enum Completeness {\n    Complete,\n    Unknown,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct RootReference {\n    pub asset_id: String,\n    pub content_digest: String,\n    pub owner_id: String,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct RootObservation {\n    pub kind: RootKind,\n    pub revision: String,\n    pub completeness: Completeness,\n    pub references: Vec<RootReference>,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct RootSnapshot {\n    pub project_id: String,\n    pub session_id: String,\n    pub observations: Vec<RootObservation>,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct EvaluationContext {\n    pub project_id: String,\n    pub session_id: String,\n    pub operation_id: String,\n    pub expected_root_revisions: Vec<(RootKind, String)>,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub enum RetentionDecision {\n    Retain {\n        reasons: Vec<RetentionReason>,\n    },\n    EligibleForCleanup {\n        asset_id: String,\n        content_digest: String,\n    },",
+      "meaning": "M05-S1純策略資料：owner-supplied roots/Retain/Eligible，並非 authenticated Held receipt"
+    },
+    {
+      "id": "SRC-09",
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/asset_reference.rs",
+      "sha256": "a69b1a1eccd8a53a639c1ebc4d1b5f57604e35b54384f8838b8ab58cf68d222e",
+      "start": 137,
+      "end": 182,
+      "text": "    let mut reasons = Vec::new();\n    for kind in [\n        RootKind::LiveDocuments,\n        RootKind::UndoHistory,\n        RootKind::RedoHistory,\n        RootKind::RecoverySnapshots,\n        RootKind::InFlightTransactions,\n    ] {\n        let i = root_index(kind);\n        let Some(observation) = observed[i] else {\n            reasons.push(RetentionReason::RootsIncomplete { kind });\n            continue;\n        };\n        if observation.completeness == Completeness::Unknown || expected[i].is_none() {\n            reasons.push(RetentionReason::RootsIncomplete { kind });\n        } else if expected[i] != Some(observation.revision.as_str()) {\n            reasons.push(RetentionReason::StaleRoots { kind });\n        }\n        for reference in &observation.references {\n            if reference.asset_id == candidate.asset_id {\n                if reference.content_digest == candidate.content_digest {\n                    reasons.push(RetentionReason::Referenced {\n                        kind,\n                        owner_id: reference.owner_id.clone(),\n                    });\n                } else {\n                    reasons.push(RetentionReason::IdentityConflict {\n                        asset_id: candidate.asset_id.clone(),\n                    });\n                }\n            }\n        }\n    }\n    if candidate.owned_by_operation.as_deref() != Some(context.operation_id.as_str()) {\n        reasons.push(RetentionReason::NotOwnedByOperation);\n    }\n    reasons.sort_by(|a, b| reason_key(a).cmp(&reason_key(b)));\n    reasons.dedup();\n    if reasons.is_empty() {\n        Ok(RetentionDecision::EligibleForCleanup {\n            asset_id: candidate.asset_id.clone(),\n            content_digest: candidate.content_digest.clone(),\n        })\n    } else {\n        Ok(RetentionDecision::Retain { reasons })\n    }",
+      "meaning": "missing/unknown/stale root 導致保留；Eligible 僅回 identity，不是 root transfer、cleanup lease 或刪除授權"
+    }
+  ],
+  "field_bridge_gaps": [
+    {
+      "boundary": "file bytes → document ACK",
+      "present": "CommitReceipt four fields; semantic ACK revision+digest",
+      "missing": "Source-bound conversion and orchestration proving exact captured tuple; no receipt digest to semantic digest substitution",
+      "provider": "M04 codec/projector+IO result mapper",
+      "choice": "G1/G3/G4",
+      "selected": null
+    },
+    {
+      "boundary": "M05 retention → save root transfer",
+      "present": "Pure owner-supplied RootSnapshot evaluation",
+      "missing": "Authenticated issuer receipt/current fence/full tuple and durable root-transfer provider evidence",
+      "provider": "M05 issuer/root owner with M04 caller",
+      "choice": "G2/G4",
+      "selected": null
+    },
+    {
+      "boundary": "save → captured formal ACK",
+      "present": "Pure DocumentSession method with monotonic baseline checks",
+      "missing": "Admitted native orchestration receipt→current delivery→root success→ACK proof",
+      "provider": "M04 owner + M03 delivery + M05 root provider",
+      "choice": "G4",
+      "selected": null
+    }
+  ],
+  "earlier_yellow_actions": [
+    {
+      "card": "PD-P1-M01-PREP-01",
+      "attempt": "Read new provider-source-map evidence; do not rerun",
+      "missing": "CR-D1/2 durable issuer/native lease and CR-D3 exact publication adoption",
+      "provider": "M01+IO+Owner"
+    },
+    {
+      "card": "PD-P1-M02-PREP-01",
+      "attempt": "Read new Golden14 candidate/correction status; do not rerun",
+      "missing": "GT-D1..4 decisions and admitted definition/design inputs; candidate not adopted",
+      "provider": "Owner+M01/M03/M04 input authors"
+    },
+    {
+      "card": "PD-P1-M03-PREP-01",
+      "attempt": "Read preview/media capability and fixture provenance status; do not rerun",
+      "missing": "Exact supported subsets/renderer/decoder/threshold choices and native fixtures",
+      "provider": "Owner+media provider"
+    }
+  ],
+  "scope": "Original M04 preparation only; no product changes or new contract adoption",
+  "bdd": {
+    "given": "Existing file receipt, pure document ACK and root policy sources plus pending G1–4 proposal",
+    "when": "Map exact source facts and provider bridges",
+    "then": "Preserve three distinct authority boundaries; missing evidence never implies root transfer, Held or ACK"
+  },
+  "limits": [
+    "Static source evidence only; call-site rg limited to HOST src",
+    "No runtime/race/native proof",
+    "No admitted schema/Port/Skeleton or valid RED",
+    "No historical PASS rerun; product/build/package/native/regression NOT RUN",
+    "Independent review PENDING; choices selected=null"
+  ]
+}

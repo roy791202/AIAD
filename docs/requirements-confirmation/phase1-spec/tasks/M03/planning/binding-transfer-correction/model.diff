@@ -1,0 +1,42 @@
+--- original/document_model.py
++++ proposed/document_model.py
+@@ -6,6 +6,10 @@
+ Authority.mint is a privileged fixture premise, never an IPC-supplied object.
+ """
+ from copy import deepcopy
++import pathlib, json
++from schema_subset import Draft202012Validator
++MISSING=object()
++REQUEST=json.loads(pathlib.Path(__file__).with_name('request.schema.json').read_text(encoding='utf-8'))
+ 
+ UUID = 'abcdef01-abcd-4abc-8abc-abcdef012345'
+ IDENTITY = ('binding_ref','document_uuid','session_uuid','project_uuid','root_instance','runtime_epoch')
+@@ -33,10 +37,17 @@
+ def typed(o):
+     return type(o) is dict and all(type(o.get(k)) is str for k in (*IDENTITY,'source','target','source_label','target_label','owner_generation','revision')) and all(type(o.get(k)) is bool for k in ('source_live','target_live','target_ready','target_consent','target_revoked','target_dirty','discard_confirmed','unique_owner','target_unique'))
+ 
+-def transfer(s,r,caller,a,token,provider=True,outcome='commit'):
++def state_typed(s):
++    return type(s) is dict and type(s.get('identity')) is dict and all(type(s['identity'].get(k)) is str for k in IDENTITY) and all(type(s.get(k)) is str for k in ('generation','revision','writer','captured_target')) and all(type(s.get(k)) is bool for k in ('source_active','target_active')) and type(s.get('capacity')) is int and s['capacity']>=0 and type(s.get('transfers')) is int and all(type(s.get(k)) is list for k in ('candidates','previews','disclosure','inflight','tombstones'))
++
++def transfer(s,r,caller,a,token,provider=MISSING,outcome=MISSING):
+     # Injected native identity, never request fields. Exact nonce, not label equality.
+     if type(caller) is not tuple or len(caller)!=4 or caller[0] not in ('main','ui-editor') or caller[1]!='source-1' or caller[2]!='tauri://localhost' or type(caller[3]) is not bool or not caller[3]: return 'UnauthorizedCaller'
+-    if not provider: return 'DependencyNotReady'
++    try: Draft202012Validator(REQUEST).validate(r)
++    except AssertionError: return 'InvalidRequest'
++    if type(provider) is not bool or not provider: return 'DependencyNotReady'
++    if type(outcome) is not str or outcome not in ('commit','rollback','unknown','ack-lost'): return 'Indeterminate'
++    if not state_typed(s): return 'ProofMismatch'
+     o=a.read(token)
+     if not typed(o): return 'ProofMismatch'
+     if caller[0]!=o['source_label']: return 'UnauthorizedCaller'
+@@ -101,7 +112,7 @@
+         assert s['writer']=='target-1' and not s['source_active']
+     if mode in ('repeat','late-install','late-ack','late-get'):
+         assert result=='Transferred'
+-        if mode=='repeat':result=transfer(s,r,caller,a,token)
++        if mode=='repeat':result=transfer(s,r,caller,a,token,True,'commit')
+         else:result='Discarded' if not delivery(s,'7') else 'Delivered'
+     assert s['document']==before['document']
+     assert not any(s['forbidden_calls'].values())

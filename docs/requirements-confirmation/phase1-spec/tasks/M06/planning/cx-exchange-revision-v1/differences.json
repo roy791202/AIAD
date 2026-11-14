@@ -1,0 +1,3137 @@
+[
+  {
+    "module": "M06",
+    "cx": "CX-16",
+    "pointer": "/status",
+    "before": {
+      "absent": true
+    },
+    "after": "CX_REVISION_PENDING_ONE_OWNER_CONFIRMATION",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-01..CX-17",
+    "pointer": "/shared_contract",
+    "before": {
+      "absent": true
+    },
+    "after": {
+      "id": "CX-COMMON-v1",
+      "sha256": "d16f3acd2739ad4c2a7c2168f5f8837fa0fae6d090bd9f347d1ec5b551976900",
+      "model": {
+        "identity": "ProjectUuid UUIDv4 from trusted M01 authority. DocumentUuid denotes physical document owner identity; SessionId/OwnerGeneration/RequestId scoped runtime. AssetId opaque immutable project namespace; version=(AssetId,ContentDigest). SnapshotId/GenerationId never substitute document/session. New-copy and restored unsaved documents receive fresh doc/session identity; content entity IDs only explicit format policy/preview changes. Foreign approvals retained as provenance, not authority.",
+        "digest_domains": {
+          "DefinitionRaw": "sha256:lowerhex64 exact M01 codec bytes",
+          "TemplateRaw": "sha256:lowerhex64 sealed template manifest/source bytes",
+          "GenerationApproval": "sha256:lowerhex64 exact sorted approved refs evidence projection",
+          "DesignSemantic": "{profile:SGA-DESIGN-SEM-v1,digest:lowerhex64}",
+          "EssSemantic": "{profile:M04-EssXmlV1-semantic-v1,digest:lowerhex64}",
+          "RecoveryFingerprint": "{profile:SGA-RECOVERY-FP-v1,digest:lowerhex64}",
+          "FileRaw/CatalogRaw/ArchiveRaw/PayloadRaw": "separate typed lowerhex64; no semantic comparison; wrap prefix only explicit S1 boundary"
+        },
+        "Context": "{project_uuid,document_uuid,session_id,owner_generation:u64,captured_revision:u64,operation_id}; exactly matched by every pin/proof/apply. UI decimal-string transport per CX03; server context authoritative.",
+        "ResolutionSnapshot": "Asset/version binding validation only; NOT root completeness or durable pin. Complete requires every requested version/target answered with exact context; unknown reference-bearing fields reject mutation.",
+        "PinReceipt": "{catalog_generation,catalog_raw_digest,pin_id,Context,purpose,versions_digest,issuer_receipt_id}; only M05 creates after durable catalog proof. Consumer validate_pin verifies current Held or explicitly valid transfer state plus context. No UI mint/TTL.",
+        "RootManifest": "{provider_id,epoch,scope,kind,source_revision,completeness,references,evidence_receipt_id}. Five kinds exactly accepted S1: LiveDocuments(including persisted formal docs),UndoHistory,RedoHistory,RecoverySnapshots,InFlightTransactions. Aggregate any missing component=>Unknown; no release/GC inference from Complete material resolution.",
+        "ExternalCommitProof": "Tagged FormalFile|RecoveryIndex|DocumentMutation|ProjectCopyReady|GenerationActivation|ArchiveExport with issuer-owned proof record, Context and typed byte/projection references. Different tag cannot satisfy another use case. Committed receipt verification checks target identity/path, expected prior Option raw hash,new raw hash,transaction ID; then cross-owner transfer, then corresponding ACK.",
+        "phases": [
+          "RejectedBeforeMutation (content unchanged; safe staged/orphan assets may retained)",
+          "Applied (content committed)",
+          "AppliedRetentionDeferred (content changed; Held retained)",
+          "CommittedAckDeferred (file/index committed; required handoff/ACK missing)",
+          "UncertainPublication (block affected writer/target; preserve evidence)",
+          "VerifiedPublished (all use-case required proofs verified)",
+          "DeliveryDeferred (verified committed result not delivered to old owner)"
+        ],
+        "lock_order": "No owner callback while holding catalog/index/active IO lease. Content capture under owner reservation then release; catalog pin transition under short catalog lease then release; external write then release; root transfer separate; matching ACK last. Generation special held SOURCE read reservations acquired before active writer and released after receipt; producer updates Busy/defer (pending choice). Project copy final-path quarantine avoids moving journals.",
+        "matrix": [
+          {
+            "operation": "edit/clear/merge/undo/restore",
+            "before": "durable Candidate/Import pin",
+            "commit": "single M04 content commit",
+            "after": "live/history root transfer",
+            "late_failure": "AppliedRetentionDeferred",
+            "baseline": "formal/recovery unchanged"
+          },
+          {
+            "operation": "formal save",
+            "before": "capture+Save pin",
+            "commit": "verified FileCommit receipt",
+            "after": "formal-root transfer→captured semantic ACK",
+            "late_failure": "CommittedAckDeferred",
+            "baseline": "formal captured only"
+          },
+          {
+            "operation": "snapshot",
+            "before": "capture+Recovery pin+all material copies",
+            "commit": "payload+index proof",
+            "after": "RecoverySnapshots root transfer→S1 Published+captured recovery ACK",
+            "late_failure": "Publication/ACK deferred",
+            "baseline": "recovery captured only"
+          },
+          {
+            "operation": "generation",
+            "before": "authenticated definition/template/design/approval preview +source reservations",
+            "commit": "seal then active CAS",
+            "after": "verified immutable snapshot delivery",
+            "late_failure": "ActivatedDeliveryDeferred",
+            "baseline": "no definition/design ACK"
+          },
+          {
+            "operation": "export",
+            "before": "capture+Export pin",
+            "commit": "native durable no-replace destination",
+            "after": "safe root-based pin release attempt",
+            "late_failure": "PublishedDeliveryDeferred",
+            "baseline": "no ACK"
+          },
+          {
+            "operation": "new project copy",
+            "before": "new identities+final-path quarantine",
+            "commit": "stable-path children then Ready marker",
+            "after": "trusted M01 bind selection",
+            "late_failure": "ProjectCopyDeferred",
+            "baseline": "no source ACK"
+          }
+        ],
+        "contract_id": "CX-COMMON-v1",
+        "status": "PROPOSED_PENDING_ONE_OWNER_CONFIRMATION",
+        "precedence": "This common model and materialized module effective_spec replace only listed fields. Original packages are immutable historical baseline; accepted S1/IO behavior remains unchanged. No Owner adoption inferred from request to prepare revisions.",
+        "wire_types": {
+          "U64Decimal": "JSON STRING regex^(0|[1-9][0-9]*)$, checked0..18446744073709551615; no plus/leading-zero/exponent/space. Rust u64 internal. JS keeps string/BigInt; never Number roundtrip.",
+          "Digest": "{domain,profile?,lowerhex64}; sha256: prefix only existing M01/M02 S1 boundaries. No arbitrary cross-domain conversion.",
+          "OpaqueId": "ASCII[A-Za-z0-9_-]{1,128}; native/generated fixed-format IDs retain module constraint; actual context server-derived.",
+          "Context": "project_uuid/document_uuid/session_id/owner_generation/captured_revision/operation_id; UI strings decoded to existing typed IDs/u64; not label authority."
+        },
+        "pin_enums": {
+          "state": [
+            "Held",
+            "Transferred",
+            "Released"
+          ],
+          "purpose": [
+            "Candidate",
+            "Save",
+            "Undo",
+            "Redo",
+            "Recovery",
+            "Import",
+            "Export"
+          ]
+        },
+        "material_api": {
+          "resolve": "resolve(context,ordered_requests)->ResolutionSnapshot",
+          "pin": "pin(context,snapshot,purpose,operation_id)->PinReceipt",
+          "validate_pin": "validate_pin(context,pin_receipt)->VerifiedPin",
+          "read_pinned_version": "read_pinned_version(context,VerifiedPin,asset_id,digest,max_bytes)->VerifiedBytes",
+          "import_verified_versions": "import_verified_versions(context,VerifiedBundle,purpose,operation_id)->ImportedPinnedManifest",
+          "transfer": "transfer(context,pin_id,RootManifest,AuthenticatedExternalProof,operation_id)->TransferReceipt",
+          "release": "release(context,pin_id,RootBundle,operation_id)->ReleasedReceipt|RetainedReasons"
+        },
+        "proof_types": {
+          "ResolutionSnapshot": "{Context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness:Complete,assets,bindings}; no root_proof_id; complete resolution is neither pin nor root completeness.",
+          "VerifiedBundle": "{context,source_digest,entries:[asset_id,digest,size_bytes,verified_bytes_or_handle],legacy_alias_mapping}; all raw bytes/hash/closure validated by trusted issuer.",
+          "AuthenticatedExternalProof": "Opaque issuer_receipt_id resolves server record {issuer,operation_kind,Context,target_identity,receipt/raw/projection evidence}; durable proof must be revalidated after restart; UI DTO never carries trusted receipt content.",
+          "TransferReceipt": "{issuer:M05,catalog_generation,catalog_raw_digest,pin_id,root_manifest_ids,external_proof_id,Context,receipt_id}; original Held transitions only after verified durable catalog commit.",
+          "MutationReceipt": "{Context,before_revision,after_revision,content_semantic,pin_id?,result:Applied|NoChange|AppliedRetentionDeferred}; after commit cannot be ErrorUnchanged.",
+          "VerifiedBytes": "{digest,size_bytes,immutable_bytes_or_guarded_handle,store_identity}; issued only native/hash validator, not URI/path trust."
+        },
+        "quarantine_copy": {
+          "marker": ".sgenaxis/copy-state.v1.json; {schema:SGA-PROJECT-COPY-v1,project_uuid,operation_id,state:Quarantined|Ready,definition_raw_digest?,document_raw_digest?,catalog_raw_digest?,manifest_digest?}. Strict duplicate/unknown/type/project validation; quarantine written durably before any public project manifest/definition/document/catalog.",
+          "sequence": "Exclusive create FINAL target directory (never rename it after any FileCommit operation) → create Quarantined marker via checked IO → initialize validated children/catalog/pins at FINAL paths → verify full copy proofs → CAS Ready marker with exact digests → authenticate M01 open/bind. Source approvals provenance only; new project+doc identities.",
+          "reader_gate": "All official M01 open/adopt/select and startup recovery check copy marker before S2 bind; Quarantined/invalid/uncertain journal refuses project readiness. Marker absent allows existing legacy policy only if no partial-copy evidence; empty/unmarked exclusive-copy crash residue is not adopted automatically. Existing accepted S2 public API unchanged; new application wrapper gate is proposed.",
+          "failure": "Before Ready no selectable completed project; retains quarantined diagnostic+pins. After Ready delivery loss returns ProjectCopyDeliveryDeferred; no rollback/delete. Never rewrite/move private journal to fix path binding."
+        },
+        "source_reservation": {
+          "application_trait": "SourceReadReservation: snapshot_id()->SourceSnapshotId; validate_held()->Result<SourceSnapshotId,SourceFenceError>; explicit release(self). Owns authenticated snapshot identity+held producer read capability; cannot be constructed from DTO. Drop releases handles only.",
+          "SourceSnapshotId": "{issuer:Definition|Design|Approval,project_uuid,owner_generation,revision_or_epoch,typed_digest}; exact equality, not timestamp.",
+          "native_trait": "CommittedReadPort.acquire_read(trusted_target_capability)->CommittedReadLease; lease.read_verified(max_bytes)->VerifiedCommittedBytes; lease owns OS shared lock compatible with existing FileCommit exclusive writer, normalized target+readonly journal validation. No create/repair/cleanup. Missing sidecar =>Unavailable.",
+          "producer_rules": "Definition/design owner read reservation blocks their mutation and exclusive file writer until generation terminal result; acquire definition→approval HOST epoch→design before active writer. Immutable SPEC Approved revisions remain pure; HOST epoch covers evidence validity changes, not a SPEC filesystem dependency. All producer mutation routes must honor reservation; incomplete coverage =>DependencyNotReady.",
+          "io_guard": "IO-owned crate-private CommittedReadGuard unforgeable outside adapter constructor. inspect_committed_locked(&CommittedReadGuard)->Result<CommittedReadInspection,CommitError>; validates guard-bound canonical target/terminal journal/current raw digest, no path argument replacement. Public FileCommitPort unchanged.",
+          "scope": "New committed_read.rs ports/adapter/native tests plus generation_sources.rs application provider adapters. Only proposed exact child files below; accepted IO implementation not re-approved automatically."
+        },
+        "recovery_readiness": {
+          "LocalIntegrityReady": "Native coherent recovery index+payload+ALL material copies and hashes/schema verified; independent from original catalog availability.",
+          "PublicationAcknowledged": "Original M05 root transfer receipt and original captured S1 Published/ACK verified.",
+          "restore": "LocalIntegrityReady permits explicit restore to authorized destination even SourceRetentionDeferred. Destination import+durable pin+M04 new-unsaved install mandatory; original Held/Unknown retained and no fake original Published/ACK. Missing/corrupt local blob always blocks."
+        },
+        "reservation_kinds": {
+          "FormalWriteReservation": "blocks same-owner content edits until matching IO completion; read diagnostics allowed.",
+          "RecoveryAttemptReservation": "one recovery attempt; after immutable capture+pin, live healthy owner may edit. Never reuse formal saving state for whole recovery copy pipeline.",
+          "CatalogLease": "short transition only, no callbacks into document owner while held."
+        },
+        "readiness_gates": [
+          "No adoption or architecture PASS from document revision",
+          "M02 template14resources+standalone full transitive lock golden required before renderer Skeleton acceptance",
+          "ESS typed entity/parent/edge/binding projector with exact fixtures required before affected clear/merge/install",
+          "native Windows11 alias/8.3/reparse/durability separately measured; environment NOT RUN remains",
+          "No physical GC/repair/time-based pin release/no blanket union envelope"
+        ]
+      }
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-03",
+    "pointer": "/wire_contract",
+    "before": {
+      "absent": true
+    },
+    "after": {
+      "U64Decimal": "JSON STRING regex^(0|[1-9][0-9]*)$, checked0..18446744073709551615; no plus/leading-zero/exponent/space. Rust u64 internal. JS keeps string/BigInt; never Number roundtrip.",
+      "Digest": "{domain,profile?,lowerhex64}; sha256: prefix only existing M01/M02 S1 boundaries. No arbitrary cross-domain conversion.",
+      "OpaqueId": "ASCII[A-Za-z0-9_-]{1,128}; native/generated fixed-format IDs retain module constraint; actual context server-derived.",
+      "Context": "project_uuid/document_uuid/session_id/owner_generation/captured_revision/operation_id; UI strings decoded to existing typed IDs/u64; not label authority."
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-15",
+    "pointer": "/cross_owner_proofs",
+    "before": {
+      "absent": true
+    },
+    "after": {
+      "ResolutionSnapshot": "{Context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness:Complete,assets,bindings}; no root_proof_id; complete resolution is neither pin nor root completeness.",
+      "VerifiedBundle": "{context,source_digest,entries:[asset_id,digest,size_bytes,verified_bytes_or_handle],legacy_alias_mapping}; all raw bytes/hash/closure validated by trusted issuer.",
+      "AuthenticatedExternalProof": "Opaque issuer_receipt_id resolves server record {issuer,operation_kind,Context,target_identity,receipt/raw/projection evidence}; durable proof must be revalidated after restart; UI DTO never carries trusted receipt content.",
+      "TransferReceipt": "{issuer:M05,catalog_generation,catalog_raw_digest,pin_id,root_manifest_ids,external_proof_id,Context,receipt_id}; original Held transitions only after verified durable catalog commit.",
+      "MutationReceipt": "{Context,before_revision,after_revision,content_semantic,pin_id?,result:Applied|NoChange|AppliedRetentionDeferred}; after commit cannot be ErrorUnchanged.",
+      "VerifiedBytes": "{digest,size_bytes,immutable_bytes_or_guarded_handle,store_identity}; issued only native/hash validator, not URI/path trust."
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-17",
+    "pointer": "/module_readiness",
+    "before": {
+      "absent": true
+    },
+    "after": "NOT_READY_FOR_IMPLEMENTATION; explicit golden/projector/native/provider gates remain; no Skeleton/product changes.",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-09",
+    "pointer": "/ports/ProjectCopyStoragePort",
+    "before": "New proposed interface in archive_exchange.rs: begin_project_copy(trusted_parent_selection,single_name,new_project_uuid)->OwnedProjectCopy; handle exposes only isolated staging root capability, publish_ready_no_replace(validated_copy_manifest)->ProjectCopyReceipt, abort_owned()->AbortReceipt. Target name must absent; publish is durable same-volume no-replace directory rename. M01 child initializes definition/document/catalog under isolated staging only; all handles/pins rebound to final directory identity before readiness. Crash/identity ambiguity blocks, no selectable partial project. No alteration of M01 S2 creation signatures.",
+    "after": "begin_project_copy(final trusted selection,new identity)->QuarantinedProjectCopy; initialize at stable final paths; publish_ready_checked(allproofs)->ProjectCopyReadyReceipt. NO directory rename after any FileCommit catalog/document operation. Official open gates copy-state+committed read proof.",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-09",
+    "pointer": "/lifecycle/new_project_copy",
+    "before": "Separate operation from merge, explicit parent/name preview and new project/document UUID allocation. Stage independent content+verified assets through M01/M05 agreed publication, preserve source. Before project publication failure leaves no selectable complete new project; retained owned staging diagnostic may remain. Partial/uncertain catalog/project publication => ProjectCopyDeferred and block use, never success. No cross-document Undo and no source approvalRefs inherited as approval for new project.",
+    "after": {
+      "marker": ".sgenaxis/copy-state.v1.json; {schema:SGA-PROJECT-COPY-v1,project_uuid,operation_id,state:Quarantined|Ready,definition_raw_digest?,document_raw_digest?,catalog_raw_digest?,manifest_digest?}. Strict duplicate/unknown/type/project validation; quarantine written durably before any public project manifest/definition/document/catalog.",
+      "sequence": "Exclusive create FINAL target directory (never rename it after any FileCommit operation) → create Quarantined marker via checked IO → initialize validated children/catalog/pins at FINAL paths → verify full copy proofs → CAS Ready marker with exact digests → authenticate M01 open/bind. Source approvals provenance only; new project+doc identities.",
+      "reader_gate": "All official M01 open/adopt/select and startup recovery check copy marker before S2 bind; Quarantined/invalid/uncertain journal refuses project readiness. Marker absent allows existing legacy policy only if no partial-copy evidence; empty/unmarked exclusive-copy crash residue is not adopted automatically. Existing accepted S2 public API unchanged; new application wrapper gate is proposed.",
+      "failure": "Before Ready no selectable completed project; retains quarantined diagnostic+pins. After Ready delivery loss returns ProjectCopyDeliveryDeferred; no rollback/delete. Never rewrite/move private journal to fix path binding."
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-05/CX-06",
+    "pointer": "/ports/M05_port",
+    "before": "read_pinned_version and import_recovery_versions-style generic import_verified_versions(context,verified_bundle,purpose:Candidate|Import,operation_id)->ImportedPinnedManifest; use explicit extension of pending M05/M07 export/import contract. No trusting package asset IDs/digests without bytes verification. Pin manifest before capture consumption/target commit; root transfer after.",
+    "after": {
+      "resolve": "resolve(context,ordered_requests)->ResolutionSnapshot",
+      "pin": "pin(context,snapshot,purpose,operation_id)->PinReceipt",
+      "validate_pin": "validate_pin(context,pin_receipt)->VerifiedPin",
+      "read_pinned_version": "read_pinned_version(context,VerifiedPin,asset_id,digest,max_bytes)->VerifiedBytes",
+      "import_verified_versions": "import_verified_versions(context,VerifiedBundle,purpose,operation_id)->ImportedPinnedManifest",
+      "transfer": "transfer(context,pin_id,RootManifest,AuthenticatedExternalProof,operation_id)->TransferReceipt",
+      "release": "release(context,pin_id,RootBundle,operation_id)->ReleasedReceipt|RetainedReasons"
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-08",
+    "pointer": "/merge_undo/postcommit",
+    "before": "Publish complete live/Undo/Redo root manifests then M05 transfer; if failure returns MergeAppliedRetentionDeferred with actual committed revision+pin, no pretend unchanged failure or automatic content rollback. Source report remains audit evidence. Formal save remains explicit separate M04 command; M06 never ACKs formal/recovery baseline.",
+    "after": "Complete roots transfer after one M04 Merge commit; return common AppliedRetentionDeferred if needed, never unchanged failure. Same for Undo; source bytes/formal/recovery baselines unchanged.",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-14",
+    "pointer": "/merge_undo/projector_readiness",
+    "before": {
+      "absent": true
+    },
+    "after": "PROJECTOR_FIXTURES_REQUIRED: exact typed field/ref mapping for allowed ESS/design constructs before merge Skeleton. Uncertain IDs/unknown reference fields hard-block; explicit FreshImportedIds map preview only.",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-09",
+    "pointer": "/ports/M01_port",
+    "before": "create_project_copy(trusted_parent_selection,name,new_identity,validated_definition_and_document,verified_pin,operation_id)->PublishedProjectCopy|ProjectCopyDeferred|FailedBeforePublication. Must use separately adopted M01 exclusive creation/publication seam; no legacy adopt_project_document or direct mkdir fallback. Source project/document UUID replaced with newly allocated identities, source provenance kept separately; owner validates codec-specific IDs explicitly.",
+    "after": "Existing M01 wizard owner invokes HOST project_copy child at final-path QuarantinedCopy→Ready, fresh project/doc UUID/provenance. Accepted S2 untouched; no independent owner.",
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-09/CX-11/CX-12/CX-16",
+    "pointer": "/envelope",
+    "before": {
+      "status": "PROPOSED_PENDING_OWNER",
+      "primary_module": "M06",
+      "integration_children": [
+        "M01 copy identity/publication seam",
+        "M04 one document Merge/Undo seam",
+        "M05 verified bundle import/export+Export pin purpose",
+        "M07 roots observed only"
+      ],
+      "files": [
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/archive_exchange.rs",
+          "change": "new source/export traits and typed evidence",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+          "change": "archive port export only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/archive_exchange.rs",
+          "change": "Windows immutable source capture/bounded stream/owned no-replace export",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+          "change": "archive adapter export",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_archive_exchange.rs",
+          "change": "native source identity/source-change/export durability tests",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/bin_exchange.rs",
+          "change": "bounded BIN framing/manifest/validation/render/merge plan use cases",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "change": "bin_exchange export",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs",
+          "change": "nine exact exchange command allowlist entries",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_exchange.rs",
+          "change": "decoder/table/closure/preflight/merge fake-port tests",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/exchange_owner.rs",
+          "change": "plans/report/auth/operation evidence coordinator",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/document_owner.rs",
+          "change": "pending M04 shared path: stable exchange capture/one merge+undo root handoff only",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/material_owner.rs",
+          "change": "pending M05 shared path: verified import/export pin purpose and receipts only",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_copy.rs",
+          "change": "new M01-owned integration child: validated owned staging/project-copy publication protocol only; existing M01 S2 untouched",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_copy.rs",
+          "change": "new M01-owned child transaction/identity/publication gate tests",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "change": "nine exchange handlers",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "change": "exchange/provider composition and existing M01 wizard owner project-copy seam only; no second registry",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "change": "closed exchange DTO/results",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "change": "module/commands/project lifecycle invalidation",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "change": "nine explicit command permissions",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "change": "matching exact mapping",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "change": "Editor only, no Viewer new authority",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/tests/phase1_exchange_commands.rs",
+          "change": "cross-owner/ACL/generation/deferred proof cases",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/app.js",
+          "change": "exchange preview/validation/merge/copy status only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/index.html",
+          "change": "exchange controls/preview matrix only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/exchange-lifecycle.test.cjs",
+          "change": "observable validation/confirm/incomplete/deferred flows",
+          "exists_now": false
+        }
+      ],
+      "protected": [
+        "accepted M04/M05/M07 WORK S1 sources/types/tests",
+        "M06 preflight approved-document originals/64fixtures; future S1 code only under separate adopted R1-R4 envelope",
+        "all manifests/lockfiles (A framed format no new dependency)",
+        "IO public Ports/private journal/helpers",
+        "M01 native selection and project-create implementation; no opportunistic refactor",
+        "M03 codec/Viewer runtime",
+        "M07 storage/scheduler",
+        "other physical documents/source archive/old exports",
+        "physical asset cleanup/build/package/execute"
+      ],
+      "gates": "M01 owner remains existing S3 dispatch.rs wizard owner; new HOST project_copy.rs is an explicitly proposed M01 integration child, not second owner or authority from old S3. Its transaction seam must be adopted jointly; existing S2 untouched. No source/provider capability assumed implemented; unavailable returns DependencyNotReady."
+    },
+    "after": {
+      "status": "CX_REVISED_CANDIDATE_PENDING_OWNER",
+      "primary_module": "M06",
+      "files": [
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/archive_exchange.rs",
+          "change": "new source/export traits and typed evidence",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+          "change": "archive port export only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/archive_exchange.rs",
+          "change": "Windows immutable source capture/bounded stream/owned no-replace export",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+          "change": "archive adapter export",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_archive_exchange.rs",
+          "change": "native source identity/source-change/export durability tests",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/bin_exchange.rs",
+          "change": "bounded BIN framing/manifest/validation/render/merge plan use cases",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+          "change": "bin_exchange export",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs",
+          "change": "nine exact exchange command allowlist entries",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_exchange.rs",
+          "change": "decoder/table/closure/preflight/merge fake-port tests",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/exchange_owner.rs",
+          "change": "plans/report/auth/operation evidence coordinator",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/document_owner.rs",
+          "change": "pending M04 shared path: stable exchange capture/one merge+undo root handoff only",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/material_owner.rs",
+          "change": "pending M05 shared path: verified import/export pin purpose and receipts only",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_copy.rs",
+          "change": "new M01-owned integration child: validated owned staging/project-copy publication protocol only; existing M01 S2 untouched",
+          "exists_now": false,
+          "cx_restriction": "M01-owned final-path quarantine/Ready child and official reader gate tests; never move journal"
+        },
+        {
+          "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_project_copy.rs",
+          "change": "new M01-owned child transaction/identity/publication gate tests",
+          "exists_now": false,
+          "cx_restriction": "M01-owned final-path quarantine/Ready child and official reader gate tests; never move journal"
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+          "change": "nine exchange handlers",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+          "change": "exchange/provider composition and existing M01 wizard owner project-copy seam only; no second registry",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+          "change": "closed exchange DTO/results",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+          "change": "module/commands/project lifecycle invalidation",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+          "change": "nine explicit command permissions",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+          "change": "matching exact mapping",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+          "change": "Editor only, no Viewer new authority",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/src-tauri/tests/phase1_exchange_commands.rs",
+          "change": "cross-owner/ACL/generation/deferred proof cases",
+          "exists_now": false
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/app.js",
+          "change": "exchange preview/validation/merge/copy status only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/index.html",
+          "change": "exchange controls/preview matrix only",
+          "exists_now": true
+        },
+        {
+          "path": "apps/sgenaxis-desktop/ui/exchange-lifecycle.test.cjs",
+          "change": "observable validation/confirm/incomplete/deferred flows",
+          "exists_now": false
+        }
+      ],
+      "shared_rules": "Same path is one serial integration patch under explicit child owner; claiming path not blanket permission to implement another module. Rebaseline SHA before Skeleton. Existing accepted WORK/IO interfaces/tests unchanged.",
+      "protected": "All current product code during this planning task; all original packages/acceptances; accepted S1 behavior; all manifests/lockfiles except already declared old candidate narrow edge. No GC/repair/automatic release.",
+      "readiness": [
+        "No adoption or architecture PASS from document revision",
+        "M02 template14resources+standalone full transitive lock golden required before renderer Skeleton acceptance",
+        "ESS typed entity/parent/edge/binding projector with exact fixtures required before affected clear/merge/install",
+        "native Windows11 alias/8.3/reparse/durability separately measured; environment NOT RUN remains",
+        "No physical GC/repair/time-based pin release/no blanket union envelope"
+      ]
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  },
+  {
+    "module": "M06",
+    "cx": "CX-01..CX-17",
+    "pointer": "/cx_test_plan",
+    "before": {
+      "absent": true
+    },
+    "after": {
+      "status": "PLANNED_NOT_RUN",
+      "preserved_original_cases": [
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-001",
+          "tdd": "TDD-M06-EX-001",
+          "contract": "X1",
+          "title": "Valid BIN",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "exact full document+assets/refs verified",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Valid BIN",
+            "expected": "exact full document+assets/refs verified"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-002",
+          "tdd": "TDD-M06-EX-002",
+          "contract": "X1",
+          "title": "Zero bytes",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "ArchiveInvalid magic/header no target IO",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Zero bytes",
+            "expected": "ArchiveInvalid magic/header no target IO"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-003",
+          "tdd": "TDD-M06-EX-003",
+          "contract": "X1",
+          "title": "Truncated header",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "reject every header length1..15",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Truncated header",
+            "expected": "reject every header length1..15"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-004",
+          "tdd": "TDD-M06-EX-004",
+          "contract": "X1",
+          "title": "Manifest zero",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "manifest_length error",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Manifest zero",
+            "expected": "manifest_length error"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-005",
+          "tdd": "TDD-M06-EX-005",
+          "contract": "X1",
+          "title": "u64 addition overflow",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "integer_overflow before range read",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "u64 addition overflow",
+            "expected": "integer_overflow before range read"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-006",
+          "tdd": "TDD-M06-EX-006",
+          "contract": "X1",
+          "title": "Entry overlap",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "overlap hard blocker",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Entry overlap",
+            "expected": "overlap hard blocker"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-007",
+          "tdd": "TDD-M06-EX-007",
+          "contract": "X1",
+          "title": "Entry gap",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "entry_range hard blocker",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Entry gap",
+            "expected": "entry_range hard blocker"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-008",
+          "tdd": "TDD-M06-EX-008",
+          "contract": "X1",
+          "title": "Trailing bytes",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "trailing_bytes hard blocker",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Trailing bytes",
+            "expected": "trailing_bytes hard blocker"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-009",
+          "tdd": "TDD-M06-EX-009",
+          "contract": "X1",
+          "title": "Duplicate key",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "duplicate_field before typed decode",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Duplicate key",
+            "expected": "duplicate_field before typed decode"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-010",
+          "tdd": "TDD-M06-EX-010",
+          "contract": "X1",
+          "title": "Duplicate entry",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "duplicate_entry never last-wins",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Duplicate entry",
+            "expected": "duplicate_entry never last-wins"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-011",
+          "tdd": "TDD-M06-EX-011",
+          "contract": "X1",
+          "title": "Unsafe path",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "unsafe_key no extraction",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Unsafe path",
+            "expected": "unsafe_key no extraction"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-012",
+          "tdd": "TDD-M06-EX-012",
+          "contract": "X1",
+          "title": "Missing document",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "missing_document hard blocker",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Missing document",
+            "expected": "missing_document hard blocker"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-013",
+          "tdd": "TDD-M06-EX-013",
+          "contract": "X1",
+          "title": "Missing internal asset",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "missing_internal cannot accept incomplete",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Missing internal asset",
+            "expected": "missing_internal cannot accept incomplete"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-014",
+          "tdd": "TDD-M06-EX-014",
+          "contract": "X1",
+          "title": "Corrupt asset",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "digest_mismatch hard blocker",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Corrupt asset",
+            "expected": "digest_mismatch hard blocker"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-015",
+          "tdd": "TDD-M06-EX-015",
+          "contract": "X1",
+          "title": "Unused entry",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "unused_entry rejected",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Unused entry",
+            "expected": "unused_entry rejected"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-016",
+          "tdd": "TDD-M06-EX-016",
+          "contract": "X1",
+          "title": "Legacy SGB1",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "UnsupportedFormat no conversion",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Legacy SGB1",
+            "expected": "UnsupportedFormat no conversion"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-017",
+          "tdd": "TDD-M06-EX-017",
+          "contract": "X1",
+          "title": "ZIP signature",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "unsupported format no decoder",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "ZIP signature",
+            "expected": "unsupported format no decoder"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-018",
+          "tdd": "TDD-M06-EX-018",
+          "contract": "X1",
+          "title": "ESS referenced assets",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "RequiresBin no incomplete standalone export",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "ESS referenced assets",
+            "expected": "RequiresBin no incomplete standalone export"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-019",
+          "tdd": "TDD-M06-EX-019",
+          "contract": "X1",
+          "title": "Deterministic bytes",
+          "given": "Independent exact framed source fixture",
+          "when": "validate/export",
+          "then": "same content+refs produces same framing bytes",
+          "level": "L0",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Deterministic bytes",
+            "expected": "same content+refs produces same framing bytes"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-020",
+          "tdd": "TDD-M06-EX-020",
+          "contract": "X1",
+          "title": "archive_bytes 536870911",
+          "given": "Independent recipe counts archive_bytes exactly 536870911, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "archive_bytes",
+            "count": 536870911,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-021",
+          "tdd": "TDD-M06-EX-021",
+          "contract": "X1",
+          "title": "archive_bytes 536870912",
+          "given": "Independent recipe counts archive_bytes exactly 536870912, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "archive_bytes",
+            "count": 536870912,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-022",
+          "tdd": "TDD-M06-EX-022",
+          "contract": "X1",
+          "title": "archive_bytes 536870913",
+          "given": "Independent recipe counts archive_bytes exactly 536870913, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error archive_bytes, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "archive_bytes",
+            "count": 536870913,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-023",
+          "tdd": "TDD-M06-EX-023",
+          "contract": "X1",
+          "title": "manifest_bytes 2097151",
+          "given": "Independent recipe counts manifest_bytes exactly 2097151, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "manifest_bytes",
+            "count": 2097151,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-024",
+          "tdd": "TDD-M06-EX-024",
+          "contract": "X1",
+          "title": "manifest_bytes 2097152",
+          "given": "Independent recipe counts manifest_bytes exactly 2097152, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "manifest_bytes",
+            "count": 2097152,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-025",
+          "tdd": "TDD-M06-EX-025",
+          "contract": "X1",
+          "title": "manifest_bytes 2097153",
+          "given": "Independent recipe counts manifest_bytes exactly 2097153, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error manifest_bytes, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "manifest_bytes",
+            "count": 2097153,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-026",
+          "tdd": "TDD-M06-EX-026",
+          "contract": "X1",
+          "title": "document_bytes 16777215",
+          "given": "Independent recipe counts document_bytes exactly 16777215, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "document_bytes",
+            "count": 16777215,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-027",
+          "tdd": "TDD-M06-EX-027",
+          "contract": "X1",
+          "title": "document_bytes 16777216",
+          "given": "Independent recipe counts document_bytes exactly 16777216, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "document_bytes",
+            "count": 16777216,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-028",
+          "tdd": "TDD-M06-EX-028",
+          "contract": "X1",
+          "title": "document_bytes 16777217",
+          "given": "Independent recipe counts document_bytes exactly 16777217, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error document_bytes, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "document_bytes",
+            "count": 16777217,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-029",
+          "tdd": "TDD-M06-EX-029",
+          "contract": "X1",
+          "title": "asset_bytes_each 67108863",
+          "given": "Independent recipe counts asset_bytes_each exactly 67108863, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_each",
+            "count": 67108863,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-030",
+          "tdd": "TDD-M06-EX-030",
+          "contract": "X1",
+          "title": "asset_bytes_each 67108864",
+          "given": "Independent recipe counts asset_bytes_each exactly 67108864, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_each",
+            "count": 67108864,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-031",
+          "tdd": "TDD-M06-EX-031",
+          "contract": "X1",
+          "title": "asset_bytes_each 67108865",
+          "given": "Independent recipe counts asset_bytes_each exactly 67108865, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error asset_bytes_each, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_each",
+            "count": 67108865,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-032",
+          "tdd": "TDD-M06-EX-032",
+          "contract": "X1",
+          "title": "asset_bytes_total 268435455",
+          "given": "Independent recipe counts asset_bytes_total exactly 268435455, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_total",
+            "count": 268435455,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-033",
+          "tdd": "TDD-M06-EX-033",
+          "contract": "X1",
+          "title": "asset_bytes_total 268435456",
+          "given": "Independent recipe counts asset_bytes_total exactly 268435456, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_total",
+            "count": 268435456,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-034",
+          "tdd": "TDD-M06-EX-034",
+          "contract": "X1",
+          "title": "asset_bytes_total 268435457",
+          "given": "Independent recipe counts asset_bytes_total exactly 268435457, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error asset_bytes_total, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "asset_bytes_total",
+            "count": 268435457,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-035",
+          "tdd": "TDD-M06-EX-035",
+          "contract": "X1",
+          "title": "entries 4096",
+          "given": "Independent recipe counts entries exactly 4096, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "entries",
+            "count": 4096,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-036",
+          "tdd": "TDD-M06-EX-036",
+          "contract": "X1",
+          "title": "entries 4097",
+          "given": "Independent recipe counts entries exactly 4097, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "entries",
+            "count": 4097,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-037",
+          "tdd": "TDD-M06-EX-037",
+          "contract": "X1",
+          "title": "entries 4098",
+          "given": "Independent recipe counts entries exactly 4098, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error entries, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "entries",
+            "count": 4098,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-038",
+          "tdd": "TDD-M06-EX-038",
+          "contract": "X1",
+          "title": "references 4095",
+          "given": "Independent recipe counts references exactly 4095, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "references",
+            "count": 4095,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-039",
+          "tdd": "TDD-M06-EX-039",
+          "contract": "X1",
+          "title": "references 4096",
+          "given": "Independent recipe counts references exactly 4096, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "references",
+            "count": 4096,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-040",
+          "tdd": "TDD-M06-EX-040",
+          "contract": "X1",
+          "title": "references 4097",
+          "given": "Independent recipe counts references exactly 4097, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error references, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "references",
+            "count": 4097,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-041",
+          "tdd": "TDD-M06-EX-041",
+          "contract": "X1",
+          "title": "external_dependencies 4095",
+          "given": "Independent recipe counts external_dependencies exactly 4095, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "external_dependencies",
+            "count": 4095,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-042",
+          "tdd": "TDD-M06-EX-042",
+          "contract": "X1",
+          "title": "external_dependencies 4096",
+          "given": "Independent recipe counts external_dependencies exactly 4096, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "external_dependencies",
+            "count": 4096,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-043",
+          "tdd": "TDD-M06-EX-043",
+          "contract": "X1",
+          "title": "external_dependencies 4097",
+          "given": "Independent recipe counts external_dependencies exactly 4097, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error external_dependencies, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "external_dependencies",
+            "count": 4097,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-044",
+          "tdd": "TDD-M06-EX-044",
+          "contract": "X1",
+          "title": "alias_utf8_bytes 1023",
+          "given": "Independent recipe counts alias_utf8_bytes exactly 1023, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "alias_utf8_bytes",
+            "count": 1023,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-045",
+          "tdd": "TDD-M06-EX-045",
+          "contract": "X1",
+          "title": "alias_utf8_bytes 1024",
+          "given": "Independent recipe counts alias_utf8_bytes exactly 1024, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "alias_utf8_bytes",
+            "count": 1024,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-046",
+          "tdd": "TDD-M06-EX-046",
+          "contract": "X1",
+          "title": "alias_utf8_bytes 1025",
+          "given": "Independent recipe counts alias_utf8_bytes exactly 1025, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error alias_utf8_bytes, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "alias_utf8_bytes",
+            "count": 1025,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-047",
+          "tdd": "TDD-M06-EX-047",
+          "contract": "X1",
+          "title": "id_utf8_bytes 127",
+          "given": "Independent recipe counts id_utf8_bytes exactly 127, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "id_utf8_bytes",
+            "count": 127,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-048",
+          "tdd": "TDD-M06-EX-048",
+          "contract": "X1",
+          "title": "id_utf8_bytes 128",
+          "given": "Independent recipe counts id_utf8_bytes exactly 128, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "id_utf8_bytes",
+            "count": 128,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-049",
+          "tdd": "TDD-M06-EX-049",
+          "contract": "X1",
+          "title": "id_utf8_bytes 129",
+          "given": "Independent recipe counts id_utf8_bytes exactly 129, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error id_utf8_bytes, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "id_utf8_bytes",
+            "count": 129,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-050",
+          "tdd": "TDD-M06-EX-050",
+          "contract": "X1",
+          "title": "json_depth 63",
+          "given": "Independent recipe counts json_depth exactly 63, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "json_depth",
+            "count": 63,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-051",
+          "tdd": "TDD-M06-EX-051",
+          "contract": "X1",
+          "title": "json_depth 64",
+          "given": "Independent recipe counts json_depth exactly 64, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "named guard passes (later format rules still independently apply)",
+          "level": "L0",
+          "fixture": {
+            "token": "json_depth",
+            "count": 64,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X1",
+          "bdd": "BDD-M06-EX-052",
+          "tdd": "TDD-M06-EX-052",
+          "contract": "X1",
+          "title": "json_depth 65",
+          "given": "Independent recipe counts json_depth exactly 65, checked before parse/semantic validity",
+          "when": "evaluate named resource guard",
+          "then": "limit error json_depth, no target mutation",
+          "level": "L0",
+          "fixture": {
+            "token": "json_depth",
+            "count": 65,
+            "self_check": "Raw header/table/UTF8 lengths/stream sums independently checked; pass guard is not AllowedComplete. Cross-guard invalid recipe not valid RED."
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-053",
+          "tdd": "TDD-M06-EX-053",
+          "contract": "X2",
+          "title": "Source changed",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "SourceChanged no stale import",
+          "level": "L3",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Source changed",
+            "expected": "SourceChanged no stale import"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-054",
+          "tdd": "TDD-M06-EX-054",
+          "contract": "X2",
+          "title": "Source alias",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "UnsafeIdentity native reject",
+          "level": "L3",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Source alias",
+            "expected": "UnsafeIdentity native reject"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-055",
+          "tdd": "TDD-M06-EX-055",
+          "contract": "X2",
+          "title": "Existing destination",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "AlreadyExists no overwrite even empty",
+          "level": "L3",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Existing destination",
+            "expected": "AlreadyExists no overwrite even empty"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-056",
+          "tdd": "TDD-M06-EX-056",
+          "contract": "X2",
+          "title": "Export write failure",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "old destination/source unchanged, owned stage evidence",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Export write failure",
+            "expected": "old destination/source unchanged, owned stage evidence"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-057",
+          "tdd": "TDD-M06-EX-057",
+          "contract": "X2",
+          "title": "Flush fails",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "no ExportPublished",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Flush fails",
+            "expected": "no ExportPublished"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-058",
+          "tdd": "TDD-M06-EX-058",
+          "contract": "X2",
+          "title": "Publish uncertain",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "retained diagnostic blocked no fake Cancelled",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Publish uncertain",
+            "expected": "retained diagnostic blocked no fake Cancelled"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-059",
+          "tdd": "TDD-M06-EX-059",
+          "contract": "X2",
+          "title": "Drop stage",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "handles close no implicit recursive deletion",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Drop stage",
+            "expected": "handles close no implicit recursive deletion"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X2",
+          "bdd": "BDD-M06-EX-060",
+          "tdd": "TDD-M06-EX-060",
+          "contract": "X2",
+          "title": "Export response lost",
+          "given": "Native/fake trusted source+destination handles",
+          "when": "capture/publish archive",
+          "then": "proof query delivery-deferred not second export",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Export response lost",
+            "expected": "proof query delivery-deferred not second export"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-061",
+          "tdd": "TDD-M06-EX-061",
+          "contract": "X3",
+          "title": "Hard block accept external",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "Blocked remains, no apply",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Hard block accept external",
+            "expected": "Blocked remains, no apply"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-062",
+          "tdd": "TDD-M06-EX-062",
+          "contract": "X3",
+          "title": "External not confirmed",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "NeedsDependencyConfirmation",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "External not confirmed",
+            "expected": "NeedsDependencyConfirmation"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-063",
+          "tdd": "TDD-M06-EX-063",
+          "contract": "X3",
+          "title": "External explicitly accepted",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "AllowedIncomplete exact Pending and blocked capabilities",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "External explicitly accepted",
+            "expected": "AllowedIncomplete exact Pending and blocked capabilities"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-064",
+          "tdd": "TDD-M06-EX-064",
+          "contract": "X3",
+          "title": "Stale source",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "preflight StaleSource",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Stale source",
+            "expected": "preflight StaleSource"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-065",
+          "tdd": "TDD-M06-EX-065",
+          "contract": "X3",
+          "title": "Stale target",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "preflight StaleTarget",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Stale target",
+            "expected": "preflight StaleTarget"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-066",
+          "tdd": "TDD-M06-EX-066",
+          "contract": "X3",
+          "title": "Cross doc dependency",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "CrossDocumentChangeRequired",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Cross doc dependency",
+            "expected": "CrossDocumentChangeRequired"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X3",
+          "bdd": "BDD-M06-EX-067",
+          "tdd": "TDD-M06-EX-067",
+          "contract": "X3",
+          "title": "Original64oracles",
+          "given": "Decoder-derived trusted report, never UI safety claim",
+          "when": "evaluate preflight",
+          "then": "trace to frozen accepted document correction; no rerun or changed expectations",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Original64oracles",
+            "expected": "trace to frozen accepted document correction; no rerun or changed expectations"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-068",
+          "tdd": "TDD-M06-EX-068",
+          "contract": "X4",
+          "title": "Fresh identity mapping",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "complete explicit preview old→new, no same-name match",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Fresh identity mapping",
+            "expected": "complete explicit preview old→new, no same-name match"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-069",
+          "tdd": "TDD-M06-EX-069",
+          "contract": "X4",
+          "title": "Ambiguous mapping",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "IdentityConflict before candidate commit",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Ambiguous mapping",
+            "expected": "IdentityConflict before candidate commit"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-070",
+          "tdd": "TDD-M06-EX-070",
+          "contract": "X4",
+          "title": "Unsupported hidden reference",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "reject, no silent remap/drop",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Unsupported hidden reference",
+            "expected": "reject, no silent remap/drop"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-071",
+          "tdd": "TDD-M06-EX-071",
+          "contract": "X4",
+          "title": "Full ESS aggregate",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "one candidate includes all affected sections",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Full ESS aggregate",
+            "expected": "one candidate includes all affected sections"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-072",
+          "tdd": "TDD-M06-EX-072",
+          "contract": "X4",
+          "title": "Single merge",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "one revision/one Undo before+after assets union",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Single merge",
+            "expected": "one revision/one Undo before+after assets union"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-073",
+          "tdd": "TDD-M06-EX-073",
+          "contract": "X4",
+          "title": "Merge no-op",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "no new revision/history",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Merge no-op",
+            "expected": "no new revision/history"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-074",
+          "tdd": "TDD-M06-EX-074",
+          "contract": "X4",
+          "title": "Failure before commit",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "target content/history/baselines exact unchanged",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Failure before commit",
+            "expected": "target content/history/baselines exact unchanged"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-075",
+          "tdd": "TDD-M06-EX-075",
+          "contract": "X4",
+          "title": "Cancel preview",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "no target/catalog mutation",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Cancel preview",
+            "expected": "no target/catalog mutation"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-076",
+          "tdd": "TDD-M06-EX-076",
+          "contract": "X4",
+          "title": "Expired plan",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "PlanExpired",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Expired plan",
+            "expected": "PlanExpired"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-077",
+          "tdd": "TDD-M06-EX-077",
+          "contract": "X4",
+          "title": "Late owner generation",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "StalePlan no replacement apply",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Late owner generation",
+            "expected": "StalePlan no replacement apply"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X4",
+          "bdd": "BDD-M06-EX-078",
+          "tdd": "TDD-M06-EX-078",
+          "contract": "X4",
+          "title": "Undo restore",
+          "given": "TargetR7 and exact candidate/mapping/source proof",
+          "when": "confirm merge/undo",
+          "then": "complete before target restored once; source unchanged",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Undo restore",
+            "expected": "complete before target restored once; source unchanged"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-079",
+          "tdd": "TDD-M06-EX-079",
+          "contract": "X5",
+          "title": "Pin before merge",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "no content commit before durable pin",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Pin before merge",
+            "expected": "no content commit before durable pin"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-080",
+          "tdd": "TDD-M06-EX-080",
+          "contract": "X5",
+          "title": "Asset import fails",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "target unchanged, retained orphan allowed",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Asset import fails",
+            "expected": "target unchanged, retained orphan allowed"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-081",
+          "tdd": "TDD-M06-EX-081",
+          "contract": "X5",
+          "title": "Postcommit roots fail",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "MergeAppliedRetentionDeferred actual revision+Held, no fake rollback",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Postcommit roots fail",
+            "expected": "MergeAppliedRetentionDeferred actual revision+Held, no fake rollback"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-082",
+          "tdd": "TDD-M06-EX-082",
+          "contract": "X5",
+          "title": "Undo roots fail",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "UndoAppliedRetentionDeferred union retained",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Undo roots fail",
+            "expected": "UndoAppliedRetentionDeferred union retained"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-083",
+          "tdd": "TDD-M06-EX-083",
+          "contract": "X5",
+          "title": "Other doc references",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "material never deleted",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Other doc references",
+            "expected": "material never deleted"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-084",
+          "tdd": "TDD-M06-EX-084",
+          "contract": "X5",
+          "title": "M07 recovery references",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "snapshots untouched/root retains version",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "M07 recovery references",
+            "expected": "snapshots untouched/root retains version"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-085",
+          "tdd": "TDD-M06-EX-085",
+          "contract": "X5",
+          "title": "Export pin remains unknown",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "release denied conservatively",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Export pin remains unknown",
+            "expected": "release denied conservatively"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X5",
+          "bdd": "BDD-M06-EX-086",
+          "tdd": "TDD-M06-EX-086",
+          "contract": "X5",
+          "title": "Formal save separate",
+          "given": "Catalog/pin/root provider failure fixtures",
+          "when": "import/export/apply handoff",
+          "then": "neither formal nor recovery baseline ACKed",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Formal save separate",
+            "expected": "neither formal nor recovery baseline ACKed"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-087",
+          "tdd": "TDD-M06-EX-087",
+          "contract": "X6",
+          "title": "New project IDs",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "new project/document identities, source provenance only",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "New project IDs",
+            "expected": "new project/document identities, source provenance only"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-088",
+          "tdd": "TDD-M06-EX-088",
+          "contract": "X6",
+          "title": "No source approvals",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "new project Draft/no inherited Defined",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "No source approvals",
+            "expected": "new project Draft/no inherited Defined"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-089",
+          "tdd": "TDD-M06-EX-089",
+          "contract": "X6",
+          "title": "Project create prepublish fails",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "no selectable completed project; retained staging diagnostic",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Project create prepublish fails",
+            "expected": "no selectable completed project; retained staging diagnostic"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-090",
+          "tdd": "TDD-M06-EX-090",
+          "contract": "X6",
+          "title": "Project copy uncertain",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "ProjectCopyDeferred blocked, no false success",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Project copy uncertain",
+            "expected": "ProjectCopyDeferred blocked, no false success"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-091",
+          "tdd": "TDD-M06-EX-091",
+          "contract": "X6",
+          "title": "Copy no Undo",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "no cross-document history",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Copy no Undo",
+            "expected": "no cross-document history"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X6",
+          "bdd": "BDD-M06-EX-092",
+          "tdd": "TDD-M06-EX-092",
+          "contract": "X6",
+          "title": "Missing M01 provider",
+          "given": "Verified source+explicit trusted destination selection",
+          "when": "confirm project copy",
+          "then": "DependencyNotReady no mkdir/adopt fallback",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Missing M01 provider",
+            "expected": "DependencyNotReady no mkdir/adopt fallback"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-093",
+          "tdd": "TDD-M06-EX-093",
+          "contract": "X7",
+          "title": "Viewer denied",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "permission error before source read",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Viewer denied",
+            "expected": "permission error before source read"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-094",
+          "tdd": "TDD-M06-EX-094",
+          "contract": "X7",
+          "title": "Fake safe flag",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "closed DTO rejects",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Fake safe flag",
+            "expected": "closed DTO rejects"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-095",
+          "tdd": "TDD-M06-EX-095",
+          "contract": "X7",
+          "title": "Replay same body",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "same apply receipt no second Undo",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Replay same body",
+            "expected": "same apply receipt no second Undo"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-096",
+          "tdd": "TDD-M06-EX-096",
+          "contract": "X7",
+          "title": "Replay changed body",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "ReplayConflict",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Replay changed body",
+            "expected": "ReplayConflict"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-097",
+          "tdd": "TDD-M06-EX-097",
+          "contract": "X7",
+          "title": "Close during commit",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "await actual outcome no false Cancelled",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Close during commit",
+            "expected": "await actual outcome no false Cancelled"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-098",
+          "tdd": "TDD-M06-EX-098",
+          "contract": "X7",
+          "title": "No restart replay",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "fresh session cannot replay lost target commit",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "No restart replay",
+            "expected": "fresh session cannot replay lost target commit"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-099",
+          "tdd": "TDD-M06-EX-099",
+          "contract": "X7",
+          "title": "Pending UI",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "clear warning dependent capabilities blocked",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Pending UI",
+            "expected": "clear warning dependent capabilities blocked"
+          },
+          "status": "PLANNED_NOT_RUN"
+        },
+        {
+          "req": "REQ-M06-X7",
+          "bdd": "BDD-M06-EX-100",
+          "tdd": "TDD-M06-EX-100",
+          "contract": "X7",
+          "title": "Applied deferred UI",
+          "given": "Trusted Editor/Viewer bindings and operation evidence",
+          "when": "invoke exchange command",
+          "then": "shows actual changed revision not unchanged failure",
+          "level": "L2",
+          "fixture": {
+            "base": "source digest A,targetdoc d1/session s1/gen3/R7, before semantic B, candidate C; immutable asset x digest d*64; formalR6/snapshotR5",
+            "mutation": "Applied deferred UI",
+            "expected": "shows actual changed revision not unchanged failure"
+          },
+          "status": "PLANNED_NOT_RUN"
+        }
+      ],
+      "preservation": "Original cases remain traced to frozen source revision. Affected expected protocol must use after-value in differences and shared contract; old conflicting contract text is superseded only as proposed, never silently approved.",
+      "cx_cases": [
+        {
+          "id": "BDD-CX-03-normal",
+          "tdd": "TDD-CX-03-normal",
+          "cx": "CX-03",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "18446744073709551615 preserved as exact decimal string",
+          "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "18446744073709551615 preserved as exact decimal string"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-03-stale_or_failure",
+          "tdd": "TDD-CX-03-stale_or_failure",
+          "cx": "CX-03",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "InvalidInput for 18446744073709551616 or JSON number",
+          "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "InvalidInput for 18446744073709551616 or JSON number"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-03-late_or_replay",
+          "tdd": "TDD-CX-03-late_or_replay",
+          "cx": "CX-03",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "late DTO cannot overwrite newer exact revision",
+          "contract": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "late DTO cannot overwrite newer exact revision"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-05-normal",
+          "tdd": "TDD-CX-05-normal",
+          "cx": "CX-05",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "Export Held→Transferred with verified root proof",
+          "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "Export Held→Transferred with verified root proof"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-05-stale_or_failure",
+          "tdd": "TDD-CX-05-stale_or_failure",
+          "cx": "CX-05",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "Released pin cannot grant bytes/mutation",
+          "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "Released pin cannot grant bytes/mutation"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-05-late_or_replay",
+          "tdd": "TDD-CX-05-late_or_replay",
+          "cx": "CX-05",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "duplicate Released transition returns same receipt; blobDeleteCalls0",
+          "contract": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "duplicate Released transition returns same receipt; blobDeleteCalls0"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-06-normal",
+          "tdd": "TDD-CX-06-normal",
+          "cx": "CX-06",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "exact context/asset set resolves then durable pin issued",
+          "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "exact context/asset set resolves then durable pin issued"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-06-stale_or_failure",
+          "tdd": "TDD-CX-06-stale_or_failure",
+          "cx": "CX-06",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "extra/missing response reference rejected; commitCalls0",
+          "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "extra/missing response reference rejected; commitCalls0"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-06-late_or_replay",
+          "tdd": "TDD-CX-06-late_or_replay",
+          "cx": "CX-06",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "stale catalog snapshot requires explicit re-resolve; no silent mapping",
+          "contract": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "stale catalog snapshot requires explicit re-resolve; no silent mapping"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-08-normal",
+          "tdd": "TDD-CX-08-normal",
+          "cx": "CX-08",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "one S1 commit yields Applied and one history entry",
+          "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "one S1 commit yields Applied and one history entry"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-08-stale_or_failure",
+          "tdd": "TDD-CX-08-stale_or_failure",
+          "cx": "CX-08",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "postcommit root failure yields AppliedRetentionDeferred at actual R8",
+          "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "postcommit root failure yields AppliedRetentionDeferred at actual R8"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-08-late_or_replay",
+          "tdd": "TDD-CX-08-late_or_replay",
+          "cx": "CX-08",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03-H2,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "replay same mutation keeps revisionR8/history count1",
+          "contract": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "replay same mutation keeps revisionR8/history count1"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-09-normal",
+          "tdd": "TDD-CX-09-normal",
+          "cx": "CX-09",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "children/catalog written at FINAL canonical paths then Ready receipt",
+          "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "children/catalog written at FINAL canonical paths then Ready receipt"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-09-stale_or_failure",
+          "tdd": "TDD-CX-09-stale_or_failure",
+          "cx": "CX-09",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "Quarantined copy denied by every official open path",
+          "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "Quarantined copy denied by every official open path"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-09-late_or_replay",
+          "tdd": "TDD-CX-09-late_or_replay",
+          "cx": "CX-09",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01-copy,M05,M06",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "restart never relocates/rewrites journal; marker uncertain stays blocked",
+          "contract": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "restart never relocates/rewrites journal; marker uncertain stays blocked"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-14-normal",
+          "tdd": "TDD-CX-14-normal",
+          "cx": "CX-14",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "complete typed mapping updates all declared references once",
+          "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "complete typed mapping updates all declared references once"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-14-stale_or_failure",
+          "tdd": "TDD-CX-14-stale_or_failure",
+          "cx": "CX-14",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "unknown reference-bearing field hard-blocks; commitCalls0",
+          "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "unknown reference-bearing field hard-blocks; commitCalls0"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-14-late_or_replay",
+          "tdd": "TDD-CX-14-late_or_replay",
+          "cx": "CX-14",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M03,M04,M06",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "stale preview mapping cannot apply to new target revision",
+          "contract": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "stale preview mapping cannot apply to new target revision"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-15-normal",
+          "tdd": "TDD-CX-15-normal",
+          "cx": "CX-15",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "issuer registry proof tag+context matches expected action",
+          "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "issuer registry proof tag+context matches expected action"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-15-stale_or_failure",
+          "tdd": "TDD-CX-15-stale_or_failure",
+          "cx": "CX-15",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "UI fabricated receipt/other proof tag denied; ackCalls0",
+          "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "UI fabricated receipt/other proof tag denied; ackCalls0"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-15-late_or_replay",
+          "tdd": "TDD-CX-15-late_or_replay",
+          "cx": "CX-15",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "restart missing issuer proof is Unverified, never fabricated completion",
+          "contract": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "restart missing issuer proof is Unverified, never fabricated completion"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-16-normal",
+          "tdd": "TDD-CX-16-normal",
+          "cx": "CX-16",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "one serial patch owns shared path; candidate claims exact",
+          "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "one serial patch owns shared path; candidate claims exact"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-16-stale_or_failure",
+          "tdd": "TDD-CX-16-stale_or_failure",
+          "cx": "CX-16",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "outside adopted child envelope denied",
+          "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "outside adopted child envelope denied"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-16-late_or_replay",
+          "tdd": "TDD-CX-16-late_or_replay",
+          "cx": "CX-16",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M01,M02,M03,M04,M05,M06,M07",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "new shared HEAD/SHA rebaselined before next accepted slice",
+          "contract": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "new shared HEAD/SHA rebaselined before next accepted slice"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-17-normal",
+          "tdd": "TDD-CX-17-normal",
+          "cx": "CX-17",
+          "category": "normal",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+          "when": "invoke corrected module input boundary with normal",
+          "then": "golden/projector/native gate status shown accurately",
+          "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "golden/projector/native gate status shown accurately"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-17-stale_or_failure",
+          "tdd": "TDD-CX-17-stale_or_failure",
+          "cx": "CX-17",
+          "category": "stale_or_failure",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+          "when": "invoke corrected module input boundary with stale_or_failure",
+          "then": "missing fixture/provider is not valid RED or readiness",
+          "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "missing fixture/provider is not valid RED or readiness"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        },
+        {
+          "id": "BDD-CX-17-late_or_replay",
+          "tdd": "TDD-CX-17-late_or_replay",
+          "cx": "CX-17",
+          "category": "late_or_replay",
+          "given": "Exact current/stale context and issuer-owned proof fixture for M02,M06",
+          "when": "invoke corrected module input boundary with late_or_replay",
+          "then": "document regeneration never promotes product/parent card to green",
+          "contract": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+          "oracle": {
+            "context": {
+              "project_uuid": "11111111-1111-4111-8111-111111111111",
+              "document_uuid": "22222222-2222-4222-8222-222222222222",
+              "session_id": "session_1",
+              "owner_generation": "3",
+              "captured_revision": "7",
+              "operation_id": "operation_1"
+            },
+            "digests": {
+              "design_semantic": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "file_raw": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "catalog_raw": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "recovery_fp": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+            },
+            "result": "document regeneration never promotes product/parent card to green"
+          },
+          "status": "PLANNED_NOT_RUN",
+          "valid_red": "Accepted exact child Skeleton compiles, independent fixture oracle passes; missing setup/provider/native environment not RED."
+        }
+      ],
+      "wire_fixtures": [
+        {
+          "input": "0",
+          "valid_wire_u64": true,
+          "expected": "parse exact integer internally"
+        },
+        {
+          "input": "1",
+          "valid_wire_u64": true,
+          "expected": "parse exact integer internally"
+        },
+        {
+          "input": "9007199254740993",
+          "valid_wire_u64": true,
+          "expected": "parse exact integer internally"
+        },
+        {
+          "input": "18446744073709551615",
+          "valid_wire_u64": true,
+          "expected": "parse exact integer internally"
+        },
+        {
+          "input": "18446744073709551616",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": "01",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": "+1",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": "1e0",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": "-1",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": " 1",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        },
+        {
+          "input": "",
+          "valid_wire_u64": false,
+          "expected": "InvalidInput decimal_string"
+        }
+      ],
+      "coverage": "Original module B1-B12 plus normal/stale-or-failure/late-or-replay for each applicable CX. No product RED/GREEN claimed.",
+      "commands": "Original exact module future test commands retained in effective spec; new committed-read/source-fence native suites require accepted child envelope/Skeleton first.",
+      "valid_red": "Compiles and independent fixture validates intended behavior; missing golden/projector/native/provider remains readiness gap."
+    },
+    "status": "MATERIALIZED_PROPOSAL_NOT_ADOPTED"
+  }
+]

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "code": {
+          "const": "ResourceLimit"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string",
+              "pattern": "^(?:/(?:[^~/]|~[01])*)*$"
+            },
+            "limit": {
+              "enum": [
+                "raw_design_utf8",
+                "outer_request_utf8",
+                "max_outer_depth",
+                "runtime_bindings",
+                "candidate_per_binding",
+                "preview_sessions_per_binding",
+                "text_payload_utf8",
+                "number_text_bytes",
+                "node_id_utf8",
+                "document_reference_utf8",
+                "request_keys_per_binding",
+                "request_keys_per_runtime"
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "limit"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "code",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "code": {
+          "const": "UnsupportedAction"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "node_id": {
+              "type": "string"
+            },
+            "action": {
+              "enum": [
+                "Activate",
+                "SetToggle",
+                "SetText",
+                "SetNumber",
+                "SelectItem"
+              ]
+            }
+          },
+          "required": [
+            "node_id",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "code",
+        "details"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

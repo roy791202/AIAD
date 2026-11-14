@@ -1,0 +1,729 @@
+<!doctype html><meta charset="utf-8"><title>M07 publication retention handoff</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;background:#101820;color:#e1edf3}pre{white-space:pre-wrap}article{padding:20px;border:1px solid #527286}</style><h1>M07 Snapshot publication handoff</h1><p>PLANNING · Owner pending · Yellow unchanged · no Skeleton / module PASS</p><article><h2>Publication order</h2><pre>durable payload + materials → index CAS → LocalIntegrityReady
+→ M05 RecoverySnapshots root transfer → captured recovery ACK</pre><p>LocalIntegrityReady survives source retention deferral. Formal-only ACK schema cannot authorize recovery ACK.</p></article><h2>Architecture / specification / risks</h2><pre>{
+  &quot;module&quot;: &quot;M07&quot;,
+  &quot;task&quot;: &quot;PD-P1-M07-PREP-01&quot;,
+  &quot;state&quot;: &quot;PLANNING_PENDING_OWNER&quot;,
+  &quot;scope&quot;: &quot;One snapshot publication handoff only&quot;,
+  &quot;authority&quot;: {
+    &quot;head&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+    &quot;inventory_head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+    &quot;inventory_files&quot;: 796,
+    &quot;source&quot;: &quot;M01/planning/s2-green/source-current.json&quot;
+  },
+  &quot;architecture&quot;: {
+    &quot;hexagonal&quot;: &quot;trusted capture driving adapter → M07 application publication input → recovery policy → RecoveryStore/M05 ports ← native index/catalog adapters&quot;,
+    &quot;dependency&quot;: &quot;M07 application → abstract recovery/material ports; native adapters implement ports; no domain filesystem&quot;,
+    &quot;ownership&quot;: &quot;Source owner owns live capture/baselines; M07 immutable attempt owns payload/index evidence; M05 owns pin/root receipts&quot;,
+    &quot;mutation&quot;: &quot;Only exact current owner can accept captured recovery ACK; live newer capture never overwritten&quot;,
+    &quot;transaction&quot;: &quot;payload/material durable → index CAS → LocalIntegrityReady → separate M05 root transfer → captured source ACK; no catalog/index lease held across owner callback&quot;
+  },
+  &quot;contracts&quot;: [
+    &quot;LocalIntegrityReady requires payload/index/material proof, independent of original catalog&quot;,
+    &quot;Index Failed/Unknown cannot transfer or ACK&quot;,
+    &quot;Root deferred retains Held/Unknown and LocalIntegrityReady; no release&quot;,
+    &quot;Matching old capture ACK updates captured recovery baseline only; formal/live state unchanged&quot;,
+    &quot;Stale owner cannot ACK; restart proof loss cannot mint success/retry/release&quot;
+  ],
+  &quot;mapping&quot;: {
+    &quot;snapshot&quot;: &quot;evidence.snapshot_id; not document_uuid&quot;,
+    &quot;attempt&quot;: &quot;evidence.attempt_id; immutable for captured workflow&quot;,
+    &quot;fingerprint&quot;: &quot;evidence.recovery_fingerprint; typed SGA-RECOVERY-FP-v1, never payload raw&quot;,
+    &quot;raw&quot;: &quot;payload_raw_digest vs index prior/new raw vs material digest remain distinct&quot;,
+    &quot;transition&quot;: &quot;UUIDv5(workflow_id, UTF8 transfer-recovery/0); issuer/store/workflow/operation exact key&quot;,
+    &quot;proof&quot;: &quot;M07 ReceiptRef evidence_digest hashes full proposed evidence; M05 external_proof.raw_digest=index committed raw and projection_digest=full evidence hash; adopted issuer schema pending&quot;,
+    &quot;request&quot;: &quot;Full effective CXv3 closed transfer-recovery body, no purpose injection or post-hash enrichment&quot;
+  },
+  &quot;owner_gaps&quot;: [
+    {
+      &quot;id&quot;: &quot;PH-G1&quot;,
+      &quot;owner&quot;: &quot;M07+M04&quot;,
+      &quot;gap&quot;: &quot;Effective ack body requires formal_target_identity/file_receipt/captured_semantic_digest; no closed recovery-fingerprint ACK body. Do not send formal ack for recovery.&quot;,
+      &quot;required&quot;: &quot;Approve recovery ACK discriminated request with attempt/snapshot/context/fingerprint/index and transfer issuer refs; revision/generation fencing and replay lifecycle.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;PH-G2&quot;,
+      &quot;owner&quot;: &quot;M07+IO+M05&quot;,
+      &quot;gap&quot;: &quot;RecoveryIndex immutable issuer record field schema/provider not implemented/adopted. Proposed evidence fixture below is documentary only.&quot;,
+      &quot;required&quot;: &quot;Adopt attempt/snapshot/context/target/expected-prior/new raw/index transaction/payload/material closure/fingerprint binding and authenticate server lookup.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;PH-G3&quot;,
+      &quot;owner&quot;: &quot;M05&quot;,
+      &quot;gap&quot;: &quot;Material receipt v1 and transition_receipts atomic inclusion pending adoption; transfer fixture not present capability.&quot;,
+      &quot;required&quot;: &quot;Adopt exact full request hash, native store identity and external proof mapping including payload/index evidence projection.&quot;
+    },
+    {
+      &quot;id&quot;: &quot;PH-G4&quot;,
+      &quot;owner&quot;: &quot;M07&quot;,
+      &quot;gap&quot;: &quot;Restart issuer proof revalidation capability unavailable.&quot;,
+      &quot;required&quot;: &quot;Specify revalidation; missing record UnverifiedOutcome, no retry/release/ACK.&quot;
+    }
+  ],
+  &quot;bdd_tdd&quot;: [
+    {
+      &quot;id&quot;: &quot;M07-PH-001&quot;,
+      &quot;behavior&quot;: &quot;success&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-001&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-002&quot;,
+      &quot;behavior&quot;: &quot;index-failure&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-002&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-003&quot;,
+      &quot;behavior&quot;: &quot;index-unknown&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-003&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-004&quot;,
+      &quot;behavior&quot;: &quot;root-deferred&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-004&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-005&quot;,
+      &quot;behavior&quot;: &quot;stale-owner&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-005&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-006&quot;,
+      &quot;behavior&quot;: &quot;newer-live-capture&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-006&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-007&quot;,
+      &quot;behavior&quot;: &quot;captured-ack-only&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-007&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    },
+    {
+      &quot;id&quot;: &quot;M07-PH-008&quot;,
+      &quot;behavior&quot;: &quot;restart-proof-loss&quot;,
+      &quot;test&quot;: &quot;planned_native_M07-PH-008&quot;,
+      &quot;status&quot;: &quot;PLANNED_NOT_RUN&quot;,
+      &quot;document_witness&quot;: &quot;fixtures.json&quot;
+    }
+  ],
+  &quot;acceptance&quot;: [
+    &quot;Eight full-field documentary witnesses and closed-shape rejection check&quot;,
+    &quot;Exact effective transfer request schema and full immutable issuer bindings&quot;,
+    &quot;No real timer/capture/Port/Skeleton/product/native authenticity claim&quot;,
+    &quot;Owner approves precise schema/provider gaps before future skeleton&quot;
+  ],
+  &quot;not_run&quot;: [
+    &quot;independent review&quot;,
+    &quot;native&quot;,
+    &quot;build&quot;,
+    &quot;product tests&quot;,
+    &quot;valid RED&quot;,
+    &quot;full Draft&quot;,
+    &quot;module PASS&quot;
+  ],
+  &quot;next_action&quot;: &quot;Independent read-only documentary review, then Owner resolves PH-G1..4; no Skeleton authorized&quot;
+}</pre><h2>Full-field documentary cases</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M07-PH-001&quot;,
+    &quot;name&quot;: &quot;success&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;PublicationAcknowledged&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-002&quot;,
+    &quot;name&quot;: &quot;index-failure&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Failed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;NotReady&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-003&quot;,
+    &quot;name&quot;: &quot;index-unknown&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Unknown&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;UncertainPublication&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-004&quot;,
+    &quot;name&quot;: &quot;root-deferred&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Deferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;SourceRetentionDeferred&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-005&quot;,
+    &quot;name&quot;: &quot;stale-owner&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;3&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;CommittedAckDeferred&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-006&quot;,
+    &quot;name&quot;: &quot;newer-live-capture&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;11&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;PublicationAcknowledged&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-007&quot;,
+    &quot;name&quot;: &quot;captured-ack-only&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: true,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;12&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;PublicationAcknowledged&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M07-PH-008&quot;,
+    &quot;name&quot;: &quot;restart-proof-loss&quot;,
+    &quot;input&quot;: {
+      &quot;request&quot;: {
+        &quot;protocol&quot;: &quot;SGA-TRANSITION-v2&quot;,
+        &quot;issuer&quot;: &quot;M05&quot;,
+        &quot;role&quot;: &quot;transfer-recovery&quot;,
+        &quot;ordinal&quot;: &quot;0&quot;,
+        &quot;context&quot;: {
+          &quot;project_uuid&quot;: &quot;00000000-0000-4000-8000-000000000001&quot;,
+          &quot;document_uuid&quot;: &quot;00000000-0000-4000-8000-000000000002&quot;,
+          &quot;session_id&quot;: &quot;00000000-0000-4000-8000-000000000003&quot;,
+          &quot;owner_generation&quot;: &quot;2&quot;,
+          &quot;captured_revision&quot;: &quot;10&quot;,
+          &quot;workflow_id&quot;: &quot;00000000-0000-4000-8000-000000000004&quot;
+        },
+        &quot;body&quot;: {
+          &quot;pin_id&quot;: &quot;00000000-0000-4000-8000-00000000000c&quot;,
+          &quot;store_identity&quot;: {
+            &quot;volume_id&quot;: &quot;fixture-volume&quot;,
+            &quot;file_id&quot;: &quot;fixture-index&quot;,
+            &quot;canonical_target&quot;: &quot;fixture://recovery/index&quot;
+          },
+          &quot;root_manifest&quot;: {
+            &quot;manifest_id&quot;: &quot;00000000-0000-4000-8000-000000000007&quot;,
+            &quot;provider_id&quot;: &quot;M07-recovery-fixture&quot;,
+            &quot;kind&quot;: &quot;RecoverySnapshots&quot;,
+            &quot;epoch&quot;: &quot;7&quot;,
+            &quot;completeness&quot;: &quot;Complete&quot;,
+            &quot;assets&quot;: [
+              {
+                &quot;asset_id&quot;: &quot;fixture-asset&quot;,
+                &quot;digest&quot;: &quot;aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&quot;,
+                &quot;size_bytes&quot;: &quot;7&quot;
+              }
+            ]
+          },
+          &quot;external_proof&quot;: {
+            &quot;issuer&quot;: &quot;M07&quot;,
+            &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+            &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+            &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+            &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+          },
+          &quot;expected_catalog_generation&quot;: &quot;7&quot;
+        }
+      },
+      &quot;attempt_id&quot;: &quot;00000000-0000-4000-8000-000000000008&quot;,
+      &quot;snapshot_id&quot;: &quot;00000000-0000-4000-8000-000000000009&quot;,
+      &quot;index_proof_ref&quot;: {
+        &quot;issuer&quot;: &quot;M07&quot;,
+        &quot;receipt_id&quot;: &quot;00000000-0000-4000-8000-00000000000b&quot;,
+        &quot;kind&quot;: &quot;RecoveryIndex&quot;,
+        &quot;context_digest&quot;: &quot;f15ed7fa2546913fbbc8cb84fd01531eddc891f8ee618778c91eb2c941265f28&quot;,
+        &quot;evidence_digest&quot;: &quot;cddf3efb994f39091c08513780c3ff223adf81d06ef6c057fecd5ac9f654538e&quot;
+      },
+      &quot;transition_key&quot;: [
+        &quot;M05&quot;,
+        &quot;fixture-store&quot;,
+        &quot;00000000-0000-4000-8000-000000000004&quot;,
+        &quot;53b068a1-b1f9-551a-bbc3-2cd5ffc71057&quot;
+      ],
+      &quot;payload_verified&quot;: true,
+      &quot;materials_verified&quot;: true,
+      &quot;index_outcome&quot;: &quot;Committed&quot;,
+      &quot;root_outcome&quot;: &quot;Transferred&quot;,
+      &quot;issuer_record_available&quot;: false,
+      &quot;owner_generation&quot;: &quot;2&quot;,
+      &quot;live_revision&quot;: &quot;10&quot;,
+      &quot;captured_ack_requested&quot;: true
+    },
+    &quot;expected&quot;: &quot;UnverifiedOutcome&quot;
+  }
+]</pre><script type="application/json" id="module-spec">{"module": "M07", "task": "PD-P1-M07-PREP-01", "state": "PLANNING_PENDING_OWNER", "scope": "One snapshot publication handoff only", "authority": {"head": "5b709343a890503ebbe24a802e43cda5647df124", "inventory_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab", "inventory_files": 796, "source": "M01/planning/s2-green/source-current.json"}, "architecture": {"hexagonal": "trusted capture driving adapter → M07 application publication input → recovery policy → RecoveryStore/M05 ports ← native index/catalog adapters", "dependency": "M07 application → abstract recovery/material ports; native adapters implement ports; no domain filesystem", "ownership": "Source owner owns live capture/baselines; M07 immutable attempt owns payload/index evidence; M05 owns pin/root receipts", "mutation": "Only exact current owner can accept captured recovery ACK; live newer capture never overwritten", "transaction": "payload/material durable → index CAS → LocalIntegrityReady → separate M05 root transfer → captured source ACK; no catalog/index lease held across owner callback"}, "contracts": ["LocalIntegrityReady requires payload/index/material proof, independent of original catalog", "Index Failed/Unknown cannot transfer or ACK", "Root deferred retains Held/Unknown and LocalIntegrityReady; no release", "Matching old capture ACK updates captured recovery baseline only; formal/live state unchanged", "Stale owner cannot ACK; restart proof loss cannot mint success/retry/release"], "mapping": {"snapshot": "evidence.snapshot_id; not document_uuid", "attempt": "evidence.attempt_id; immutable for captured workflow", "fingerprint": "evidence.recovery_fingerprint; typed SGA-RECOVERY-FP-v1, never payload raw", "raw": "payload_raw_digest vs index prior/new raw vs material digest remain distinct", "transition": "UUIDv5(workflow_id, UTF8 transfer-recovery/0); issuer/store/workflow/operation exact key", "proof": "M07 ReceiptRef evidence_digest hashes full proposed evidence; M05 external_proof.raw_digest=index committed raw and projection_digest=full evidence hash; adopted issuer schema pending", "request": "Full effective CXv3 closed transfer-recovery body, no purpose injection or post-hash enrichment"}, "owner_gaps": [{"id": "PH-G1", "owner": "M07+M04", "gap": "Effective ack body requires formal_target_identity/file_receipt/captured_semantic_digest; no closed recovery-fingerprint ACK body. Do not send formal ack for recovery.", "required": "Approve recovery ACK discriminated request with attempt/snapshot/context/fingerprint/index and transfer issuer refs; revision/generation fencing and replay lifecycle."}, {"id": "PH-G2", "owner": "M07+IO+M05", "gap": "RecoveryIndex immutable issuer record field schema/provider not implemented/adopted. Proposed evidence fixture below is documentary only.", "required": "Adopt attempt/snapshot/context/target/expected-prior/new raw/index transaction/payload/material closure/fingerprint binding and authenticate server lookup."}, {"id": "PH-G3", "owner": "M05", "gap": "Material receipt v1 and transition_receipts atomic inclusion pending adoption; transfer fixture not present capability.", "required": "Adopt exact full request hash, native store identity and external proof mapping including payload/index evidence projection."}, {"id": "PH-G4", "owner": "M07", "gap": "Restart issuer proof revalidation capability unavailable.", "required": "Specify revalidation; missing record UnverifiedOutcome, no retry/release/ACK."}], "bdd_tdd": [{"id": "M07-PH-001", "behavior": "success", "test": "planned_native_M07-PH-001", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-002", "behavior": "index-failure", "test": "planned_native_M07-PH-002", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-003", "behavior": "index-unknown", "test": "planned_native_M07-PH-003", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-004", "behavior": "root-deferred", "test": "planned_native_M07-PH-004", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-005", "behavior": "stale-owner", "test": "planned_native_M07-PH-005", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-006", "behavior": "newer-live-capture", "test": "planned_native_M07-PH-006", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-007", "behavior": "captured-ack-only", "test": "planned_native_M07-PH-007", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}, {"id": "M07-PH-008", "behavior": "restart-proof-loss", "test": "planned_native_M07-PH-008", "status": "PLANNED_NOT_RUN", "document_witness": "fixtures.json"}], "acceptance": ["Eight full-field documentary witnesses and closed-shape rejection check", "Exact effective transfer request schema and full immutable issuer bindings", "No real timer/capture/Port/Skeleton/product/native authenticity claim", "Owner approves precise schema/provider gaps before future skeleton"], "not_run": ["independent review", "native", "build", "product tests", "valid RED", "full Draft", "module PASS"], "next_action": "Independent read-only documentary review, then Owner resolves PH-G1..4; no Skeleton authorized"}</script>

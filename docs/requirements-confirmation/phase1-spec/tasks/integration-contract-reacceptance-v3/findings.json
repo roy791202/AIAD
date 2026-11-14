@@ -1,0 +1,81 @@
+[
+  {
+    "id": "V3-F1",
+    "severity": "P2",
+    "origin": "V2-F2",
+    "pointer": "h2-*-response.schema.json/$defs/Error",
+    "problem": "field_schema turns legacy descriptor strings into unrestricted string schemas. UnsupportedDocument.details.nodes is string rather than node array; InvalidRequest.details.reason is arbitrary string rather than the listed closed enum. Local refs resolve but the resulting schema accepts invalid public error payloads and rejects the declared typed node list.",
+    "evidence": {
+      "typed_nodes_array": {
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "UnsupportedDocument",
+            "details": {
+              "nodes": [
+                {
+                  "node_id": "n1",
+                  "type": "Unknown",
+                  "reason": "unsupported"
+                }
+              ]
+            }
+          },
+          "replayed": false
+        },
+        "schema_errors": [
+          ":oneOf"
+        ]
+      },
+      "invalid_nodes_string": {
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "UnsupportedDocument",
+            "details": {
+              "nodes": "not a node list"
+            }
+          },
+          "replayed": false
+        },
+        "schema_errors": []
+      },
+      "unknown_reason": {
+        "value": {
+          "ok": false,
+          "error": {
+            "code": "InvalidRequest",
+            "details": {
+              "field": "/x",
+              "reason": "ARBITRARY_UNDECLARED_REASON"
+            }
+          },
+          "replayed": false
+        },
+        "schema_errors": []
+      }
+    },
+    "required_correction": "Create explicit typed schema per error detail, no prose inference. nodes must array of closed node/type/reason records; InvalidRequest reason must exact enum. Reconcile DomainRejected variant-specific fields and every original closed detail. Add valid/invalid witnesses per error before claiming complete schema closure."
+  },
+  {
+    "id": "V3-F2",
+    "severity": "P2",
+    "origin": "V2-F3",
+    "pointer": "shared-contract.json/h2_error_lifecycle/mapping versus M05 effective_spec/errors/codes",
+    "problem": "Mapping covers all 11 bounded read errors but not all MaterialError codes from pin/resolve/import/root/receipt operations. StaleRoot singular differs from mapped StaleRoots, and Storage/MaterialRecoveryBlocked have no exact conversion. The closed H2 error union cannot deterministically represent these outcomes without a new mapping.",
+    "unmapped_material_codes": [
+      "CatalogInvalid",
+      "InvalidBinding",
+      "InvalidInput",
+      "MaterialRecoveryBlocked",
+      "MissingVersion",
+      "PermissionDenied",
+      "PinConflict",
+      "StaleCatalog",
+      "StaleRoot",
+      "Storage",
+      "UnmappedReference"
+    ],
+    "required_correction": "Map every existing MaterialError code/reason and IO uncertainty stage to exact H2 code/details or verified postcommit deferred outcome; explicitly normalize StaleRoot versus StaleRoots. Storage recovery/uncertain catalog outcome must not become generic unchanged failure. Preserve authority/binding-first lifecycle and no automatic retry."
+  }
+]

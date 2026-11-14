@@ -1,0 +1,62 @@
+{
+  "status": "PROPOSED_REVIEW_REQUIRED",
+  "fields": {
+    "record_format": "const m08.native-evidence.v1",
+    "run_id": "String unique per isolated run",
+    "recorded_at": "RFC3339 timestamp with timezone offset",
+    "module": "const M08",
+    "case_id": "enum M08-N01..M08-N16",
+    "source": {
+      "branch": "String",
+      "head": "40hex",
+      "dirty_inventory_sha256": "64hex mandatory even if clean",
+      "approved_spec_revision": "String",
+      "build_manifest_ref": "String or null when blocked"
+    },
+    "artifact": {
+      "eligibility": "HISTORICAL_UNLINKED | UNREVIEWED | ELIGIBLE",
+      "actual_path": "String or null if NOT RUN",
+      "actual_sha256": "64hex or null",
+      "build_manifest_sha256": "64hex or null",
+      "built_executable_sha256": "64hex or null; exact binary hash claimed by manifest"
+    },
+    "environment": {
+      "OS_build": "String",
+      "OS_arch": "x64 | other",
+      "is_Windows11": "bool from actual native host",
+      "WebView2": "version String | ABSENT | NOT_CHECKED",
+      "user_profile_mode": "DISPOSABLE_TEST_ACCOUNT | CURRENT_USER_UNSAFE | NOT_CHECKED"
+    },
+    "execution": {
+      "state": "NOT RUN | EXECUTED",
+      "pid": "integer or null",
+      "process_started_at": "RFC3339 or null",
+      "command_or_manual_steps": "nonempty ordered strings",
+      "selected_executable_path": "String or null"
+    },
+    "fixture": {
+      "sandbox_id": "String",
+      "canonical_sandbox_root": "String or null",
+      "ownership_marker_sha256": "64hex or null",
+      "canonical_test_roots": "array of strings",
+      "all_roots_proven_within_disposable_scope": "bool",
+      "original_source_hashes_before_after": "object keyed by fixture-local relative ID; not credentials/user documents"
+    },
+    "evidence": {
+      "layer": "E0 | E1 | E2 | E3 | E4",
+      "logs": "array of local evidence refs",
+      "captures": "array of run/process-bound refs",
+      "operation_result": "observed scalar/object or null",
+      "assertions_executed": "bool",
+      "fixture_health_confirmed": "bool"
+    },
+    "result": {
+      "verdict": "PASS | FAIL | BLOCKED | NOT RUN | PARTIAL",
+      "reason": "String",
+      "unmet_prerequisites": "array of strings",
+      "remaining_limits": "array of strings"
+    },
+    "illustrative_only": "bool; true samples never count as runtime evidence"
+  },
+  "authority": "M08 evidence/harness proposal only, no product API/state/schema changed"
+}

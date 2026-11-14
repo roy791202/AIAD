@@ -1,0 +1,49 @@
+{
+  "task": "PD-RUST-GIT-HYGIENE-01",
+  "module": "rust-build-reproducibility",
+  "status": "YELLOW_REVIEW_REQUIRED",
+  "recommendations": "PROPOSED_NOT_APPROVED",
+  "git_commit": "527cc12bae14758f1e98d8b07007401ce389b41d",
+  "tree": "DIRTY_WITH_UNTRACKED_FORMAL_RUST_SOURCE",
+  "generated_at": "2026-10-25T15:03:46.177318+00:00",
+  "scope": "Audit only; source/config/index read-only; artifacts only under reports/rust-improvements/git-hygiene",
+  "architecture": "Existing Cargo workspace and standalone Tauri package; no architecture approval or change asserted",
+  "bdd": "NOT APPLICABLE: audit does not alter behavior",
+  "tdd": "NOT APPLICABLE: read-only audit; no RED/GREEN claimed",
+  "verification": "PASS: git inventory, ignore probes, manifest inspection, CI script inspection and explicit tool version query. NOT RUN: Rust build, MSRV, clean checkout, install/DCC verification.",
+  "findings": [
+    {
+      "priority": "P1",
+      "finding": "Formal Rust source and locks are untracked",
+      "evidence": "198 untracked files within crates, src-tauri and workspace manifest/lock scope; tracked desktop files are UI assets only. HEAD cannot reproduce the current Rust application.",
+      "action": "Review file-manifest.json; prepare one approved source baseline excluding generated output and unrelated WIP. No staging or commit performed."
+    },
+    {
+      "priority": "P2",
+      "finding": "Workspace target is not ignored",
+      "evidence": "git status reports ?? apps/sgenaxis-desktop/target/. git check-ignore matches src-tauri/target/debug/test but does not match desktop/target/debug/test.",
+      "action": "Review exact ignore-proposal.diff. Apply only after approval; verify both workspace and nested target paths are ignored while source/locks remain visible."
+    },
+    {
+      "priority": "P1",
+      "finding": "Current CI does not validate formal Rust modules",
+      "evidence": "Both .github/workflows files configure Python; scripts/pd_ci_pr_gate.py:22 explicitly says fixed subset has no cargo. OS matrix calls that Python gate. All workflow files are currently untracked.",
+      "action": "Propose a separate approved Rust CI slice: workspace cargo test --workspace --locked and separate src-tauri cargo test --locked --lib, platform prerequisites explicit. CI must cover intended real-spawn/real-mcp features separately."
+    },
+    {
+      "priority": "P2",
+      "finding": "Declared MSRV has no fresh compatibility proof",
+      "evidence": "All 10 crate manifests and Tauri declare rust-version 1.77.2. Current explicit local binaries report rustc/cargo 1.99.1. No rust-toolchain file discovered. Both effective lockfiles use format 3; format alone does not prove dependency MSRV compatibility.",
+      "action": "Owner chooses whether 1.77.2 remains a supported contract. Validate locked dependency graphs with that compiler before claiming support; do not silently raise rust-version or regenerate locks."
+    },
+    {
+      "priority": "P2",
+      "finding": "Two effective package roots plus redundant member lockfiles need explicit policy",
+      "evidence": "Desktop workspace includes 10 crates; src-tauri declares its own empty [workspace]. Workspace Cargo.lock and src-tauri/Cargo.lock are distinct effective locks. Ten member Cargo.lock files also exist.",
+      "action": "Keep/review both effective locks for reproducible application builds. Treat crate-local locks as policy candidates; do not delete them until standalone-consumer requirements are confirmed. Use --locked separately at both package roots."
+    }
+  ],
+  "acceptance": "Inventory and exact ignore proposal produced; actionable findings bound to current SHA/tree; production/config untouched",
+  "risks": "Working tree shared and mutable; hashes capture reviewed source snapshot, not a clean release baseline",
+  "decisions": "All changes proposed only; approval and implementation remain separate tasks"
+}

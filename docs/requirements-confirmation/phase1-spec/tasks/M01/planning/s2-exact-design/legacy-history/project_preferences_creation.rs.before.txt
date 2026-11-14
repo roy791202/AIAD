@@ -1,0 +1,184 @@
+use sgenaxis_adapters::FakeFileSystem;
+use sgenaxis_host::project_preferences::*;
+use sgenaxis_ports::{FileSystemPort, PortError};
+use sgenaxis_spec::project_preferences::preset;
+
+#[test]
+fn real_filesystem_project_preference_roundtrip() {
+    let root = std::env::temp_dir().join(format!(
+        "sgenaxis-policy-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    assert!(!root.exists());
+    let path = root.to_str().unwrap();
+    let fs = sgenaxis_adapters::StdFileSystem::new();
+    let created =
+        create_project_with_preferences(&fs, path, PreferenceChoice::Preset("balanced")).unwrap();
+    let CreationOutcome::Created {
+        preferences: Some(view),
+        ..
+    } = created
+    else {
+        panic!("expected real saved preferences")
+    };
+    assert_eq!(
+        load_project_preferences(&fs, path).unwrap(),
+        Some(view.clone())
+    );
+    let next = save_project_preferences(
+        &fs,
+        path,
+        Some(&view.digest),
+        &preset("throughput").unwrap(),
+    )
+    .unwrap();
+    assert_eq!(load_project_preferences(&fs, path).unwrap(), Some(next));
+    std::fs::remove_file(root.join(".sgenaxis/preferences.json")).unwrap();
+    std::fs::remove_dir(root.join(".sgenaxis")).unwrap();
+    std::fs::remove_dir(root).unwrap();
+}
+#[test]
+fn skip_creates_only_directory_without_inherited_policy() {
+    let fs = FakeFileSystem::new();
+    let result = create_project_with_preferences(&fs, "/new", PreferenceChoice::Skip).unwrap();
+    assert_eq!(
+        result,
+        CreationOutcome::Created {
+            project_root: "/new".into(),
+            preferences: None
+        }
+    );
+    assert!(fs.exists("/new").unwrap());
+    assert_eq!(fs.write_count(), 0);
+}
+#[test]
+fn chosen_preset_persists_and_reopens_same_version() {
+    let fs = FakeFileSystem::new();
+    let result =
+        create_project_with_preferences(&fs, "/new", PreferenceChoice::Preset("balanced")).unwrap();
+    let CreationOutcome::Created {
+        preferences: Some(saved),
+        ..
+    } = result
+    else {
+        panic!("expected saved project")
+    };
+    assert_eq!(saved.preferences, preset("balanced").unwrap());
+    assert_eq!(load_project_preferences(&fs, "/new").unwrap(), Some(saved));
+}
+#[test]
+fn importing_makes_independent_copy_without_changing_source() {
+    let fs = FakeFileSystem::new();
+    let source =
+        save_project_preferences(&fs, "/source", None, &preset("balanced").unwrap()).unwrap();
+    let bytes = fs.read("/source/.sgenaxis/preferences.json").unwrap();
+    let before = bytes.clone();
+    create_project_with_preferences(&fs, "/new", PreferenceChoice::Imported(&bytes)).unwrap();
+    let imported = load_project_preferences(&fs, "/new").unwrap().unwrap();
+    save_project_preferences(
+        &fs,
+        "/new",
+        Some(&imported.digest),
+        &preset("throughput").unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        load_project_preferences(&fs, "/source").unwrap(),
+        Some(source)
+    );
+    assert_eq!(bytes, before);
+}
+#[test]
+fn invalid_import_or_unknown_preset_does_not_create_directory() {
+    for choice in [
+        PreferenceChoice::Imported(b"broken"),
+        PreferenceChoice::Preset("unknown"),
+    ] {
+        let fs = FakeFileSystem::new();
+        assert!(create_project_with_preferences(&fs, "/new", choice).is_err());
+        assert_eq!(fs.mkdir_count(), 0);
+        assert_eq!(fs.write_count(), 0);
+    }
+}
+#[test]
+fn existing_file_is_not_deleted_and_existing_directory_is_not_adopted() {
+    for directory in [false, true] {
+        let fs = FakeFileSystem::new();
+        if directory {
+            fs.create_dir_all("/new").unwrap();
+        } else {
+            fs.write_atomic("/new", b"user data").unwrap();
+        }
+        assert_eq!(
+            create_project_with_preferences(&fs, "/new", PreferenceChoice::Preset("balanced")),
+            Err(ProjectPreferenceError::ExistingTarget)
+        );
+        if !directory {
+            assert_eq!(fs.read("/new").unwrap(), b"user data");
+        }
+    }
+}
+struct Denied {
+    fs: FakeFileSystem,
+    fail_mkdir: bool,
+}
+impl FileSystemPort for Denied {
+    fn exists(&self, p: &str) -> Result<bool, PortError> {
+        self.fs.exists(p)
+    }
+    fn is_file(&self, p: &str) -> Result<bool, PortError> {
+        self.fs.is_file(p)
+    }
+    fn read(&self, p: &str) -> Result<Vec<u8>, PortError> {
+        self.fs.read(p)
+    }
+    fn read_to_string(&self, p: &str) -> Result<String, PortError> {
+        self.fs.read_to_string(p)
+    }
+    fn write_atomic(&self, _: &str, _: &[u8]) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied("write".into()))
+    }
+    fn create_dir_all(&self, p: &str) -> Result<(), PortError> {
+        if self.fail_mkdir {
+            Err(PortError::PermissionDenied("mkdir".into()))
+        } else {
+            self.fs.create_dir_all(p)
+        }
+    }
+    fn remove_file(&self, _: &str) -> Result<(), PortError> {
+        panic!("must never remove")
+    }
+}
+#[test]
+fn preference_failure_is_partial_not_success_or_recursive_rollback() {
+    let fs = Denied {
+        fs: FakeFileSystem::new(),
+        fail_mkdir: false,
+    };
+    let result =
+        create_project_with_preferences(&fs, "/new", PreferenceChoice::Preset("balanced")).unwrap();
+    assert!(
+        matches!(result,CreationOutcome::DirectoryCreatedPreferencesFailed{project_root,error:ProjectPreferenceError::Storage(PortError::PermissionDenied(_))} if project_root=="/new")
+    );
+    assert!(fs.fs.exists("/new").unwrap());
+    assert_eq!(load_project_preferences(&fs, "/new").unwrap(), None);
+}
+#[test]
+fn directory_failure_is_explicit_and_no_policy_is_written() {
+    let fs = Denied {
+        fs: FakeFileSystem::new(),
+        fail_mkdir: true,
+    };
+    assert!(matches!(
+        create_project_with_preferences(&fs, "/new", PreferenceChoice::Preset("balanced")),
+        Err(ProjectPreferenceError::Storage(
+            PortError::PermissionDenied(_)
+        ))
+    ));
+    assert!(!fs.fs.exists("/new").unwrap());
+    assert_eq!(fs.fs.write_count(), 0);
+}

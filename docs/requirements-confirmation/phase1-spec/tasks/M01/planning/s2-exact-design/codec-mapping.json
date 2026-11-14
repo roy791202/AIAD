@@ -1,0 +1,164 @@
+{
+  "status": "PROPOSED",
+  "schema": "schema.json is byte-identical prior v1, no version bump",
+  "fields": [
+    {
+      "wire": "schema",
+      "mapping": "constant eluslot.project-definition",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "schemaVersion",
+      "mapping": "exact integer token1; unknown scalar integer version → UnsupportedSchema",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "projectUuid",
+      "mapping": "project_uuid; lowercase UUID-v4 wire check before PersistentProjectId::candidate (candidate alone not validation)",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "definitionRevision",
+      "mapping": "definition_revision.0; canonical decimal STRING0..18446744073709551615, no signs/leading zeros/JSON number",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "name",
+      "mapping": "draft.name unchanged; raw1..120 Unicode chars plus existing domain trimmed-name validation; codec never trims/changes value",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "purpose",
+      "mapping": "draft.purpose unchanged",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "mode",
+      "mapping": "Draft/draft; Defined/defined. Defined alone does not prove completeness/approval/generation",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "lastSavedStep",
+      "mapping": "Basics/basics,Delivery/delivery,Topology/topology,Requirements/requirements,TechnologyUi/technology_ui,Preview/preview",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "deliveryTargets",
+      "mapping": "ordered draft.delivery_targets; exact id/form/platform/host/hostVersion/language/framework/toolchain/hasUi fields",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "topology",
+      "mapping": "FieldState<String> exact mapping",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "requirements",
+      "mapping": "ordered draft.requirements: id,intent,acceptance list,RequirementState; existing S1 ID validation",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "preferenceSource",
+      "mapping": "Skip/skip,Preset/preset,ImportedCopy/imported-copy",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "template",
+      "mapping": "None/null or exact id/version/sourceDigest object, required nonempty id/version and digest syntax",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "openDecisions",
+      "mapping": "ordered draft.open_decisions unchanged",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "approvalRefs",
+      "mapping": "approval_refs data IDs only; blank refs may remain draft/missing decisions, no authorization inferred",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "legacyRootKeys",
+      "mapping": "legacy_root_keys opaque portable IDs, no path/URI-like alias; do not rewrite original WORK/lease registration",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    },
+    {
+      "wire": "extensions",
+      "mapping": "BTreeMap ExtensionValue recursive; preserve keys/arrays/value semantics and exact Number token text",
+      "required": true,
+      "unknown_policy": "reject outside extensions"
+    }
+  ],
+  "target_details": {
+    "id": "canonical UUID-v4, unique by existing S1 validator",
+    "form/platform/host/hostVersion/language/framework": "FieldState<String>",
+    "toolchain": "ordered strings; incomplete empty list accepted as draft",
+    "hasUi": "None/null,Some(false)/false never default true/false",
+    "unknown": "reject"
+  },
+  "field_state": {
+    "unresolved": "value must be null; non-null payload cannot be dropped",
+    "tentative": "value must be string, empty string allowed",
+    "confirmed": "value must be string, empty string allowed and S1 may report generation missing",
+    "null_missing": "required fields cannot be absent; null valid only where explicit wire schema permits"
+  },
+  "extension_mapping": {
+    "Null/Bool/String": "exact values; JSON string escape spelling may normalize semantically",
+    "Array": "order retained",
+    "Object": "BTreeMap key ordering deterministic; duplicates rejected even in extensions; literal serde-private-looking keys remain ordinary string keys",
+    "Number(String)": "exact valid raw JSON numeric token, including -0/1.00/1E+03/big ints/decimals; never via f64 or serde_json::Value numeric conversion; invalid Number candidate rejected"
+  },
+  "feature_proposal": {
+    "crate": "existing serde_json locked1.0.154",
+    "feature": "raw_value only on HOST existing direct dependency",
+    "implementation_boundary": "HOST private raw DTO/children map RawValue text directly to existing ExtensionValue, duplicate-aware maps; no WORK serde or production helper service",
+    "why": "Preserve exact numeric token without arbitrary_precision global number behavior or new crate/version",
+    "manifest_scope": "HOST Cargo.toml only after approval; versions/checksums/all Cargo.lock protected; --locked tests in workspace+standalone shell",
+    "local_primary_source": "registry serde_json1.0.154 src/raw.rs says raw formatting retained; Cargo.toml raw_value=[]; static inspection only"
+  },
+  "limits_proposed": {
+    "input_bytes": 16777216,
+    "output_bytes": 16777216,
+    "json_depth": 64,
+    "json_value_nodes": 100000,
+    "single_decoded_string_utf8_bytes": 1048576,
+    "single_number_token_bytes": 4096,
+    "counting": "root depth0/node1; every object/array/leaf counts1; keys not value nodes but count toward string bytes; total byte cap includes whitespace",
+    "read_boundary": "Current Port read/read_current read whole files. Cap is post-read/pre-parse, NOT bounded OS read/allocation. A bounded-read Port would require a separate proposal."
+  },
+  "encoding": "UTF8/noBOM; known fields in schema property order; 2-space pretty plus finalLF; extension objects sorted, arrays unchanged, Number token text exact. Semantic roundtrip, not full original raw formatting equality.",
+  "alias_policy": "Only opaque non-path legacy IDs portable. Path/URI-like legacyRootKeys → InvalidPortableAlias; explicit omission by trusted adoption caller allowed, source WORK/leases unchanged. No automatic hash/remap. Root/session/window/import source path not serialized. Freeform purpose/extension text is not claimed to be secret-scrubbed.",
+  "approval_boundary": "Decoded refs/defined mode are data; trusted generation approval resolution remains outside S2.",
+  "decode_validation_priority": [
+    "input byte cap",
+    "UTF8 and no BOM",
+    "JSON grammar/duplicates/resource limits",
+    "schema/schemaVersion discriminator",
+    "unknown named fields + required fields",
+    "typed enums/FieldState/UUID/revision",
+    "existing domain validate_definition(draft) + portable alias guard",
+    "operation binding/expected digest/UUID/revision before first write"
+  ],
+  "encode_validation_priority": [
+    "wire-representable typed fields/UUID/revision/enums/FieldState/Number token + existing domain validation",
+    "resource guards, deterministic field and extension traversal",
+    "serialize deterministically, output cap → Codec.OutputTooLarge; no partial bytes returned"
+  ],
+  "implementation_constraint": "Bounded resource/duplicate-aware raw parsing precedes typed RawValue conversion. Do not use float-based intermediate values, default duplicate-last-wins maps, or serde-default recursion errors as fake resource guard evidence. Helpers remain private HOST implementation choices."
+}

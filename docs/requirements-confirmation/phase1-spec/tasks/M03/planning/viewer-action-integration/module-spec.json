@@ -1,0 +1,95 @@
+{
+  "module": "M03",
+  "task": "PD-P1-M03-PREP-01",
+  "command": "design_viewer_intent",
+  "status": "PROPOSED_PENDING_OWNER",
+  "one_command_only": true,
+  "not_integrated": [
+    "design_viewer_refresh",
+    "design_viewer_close"
+  ],
+  "architecture": {
+    "hexagonal": "Viewer driving adapter → exact Tauri intent input port → proposed DesignOwner application → immutable snapshot / C1 numeric guard output seams → detached mock state",
+    "dependency": "UI → Tauri → DispatchHost → application owner → existing pure domain; no generic dispatch or concrete IO",
+    "ownership": "Existing S1 owner retains document content/history/baselines. Proposed preview record owns detached mock/sequence only. Native actual instance resolves preview consumer and captured owner/document/generation/revision. No client authority fields.",
+    "transaction": "Validate → resolve trusted native preview/owner → revision and sequence → immutable capabilities → optional exact C1 guard → actual delivery recheck → checked sequence + detached commit atomically. Overflow closes preview without mock update.",
+    "forbidden": [
+      "content write",
+      "history write",
+      "save",
+      "FileCommit",
+      "ACK",
+      "network",
+      "filesystem",
+      "eval",
+      "invoke by action string"
+    ]
+  },
+  "contracts": [
+    "Only exact action/payload variant accepted",
+    "No failure consumes sequence; overflow only closes preview",
+    "Old accepted sequence gives SequenceConflict, no second effect and replayed=false",
+    "Actual consumer/owner/document/generation/revision checked at admission and delivery",
+    "No synthetic revision+1; unbounded/equal/missing changed observation fails DependencyNotReady",
+    "C1 number canonical result is trusted provider fixture, no float proof",
+    "All decisions including exact roots/error precedence and named seams PROPOSED_PENDING_OWNER"
+  ],
+  "trusted_premises": [
+    "Native/provider fixture objects are server-controlled premise inputs, never request fields",
+    "Instance/generation observations, provider reachability/authenticity/atomic lock not implemented or proved",
+    "nodes already immutable validated unique stable-ID projection; item schema validity is provider premise",
+    "C1 accepted canonical output already exact representability validated; model does not prove C1",
+    "Lower distinct revision is bounded schema witness, not monotonic native reachability claim"
+  ],
+  "ui_schema": {
+    "component": "Viewer mock controls",
+    "role": "Viewer",
+    "controls": "Button Activate; CheckBox SetToggle; TextBox SetText; NumberInput SetNumber; ComboBox SelectItem",
+    "validation": "typed exact payload; UTF8 text<=4096, node<=256, number token<=128; declared immutable stable item ID only",
+    "defaults": "begin projection, not guessed content",
+    "disabled": "stale/closed/unsupported/unresolved capability",
+    "success": "inert detached delta only, no formal success/save toast",
+    "error": "retained mock except overflow closed; focusable inert text aria-live",
+    "empty": "missing node rejects; no fabricated node",
+    "accessibility": "keyboard controls and inert text rendering pending native verification"
+  },
+  "scope": {
+    "allowed": [
+      "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/viewer-action-integration/**"
+    ],
+    "protected": "all existing/product/current-state/board/hooks/role files"
+  },
+  "acceptance": [
+    "Author checker validates all full request/response roots, explicit expected state/call traces",
+    "All 796 historical authority hashes match current bytes",
+    "Inputs preserved and artifact manifest sealed",
+    "No adoption/valid RED/runtime/independent acceptance claimed"
+  ],
+  "coverage": {
+    "B1": "Applicable",
+    "B2": "Applicable",
+    "B3": "Applicable",
+    "B4": "Applicable",
+    "B5": "Applicable",
+    "B6": "Applicable",
+    "B7": "Applicable",
+    "B8": "Applicable",
+    "B9": "Applicable",
+    "B10": "Applicable",
+    "B11": "Deferred: native/DCC/version compatibility requires adopted implementation",
+    "B12": "Applicable"
+  },
+  "test_levels": {
+    "L0": "bounded document model only",
+    "L1-L5": "NOT RUN product/component/module/integration/system"
+  },
+  "execution": "python checker.py",
+  "valid_RED": "NOT RUN; future compilable missing mock-only behavior must fail intended assertion, not fixture/compiler",
+  "pending": [
+    "Owner exact envelope/root/precedence approval",
+    "C1 CP1-CP3 adoption and real numeric seam",
+    "Skeleton and executable native fixtures",
+    "Independent verification and review"
+  ],
+  "health": "YELLOW preparation only; no Module/task complete"
+}

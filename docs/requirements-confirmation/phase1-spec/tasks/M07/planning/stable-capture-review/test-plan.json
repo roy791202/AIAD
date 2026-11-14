@@ -1,0 +1,684 @@
+{
+  "status": "PLANNED_NOT_RUN",
+  "cases": [
+    {
+      "id": "M07-CAP-01",
+      "given": "59 seconds since last check",
+      "when": "check deadline has not arrived",
+      "then": "no capture",
+      "coverage": [
+        "B2"
+      ],
+      "fault": "none",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-02",
+      "given": "60 seconds reached; content equals successful snapshot",
+      "when": "periodic check runs",
+      "then": "no snapshot and no baseline change",
+      "coverage": [
+        "B1",
+        "B2"
+      ],
+      "fault": "none",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-03",
+      "given": "first check with unsaved content and no recovery baseline",
+      "when": "periodic check runs",
+      "then": "capture current complete content and required materials",
+      "coverage": [
+        "B1",
+        "B8"
+      ],
+      "fault": "none",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-04",
+      "given": "clear, merge or Undo mutation still in progress",
+      "when": "check deadline arrives",
+      "then": "defer capture until complete commit or full rollback",
+      "coverage": [
+        "B7",
+        "B10"
+      ],
+      "fault": "mutation barrier",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-05",
+      "given": "a snapshot is still being written",
+      "when": "another check deadline arrives",
+      "then": "no overlapping writer or queued timer burst",
+      "coverage": [
+        "B5",
+        "B8"
+      ],
+      "fault": "slow storage",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-06",
+      "given": "snapshot captured R; editor has changed to R+1",
+      "when": "R finishes successfully",
+      "then": "baseline acknowledges only R; R+1 remains pending",
+      "coverage": [
+        "B6",
+        "B8"
+      ],
+      "fault": "edit during write",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-07",
+      "given": "snapshot captured R; material bytes change before publication",
+      "when": "publication is attempted",
+      "then": "publish only immutable pinned bytes matching R or fail without advancing baseline",
+      "coverage": [
+        "B6",
+        "B10"
+      ],
+      "fault": "asset change",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-08",
+      "given": "payload or material write fails",
+      "when": "snapshot attempt completes",
+      "then": "retain previous valid snapshot and pending content",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "fault": "write failure",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-09",
+      "given": "payload durable but index publication fails",
+      "when": "snapshot attempt completes",
+      "then": "do not advance baseline or release previous snapshot roots",
+      "coverage": [
+        "B5",
+        "B7"
+      ],
+      "fault": "index failure",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-10",
+      "given": "snapshot R succeeded and current content is R+1",
+      "when": "formal save succeeds",
+      "then": "formal baseline alone changes; recovery baseline remains R",
+      "coverage": [
+        "B6",
+        "B12"
+      ],
+      "fault": "none",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-11",
+      "given": "snapshot R exists",
+      "when": "formal save fails",
+      "then": "retain recovery data and pending states",
+      "coverage": [
+        "B4",
+        "B12"
+      ],
+      "fault": "formal save failure",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-12",
+      "given": "only selection, hover or playback position changed",
+      "when": "periodic check runs",
+      "then": "no content-triggered snapshot",
+      "coverage": [
+        "B3",
+        "B12"
+      ],
+      "fault": "ephemeral state",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-13",
+      "given": "content was changed and then restored to last snapshot content",
+      "when": "periodic check runs",
+      "then": "skip equivalent content despite a higher editor revision",
+      "coverage": [
+        "B2",
+        "B6"
+      ],
+      "fault": "undo round trip",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-14",
+      "given": "two sessions edit same stable project identity",
+      "when": "both reach a check deadline",
+      "then": "separate session recovery namespaces and baselines",
+      "coverage": [
+        "B8",
+        "B10"
+      ],
+      "fault": "concurrent sessions",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-15",
+      "given": "old session closes while its snapshot write finishes",
+      "when": "completion arrives in a new session",
+      "then": "do not apply old completion to new session baseline; retain old recoverable data",
+      "coverage": [
+        "B8",
+        "B11"
+      ],
+      "fault": "late completion",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-16",
+      "given": "an attempt already completed",
+      "when": "duplicate acknowledgement arrives",
+      "then": "reject or harmlessly ignore without changing current baseline",
+      "coverage": [
+        "B3",
+        "B8"
+      ],
+      "fault": "duplicate completion",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-17",
+      "given": "original project drive is offline",
+      "when": "complete recovery version is opened",
+      "then": "open unsaved content with necessary assets and allow save to another location",
+      "coverage": [
+        "B1",
+        "B9"
+      ],
+      "fault": "offline project",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-18",
+      "given": "recovery root cannot be written",
+      "when": "snapshot attempt fails",
+      "then": "persistent visible warning, alternative-location action and no false saved claim",
+      "coverage": [
+        "B4",
+        "B9"
+      ],
+      "fault": "permission denied",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-19",
+      "given": "history item refers to retained recovery version",
+      "when": "author removes history item",
+      "then": "remove entry only; files and recovery roots remain",
+      "coverage": [
+        "B8",
+        "B10"
+      ],
+      "fault": "none",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-20",
+      "given": "a recovery index has unsupported schema or incomplete assets",
+      "when": "recovery versions are enumerated",
+      "then": "mark unavailable or incomplete with reason; do not silently activate or discard",
+      "coverage": [
+        "B3",
+        "B11"
+      ],
+      "fault": "integrity/version",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-21",
+      "given": "timer resumes after a long suspended interval",
+      "when": "deadline is checked",
+      "then": "one pending check, not one write per missed interval",
+      "coverage": [
+        "B2",
+        "B8"
+      ],
+      "fault": "clock jump",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    },
+    {
+      "id": "M07-CAP-22",
+      "given": "captured bytes are durable but process dies before index success is known",
+      "when": "application restarts",
+      "then": "previous verified entry remains valid; inspect orphan candidate without treating it as a successful baseline",
+      "coverage": [
+        "B5",
+        "B7",
+        "B9"
+      ],
+      "fault": "process interruption",
+      "fixture": {
+        "session": "S0 unless case specifies S1",
+        "project": "stable P0",
+        "baseline": "optional content fingerprint F0",
+        "captured": "immutable R0/F0 or R1/F1",
+        "current": "may advance to R2/F2",
+        "clock_ms": [
+          59000,
+          60000,
+          61000,
+          120000
+        ]
+      },
+      "result": "PLANNED_NOT_RUN",
+      "valid_red": "After approved Skeleton only: target compiles and reaches intended behavior assertion; compile/fixture/environment failure is invalid RED."
+    }
+  ],
+  "coverage": {
+    "B1": [
+      "M07-CAP-02",
+      "M07-CAP-03",
+      "M07-CAP-17"
+    ],
+    "B2": [
+      "M07-CAP-01",
+      "M07-CAP-02",
+      "M07-CAP-13",
+      "M07-CAP-21"
+    ],
+    "B3": [
+      "M07-CAP-12",
+      "M07-CAP-16",
+      "M07-CAP-20"
+    ],
+    "B4": [
+      "M07-CAP-08",
+      "M07-CAP-11",
+      "M07-CAP-18"
+    ],
+    "B5": [
+      "M07-CAP-05",
+      "M07-CAP-09",
+      "M07-CAP-22"
+    ],
+    "B6": [
+      "M07-CAP-06",
+      "M07-CAP-07",
+      "M07-CAP-10",
+      "M07-CAP-13"
+    ],
+    "B7": [
+      "M07-CAP-04",
+      "M07-CAP-09",
+      "M07-CAP-22"
+    ],
+    "B8": [
+      "M07-CAP-03",
+      "M07-CAP-05",
+      "M07-CAP-06",
+      "M07-CAP-14",
+      "M07-CAP-15",
+      "M07-CAP-16",
+      "M07-CAP-19",
+      "M07-CAP-21"
+    ],
+    "B9": [
+      "M07-CAP-08",
+      "M07-CAP-17",
+      "M07-CAP-18",
+      "M07-CAP-22"
+    ],
+    "B10": [
+      "M07-CAP-04",
+      "M07-CAP-07",
+      "M07-CAP-14",
+      "M07-CAP-19"
+    ],
+    "B11": [
+      "M07-CAP-15",
+      "M07-CAP-20"
+    ],
+    "B12": [
+      "M07-CAP-10",
+      "M07-CAP-11",
+      "M07-CAP-12"
+    ]
+  },
+  "traceability": {
+    "BDD-22": [
+      "M07-CAP-02",
+      "M07-CAP-12",
+      "M07-CAP-13"
+    ],
+    "BDD-23": [
+      "M07-CAP-03"
+    ],
+    "BDD-24": [
+      "M07-CAP-06",
+      "M07-CAP-07"
+    ],
+    "BDD-25": [
+      "M07-CAP-05",
+      "M07-CAP-08",
+      "M07-CAP-09"
+    ],
+    "BDD-26": [
+      "M07-CAP-04"
+    ],
+    "BDD-27": [
+      "M07-CAP-10",
+      "M07-CAP-11"
+    ],
+    "BDD-28": [
+      "M07-CAP-17",
+      "M07-CAP-20"
+    ],
+    "BDD-29": [
+      "M07-CAP-19"
+    ],
+    "BDD-30": [
+      "M07-CAP-14",
+      "M07-CAP-15"
+    ]
+  }
+}

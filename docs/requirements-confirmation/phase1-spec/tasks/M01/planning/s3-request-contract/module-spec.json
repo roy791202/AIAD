@@ -1,0 +1,307 @@
+{
+  "module": "M01",
+  "slice": "S3 request coordination proposal",
+  "status": "PROPOSED_PENDING_OWNER_NOT_READY_FOR_IMPLEMENTATION",
+  "at": "2026-11-01T06:25:58.984256+00:00",
+  "intent": "Prevent duplicate persistence and unauthorized late current-project switches without changing S2 storage semantics.",
+  "assumptions": [
+    "Trusted owner/selection issuance will be specified separately; these rules do not approve that architecture.",
+    "Runtime-only deduplication is a new proposed S3 policy, not existing behavior or durable exactly-once guarantee."
+  ],
+  "rules": [
+    {
+      "id": "RQ1",
+      "name": "Authority",
+      "contract": "Authenticate actual caller/window and current owner before looking up a request. UI-supplied owner/session/digest never grants authority. Rejected caller cannot discover another owner result."
+    },
+    {
+      "id": "RQ2",
+      "name": "Identity",
+      "contract": "Proposed key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save or finalize. Native selection must already be bound to that owner. Exact issuer and owner DTO remain separate S3-G1/G2 decisions."
+    },
+    {
+      "id": "RQ3",
+      "name": "Fingerprint",
+      "contract": "Compare the exact immutable typed request capture: expected revision, draft content, resolved target selection identity and prepared preference plan identity. Capture is server-owned; compare typed values, not raw JSON byte order or caller-supplied hash. Same key with changed capture is REQUEST_ID_CONFLICT."
+    },
+    {
+      "id": "RQ4",
+      "name": "Reservation",
+      "contract": "Validate authority, selection and request shape, then atomically reserve the key with its capture before starting S2 store. Concurrent identical submissions observe IN_FLIGHT and do not execute a second store. Do not hold owner map locks across IO."
+    },
+    {
+      "id": "RQ5",
+      "name": "Replay",
+      "contract": "Identical retained terminal capture returns the stored original outcome including commit proof; mark replayed=true. It does not re-run IO or acknowledge a newer revision. Same key with different capture is rejected even if original operation failed."
+    },
+    {
+      "id": "RQ6",
+      "name": "Terminal failure",
+      "contract": "Pre-commit failure, conflict, Partial and RecoveryRequired are terminal stored outcomes, preserving the exact S2 distinction. Explicit retry requires a fresh request-id after owner refresh. Never convert committed or recovery-required evidence into ordinary unchanged failure."
+    },
+    {
+      "id": "RQ7",
+      "name": "Late completion",
+      "contract": "On completion persist the terminal outcome in the retained request record before attempting UI projection. Owner switch/window closure only detaches presentation. It must not cancel or delete an already committed project. Binding is allowed only when captured owner epoch, request, draft and revision still match current authorization."
+    },
+    {
+      "id": "RQ8",
+      "name": "Lifetime",
+      "contract": "Propose runtime-only records, retained until process exit without time-based eviction. Owner close revokes ability to replay; retain tombstone/result for internal completion only. No exactly-once claim across restart. Old epoch is rejected; reopen via S2 evidence and issue a new request after explicit reconciliation."
+    },
+    {
+      "id": "RQ9",
+      "name": "Bounded resources",
+      "contract": "Propose at most 128 reserved request keys per owner and 1024 per process, including retained terminal keys. Refuse a new key with REQUEST_CAPACITY before IO; existing authorized replay remains available. No automatic eviction/retry or new persistent journal."
+    },
+    {
+      "id": "RQ10",
+      "name": "Result projection",
+      "contract": "Proposed transport fields: requestId, operation, capturedRevision decimal string, outcome, replayed boolean, bindingStatus. outcome wraps exact adopted S2 result without discarding evidence; bindingStatus is unchanged, eligible or detached. Eligible is not itself proof a UI switch occurred. Exact DTO/error mapping remains S3-G5 work."
+    }
+  ],
+  "architecture": {
+    "hexagonal": "UI -> authenticated Tauri command -> DispatchHost request coordination -> adopted S1/S2 -> existing IO Port",
+    "dependencies": "Native picker -> trusted owner-bound selection; HOST captures immutable request; S2 owns persistence outcome; UI consumes authorized projection",
+    "ownership": "HOST owns runtime request records; domain owns definition; IO owns private journal; no new global manager or persistence store.",
+    "transaction": "Reserve immutable capture -> S2 store -> retain terminal proof -> independently authorize UI binding. IO transaction boundary unchanged.",
+    "forbidden": [
+      "UI filesystem/adapters",
+      "HOST writes private IO journal",
+      "rollback committed project on UI detach",
+      "new domain ownership or S2 error semantics"
+    ]
+  },
+  "decisions": [
+    {
+      "id": "M01-S3-RQ-D1",
+      "proposal": "RQ1-RQ7 capture/reservation/replay/late-completion rules"
+    },
+    {
+      "id": "M01-S3-RQ-D2",
+      "proposal": "RQ8 runtime-only retention and no across-restart exactly-once"
+    },
+    {
+      "id": "M01-S3-RQ-D3",
+      "proposal": "RQ9 capacity 128 per owner / 1024 process; reject without IO"
+    }
+  ],
+  "tests": [
+    {
+      "id": "S3-RQ-01",
+      "fixture": {
+        "case": "same_inflight",
+        "capture": "same",
+        "record": "running",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "IN_FLIGHT",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-02",
+      "fixture": {
+        "case": "changed_inflight",
+        "capture": "changed",
+        "record": "running",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "REQUEST_ID_CONFLICT",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-03",
+      "fixture": {
+        "case": "same_committed",
+        "capture": "same",
+        "record": "committed",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "original committed outcome",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-04",
+      "fixture": {
+        "case": "changed_committed",
+        "capture": "changed",
+        "record": "committed",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "REQUEST_ID_CONFLICT",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-05",
+      "fixture": {
+        "case": "same_failed",
+        "capture": "same",
+        "record": "precommit_failed",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "original failure",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-06",
+      "fixture": {
+        "case": "same_partial",
+        "capture": "same",
+        "record": "partial",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "original partial evidence",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-07",
+      "fixture": {
+        "case": "same_recovery",
+        "capture": "same",
+        "record": "recovery_required",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "original recovery evidence",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-08",
+      "fixture": {
+        "case": "foreign_owner",
+        "capture": "same",
+        "record": "committed",
+        "authority": "foreign"
+      },
+      "oracle": {
+        "result": "UNAUTHORIZED",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-09",
+      "fixture": {
+        "case": "stale_epoch",
+        "capture": "same",
+        "record": "committed",
+        "authority": "expired"
+      },
+      "oracle": {
+        "result": "STALE_OWNER",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-10",
+      "fixture": {
+        "case": "capacity",
+        "capture": "new",
+        "record": "absent_full",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "REQUEST_CAPACITY",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-11",
+      "fixture": {
+        "case": "late_committed",
+        "capture": "same",
+        "record": "completing_commit",
+        "authority": "detached"
+      },
+      "oracle": {
+        "result": "committed / detached",
+        "additional_store_calls": 0,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    },
+    {
+      "id": "S3-RQ-12",
+      "fixture": {
+        "case": "new_request",
+        "capture": "new",
+        "record": "absent",
+        "authority": "current"
+      },
+      "oracle": {
+        "result": "reserve then invoke S2 once",
+        "additional_store_calls": 1,
+        "automatic_project_switch": false
+      },
+      "status": "PLANNED_NOT_RUN"
+    }
+  ],
+  "bdd_categories": {
+    "B1": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B2": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B3": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B4": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B5": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B6": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B7": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B8": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B9": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B10": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B11": "Applicable: request coordination contract; broader module coverage remains in parent packet",
+    "B12": "Applicable: request coordination contract; broader module coverage remains in parent packet"
+  },
+  "candidate_files": [
+    "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+    "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+    "apps/sgenaxis-desktop/src-tauri/tests/phase1_project_definition_commands.rs"
+  ],
+  "scope": "Only planning files and own card evidence changed; candidate product files are not approved by this delivery.",
+  "remaining": [
+    "S3-G1 actual authenticated caller and native capability issuer",
+    "S3-G2 complete owner and draft lifecycle",
+    "S3-G5 exact DTO/error/permission and all three caller migration",
+    "Complete six-step UI schema and integration fixtures; consolidate one full Owner review package"
+  ],
+  "test_gate": "After full architecture adoption, tests must compile and fail for missing promised behavior; fixture/environment failures are not RED.",
+  "verification": {
+    "source_unchanged": 796,
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "product_tests": "NOT RUN",
+    "native": "NOT RUN",
+    "build": "NOT RUN",
+    "independent_acceptance": "NOT RUN"
+  }
+}

@@ -1,0 +1,97 @@
+"""Rebuild only this new author planning package; python -B."""
+import copy,hashlib,json,pathlib,subprocess,html
+P=pathlib.Path(__file__).resolve().parent; ROOT=P.parents[6]
+def read(p):return json.loads(p.read_text(encoding='utf8'))
+def put(n,x):(P/n).write_text(json.dumps(x,indent=2,ensure_ascii=True)+'\n',encoding='utf8')
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+prior=P.parent/'preview-begin-correction'
+schema=read(prior/'response.schema.json');defs=schema['$defs']
+req={'$schema':schema['$schema'],'$id':'urn:sga:proposed:design_viewer_refresh:request','$defs':{k:defs[k] for k in ('UUID','U64Decimal')},'type':'object','properties':{'preview_session':{'$ref':'#/$defs/UUID'},'expected_revision':{'$ref':'#/$defs/U64Decimal'}},'required':['preview_session','expected_revision'],'additionalProperties':False}
+put('request.schema.json',req);schema['$id']='urn:sga:proposed:design_viewer_refresh:response';put('response.schema.json',schema)
+def obj(props):return {'type':'object','properties':props,'required':list(props),'additionalProperties':False}
+identity_schema=obj({**{k:{'type':'string','minLength':1} for k in ('consumer','window','document','session')},**{k:{'$ref':'#/$defs/U64Decimal'} for k in ('generation','revision')},'closed':{'type':'boolean'}})
+observation=obj({'trusted_local':{'type':'boolean'},'ready':{'type':'boolean'},'capture':identity_schema,'delivery':identity_schema,'outcome':{'oneOf':[{'const':'Ready'},{'$ref':'#/$defs/Error'}]},'projection':{'oneOf':[{'$ref':'#/$defs/Preview'},{'type':'null'}]}})
+put('provider-observation.schema.json',{'$schema':schema['$schema'],'$id':'urn:sga:proposed:refresh:trusted-observation','$defs':defs,**observation})
+# Bounded evaluator copied byte-for-byte only up to main; independent of old fixtures.
+text=(prior/'checker.py').read_text(encoding='utf8'); evaluator=text[text.index('KEYWORDS='):text.index('def main():')]
+(P/'schema_eval.py').write_text('"""Bounded keyword evaluator, NOT full Draft2020."""\nimport re\n'+evaluator,encoding='utf8')
+projection=read(prior/'fixtures.json')[0]['provider_projection']
+old='11111111-1111-4111-8111-111111111111';new='22222222-2222-4222-8222-222222222222'
+projection['preview_session']=new
+ident={'consumer':'native-A','window':'viewer-instance-A','document':'document-A','session':'owner-A','generation':'3','revision':'9007199254740993','closed':False}
+before={**ident,'preview_session':old,'revision':'7','sequence':'8','stale':True,'can_act':False,'projection':{'old_mock':'retained'},'retired':[],'preview_count':4,'content':'immutable-original','history':'9','dirty':True,'saved_baseline':'unchanged','owner_sessions':1}
+base={'request':{'preview_session':old,'expected_revision':ident['revision']},'before':before,'provider':{'trusted_local':True,'ready':True,'capture':ident,'delivery':copy.deepcopy(ident),'outcome':'Ready','projection':projection}}
+fixtures=[]
+def case(name,changes,code=None,details=None,calls=None):
+    c=copy.deepcopy(base)
+    for path,value in changes:
+        target=c
+        for k in path[:-1]:target=target[k]
+        target[path[-1]]=value
+    c['id']='VR-%03d'%(len(fixtures)+1);c['name']=name
+    c['expected']={'ok':True,'value':copy.deepcopy(c['provider']['projection']),'replayed':False} if code is None else {'ok':False,'error':{'code':code,'details':details or {}},'replayed':False}
+    after=copy.deepcopy(c['before'])
+    if code is None:
+        after.update(retired=[*after['retired'],after['preview_session']],preview_session=c['provider']['projection']['preview_session'],projection=copy.deepcopy(c['provider']['projection']),revision=c['provider']['capture']['revision'],sequence='1',stale=False,can_act=True)
+    else:after.update(stale=True,can_act=False)
+    c['expected_after']=after;c['expected_calls']=calls or [];fixtures.append(c)
+resolve=['native.preview.resolve'];snapshot=resolve+['owner.immutable.snapshot.read'];validate=snapshot+['C1.projection.validate'];delivery=validate+['native.delivery.recheck'];success=delivery+['preview.atomic.replace']
+case('replace stale slot at full capacity; real revision above JS safe integer',[],calls=success)
+for rev in ('0','18446744073709551615','7'):
+    case('bounded current revision '+rev,[(('request','expected_revision'),rev),(('provider','capture','revision'),rev),(('provider','delivery','revision'),rev),(('provider','projection','source_revision'),rev)],calls=success)
+for field,code in [('consumer','UnauthorizedCaller'),('window','UnauthorizedCaller'),('document','MissingBinding'),('session','MissingBinding'),('generation','StaleOwner')]:
+    for phase,trace in [('capture',resolve),('delivery',delivery)]:case(phase+' '+field+' changed',[(('provider',phase,field),'4' if field=='generation' else 'different')],code,calls=trace)
+for phase,trace in [('capture',resolve),('delivery',delivery)]:case(phase+' closed',[(('provider',phase,'closed'),True)],'PreviewClosed',calls=trace)
+for rev in ('0','18446744073709551615'):
+    case('actual late observed revision '+rev,[(('provider','delivery','revision'),rev)],'StaleRevision',{'expected':ident['revision'],'observed':rev},delivery)
+case('request conflicts current revision',[(('request','expected_revision'),'7')],'StaleRevision',{'expected':'7','observed':ident['revision']},resolve)
+case('old retired UUID',[(('request','preview_session'),new)],'PreviewClosed',calls=resolve)
+case('closed old session',[(('before','closed'),True)],'PreviewClosed',calls=resolve)
+case('caller denied',[(('provider','trusted_local'),False)],'UnauthorizedCaller')
+case('owner provider not ready',[(('provider','ready'),False)],'DependencyNotReady',{'dependency':'M04_OWNER_INTEGRATION'},resolve)
+for code,details in [('CodecRejected',{'message':'actual bounded C1 rejection'}),('ResourceLimit',{'field':'/projection','limit':'raw_design_utf8'}),('DependencyNotReady',{'dependency':'C1_CODEC'}),('UnsupportedDocument',{'nodes':[{'node_id':'legacy','type':'LegacyWidget','reason':'unsupported'}]}),('AmbiguousStableId',{'node_id':'duplicate'}),('ParentMissing',{'node_id':'child','parent_id':'absent'}),('ParentCycle',{'node_id':'cycle'})]:case('actual provider '+code,[(('provider','outcome'),{'code':code,'details':details})],code,details,snapshot)
+for outcome in ('bogus',True,{'code':'CodecRejected','details':{'message':1}},{'code':'CodecRejected','details':{},'extra':True}):case('malformed provider outcome '+repr(outcome),[(('provider','outcome'),outcome)],'DependencyNotReady',{'dependency':'C1_CODEC'},snapshot)
+for field in ('trusted_local','ready'):
+    for v in ('false',0,None,[]):case('reject provider '+field+' '+repr(v),[(('provider',field),v)],'DependencyNotReady',{'dependency':'M01_NATIVE_IDENTITY'})
+for phase in ('capture','delivery'):
+    for key,v in [('revision','18446744073709551616'),('revision',1),('generation','01'),('closed','false'),('session',''),('extra',True)]:case('typed '+phase+' '+key,[(('provider',phase,key),v)],'DependencyNotReady',{'dependency':'M01_NATIVE_IDENTITY'})
+for field,values in [('expected_revision',['','01','-1','1.0','1e1','18446744073709551616','7\n',True,7,None]),('preview_session',['',new+'\n',True,None])]:
+    for v in values:
+        reason='Type' if type(v)is not str else ('InvalidUuid' if field=='preview_session' else ('Range' if v=='18446744073709551616' else 'InvalidNumber'))
+        case('request '+field+' '+repr(v),[(('request',field),v)],'InvalidRequest',{'field':'/'+field,'reason':reason})
+case('unknown request field',[(('request','request_id'),new)],'InvalidRequest',{'field':'/request_id','reason':'UnknownField'})
+for key,v in [('preview_session',old),('source_revision','7'),('expected_sequence','2'),('stale',True),('extra',True),('mock_state',[{'node_id':'x','value':{'kind':'Text','text':1}}]),('capabilities',[{'node_id':'x','allowed_actions':['eval']}])]:case('invalid projection '+key,[(('provider','projection',key),v)],'DependencyNotReady',{'dependency':'C1_CODEC'},validate)
+case('duplicate node observation',[(('provider','projection','mock_state'),[projection['mock_state'][0]]*2)],'DependencyNotReady',{'dependency':'C1_CODEC'},validate)
+for count in (1,3):case('one slot exchange at count '+str(count),[(('before','preview_count'),count)],calls=success)
+case('old sequence at maximum requires no increment',[(('before','sequence'),'18446744073709551615')],calls=success)
+for request,field,reason in [(None,'/','Type'),({},'/preview_session','MissingField'),({'preview_session':old},'/expected_revision','MissingField')]:case('missing request '+repr(request),[(('request',),request)],'InvalidRequest',{'field':field,'reason':reason})
+case('unknown provider record field',[(('provider','extra'),True)],'DependencyNotReady',{'dependency':'M01_NATIVE_IDENTITY'})
+case('node capability kind mismatch',[(('provider','projection','capabilities'),[{'node_id':n['node_id'],'allowed_actions':['SetText']} for n in projection['mock_state']])],'DependencyNotReady',{'dependency':'C1_CODEC'},validate)
+badnodes=copy.deepcopy(projection['mock_state']);badnodes[3]['value']['number_text']='NaN'
+case('invalid typed number observation',[(('provider','projection','mock_state'),badnodes)],'DependencyNotReady',{'dependency':'C1_CODEC'},validate)
+put('new-fixtures.json',fixtures)
+sources=[ROOT/'AGENTS.md',ROOT/'docs/board.json',P.parent/'current-state.json',ROOT/'docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json']
+for folder in ('h2-exact-design','cx-h2-revision-v3','preview-begin-correction','preview-begin-correction-review','viewer-action-typed-correction','viewer-action-typed-review'):
+    sources += [f for f in (P.parent/folder).iterdir() if f.is_file() and f.suffix in ('.json','.py','.feature')]
+put('preserved-inputs.json',{str(f.relative_to(ROOT)).replace('\\','/'):sha(f) for f in sources})
+head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+put('source-current.json',{'head':head,'expected_head':'5b709343a890503ebbe24a802e43cda5647df124','historical_head':'31babe87a7ef1e40a0d4bedc523077e7a45d63ab','authority':'docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s2-green/source-current.json','authority_count':796})
+spec={'identity':{'module':'M03','task':'PD-P1-M03-PREP-01','command':'design_viewer_refresh','status':'PROPOSED_PENDING_OWNER','author':'/root/m03_viewer_refresh_packet'},'intent':'Explicit bounded refresh replaces one detached preview after current immutable projection validation. Failure retains visibly stale inert old projection.','architecture':{'hexagonal':'Viewer UI -> exact Tauri command/input port -> design facade -> M04 owner snapshot output port; C1 validated projection provider; trusted M01 identity adapter. No second owner.','dependency':'UI -> Command -> application facade -> ports <- M04/C1/M01 adapters','state_owner':'M04 owns authoritative document; application owns ephemeral per-consumer preview slot only. UI is projection.','mutation':'Only successful atomic preview slot exchange; failure stale/action-disabled UI status only.','transaction':'resolve -> capture immutable current owner snapshot -> validate temporary supported projection -> exact delivery identity recheck -> atomic slot replace','forbidden':['FileCommit','ACK','content mutation','history mutation','persistence','automatic retry','automatic expiry','second owner']},'contracts':['Request expected_revision means current owner revision, not old preview source revision; stale preview is a refresh handle while its identity remains resolvable. PROPOSED_PENDING_OWNER.','New UUID must differ from current old UUID; native UUID allocator guarantees globally fresh/non-reused UUID, authenticity NOT PROVEN by fixtures.','Success starts sequence1, unchanged preview count even at four-slot capacity; failure does not retire old UUID.','Typed observations eagerly reject malformed records; error precedence is proposal. Capture/delivery compare consumer, actual window instance, document, owner session, generation, closed, actual bounded revision.','Immutable projection nodes/mocks/capabilities closed by accepted begin response schema; unsupported arbitrary action strings rejected; provider authenticity and C1 snapshot generation not proven.'],'bdd_categories':{k:('Deferred: native proof NOT RUN' if k in ('compatibility','recovery') else 'Applicable: document fixtures only') for k in ['success','boundary','invalid','dependency','partial','state','transaction','lifecycle','recovery','cross-module','compatibility','regression']},'tasks':[{'id':'M03-VR-DOC','primary_module':'M03','scope':'new viewer-refresh-integration only','status':'AUTHOR_DOCUMENT_CHECK_ONLY','acceptance':'all fixtures exact roots/state/calls;796 preserved; no adoption'}],'verification':{k:'NOT RUN' for k in ['native','build','product_tests','valid_RED','independent_review','module_acceptance']},'risks':['Native authenticity, reachability, concurrency atomicity and actual C1 support projection are trusted premises, unproven.','Root DTO/error/precedence/refresh-current revision policy additions await Owner; no Skeleton/implementation authorization.']}
+put('module-spec.json',spec)
+put('before-after.json',[{'pointer':'/effective_spec/dto/requests/design_viewer_refresh','before':'preview_session UUID + expected_revision checked-u64 string','after':'same exact keys; strict-end bounded original-derived UUID/U64 schemas','status':'PROPOSED_PENDING_OWNER'},{'pointer':'/effective_spec/viewer/refresh','before':'temporary current projection; revalidate identity; success new UUID sequence1; failure old visibly stale','after':spec['contracts'],'status':'PROPOSED_PENDING_OWNER'},{'pointer':'/effective_spec/dto/responses/Preview','before':'original descriptive Preview','after':'accepted begin closed typed Preview array encoding reused byte-for-byte $defs; bounded success/error root','status':'PROPOSED_PENDING_OWNER'}])
+diffs=read(P/'before-after.json')
+for pointer,before_value,after_value in [('/effective_spec/viewer/refresh/request_revision','expected_revision meaning not disambiguated for stale preview','current owner capture revision; old preview source_revision may differ'),('/effective_spec/viewer/refresh/capacity','replacement stated; capacity charge unspecified','exchange existing slot without changing count; no new slot allocation'),('/effective_spec/viewer/refresh/failure','old mock visibly stale cannot act','every unsuccessful model response sets stale=true/can_act=false; old projection values, sequence, count and retired list unchanged'),('/effective_spec/viewer/refresh/provider_admission','trusted native/C1 integrations required; exact refresh record unspecified','closed provider record and closed capture/delivery identity; eager malformed-record DependencyNotReady M01_NATIVE_IDENTITY precedes caller/request'),('/effective_spec/viewer/refresh/provider_outcomes','C1 validated temporary supported projection required','actual closed existing Error outcome returned verbatim; malformed outcome -> DependencyNotReady C1_CODEC; Ready validates typed nodes, capability correspondence, unique IDs and fresh UUID'),('/effective_spec/viewer/refresh/delivery','generation/revision/consumer revalidation','actual consumer+window instance+document+owner session+generation+closed+bounded observed revision; no synthetic increment'),('/effective_spec/viewer/refresh/uuid','new preview UUID','must differ old UUID; global native allocation freshness remains trusted unproved premise')]:diffs.append({'pointer':pointer,'before':before_value,'after':after_value,'status':'PROPOSED_PENDING_OWNER'})
+put('before-after.json',diffs)
+put('traceability.json',[{'requirement':'H2 explicit refresh','bdd':c['id'],'tdd':'DOC-'+c['id'],'fixture':'new-fixtures.json#'+c['id'],'oracle':c['name'],'result':'AUTHOR_DOCUMENT_ONLY','valid_RED':'NOT RUN'} for c in fixtures])
+put('ui-schema.json',{'component':'Viewer explicit Refresh','role':'authorized local viewer consumer','controls':[{'name':'Refresh','action':'design_viewer_refresh','request_fields':['preview_session','expected_revision'],'default':'explicit user action only','disabled':'inflight or identity closed','success':'replace mock, sequence1, fresh UUID','error':'retain old visibly stale projection; all mock actions disabled; show error using textContent'}],'empty':'no preview: no refresh handle; begin remains separate','accessibility':'Refresh keyboard accessible; stale status announced; actions visibly disabled','mapping':[c['id'] for c in fixtures]})
+put('pending-automation.json',{'status':'NOT RUN','items':['Owner adoption','separately approved Skeleton + compiling valid RED','native identity/capture/delivery integration','actual C1 immutable supported-node projection','independent product/UI concurrency tests','build/package/system regressions']})
+feature='Feature: Explicit Viewer refresh\n  Background:\n    Given an authorized viewer with an existing detached preview\n  Rule: Replace only after validated current snapshot and unchanged identity\n'
+for c in fixtures:feature+='\n    @'+c['id']+'\n    Scenario: '+c['name']+'\n      Given the bounded refresh fixture "'+c['id']+'"\n      When the viewer explicitly refreshes\n      Then the exact declared response and visible projection state are observed\n'
+(P/'module.feature').write_text(feature,encoding='utf8')
+(P/'steps.py').write_text('"""Pending native automation; these stubs are not executable product tests."""\ndef given_refresh_fixture(case_id):\n    raise NotImplementedError("Native fixture adapter pending Owner/Skeleton")\ndef when_explicit_refresh():\n    raise NotImplementedError("Native command adapter pending")\ndef then_response_and_visible_state():\n    raise NotImplementedError("Independent UI verification pending")\n',encoding='utf8')
+page='<!doctype html><html lang="en"><meta charset="utf-8"><title>M03 Viewer Refresh</title><style>body{font:16px system-ui;background:#f4f6fa;color:#14233b;max-width:1100px;margin:40px auto;padding:24px}section{background:white;padding:24px;margin:20px 0;border-radius:12px}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{padding:9px;border:1px solid #ccd}</style><h1>M03 · Explicit Viewer Refresh</h1><p>PROPOSED_PENDING_OWNER · author document checks only · parent Yellow preserved</p>'
+for title,value in [('Executive meaning',spec['intent']),('Architecture / Hexagonal system view',spec['architecture']),('Module dependency view','Viewer → command/input port → design facade → output ports ← M04 owner / C1 / M01 adapters'),('Contracts / Ownership / Transaction',spec['contracts']),('BDD / TDD / Traceability',[{'id':c['id'],'behavior':c['name'],'expected':c['expected']} for c in fixtures]),('Tasks / Acceptance / Allowed scope',spec['tasks']),('Verification / Regression',spec['verification']),('Risks / Deferred work / Decisions',spec['risks'])]:page+='<section><h2>'+title+'</h2><pre>'+html.escape(json.dumps(value,indent=2))+'</pre></section>'
+page+='<script type="application/json" id="module-spec">'+json.dumps(spec).replace('<','\\u003c')+'</script></html>'
+(P/'index.html').write_text(page,encoding='utf8')
+(P/'README.md').write_text('# M03 refresh planning package\nPROPOSED_PENDING_OWNER. Run `python -B checker.py`. This package is a document model and bounded schema evaluator, not full Draft2020 or native/product tests. No independent acceptance. Original inputs and management files preserved.\n',encoding='utf8')
+print('Built',len(fixtures),'new author document fixtures')

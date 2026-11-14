@@ -1,0 +1,220 @@
+{
+  "id": "M02-PUBLISH-GAP-01",
+  "date": "2026-11-01",
+  "primary_module": "M02",
+  "state": "ARCHITECTURE_GAP_PROPOSAL_REQUIRES_OWNER_DECISION",
+  "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "intent": "在雙骨架多檔生成前，明確發布與失敗保全邊界；先解決單文件IO不可冒充整個生成樹交易的架構缺口。",
+  "scope_this_run": "Documentation and own/affected board evidence only; source/tests read-only. Not full M02 PREP acceptance.",
+  "adopted_baseline": [
+    "D1～D7方向已採納，不重問Vanilla UI＋Tauri2首版方向",
+    "M01-S1領域定義與IO Skeleton/RED準備已獨立通過，後者不是產品IO實作",
+    "條件不足只保存定義，必要架構/契約/生成條件已確認才預設產生程式與UI UX雙骨架",
+    "生成不自動build、安裝依賴或執行產物；保護使用者既有內容"
+  ],
+  "gap": {
+    "required_behavior": "使用者確認預覽後產生互相一致的程式/UI UX多檔骨架；取消或套用失敗不破壞原有效內容。",
+    "current_skeleton": "FileCommitPort/FileWriteLease僅保證單一目標提交；FileSystemPort.write_atomic僅prefer單檔replace，create_dir_all非獨佔。",
+    "missing_seam": "多檔產物準備、可見性切換、版本保留及失敗清理的應用/Port交易邊界尚未核准。",
+    "affected_modules": [
+      "M02",
+      "M01生成入口",
+      "M03預覽讀取生成物",
+      "M08原生驗收"
+    ],
+    "why_cannot_implement": "逐檔write_atomic會留下部分新/部分舊樹；不能以已驗收的單文件IO準備假稱多檔原子性，也不能在實作時自行加Port或改產物布局。",
+    "status": "ARCHITECTURE_GAP; publication implementation blocked; pure plan analysis can continue."
+  },
+  "options": [
+    {
+      "id": "A",
+      "title": "逐檔覆寫＋回復既有目錄",
+      "tradeoff": "需定義多檔journal、每檔preimage及回復失敗保留；爆炸半徑含使用者修改；不建議作第一個落地方案。"
+    },
+    {
+      "id": "B",
+      "title": "不可變生成版本＋單一啟用描述檔",
+      "tradeoff": "在受管、同卷、獨佔取得的版本區先建立完整產物並驗證，再以單文件FileCommit啟用描述檔；讀取端必須只依啟用描述檔，需Owner確認新布局與consumer邊界。",
+      "recommended": true
+    },
+    {
+      "id": "C",
+      "title": "第一個切片只做純計畫/差異預覽",
+      "tradeoff": "可先驗證門檻、版本綁定、雙骨架計畫；不寫產物，不能當完整雙骨架生成交付。可與B後續出版前置分開。"
+    }
+  ],
+  "recommendation": {
+    "decision": "先C作純領域準備切片；完整生成發布採B，新增的布局/Port/生命週期必須Owner一次核准後再凍結精確設計。",
+    "not_approved_here": "選項B的任何新Port、目錄名稱、描述檔schema、GC保留規則或UI consumer變更，均未自行採納。",
+    "no_all_module_block": "此缺口只阻擋M02實際發布與依賴生成物啟用的路徑，不阻擋其他模組的純規劃/契約核對。"
+  },
+  "architecture": {
+    "A1_context": "作者→生成預覽→明確確認→受管版本產物；無AI/Git/plugin執行。",
+    "A2_hexagonal": "UI/Test → Tauri/DispatchHost → HOST generation usecase → WORK pure plan; HOST → existing FileCommitPort + proposed artifact-store Port ← filesystem adapter.",
+    "A3_dependency": "M01 immutable ProjectDefinition → M02 pure GenerationDecision；M03 consumes activated generation descriptor later；WORK不依賴HOST/Adapter/FS。",
+    "A4_responsibility": "WORK決策與計畫；HOST驗證approval來源/新鮮度、渲染與交易協調；adapter受管實體產物。",
+    "A5_input_ports": "既有提案ListTemplate/PrepareGeneration/ConfirmGeneration，精確DTO不在此默認批准。",
+    "A6_output_ports": "既有FileCommit處理單一啟用描述檔；候選GenerationArtifactStore能力：獨佔建立版本、寫入受管產物、完整性驗證、唯讀存取。簽章待精確提案。",
+    "A7_driving_adapters": "Vanilla UI及測試consumer；本輪不接入。",
+    "A8_driven_adapters": "Windows filesystem及本機只讀模板；不下載、不執行模板。",
+    "A9_direction": "UI→Command→DispatchHost→HOST→WORK/Ports←Adapters；禁止UI直呼FS。",
+    "A10_state_ownership": "ProjectDefinition仍由M01/WORK持有；GenerationPlan為不可變派生值；啟用描述檔只表達已生成版本，不能回寫成另一個專案SSOT。",
+    "A11_mutation": "只有核准HOST生成用例可寫其受管版本與單一描述檔；不修改來源模板、未受管檔、原ESS或既有文件Undo。",
+    "A12_transaction": "exclusive prepare inactive version → render both trees → verify all bytes/hashes → recheck definition/template/approval/base descriptor binding → single-file descriptor commit；此前失敗不切換可見版本。",
+    "A13_external_boundary": "任何網路/外部writer/未知檔路徑不取得隱含覆寫權；兩骨架完成不等同編譯或功能可用。",
+    "A14_forbidden": "不得把write_atomic迴圈叫多檔交易；不得自動刪未知版本；不得利用生成改文件Undo或M07快照政策。"
+  },
+  "contracts_proposed": [
+    {
+      "id": "M02-PUB-I1",
+      "rule": "正式啟用前舊描述檔及原使用者內容不變；部分新版本不可被consumer當完成物。"
+    },
+    {
+      "id": "M02-PUB-I2",
+      "rule": "成功描述檔必須綁定完整且已驗證的程式與UI UX產物樹、定義revision、模板id/version/source_digest及approval binding。"
+    },
+    {
+      "id": "M02-PUB-I3",
+      "rule": "取消或stale/conflict不切換描述檔；失敗保留可診斷owned version，不宣稱跨檔硬體斷電耐久。"
+    },
+    {
+      "id": "M02-PUB-I4",
+      "rule": "再生成只寫新受管版本；使用者修改與未受管資料不自動合併/覆寫，未確認衝突阻擋啟用。"
+    }
+  ],
+  "ui_schema_proposed": {
+    "role": "本機作者/設計者",
+    "controls": [
+      "模板id/version/digest及來源唯讀",
+      "程式/UI UX雙骨架預設選取，缺決策只保存定義",
+      "產物樹與差異預覽，顯示新增/保留/衝突",
+      "明確生成確認、取消、重新準備計畫"
+    ],
+    "disabled": "缺confirmed條件/來源approval未驗證/計畫過期/衝突時禁用啟用並列出原因。",
+    "success": "只表示生成版本啟用，不表示build/執行/產品驗收。",
+    "failure": "舊啟用版本仍可用；若描述檔提交RecoveryRequired則保留前後版本及診斷，不猜選winner。",
+    "scope_note": "新UI布局及consumer更新尚未批准，不實作UI。"
+  },
+  "pure_plan_slice_candidate": {
+    "id": "M02-S1-PROPOSED",
+    "layer": "WORK pure domain",
+    "inputs": "ProjectDefinition/TemplateReference既有值，加HOST已驗證的approval及觀測快照；domain不認證原始approval字串。",
+    "outputs": "SaveDefinitionOnly{missing} / PreparedPlan{binding,relative_artifact_intents,conflicts}；沒有IO或產物執行。",
+    "hash_boundary": "WORK目前僅依賴Ports，不新增SPEC/serde依賴；輸入digest由HOST既有SPEC hashing產生與驗證，domain比對不可變binding，不能假稱能認證hash來源。",
+    "allowed_after_approval": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/generation_plan.rs (new)",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs (module registration only)",
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_generation_plan.rs (new)"
+    ],
+    "protected": "all others; existingM01types/IOPort/Cargo/Host/UI不改；此候選尚不能建立Skeleton。"
+  },
+  "test_plan": [
+    {
+      "id": "M02-PUB-T01",
+      "given": "未確認架構/契約條件",
+      "when": "準備生成",
+      "then": "只保存定義並列出missing，不寫任何產物",
+      "level": "L2 pure plan",
+      "fixture": "draft-missing-confirmed-fields",
+      "invariant": "M02-PUB-I1"
+    },
+    {
+      "id": "M02-PUB-T02",
+      "given": "完整定義、已驗證approval、相容模板",
+      "when": "準備生成",
+      "then": "預設同一binding包含程式及UI UX兩個artifact意圖",
+      "level": "L2 pure plan",
+      "fixture": "confirmed-local-tauri-vanilla",
+      "invariant": "M02-PUB-I2"
+    },
+    {
+      "id": "M02-PUB-T03",
+      "given": "任一定義revision/template digest/approval/base描述檔變動",
+      "when": "確認舊預覽",
+      "then": "stale/conflict，舊版本不變",
+      "level": "L2 HOST ports doubles",
+      "fixture": "four-independent-binding-mutations",
+      "invariant": "M02-PUB-I1"
+    },
+    {
+      "id": "M02-PUB-T04",
+      "given": "新版本第一或第二骨架渲染/驗證失敗",
+      "when": "處理生成錯誤",
+      "then": "不切換描述檔，不暴露不完整新版",
+      "level": "L2 fail injection",
+      "fixture": "fail-each-write-and-verify-stage",
+      "invariant": "M02-PUB-I1"
+    },
+    {
+      "id": "M02-PUB-T05",
+      "given": "產物完整但啟用描述檔提交失敗",
+      "when": "確認生成",
+      "then": "沿已核准FileCommit錯誤/RecoveryRequired語意保留前後資料，不聲稱成功",
+      "level": "L2 ports failure",
+      "fixture": "old-descriptor-and-complete-new-tree",
+      "invariant": "M02-PUB-I3"
+    },
+    {
+      "id": "M02-PUB-T06",
+      "given": "來源/版本區含未知檔或使用者改動",
+      "when": "再生成",
+      "then": "只產生新受管版本，衝突需明確處理，不刪未知資料",
+      "level": "L2/3",
+      "fixture": "foreign-file-sentinel",
+      "invariant": "M02-PUB-I4"
+    },
+    {
+      "id": "M02-PUB-T07",
+      "given": "啟用前或後程序中斷",
+      "when": "新程序讀取生成物",
+      "then": "只讀明確已啟用且完整版本；未知狀態fail closed，不假稱硬體斷電保證",
+      "level": "L3 fresh process",
+      "fixture": "checkpoints-before-after-descriptor",
+      "invariant": "M02-PUB-I3"
+    },
+    {
+      "id": "M02-PUB-T08",
+      "given": "模板中含命令或跨根路徑",
+      "when": "驗證/預覽",
+      "then": "不執行模板；拒越界artifact意圖，原資料不變",
+      "level": "L2 security boundary",
+      "fixture": "untrusted-path-and-command-fields",
+      "invariant": "M02-PUB-I4"
+    }
+  ],
+  "acceptance_for_next_preparation": [
+    "Owner選定發布策略與純計畫slice範圍後，補精確DTO/Port/schema/版本與artifact golden、UI schema及兩架構圖，再獨立驗收。",
+    "S1可編譯有效RED後才允許純計畫實作；發布與UI切片需各自核准envelope，不因S1 PASS跳過。",
+    "測試逐列記錄B1～B12適用/不適用、fixture、failure injection與observedRED；compile/fixture失敗不可算RED。"
+  ],
+  "owner_decision": "建議一次採納：先C完成M02純計畫骨架/RED的精確設計；完整多檔發布採B方向，再另交付精確artifact-store/描述檔契約供整體確認。不自動批准新Port或目錄格式。",
+  "evidence": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a",
+      "layer": "CURRENT_SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+      "sha256": "22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c",
+      "layer": "CURRENT_SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project_definition.rs",
+      "sha256": "59b63e3c007d72a0b380e5950fc98d13d55129abd858cb6cbc844102456dcd95",
+      "layer": "CURRENT_SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/Cargo.toml",
+      "sha256": "549644fcaa27cf9e58fc3c39b91630ec5d7ff07dfc1975995a577178c8812d45",
+      "layer": "CURRENT_SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "sha256": "74af5dba61df135c9585843d309b8a5be47df96f61c914b0679dfd98ec797dbb",
+      "layer": "CURRENT_SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "product_tests": "NOT RUN (planning only)",
+  "source_changes": 0
+}

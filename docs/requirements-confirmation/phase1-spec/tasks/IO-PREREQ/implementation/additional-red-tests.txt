@@ -1,0 +1,362 @@
+warning: enum `PipeApiError` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:273:6
+    |
+273 | enum PipeApiError { Unsupported, Create, Transfer, Close }
+    |      ^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: trait `PrivatePipeApi` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:274:7
+    |
+274 | trait PrivatePipeApi: Send {
+    |       ^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipeEndpoint` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:281:8
+    |
+281 | struct OwnedPipeEndpoint<H> { handle: H, close_attempted: bool, unresolved: bool }
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: struct `OwnedPipePair` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:282:8
+    |
+282 | struct OwnedPipePair<H> { read: OwnedPipeEndpoint<H>, write: OwnedPipeEndpoint<H> }
+    |        ^^^^^^^^^^^^^
+
+warning: struct `PipeLedger` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:285:8
+    |
+285 | struct PipeLedger<H> { pairs: Vec<OwnedPipePair<H>>, cleanup: Cleanup }
+    |        ^^^^^^^^^^
+
+warning: associated function `new` is never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:286:28
+    |
+286 | impl<H> PipeLedger<H> { fn new() -> Self { Self { pairs: Vec::new(), cleanup: Cleanup::Pending } } }
+    | ---------------------      ^^^
+    | |
+    | associated function in this implementation
+
+warning: struct `PrivatePipeOwner` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:287:8
+    |
+287 | struct PrivatePipeOwner<'a, A: PrivatePipeApi> { api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle> }
+    |        ^^^^^^^^^^^^^^^^
+
+warning: associated items `new`, `create_two_pairs`, `round_trip`, and `release_all` are never used
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:289:8
+    |
+288 | impl<'a, A: PrivatePipeApi> PrivatePipeOwner<'a, A> {
+    | --------------------------------------------------- associated items in this implementation
+289 |     fn new(api: &'a mut A, ledger: &'a mut PipeLedger<A::Handle>) -> Self { Self { api, ledger } }
+    |        ^^^
+290 |     fn create_two_pairs(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^^^^^^
+...
+308 |     fn round_trip(&mut self, index: usize, bytes: &[u8]) -> Result<Vec<u8>, PipeApiError> {
+    |        ^^^^^^^^^^
+...
+322 |     fn release_all(&mut self) -> Result<(), PipeApiError> {
+    |        ^^^^^^^^^^^
+
+warning: struct `NativePipeApi` is never constructed
+   --> crates\sgenaxis-adapters\src\conpty_fixture.rs:354:23
+    |
+354 |     pub(super) struct NativePipeApi;
+    |                       ^^^^^^^^^^^^^
+
+warning: `sgenaxis-adapters` (lib) generated 9 warnings
+warning: struct `StdFileCommit` is never constructed
+  --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:10:12
+   |
+10 | pub struct StdFileCommit;
+   |            ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: associated function `new` is never used
+  --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:13:12
+   |
+12 | impl StdFileCommit {
+   | ------------------ associated function in this implementation
+13 |     pub fn new() -> Self {
+   |            ^^^
+
+warning: method `acquire_with_checkpoints` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:145:19
+    |
+143 | impl StdFileCommit {
+    | ------------------ method in this implementation
+144 |     // Private test-consumer entry; acquisition/transaction algorithms remain absent.
+145 |     pub(crate) fn acquire_with_checkpoints(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `safe_name` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:192:4
+    |
+192 | fn safe_name(name: &str) -> bool {
+    |    ^^^^^^^^^
+
+warning: function `check_ancestors` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:224:4
+    |
+224 | fn check_ancestors(path: &Path) -> Result<(), CommitError> {
+    |    ^^^^^^^^^^^^^^^
+
+warning: function `normalize_target` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:279:4
+    |
+279 | fn normalize_target(path: &str) -> Result<String, CommitError> {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `create_directory` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:308:4
+    |
+308 | fn create_directory(parent: &str, name: &str) -> Result<String, CommitError> {
+    |    ^^^^^^^^^^^^^^^^
+
+warning: function `acquire` is never used
+   --> crates\sgenaxis-adapters\tests\..\src\file_commit.rs:401:4
+    |
+401 | fn acquire(path: &str) -> Result<StdFileWriteLease, CommitError> {
+    |    ^^^^^^^
+
+warning: `sgenaxis-adapters` (test "phase1_file_commit") generated 8 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running tests\phase1_file_commit.rs (target\debug\deps\phase1_file_commit-5e9d166d419fdc67.exe)
+
+running 218 tests
+test gap_01_empty_file_is_present_not_absent ... ok
+test gap_01_expected_absent_actual_present_digests ... ok
+test gap_01_expected_present_actual_absent ... ok
+test gap_02_new_empty ... ok
+test gap_02_new_nonempty ... ok
+test gap_02_read_absent_exactly_none ... ok
+test gap_02_read_empty_exactly_some_empty ... ok
+test gap_02_replace_empty ... ok
+test gap_02_replace_nonempty ... ok
+test gap_03_before_publish_absent ... ok
+test gap_03_before_publish_old ... ok
+test gap_03_commit_publish_absent ... ok
+test gap_03_commit_publish_old ... ok
+test gap_03_commit_sync_absent ... ok
+test gap_03_commit_sync_old ... ok
+test gap_03_commit_verify_absent ... ok
+test gap_03_commit_verify_old ... ok
+test gap_03_commit_write_absent ... ok
+test gap_03_commit_write_old ... ok
+test gap_03_new_sync_absent ... ok
+test gap_03_new_sync_old ... ok
+test gap_03_new_write_absent ... ok
+test gap_03_new_write_old ... ok
+test gap_03_old_sync ... ok
+test gap_03_old_write ... ok
+test gap_03_prepared_publish_absent ... ok
+test gap_03_prepared_publish_old ... ok
+test gap_03_prepared_sync_absent ... ok
+test gap_03_prepared_sync_old ... ok
+test gap_03_prepared_verify_absent ... ok
+test gap_03_prepared_verify_old ... ok
+test gap_03_prepared_write_absent ... ok
+test gap_03_prepared_write_old ... ok
+test gap_03_publish_absent ... ok
+test gap_03_publish_old ... ok
+test gap_03_verify_absent ... ok
+test gap_03_verify_old ... ok
+test gap_04_commit_restore_absent ... ok
+test gap_04_commit_restore_old ... ok
+test gap_04_commit_rollback_record_publish_absent ... ok
+test gap_04_commit_rollback_record_publish_old ... ok
+test gap_04_commit_rollback_record_sync_absent ... ok
+test gap_04_commit_rollback_record_sync_old ... ok
+test gap_04_commit_rollback_record_verify_absent ... ok
+test gap_04_commit_rollback_record_verify_old ... ok
+test gap_04_commit_rollback_record_write_absent ... ok
+test gap_04_commit_rollback_record_write_old ... ok
+test gap_04_commit_verify_restored_absent ... ok
+test gap_04_commit_verify_restored_old ... ok
+test gap_04_rollback_record_publish_absent ... ok
+test gap_04_rollback_record_publish_old ... ok
+test gap_04_rollback_record_sync_absent ... ok
+test gap_04_rollback_record_sync_old ... ok
+test gap_04_rollback_record_verify_absent ... ok
+test gap_04_rollback_record_verify_old ... ok
+test gap_04_rollback_record_write_absent ... ok
+test gap_04_rollback_record_write_old ... ok
+test gap_04_verify_restore_absent ... ok
+test gap_04_verify_restore_old ... ok
+test gap_04_verify_restored_absent ... ok
+test gap_04_verify_restored_old ... ok
+test gap_05_bom ... ok
+test gap_05_checksum ... ok
+test gap_05_digest ... ok
+test gap_05_extra_field ... ok
+test gap_05_field_length ... ok
+test gap_05_invalid_utf8 ... ok
+test gap_05_magic ... ok
+test gap_05_nul ... ok
+test gap_05_old_pair ... ok
+test gap_05_overflow ... ok
+test gap_05_payload_length ... ok
+test gap_05_state ... ok
+test gap_05_trailing ... ok
+test gap_05_truncated ... ok
+test gap_05_txid ... ok
+test gap_05_version_valid_checksum ... ok
+test gap_06_absolute ... ok
+test gap_06_acquire_absolute ... ok
+test gap_06_acquire_ads ... ok
+test gap_06_acquire_binding ... ok
+test gap_06_acquire_bom ... ok
+test gap_06_acquire_checksum ... ok
+test gap_06_acquire_device ... ok
+test gap_06_acquire_digest ... ok
+test gap_06_acquire_drive ... ok
+test gap_06_acquire_extra_field ... ok
+test gap_06_acquire_field_length ... ok
+test gap_06_acquire_magic ... ok
+test gap_06_acquire_nul ... ok
+test gap_06_acquire_old_pair ... ok
+test gap_06_acquire_old_traversal ... ok
+test gap_06_acquire_overflow ... ok
+test gap_06_acquire_oversize ... ok
+test gap_06_acquire_payload_length ... ok
+test gap_06_acquire_state ... ok
+test gap_06_acquire_trailing ... ok
+test gap_06_acquire_traversal ... ok
+test gap_06_acquire_truncated ... ok
+test gap_06_acquire_txid ... ok
+test gap_06_acquire_unc ... ok
+test gap_06_acquire_utf8 ... ok
+test gap_06_acquire_version ... ok
+test gap_06_ads ... ok
+test gap_06_device ... ok
+test gap_06_drive ... ok
+test gap_06_old_traversal ... ok
+test gap_06_target_binding ... ok
+test gap_06_traversal ... ok
+test gap_06_unc ... ok
+test gap_06_verified_prepared_diagnostics_absent ... ok
+test gap_06_verified_prepared_diagnostics_old ... ok
+test gap_07_absent ... ok
+test gap_07_committed ... ok
+test gap_07_multibyte_4096 ... ok
+test gap_07_multibyte_4097_rejected_by_byte_count ... ok
+test gap_07_path_4095 ... ok
+test gap_07_path_4096_max_record ... ok
+test gap_07_path_4097 ... ok
+test gap_07_path_empty ... ok
+test gap_07_path_minimum_file ... ok
+test gap_07_path_one_byte_cannot_be_absolute_file ... ok
+test gap_07_prepared ... ok
+test gap_07_recovery ... ok
+test gap_07_rolledback ... ok
+test gap_07_total_65535_not_valid_padding ... ok
+test gap_07_total_65536_not_valid_padding ... ok
+test gap_07_total_over_limit ... ok
+test gap_08_bad_artifact ... ok
+test gap_08_committed ... ok
+test gap_08_committed_bad_artifact ... ok
+test gap_08_committed_foreign ... ok
+test gap_08_committed_mismatch ... ok
+test gap_08_foreign ... ok
+test gap_08_missing_journal ... ok
+test gap_08_next_orphan ... ok
+test gap_08_prepared ... ok
+test gap_08_recovery ... ok
+test gap_08_rolledback ... ok
+test gap_08_rolledback_absent ... ok
+test gap_08_rolledback_absent_missing_versions ... ok
+test gap_08_rolledback_mismatch ... ok
+test gap_08_rolledback_missing_versions ... ok
+test gap_08_terminal_missing_versions ... ok
+test gap_08_unknown ... ok
+test gap_09_product_death_allows_child ... ok
+test gap_09_product_drop_allows_child ... ok
+test gap_10_active_journal_next_collision_never_deletes_foreign ... ok
+test gap_10_committed_cleanup_failure_stays_success ... ok
+test gap_10_orphan_next_collision_fails_closed ... ok
+test gap_10_prepare_cleanup_fault_preserves_formal_and_foreign ... ok
+test gap_10_rollback_cleanup_preserves_preimage ... ok
+test gap_10_temp_collision_foreign_kept ... ok
+test gap_11_ads ... ok
+test gap_11_backslash ... ok
+test gap_11_empty ... ok
+test gap_11_existing_empty_dir ... ok
+test gap_11_existing_file ... ok
+test gap_11_existing_nonempty_dir ... ok
+test gap_11_forward ... ok
+test gap_11_parent ... ok
+test gap_11_parent_missing ... ok
+test gap_11_reserved ... ok
+test gap_11_space ... ok
+test gap_11_trailing_dot ... ok
+test gap_11_trailing_space ... ok
+test gap_11_traversal ... ok
+test gap_11_traversal_cannot_create_in_another_owned_root ... ok
+test gap_12_absent_rollback_preserves_external_new_file ... ok
+test gap_12_prepare_external_edit_preserved ... ok
+test gap_12_rollback_preserves_external_replacement ... ok
+test gap_13_cleanup ... ok
+test gap_13_committed ... ok
+test gap_13_new_synced ... ok
+test gap_13_prepared ... ok
+test gap_13_published ... ok
+test gap_14_complete_rollback_cleanup_absent_support ... ok
+test gap_14_complete_rollback_cleanup_old_support ... ok
+test gap_14_corrupt_remaining_version_rejected_support ... ok
+test gap_14_fixed_clock_parallel_names_support ... ok
+test gap_14_fixture_collision_retry_support ... ok
+test gap_14_fixture_retry_exhaustion_support ... ok
+test gap_14_helper_health_support ... ok
+test gap_14_missing_helper_classified_as_fixture_failure_support ... ok
+test gap_14_mutation_fixtures_preserve_checksum_support ... ok
+test gap_14_nonzero_helper_is_fixture_failure_support ... ok
+test gap_14_owned_native_handle_release_support ... ok
+test gap_14_partial_rollback_new_removed_support ... ok
+test gap_14_partial_rollback_old_removed_support ... ok
+test gap_14_premature_journal_deletion_rejected_support ... ok
+test gap_14_protocol_disconnect_classified_as_fixture_failure_support ... ok
+test gap_14_protocol_timeout_classified_as_fixture_failure_support ... ok
+test gap_14_unparsed_version_diagnostics_rejected_support ... ok
+test gap_14_v1_encoder_support ... ok
+test gap_14_v1_maximum_field_vector_support ... ok
+test implementation_hard_link_target_is_refused_without_content_change ... ok
+test implementation_partial_publish_temp_is_owned_and_cleaned ... FAILED
+test implementation_same_lease_can_commit_again_with_latest_digest ... ok
+test io_01_creates_exactly_one_new_directory ... ok
+test io_02_existing_file_or_directory_is_never_replaced ... ok
+test io_03_invalid_names_are_rejected_without_child_creation ... ok
+test io_04_other_adapter_instance_cannot_take_an_owned_lease ... ok
+test io_05_independent_process_handle_blocks_product_lease ... ok
+test io_06_process_death_releases_handle_without_stale_file_deletion ... ok
+test io_07_new_file_commit_matches_bytes_and_receipt ... ok
+test io_08_existing_file_commit_keeps_complete_new_content ... ok
+test io_09_stale_digest_rejects_without_changing_original ... ok
+test io_10_expected_presence_mismatch_never_overwrites ... ok
+test io_11_pre_publish_faults_leave_old_bytes_and_owned_diagnostics ... ok
+test io_12_post_publish_failure_restores_old_before_ordinary_error ... ok
+test io_13_failed_restore_retains_versions_and_blocks_followup ... ok
+test io_14_unfinished_prepared_record_rejects_reopen ... ok
+test io_15_corrupt_record_cannot_trigger_path_actions_or_cleanup ... ok
+test io_16_normal_handle_close_allows_immediate_reacquisition ... ok
+test io_17_observed_external_edit_before_publish_is_not_overwritten ... ok
+test io_18a_foreign_temp_collision_is_not_deleted ... ok
+test io_18b_cleanup_fault_does_not_destroy_preimage_or_foreign_data ... ok
+test io_read_current_observes_complete_bytes_under_a_fixture_lease ... ok
+
+failures:
+
+---- implementation_partial_publish_temp_is_owned_and_cleaned stdout ----
+
+thread 'implementation_partial_publish_temp_is_owned_and_cleaned' (19080) panicked at crates\sgenaxis-adapters\tests\phase1_file_commit.rs:2163:9:
+owned publish artifacts must be cleaned after verified rollback: [".eluslot-publish-0000000000003a3018e3d044e4f2e119"]
+
+
+failures:
+    implementation_partial_publish_temp_is_owned_and_cleaned
+
+test result: FAILED. 217 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.17s
+
+error: test failed, to rerun pass `-p sgenaxis-adapters --test phase1_file_commit`

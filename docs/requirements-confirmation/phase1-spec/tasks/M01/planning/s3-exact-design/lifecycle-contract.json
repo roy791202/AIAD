@@ -1,0 +1,174 @@
+{
+  "owner_rules": [
+    {
+      "id": "OW1",
+      "name": "Actual caller",
+      "contract": "Use injected WebviewWindow label and URL, never JSON caller fields. Propose reusing existing guard_owner_caller_allowed policy: main only, no explicit port, tauri://localhost or http(s)://tauri.localhost. Existing command allowlist and capability permission are additional gates, not substitutes. Development localhost:1420 remains denied unless separately approved."
+    },
+    {
+      "id": "OW2",
+      "name": "One owner generation",
+      "contract": "Propose one active wizard owner per main-window instance, identified by server-issued runtime epoch and monotonically changing owner generation. DispatchHost owns wizard records separately from WORK project registry; WORK continues owning registered projects/leases. Opening wizard does not register a project, change HostSettings or acquire a Run lease."
+    },
+    {
+      "id": "OW3",
+      "name": "Native selection",
+      "contract": "Only an authenticated native picker result can mint an opaque selection ID. Record binds canonical parent/root, selection purpose, window instance and owner generation. UI sees ID and display path; display path is never accepted as write authority. Cancellation mints nothing; rejection leaves existing selection unchanged."
+    },
+    {
+      "id": "OW4",
+      "name": "Picker race",
+      "contract": "Capture owner generation before opening native dialog without holding HostState/AppState locks. On return revalidate actual window instance and generation before installing selection. If owner changed, discard selection with STALE_OWNER; do not overwrite new owner state or start persistence."
+    },
+    {
+      "id": "OW5",
+      "name": "Capability lifetime",
+      "contract": "Selections are reusable only by their live owner generation and allowed purpose. Reselect invalidates prior unreserved selections. Already reserved request keeps its immutable captured selection for completion; invalidation detaches presentation rather than modifying a submitted request. Cross-window, expired generation and wrong purpose reject before IO."
+    },
+    {
+      "id": "OW6",
+      "name": "Draft lifetime",
+      "contract": "Unsaved draft is runtime state only. Cancel/close revokes owner and drops unsaved draft after in-flight captures are detached; no implicit disk save or recursive cleanup. Reopening a saved draft uses explicit native selection plus adopted S2 open, constructs a fresh owner generation and domain projection; no resurrection of prior selection/request authority."
+    },
+    {
+      "id": "OW7",
+      "name": "Project switch",
+      "contract": "An actual bound-project change revokes current wizard generation. A picker merely displaying another location is not a project switch. A matching committed wizard result may request binding through the existing authorized project-binding flow; failure leaves persisted evidence and reports committed-but-unbound, never ordinary unchanged failure."
+    },
+    {
+      "id": "OW8",
+      "name": "Host locks",
+      "contract": "Preserve existing HostState -> AppState lock order whenever both are needed. Never retain either lock through native dialog or IO. Copy immutable capture under locks, release for IO, reacquire in same order and revalidate generation before installing projection. Exact production seam and concurrency tests remain part of full S3 Skeleton review."
+    },
+    {
+      "id": "OW9",
+      "name": "Root proof",
+      "contract": "Native path normalization is infrastructure proof, not WORK normalize_light/case_fold_key identity or a label comparison. Re-check selected root/parent availability and target confinement at save; exclusive create/CAS remains S2+IO authority. No precheck authorizes overwrite or aliases. Exact native canonicalization/reparse policy and failure-injection seam remain an explicit unresolved full-packet gate."
+    },
+    {
+      "id": "OW10",
+      "name": "Existing authority bridge",
+      "contract": "Construct adopted DefinitionAuthorityContext only from live trusted selection/session/window record after validation. Nonempty strings and UUID syntax are not authorization. Do not modify S2 context shape or create a second project identity registry. Candidate new wizard state is application-owned, requires adoption, and cannot be inferred from standing implementation permission."
+    }
+  ],
+  "transitions": [
+    {
+      "event": "begin",
+      "pre": "authorized main, no conflicting wizard",
+      "post": "new owner generation, runtime draft",
+      "io": "none"
+    },
+    {
+      "event": "select cancelled",
+      "pre": "live owner",
+      "post": "same owner and previous selection",
+      "io": "none"
+    },
+    {
+      "event": "select accepted",
+      "pre": "same captured/live generation",
+      "post": "install purpose-bound capability",
+      "io": "native observation only"
+    },
+    {
+      "event": "late picker",
+      "pre": "generation changed",
+      "post": "STALE_OWNER, discard result",
+      "io": "none"
+    },
+    {
+      "event": "cancel or window destroyed",
+      "pre": "live or in-flight owner",
+      "post": "revoke generation; pending completion detached",
+      "io": "no new persistence"
+    },
+    {
+      "event": "bound project changed",
+      "pre": "live owner",
+      "post": "revoke generation; retain pending immutable captures",
+      "io": "no new persistence"
+    },
+    {
+      "event": "save completion",
+      "pre": "captured generation still current",
+      "post": "retain outcome then project authorized result",
+      "io": "existing S2 transaction only"
+    },
+    {
+      "event": "detached completion",
+      "pre": "owner no longer current",
+      "post": "retain evidence; no current-project switch",
+      "io": "no rollback"
+    },
+    {
+      "event": "reopen persisted draft",
+      "pre": "authorized fresh selection",
+      "post": "fresh owner; S2-decoded draft",
+      "io": "S2 read only"
+    }
+  ],
+  "request_rules": [
+    {
+      "id": "RQ1",
+      "name": "Authority",
+      "contract": "Authenticate actual caller/window and current owner before looking up a request. UI-supplied owner/session/digest never grants authority. Rejected caller cannot discover another owner result."
+    },
+    {
+      "id": "RQ2",
+      "name": "Identity",
+      "contract": "Proposed key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save or finalize. Native selection must already be bound to that owner. Exact issuer and owner DTO remain separate S3-G1/G2 decisions."
+    },
+    {
+      "id": "RQ3",
+      "name": "Fingerprint",
+      "contract": "Compare the exact immutable typed request capture: expected revision, draft content, resolved target selection identity and prepared preference plan identity. Capture is server-owned; compare typed values, not raw JSON byte order or caller-supplied hash. Same key with changed capture is REQUEST_ID_CONFLICT."
+    },
+    {
+      "id": "RQ4",
+      "name": "Reservation",
+      "contract": "Validate authority, selection and request shape, then atomically reserve the key with its capture before starting S2 store. Concurrent identical submissions observe IN_FLIGHT and do not execute a second store. Do not hold owner map locks across IO."
+    },
+    {
+      "id": "RQ5",
+      "name": "Replay",
+      "contract": "Identical retained terminal capture returns the stored original outcome including commit proof; mark replayed=true. It does not re-run IO or acknowledge a newer revision. Same key with different capture is rejected even if original operation failed."
+    },
+    {
+      "id": "RQ6",
+      "name": "Terminal failure",
+      "contract": "Pre-commit failure, conflict, Partial and RecoveryRequired are terminal stored outcomes, preserving the exact S2 distinction. Explicit retry requires a fresh request-id after owner refresh. Never convert committed or recovery-required evidence into ordinary unchanged failure."
+    },
+    {
+      "id": "RQ7",
+      "name": "Late completion",
+      "contract": "On completion persist the terminal outcome in the retained request record before attempting UI projection. Owner switch/window closure only detaches presentation. It must not cancel or delete an already committed project. Binding is allowed only when captured owner epoch, request, draft and revision still match current authorization."
+    },
+    {
+      "id": "RQ8",
+      "name": "Lifetime",
+      "contract": "Propose runtime-only records, retained until process exit without time-based eviction. Owner close revokes ability to replay; retain tombstone/result for internal completion only. No exactly-once claim across restart. Old epoch is rejected; reopen via S2 evidence and issue a new request after explicit reconciliation."
+    },
+    {
+      "id": "RQ9",
+      "name": "Bounded resources",
+      "contract": "Propose at most 128 reserved request keys per owner and 1024 per process, including retained terminal keys. Refuse a new key with REQUEST_CAPACITY before IO; existing authorized replay remains available. No automatic eviction/retry or new persistent journal."
+    },
+    {
+      "id": "RQ10",
+      "name": "Result projection",
+      "contract": "Proposed transport fields: requestId, operation, capturedRevision decimal string, outcome, replayed boolean, bindingStatus. outcome wraps exact adopted S2 result without discarding evidence; bindingStatus is unchanged, eligible or detached. Eligible is not itself proof a UI switch occurred. Exact DTO/error mapping remains S3-G5 work."
+    }
+  ],
+  "clarifications": [
+    "Start with existing live unsaved/dirty owner returns OwnerBusy; replacing owner requires explicit cancel confirmation first. Runtime epoch generated once at boot, window instance nonce generated at setup and invalidated on destroy; IDs are UUIDv4. Owner generation is checked u64 increment; overflow refuses new owner.",
+    "Request fingerprint includes owner/draft/op/revision/typed draft/resolved native identity/prepared preference plan. Freeze capture at reserve. Save/update cannot mutate same draft while in-flight. Finalize is distinct op under same key scheme; changing op does not replay another op.",
+    "New begin: valid name plus S1 blank Draft, revision 0, candidate persistent UUID. Updates exclusively call existing apply_definition, checked +1 even for same accepted draft, no forged identity or refs. Save persists captured current revision and does not increment it. On first-save success install next_binding from S2 only; persisted_revision=captured revision; new baseline is exact S2 proof.",
+    "Reopen uses fresh native capability, S2 open and identity conflict checks against current WORK projection; compare candidate UUID/root but do not register/modify WORK during preview. Same UUID at another root is IdentityConflict; no automatic copy/move/remap.",
+    "Legacy adoption uses selected root and exact expected_legacy_key from read-only open projection; obtain candidate UUID and blank draft only after explicit adopt. S2 exclusive target/CAS protect existing definition, preserve all legacy ESS/manifest/preferences bytes. No automatic adoption on open.",
+    "UI closes/routes invoke cancel with explicit discard confirmation. lib.rs on Destroyed and main-page reload initialization retires old owner. on CloseRequested: if in-flight prevent close and request owner detach confirmation; confirmed force detach revokes then permits native close, never waits with locks held. Actual bound-root change through host_set_settings revokes existing owner in same capture/install discipline; failed settings save leaves original owner intact.",
+    "Atomic binding: never ask JS to invoke host_set_settings on arbitrary Save outcome path. Server checks retained receipt+live owner, existing execution/lease gates and validated root before existing settings operation; recheck owner on completion. Settings failure yields committed_unbound. UI does not call bindPickedProjectRoot for new wizard result. Generic existing open/settings routes remain but must trigger owner invalidation only after successful actual root change.",
+    "Owner close/reselect with no captured request drops native handles; pending requests hold handle lease until completion. Runtime request results retained per adopted proposed limits; no durable dedupe. Startup reopens explicit saved draft; does not auto-replay uncertain prior requests.",
+    "Reload invalidation must originate from trusted Tauri on_page_load for the main WebviewWindow, not a caller-supplied reload flag. Page-load revokes old generation and marks old instance nonce retired; subsequent start creates fresh owner. Ordinary second start in the same live page still returns OwnerBusy.",
+    "set_preferences is the only source-changing command; it prepares source copy before installing plan/revision. UI draft updates cannot replace the server plan. Autosave is absent. Legacy-adopt request fingerprint uses owner + selection identity + expected legacy key + candidate draft capture; stable draft/UUID reserved once before first S2 call, identical replay cannot mint a second UUID."
+  ]
+}

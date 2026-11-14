@@ -1,0 +1,223 @@
+//! M04-S1 pure architecture Skeleton. No content/history/baseline algorithms.
+//! Candidate content is supplied by the future trusted codec boundary; this
+//! module does not parse XML, hash bytes, write files, pin assets or run timers.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Revision(pub u64);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetVersionRef {
+    pub asset_id: String,
+    pub content_digest: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BindingStatus {
+    Valid,
+    Pending,
+    Invalid,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BindingState {
+    pub id: String,
+    pub target_id: Option<String>,
+    pub state: BindingStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentContent {
+    canonical_payload: Vec<u8>,
+    semantic_digest: String,
+    asset_refs: Vec<AssetVersionRef>,
+    bindings: Vec<BindingState>,
+    blocked_capabilities: Vec<String>,
+}
+
+impl DocumentContent {
+    /// Structural codec/fixture input seam only, not parsing or validation.
+    pub fn from_parts(
+        canonical_payload: Vec<u8>,
+        semantic_digest: String,
+        asset_refs: Vec<AssetVersionRef>,
+        bindings: Vec<BindingState>,
+        blocked_capabilities: Vec<String>,
+    ) -> Self {
+        Self {
+            canonical_payload,
+            semantic_digest,
+            asset_refs,
+            bindings,
+            blocked_capabilities,
+        }
+    }
+
+    pub fn canonical_payload(&self) -> &[u8] {
+        &self.canonical_payload
+    }
+    pub fn semantic_digest(&self) -> &str {
+        &self.semantic_digest
+    }
+    pub fn asset_refs(&self) -> &[AssetVersionRef] {
+        &self.asset_refs
+    }
+    pub fn bindings(&self) -> &[BindingState] {
+        &self.bindings
+    }
+    pub fn blocked_capabilities(&self) -> &[String] {
+        &self.blocked_capabilities
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MutationKind {
+    Edit,
+    Clear,
+    Merge,
+}
+
+/// Plain plan data is not authority. Commit must eventually verify document,
+/// session, revision, before-content and required asset versions independently.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MutationPlan {
+    pub document_uuid: String,
+    pub session_uuid: String,
+    pub expected_revision: Revision,
+    pub kind: MutationKind,
+    pub before: DocumentContent,
+    pub after: DocumentContent,
+    pub required_asset_versions: Vec<AssetVersionRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentHistoryEntry {
+    pub kind: MutationKind,
+    pub before: DocumentContent,
+    pub after: DocumentContent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SavedContentBaseline {
+    pub revision: Revision,
+    pub semantic_digest: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionStatus {
+    Editing,
+    Applying,
+    Saving,
+    RecoveryRequired,
+    Closed,
+}
+
+/// Ownership scaffold for a trusted session initializer. No writable reference
+/// escapes DocumentSession; history has one owner, not duplicated counters.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentSessionState {
+    pub project_uuid: String,
+    pub document_uuid: String,
+    pub session_uuid: String,
+    pub content_revision: Revision,
+    pub content: DocumentContent,
+    pub formal_baseline: Option<SavedContentBaseline>,
+    pub snapshot_baseline: Option<SavedContentBaseline>,
+    pub status: SessionStatus,
+    pub undo: Vec<DocumentHistoryEntry>,
+    pub redo: Vec<DocumentHistoryEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitProjection {
+    pub revision: Revision,
+    pub changed: bool,
+    pub dirty: bool,
+    pub history_depth: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImmutableDocumentSnapshot {
+    pub document_uuid: String,
+    pub session_uuid: String,
+    pub revision: Revision,
+    pub content: DocumentContent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveProjection {
+    pub captured_revision: Revision,
+    pub dirty: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecoveryProjection {
+    pub captured_revision: Revision,
+    pub needs_snapshot: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EditError {
+    /// Skeleton marker only, never advertised as a completed operation.
+    NotReady,
+    InvalidInput {
+        field: String,
+    },
+    RevisionConflict,
+    RevisionOverflow,
+    Busy,
+    NoUndo,
+    Closed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentSession {
+    state: DocumentSessionState,
+}
+
+impl DocumentSession {
+    /// Ownership construction only. No runtime hydration or business mutation.
+    pub fn new(initial: DocumentSessionState) -> Self {
+        Self { state: initial }
+    }
+    /// Observation seam, no mutable access and no derived dirty/history policy.
+    pub fn state(&self) -> &DocumentSessionState {
+        &self.state
+    }
+
+    pub fn prepare(
+        &self,
+        _expected: Revision,
+        _kind: MutationKind,
+        _validated_after: DocumentContent,
+    ) -> Result<MutationPlan, EditError> {
+        Err(EditError::NotReady)
+    }
+
+    pub fn commit(&mut self, _plan: MutationPlan) -> Result<CommitProjection, EditError> {
+        Err(EditError::NotReady)
+    }
+
+    pub fn undo(&mut self, _expected: Revision) -> Result<CommitProjection, EditError> {
+        Err(EditError::NotReady)
+    }
+
+    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError> {
+        Err(EditError::NotReady)
+    }
+
+    pub fn acknowledge_formal_save(
+        &mut self,
+        _captured: Revision,
+        _digest: &str,
+    ) -> Result<SaveProjection, EditError> {
+        Err(EditError::NotReady)
+    }
+
+    pub fn acknowledge_recovery_save(
+        &mut self,
+        _captured: Revision,
+        _digest: &str,
+    ) -> Result<RecoveryProjection, EditError> {
+        Err(EditError::NotReady)
+    }
+}

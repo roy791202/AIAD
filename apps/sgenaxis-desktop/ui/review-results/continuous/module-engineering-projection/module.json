@@ -1,0 +1,372 @@
+{
+  "identity": {
+    "module": "module-engineering-projection",
+    "task": "PD-RUST-MODULE-HTML-01",
+    "parent": "PD-RUST-IMPROVE-20261025",
+    "dependencies": [
+      "PD-RUST-DOCUMENT-CONTRACT-01",
+      "PD-RUST-XML-PACKET-IMPL-01"
+    ],
+    "date": "2026-10-26 Asia/Taipei",
+    "generated_at": "2026-10-26T02:30:30+08:00",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "state": "UNIFIED_HTML_PROJECTION_READY_FOR_TDD",
+    "architecture_status": "DERIVED_FROM_APPROVED_A_AND_DOCUMENT_AUDIT",
+    "implementation": "REPORT_ONLY — no production schema/API changes",
+    "behavior_verification": "NOT RUN",
+    "board": "yellow; implementer does not green"
+  },
+  "executive_meaning": "Refresh a single Module HTML that projects existing ModuleSpec shape and approved continuous/rust-improvements packets into contracts, tests, scope, evidence, risk, two diagrams, and BDD↔TDD/task/result/sourcehash rows — without inventing a competing schema SSOT.",
+  "diagram_a_hexagonal": "Designer / CLI [driving]\n        |\n   (read-only) Export / Project Module HTML\n        v\nHOST application (orchestration only)\n   |              |               |\nFS read      SPEC model.rs    report render\n   ^         (ModuleSpec)          ^\nproduct .ess   packet.rs      this module.html\n               GUARD/EVID [reference only — unresolved in A]\nProduct files = design authority; SPEC = approval authority;\nPacket/HTML = derived; never write authority.",
+  "diagram_b_ownership_stale": "Ownership / stale chain\nproduct-documents/module.json  ──┐\napproved-a-contract.md         ──┼─► bound_source_sha256\nfixture-packet.json            ──┤         │\nmodel.rs / packet.rs           ──┘         v\n                                   regenerate → compare hashes\n                                   match: CURRENT\n                                   mismatch: PROJECTION_STALE\nBDD text ← node bddSpecs ← source selector ← source.sha256\nTDD text ← node tddSpecs ← same binding\ntask_id / module_id / readiness / payload_sha256 stay on packet envelope.",
+  "module_spec_document": {
+    "module_id": "module-engineering-projection",
+    "module_name": "模組工程投影（統一 Module HTML）",
+    "responsibility": "Derive unified Module HTML from approved XML/SPEC packet + document-contract packets; expose BDD↔TDD/task/result/sourcehash; detect stale sources. Does not own approval, GUARD, or EVID stores.",
+    "revisions": [
+      {
+        "id": "rev-proj-v0",
+        "module_id": "module-engineering-projection",
+        "version_label": "v0-projection",
+        "status": "draft",
+        "content_hash": null,
+        "contracts": [
+          {
+            "id": "CTR-PROJ-001",
+            "title": "No competing SSOT",
+            "body": "Module HTML / module.json here are derived projections. Authoritative ModuleSpec shape remains sgenaxis-spec model.rs; A packet contract remains xml-packet/approved-a-contract.md; document format inventory remains product-documents/module.json."
+          },
+          {
+            "id": "CTR-PROJ-002",
+            "title": "BDD↔TDD/task/result/sourcehash linkage",
+            "body": "Each projected row binds task_id, module_id, BDD text, TDD text, result/readiness, and exact source/payload SHA-256 when available. Hints never become approval."
+          },
+          {
+            "id": "CTR-PROJ-003",
+            "title": "Stale detection",
+            "body": "bound_source_sha256 must match current bytes of SOURCES. Mismatch ⇒ PACKET_STALE / PROJECTION_STALE; do not treat HTML as current."
+          },
+          {
+            "id": "CTR-PROJ-004",
+            "title": "SPEC/GUARD/EVID ownership preserved",
+            "body": "Projection may reference SPEC revision/contracts, GUARD envelope and EVID bindings but must not approve, mutate GUARD, or invent evidence validity. A slice readiness stays NOT_READY until those owners resolve."
+          },
+          {
+            "id": "CTR-A-REF",
+            "title": "Approved A envelope (reference)",
+            "body": "Read-only .ess → module packet; SHA-256 provenance; PACKET_STALE on source change; diagnostics APPROVAL_UNRESOLVED / APPROVED_BEHAVIOR_UNRESOLVED; see approved-a-contract.md AC-A01..A08."
+          }
+        ],
+        "note": "Draft projection revision. Fingerprint of contracts (FNV-1a, SPEC algorithm) = e784a967723946d6; not an Approved SpecRevision."
+      }
+    ],
+    "evidence_refs": []
+  },
+  "contracts": [
+    {
+      "id": "CTR-PROJ-001",
+      "title": "No competing SSOT",
+      "body": "Module HTML / module.json here are derived projections. Authoritative ModuleSpec shape remains sgenaxis-spec model.rs; A packet contract remains xml-packet/approved-a-contract.md; document format inventory remains product-documents/module.json."
+    },
+    {
+      "id": "CTR-PROJ-002",
+      "title": "BDD↔TDD/task/result/sourcehash linkage",
+      "body": "Each projected row binds task_id, module_id, BDD text, TDD text, result/readiness, and exact source/payload SHA-256 when available. Hints never become approval."
+    },
+    {
+      "id": "CTR-PROJ-003",
+      "title": "Stale detection",
+      "body": "bound_source_sha256 must match current bytes of SOURCES. Mismatch ⇒ PACKET_STALE / PROJECTION_STALE; do not treat HTML as current."
+    },
+    {
+      "id": "CTR-PROJ-004",
+      "title": "SPEC/GUARD/EVID ownership preserved",
+      "body": "Projection may reference SPEC revision/contracts, GUARD envelope and EVID bindings but must not approve, mutate GUARD, or invent evidence validity. A slice readiness stays NOT_READY until those owners resolve."
+    },
+    {
+      "id": "CTR-A-REF",
+      "title": "Approved A envelope (reference)",
+      "body": "Read-only .ess → module packet; SHA-256 provenance; PACKET_STALE on source change; diagnostics APPROVAL_UNRESOLVED / APPROVED_BEHAVIOR_UNRESOLVED; see approved-a-contract.md AC-A01..A08."
+    }
+  ],
+  "bdd_tdd_task_result_sourcehash": [
+    {
+      "task_id": "TASK-A",
+      "module_id": "semantic-A",
+      "node_id": "command",
+      "bdd": [
+        "Given valid scene"
+      ],
+      "tdd": [
+        "failure preserves state"
+      ],
+      "result": "NOT_READY",
+      "source_sha256": "1d8b99e7ae1d83e7fb415b32cafc49f0c92792f80acc3bd660fc38516067f602",
+      "payload_sha256": "b0d64a24f682b76e8238dcbf73af12fe24ba403f17da301e9ce5134b9280e5ac",
+      "source_path": "fixtures/module_packet.ess",
+      "origin": "xml-packet-implementation/fixture-packet.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-01",
+      "bdd": [
+        "Current .ess sample has work/architecture/design XML and can be inspected structurally"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: tests/test_pd_scene_sgs_01.py:test_sample_ess_fixture_is_xml_scene"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "tests/test_pd_scene_sgs_01.py:test_sample_ess_fixture_is_xml_scene",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-02",
+      "bdd": [
+        "Malformed XML returns no decoded scene before apply; strict packet rejects malformed/unsupported input"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: app.js:917-961; host/tests/module_packet.rs"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "app.js:917-961; host/tests/module_packet.rs",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-03",
+      "bdd": [
+        "Legacy scene/arch root and split names are accepted by frontend compatibility paths"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: app.js:498-520,917-944,3991-4016"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "app.js:498-520,917-944,3991-4016",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-04",
+      "bdd": [
+        "Dedicated .sgendesign rejects wrong format or product_pass=true"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: uidesign_doc.rs tests rejects_wrong_format/rejects_product_pass_true"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "uidesign_doc.rs tests rejects_wrong_format/rejects_product_pass_true",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-05",
+      "bdd": [
+        "Scene save/load opaque text stays inside project scene/ paths"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: scene_doc.rs tests roundtrip_ess_text, invalid_scene_paths_preserve_existing_document"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "scene_doc.rs tests roundtrip_ess_text, invalid_scene_paths_preserve_existing_document",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-06",
+      "bdd": [
+        "Strict packet rejects duplicate/dangling identity and missing module; successful subset remains NOT_READY"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: host/tests/module_packet.rs, packet.rs"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "host/tests/module_packet.rs, packet.rs",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-07",
+      "bdd": [
+        "Failed late split design parse may leave board/arch already applied; failed third save may leave earlier files new"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: app.js:477-490,536-549"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "app.js:477-490,536-549",
+      "origin": "continuous/product-documents/module.json"
+    },
+    {
+      "task_id": "PD-RUST-DOCUMENT-CONTRACT-01",
+      "module_id": "product-documents",
+      "node_id": "BDD-DOC-08",
+      "bdd": [
+        "Unknown fields/types, scalar strings/null, CDATA delimiter and identity fallback behavior need explicit characterization"
+      ],
+      "tdd": [
+        "NOT RUN — characterization after DOCUMENT-DEC; evidence pointer: app.js:620-915,3247-3283,3991-4299; uidesign_doc DTOs"
+      ],
+      "result": "AUDIT_ONLY",
+      "source_sha256": null,
+      "payload_sha256": null,
+      "source_path": "app.js:620-915,3247-3283,3991-4299; uidesign_doc DTOs",
+      "origin": "continuous/product-documents/module.json"
+    }
+  ],
+  "scope": {
+    "allowed_write": [
+      "reports/rust-improvements/continuous/module-engineering-projection/**",
+      "reports/dispatch-pd/PD-RUST-MODULE-HTML-01.md"
+    ],
+    "read_only_sources": [
+      "reports/rust-improvements/continuous/product-documents/module.json",
+      "reports/rust-improvements/continuous/product-documents/module.html",
+      "reports/rust-improvements/xml-packet/approved-a-contract.md",
+      "reports/rust-improvements/xml-packet-implementation/fixture-packet.json",
+      "reports/rust-improvements/xml-packet-implementation/module.html",
+      "reports/rust-improvements/xml-packet-tests/module.md",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/packet.rs",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/fixtures/sample_module_spec.json"
+    ],
+    "protected": [
+      "production schema/API/Ports",
+      "unapproved GUARD/DOCUMENT decisions",
+      "board green / commit / push",
+      "other module WIP"
+    ],
+    "packet_readiness_referenced": "NOT_READY",
+    "document_decision": "PENDING PD-RUST-DOCUMENT-DEC-01"
+  },
+  "tests": {
+    "status": "NOT RUN (planning definitions for TDD Gate)",
+    "categories": {
+      "normal": "Regenerate HTML from unchanged approved sources → CURRENT; embed ModuleSpec draft + trace rows.",
+      "boundary": "Empty BDD/TDD on a node → row omitted or explicit empty arrays; missing optional work/design still projects.",
+      "invalid": "Missing required source path in SOURCES list → generator fails closed; no partial READY claim.",
+      "dependency_failure": "Unreadable approved packet → hard error; do not invent inventory.",
+      "partial_failure": "One source unreadable → whole projection fails (no half-current HTML). If module.html write fails after module.json write, roll back JSON to prior pair.",
+      "state": "Draft revision never auto-flips to approved; readiness of referenced packet stays NOT_READY.",
+      "transaction": "Publish module.json + module.html as a pair: backup prior bytes, write both, on any write failure restore prior pair (no new-JSON/old-HTML).",
+      "lifecycle": "Refresh after source edit → PROJECTION_STALE until regenerate; evidence_refs stay empty until owner EVID; plain pointers under evidence.",
+      "regression": "SPEC sample_module_spec.json still loads; A fixture payload_sha256 unchanged; no production edits."
+    },
+    "intended_red": "Independent TDD may add a compile-able check that fails when bound_source_sha256 mismatches current bytes or when HTML lacks contracts/tests/scope/evidence/risk/diagrams."
+  },
+  "evidence": {
+    "xml_packet_impl_review": {
+      "pointer": "reports/dispatch-pd/PD-RUST-XML-PACKET-IMPL-01-TDD-REVIEW.md",
+      "pointer_present": true,
+      "pointer_sha256": "9a23ba7d77b96ac5f63e25ec9a19247c2a13ac148fe48b1cf7936f4fc9ef6489",
+      "reported_verdict_line": "TDD_PASS",
+      "card_tdd_posture": "EXECUTED_GATE",
+      "honest_status": "TDD_PASS",
+      "review_class": "SOURCE_REVIEW_POINTER",
+      "authority": "none — plain source-review reference; not an EvidenceRef"
+    },
+    "document_contract_review": {
+      "pointer": "reports/dispatch-pd/PD-RUST-DOCUMENT-CONTRACT-01-TDD-REVIEW.md",
+      "pointer_present": true,
+      "pointer_sha256": "d6fcb5140cc6af99bc1199271c39e26e4a2e1042a2f69ad5d2ad598b99f720cd",
+      "reported_verdict_line": "TDD_PASS",
+      "card_tdd_posture": "NOT RUN — planning/audit only",
+      "honest_status": "TDD_NOT_RUN",
+      "review_class": "REVIEW_PASS_STATIC_AUDIT",
+      "authority": "none — plain source-review reference; not an EvidenceRef"
+    },
+    "fixture_packet": "reports/rust-improvements/xml-packet-implementation/fixture-packet.json",
+    "approved_contract": "reports/rust-improvements/xml-packet/approved-a-contract.md",
+    "product_documents": "reports/rust-improvements/continuous/product-documents/module.json",
+    "spec_model": "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs",
+    "fixture_payload_sha256": "b0d64a24f682b76e8238dcbf73af12fe24ba403f17da301e9ce5134b9280e5ac",
+    "fixture_source_sha256": "1d8b99e7ae1d83e7fb415b32cafc49f0c92792f80acc3bd660fc38516067f602",
+    "packet_diagnostics": [
+      {
+        "code": "APPROVAL_UNRESOLVED",
+        "subject": "semantic-A",
+        "message": "Authoritative approval/GUARD/EVID bindings are outside this read-only projection"
+      },
+      {
+        "code": "APPROVED_BEHAVIOR_UNRESOLVED",
+        "subject": "semantic-A",
+        "message": "Source hints do not establish approved contracts, BDD or acceptance criteria"
+      },
+      {
+        "code": "UI_SCOPE_UNRESOLVED",
+        "subject": "ui",
+        "message": "Design node ownership is not established by document reference"
+      },
+      {
+        "code": "UI_DOCUMENT_UNRESOLVED",
+        "subject": "ui",
+        "message": "Document identity cannot be proven by the integrated section alone"
+      }
+    ],
+    "module_spec_evidence_refs": "empty — no owner-issued EvidenceRef for draft rev-proj-v0; do not invent validity=valid"
+  },
+  "risk": [
+    "HTML mistaken for approval/SSOT — mitigated by draft status + CTR-PROJ-001.",
+    "Stale HTML after packet refresh — mitigated by bound hashes + check_stale().",
+    "Document-contract BDD inventory is audit-level, not executable GREEN.",
+    "GUARD/EVID remain unresolved on A packets; projection must not clear diagnostics.",
+    "Native UI / Live Agent / packaging NOT RUN."
+  ],
+  "stale_detection": {
+    "algorithm": "sha256 of each path in SOURCES vs bound_source_sha256",
+    "bound_source_sha256": {
+      "reports/rust-improvements/continuous/product-documents/module.json": "88a6475fc9864be1bbea60381b65cbcc99b9cca968310c7f2300265f3cf73eb0",
+      "reports/rust-improvements/continuous/product-documents/module.html": "9e4f694e820cdc7a96b0ea1c5f8267de98d63fde20357b30a1a60ade8226fad8",
+      "reports/rust-improvements/xml-packet/approved-a-contract.md": "bece746bfd25140fd5f96eb3ac83e27c88d8219e17b9e9c2368df637a5ac437a",
+      "reports/rust-improvements/xml-packet-implementation/fixture-packet.json": "f21143595cc47889cbbf17a853bcfa79590147ed7be9e1f7f37933db70f61181",
+      "reports/rust-improvements/xml-packet-implementation/module.html": "d5f78d9aebaf9730c9cbdf6ba07cf45b12c97584250da5d0da2a33babd3c0ce0",
+      "reports/rust-improvements/xml-packet-tests/module.md": "dfb511fda7cb58f0211b8b15a24394138f864e8945bd90fb124417fd38d89b4d",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/model.rs": "a218f57de84e10a91235118d8568570a2caa2b356415a65308542eb88fa09559",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/src/packet.rs": "445c5819af85b0d83022c06b91c05267c7213253c4d45d31f875b799f85d3cd3",
+      "apps/sgenaxis-desktop/crates/sgenaxis-spec/fixtures/sample_module_spec.json": "ac04b2224a4b21934a154c74f5d7b71dcc0f6e17c7180ccd6834ee6266bf5735"
+    },
+    "status_at_generation": "CURRENT",
+    "stale_codes": [
+      "PROJECTION_STALE",
+      "PACKET_STALE",
+      "SOURCE_CHANGED"
+    ]
+  },
+  "acceptance": [
+    "AC-HTML-01 HTML embeds two diagrams (hexagonal + ownership/stale).",
+    "AC-HTML-02 HTML sections include contracts, tests, scope, evidence, risk.",
+    "AC-HTML-03 Embedded ModuleSpecDocument matches existing SPEC field names; status draft.",
+    "AC-HTML-04 BDD↔TDD/task/result/sourcehash rows derived from approved fixture + document audit.",
+    "AC-HTML-05 bound_source_sha256 enables stale detection without new SSOT.",
+    "AC-HTML-06 No production/schema edits; no board green; READY_FOR_TDD report only."
+  ],
+  "status": {
+    "projection": "Generated",
+    "behavior_tests": "NOT RUN",
+    "native_UI": "NOT RUN",
+    "owner_acceptance": "PENDING",
+    "commit_push": "NOT RUN"
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "status": "PROPOSED_FOR_REVIEW",
+  "request_schemas": {
+    "document_open": {
+      "type": "object",
+      "properties": {
+        "project_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "project_uuid",
+        "reference"
+      ],
+      "additionalProperties": false
+    },
+    "document_submit_draft": {
+      "type": "object",
+      "properties": {
+        "session_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "source_format": {
+          "enum": [
+            "eluslot.ess.v1",
+            "sgenaxis.design.v1"
+          ]
+        },
+        "source_text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_uuid",
+        "expected_revision",
+        "source_format",
+        "source_text"
+      ],
+      "additionalProperties": false
+    },
+    "document_prepare_clear": {
+      "type": "object",
+      "properties": {
+        "session_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        }
+      },
+      "required": [
+        "session_uuid",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "document_confirm_clear": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "plan_id",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "document_save": {
+      "type": "object",
+      "properties": {
+        "session_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "save_as_selection_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "session_uuid",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "document_undo": {
+      "type": "object",
+      "properties": {
+        "session_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$"
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "session_uuid",
+        "expected_revision",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "document_request_leave": {
+      "type": "object",
+      "properties": {
+        "session_uuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "action": {
+          "enum": [
+            "close",
+            "switch_project",
+            "exit"
+          ]
+        }
+      },
+      "required": [
+        "session_uuid",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "document_confirm_leave": {
+      "type": "object",
+      "properties": {
+        "leave_plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "choice": {
+          "enum": [
+            "save",
+            "discard",
+            "cancel"
+          ]
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "leave_plan_id",
+        "choice",
+        "request_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "business_validations": "OS path containment, nonempty trimmed Windows name/reserved names, source parsing, UUID binding, owner, revision and approvalRefs are checked at input/usecase, not merely JSON shape. Required integer revision is encoded as decimal string.",
+  "unknown_fields": "Every request denies unknown fields; no arbitrary root/digest/writer/approval authority accepted."
+}

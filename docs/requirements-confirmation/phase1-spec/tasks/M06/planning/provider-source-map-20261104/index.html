@@ -1,0 +1,276 @@
+<!doctype html><meta charset="utf-8"><title>M06 provider mapping</title><style>body{max-width:1100px;margin:40px auto;font:16px system-ui;line-height:1.6}pre{white-space:pre-wrap;background:#eef2f7;padding:16px}h1,h2{color:#17436a}</style><h1>M06 Merge／Undo provider 來源對照</h1><p>候選文件，待獨立審查；未採納 MH1–6，產品／native／有效 RED 未執行。</p><h2>新確認的證據界線</h2><h3>MP1</h3><p>Plain MutationPlan and four-field CommitProjection provide local session consistency, not an authenticated issuer/target/context/pin/history-lineage receipt.</p><p>缺條件：Exact M04 mutation issuer/proof schema and M05 same-CAS inclusion provider.；provider：M04 mutation owner + M05 retention receipt provider</p><h3>MP2</h3><p>Asset-version union and local Undo are not LiveDocuments/UndoHistory/RedoHistory registered-root fences or Undo-purpose Held receipt.</p><p>缺條件：Three root registration/epoch/fence proof, separate Undo context Held producer, cross-owner atomicity proof.；provider：M04 session/history owner + M05 root/Held provider</p><h3>MP3</h3><p>Local commit/undo does not establish full cross-module rollback after root-transfer failure.</p><p>缺條件：Owner disposition of BDD-19 full restoration vs explicit BEHAVIOR_CHANGE deferred retention; new approved seam/BDD/Skeleton/RED as necessary.；provider：Requirements Owner + M06/M04/M05 architects</p><h3>MP4</h3><p>Structural from_parts and digest guard do not decode ESS or prove complete typed entity/parent/edge/binding ID rewriting.</p><p>缺條件：Exact ESS projector and complete reference-field schema; unknown reference fields must not silently pass.；provider：M06 ESS projector/codec provider + M04 content owner</p><h2>BDD-19：不自行縮小失敗語意</h2><p>Original full restoration requirement remains authoritative pending explicit decision. Proposal description calling prior wording stale is not approval to narrow it; deferred postcommit retention requires explicit BEHAVIOR_CHANGE/replan and reconfirmed BDD. No choice made.</p><h2>精確來源</h2><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:29–53 Structural content constructor accepts already supplied canonical bytes; not ESS decoding/projector</summary><pre>pub struct DocumentContent {
+    canonical_payload: Vec&lt;u8&gt;,
+    semantic_digest: String,
+    asset_refs: Vec&lt;AssetVersionRef&gt;,
+    bindings: Vec&lt;BindingState&gt;,
+    blocked_capabilities: Vec&lt;String&gt;,
+}
+
+impl DocumentContent {
+    /// Structural codec/fixture input seam only, not parsing or validation.
+    pub fn from_parts(
+        canonical_payload: Vec&lt;u8&gt;,
+        semantic_digest: String,
+        asset_refs: Vec&lt;AssetVersionRef&gt;,
+        bindings: Vec&lt;BindingState&gt;,
+        blocked_capabilities: Vec&lt;String&gt;,
+    ) -&gt; Self {
+        Self {
+            canonical_payload,
+            semantic_digest,
+            asset_refs,
+            bindings,
+            blocked_capabilities,
+        }
+    }</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:73–90 Merge enum and plain plan contain no authenticated mutation issuer</summary><pre>pub enum MutationKind {
+    Edit,
+    Clear,
+    Merge,
+}
+
+/// Plain plan data is not authority. Commit must eventually verify document,
+/// session, revision, before-content and required asset versions independently.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MutationPlan {
+    pub document_uuid: String,
+    pub session_uuid: String,
+    pub expected_revision: Revision,
+    pub kind: MutationKind,
+    pub before: DocumentContent,
+    pub after: DocumentContent,
+    pub required_asset_versions: Vec&lt;AssetVersionRef&gt;,
+}</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:93–103 History before/after and saved semantic baseline</summary><pre>pub struct DocumentHistoryEntry {
+    pub kind: MutationKind,
+    pub before: DocumentContent,
+    pub after: DocumentContent,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SavedContentBaseline {
+    pub revision: Revision,
+    pub semantic_digest: String,
+}</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:114–136 One session owns content undo redo; projection has four status fields</summary><pre>/// Ownership scaffold for a trusted session initializer. No writable reference
+/// escapes DocumentSession; history has one owner, not duplicated counters.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentSessionState {
+    pub project_uuid: String,
+    pub document_uuid: String,
+    pub session_uuid: String,
+    pub content_revision: Revision,
+    pub content: DocumentContent,
+    pub formal_baseline: Option&lt;SavedContentBaseline&gt;,
+    pub snapshot_baseline: Option&lt;SavedContentBaseline&gt;,
+    pub status: SessionStatus,
+    pub undo: Vec&lt;DocumentHistoryEntry&gt;,
+    pub redo: Vec&lt;DocumentHistoryEntry&gt;,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommitProjection {
+    pub revision: Revision,
+    pub changed: bool,
+    pub dirty: bool,
+    pub history_depth: usize,
+}</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:187–210 prepare unions before/after asset versions but no Held proof/provider</summary><pre>    pub fn prepare(
+        &amp;self,
+        expected: Revision,
+        kind: MutationKind,
+        validated_after: DocumentContent,
+    ) -&gt; Result&lt;MutationPlan, EditError&gt; {
+        self.check_editable()?;
+        self.check_revision(expected)?;
+        self.check_content(&amp;validated_after)?;
+        let mut required = self.state.content.asset_refs.clone();
+        for version in &amp;validated_after.asset_refs {
+            if !required.contains(version) {
+                required.push(version.clone());
+            }
+        }
+        Ok(MutationPlan {
+            document_uuid: self.state.document_uuid.clone(),
+            session_uuid: self.state.session_uuid.clone(),
+            expected_revision: expected,
+            kind,
+            before: self.state.content.clone(),
+            after: validated_after,
+            required_asset_versions: required,
+        })</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:213–239 commit guards identity revision before-content and required version coverage</summary><pre>    pub fn commit(&amp;mut self, plan: MutationPlan) -&gt; Result&lt;CommitProjection, EditError&gt; {
+        self.check_editable()?;
+        if plan.document_uuid != self.state.document_uuid {
+            return Err(EditError::InvalidInput {
+                field: &quot;documentUuid&quot;.into(),
+            });
+        }
+        if plan.session_uuid != self.state.session_uuid {
+            return Err(EditError::InvalidInput {
+                field: &quot;sessionUuid&quot;.into(),
+            });
+        }
+        self.check_revision(plan.expected_revision)?;
+        if plan.before != self.state.content {
+            return Err(EditError::RevisionConflict);
+        }
+        self.check_content(&amp;plan.after)?;
+        for version in plan.before.asset_refs.iter().chain(&amp;plan.after.asset_refs) {
+            if !plan.required_asset_versions.contains(version) {
+                return Err(EditError::InvalidInput {
+                    field: &quot;requiredAssetVersions&quot;.into(),
+                });
+            }
+        }
+        if plan.after == self.state.content {
+            return Ok(self.projection(false));
+        }</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:240–250 one local content/history mutation after fallible checks; no catalog/root CAS in this body</summary><pre>        let revision = self.next_revision()?;
+        // Complete all fallible policy checks before mutating authoritative data.
+        self.state.undo.push(DocumentHistoryEntry {
+            kind: plan.kind,
+            before: plan.before,
+            after: plan.after.clone(),
+        });
+        self.state.content = plan.after;
+        self.state.content_revision = revision;
+        self.state.redo.clear();
+        Ok(self.projection(true))</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:253–269 undo moves history and increments revision; not distributed rollback</summary><pre>    pub fn undo(&amp;mut self, expected: Revision) -&gt; Result&lt;CommitProjection, EditError&gt; {
+        self.check_editable()?;
+        self.check_revision(expected)?;
+        let entry = self.state.undo.last().ok_or(EditError::NoUndo)?;
+        if entry.after != self.state.content {
+            return Err(EditError::RevisionConflict);
+        }
+        let revision = self.next_revision()?;
+        let entry = self
+            .state
+            .undo
+            .pop()
+            .expect(&quot;history inspected under exclusive borrow&quot;);
+        self.state.content = entry.before.clone();
+        self.state.content_revision = revision;
+        self.state.redo.push(entry);
+        Ok(self.projection(true))</pre></details><details><summary>apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs:339–353 content check guards digest shape/equivalence not typed ESS reference closure</summary><pre>    fn check_content(&amp;self, after: &amp;DocumentContent) -&gt; Result&lt;(), EditError&gt; {
+        // Codec owns normalization/hashing. Never accept a contradictory value
+        // under the current semantic identity, even from a plain Rust plan.
+        if !valid_digest(&amp;after.semantic_digest)
+            || (after.semantic_digest == self.state.content.semantic_digest
+                &amp;&amp; after != &amp;self.state.content)
+        {
+            Err(EditError::InvalidInput {
+                field: &quot;semanticDigest&quot;.into(),
+            })
+        } else {
+            Ok(())
+        }
+    }
+</pre></details><h2>前序黃卡嘗試與剩餘條件</h2><pre>[
+  {
+    &quot;card&quot;: &quot;PD-P1-M01-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;provider source map already delivered/reviewed; no historical rerun&quot;,
+    &quot;remaining_missing&quot;: &quot;CR-D1–3 exact adoption/authenticated native lease and Ready issuer&quot;,
+    &quot;action&quot;: &quot;Do not repeat passed document review; supply missing provider or pending exact decision.&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M02-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Golden14 actual candidate+lock and corrected consumer delivered/reviewed&quot;,
+    &quot;remaining_missing&quot;: &quot;GT-D1–4 candidate policies and formal admission; activation disposition&quot;,
+    &quot;action&quot;: &quot;Do not repeat passed document review; supply missing provider or pending exact decision.&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M03-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;media capability/source comparison delivered/reviewed&quot;,
+    &quot;remaining_missing&quot;: &quot;Exact support subset/decoder/limits/fixtures and approved envelope&quot;,
+    &quot;action&quot;: &quot;Do not repeat passed document review; supply missing provider or pending exact decision.&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M04-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;receipt/root/ACK provider map delivered/reviewed&quot;,
+    &quot;remaining_missing&quot;: &quot;G1–4 adoption and actual authenticated bridge providers&quot;,
+    &quot;action&quot;: &quot;Do not repeat passed document review; supply missing provider or pending exact decision.&quot;
+  },
+  {
+    &quot;card&quot;: &quot;PD-P1-M05-PREP-01&quot;,
+    &quot;attempt&quot;: &quot;Held/inclusion/fence source mapping delivered/reviewed&quot;,
+    &quot;remaining_missing&quot;: &quot;H1–4 adoption and authenticated issuer/CAS/root providers&quot;,
+    &quot;action&quot;: &quot;Do not repeat passed document review; supply missing provider or pending exact decision.&quot;
+  }
+]</pre><h2>MH1–6原候選（未採納）</h2><pre>[
+  {
+    &quot;id&quot;: &quot;MH1&quot;,
+    &quot;owner&quot;: &quot;M06+M04&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;CXv3 closed roles contain no merge role. Historical apply says one M04 commit; exact imported candidate→Merge command/MutationReceipt issuer mapping is not an adopted DTO. install is not silently relabeled Merge.&quot;,
+    &quot;proposal&quot;: &quot;Confirm existing M04 prepare(MutationKind::Merge)/commit ownership bridge and runtime DocumentMutation proof evidence fields; retain full body closure for defined transitions.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;MH2&quot;,
+    &quot;owner&quot;: &quot;M04+M05&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;M05 receipt-mapping H1-H4 is formal-save-specific; IO/FormalFile proof cannot authorize Merge transfer. M04 mutation proof is runtime-only and exact authenticated native issuer lookup missing.&quot;,
+    &quot;proposal&quot;: &quot;Confirm M04 DocumentMutation target/context/pin/revision/candidate/history lineage; M05 receipt same CAS inclusion and external evidence lookup separately. No second registry or private journal.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;MH3&quot;,
+    &quot;owner&quot;: &quot;M04+M05&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;Legacy provider prose does not establish registered capability/epoch fences across LiveDocuments/UndoHistory/RedoHistory. Complete material resolution is not root completeness.&quot;,
+    &quot;proposal&quot;: &quot;Confirm registration and epoch validation for three roots, preserve other providers/documents and all unresolved pins; stale pre-observed evidence rejects before admission, actual later failure defers after commit.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;MH4&quot;,
+    &quot;owner&quot;: &quot;M04+M05+M06&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;Undo workflow context differs from Merge. Original Import pin cannot be relabeled or reused as new-context Undo receipt. Native atomicity between owner commit and roots is absent.&quot;,
+    &quot;proposal&quot;: &quot;Separate supplied Undo-purpose Held union under Undo context is fixture premise only; approve concrete producer/receipt seam before implementation. Retain original Import Held and prior roots on deferred; no auto reacquire/retry/release.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;MH5&quot;,
+    &quot;owner&quot;: &quot;M06+requirements Owner&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;Legacy Task F09 wording all failures unchanged/one Undo predates explicit postcommit deferred phases. This is stale planning wording, not a newly approved contract conflict.&quot;,
+    &quot;proposal&quot;: &quot;Confirm precommit known-not-attempted unchanged versus verified commit+root failure actual new revision; distinguish uncertain commit with no unchanged claim. Reconcile task wording only after Owner decision.&quot;
+  },
+  {
+    &quot;id&quot;: &quot;MH6&quot;,
+    &quot;owner&quot;: &quot;M06+M04&quot;,
+    &quot;status&quot;: &quot;PROPOSED_PENDING_OWNER&quot;,
+    &quot;gap&quot;: &quot;FreshImportedIds original mapping/typed references needs real ESS projector; fixture does not prove all unknown reference-bearing fields safe.&quot;,
+    &quot;proposal&quot;: &quot;Confirm complete typed entity/parent/edge/binding rewrite and explicit preview mapping digest with original IDs retained as provenance. Unknown reference fields block affected merge; source unchanged.&quot;
+  }
+]</pre><h2>來源／範圍與狀態</h2><pre>{
+  &quot;author&quot;: &quot;/root/yellow_m06_provider&quot;,
+  &quot;task&quot;: &quot;PD-P1-M06-PREP-01&quot;,
+  &quot;status&quot;: &quot;DOCUMENT_PROVIDER_MAPPING_PENDING_INDEPENDENT_REVIEW&quot;,
+  &quot;generated_at&quot;: &quot;2026-11-03T17:09:21.860724+00:00&quot;,
+  &quot;branch&quot;: &quot;cursor/ui-bhv-arch-layer-editor&quot;,
+  &quot;live_head&quot;: &quot;5b709343a890503ebbe24a802e43cda5647df124&quot;,
+  &quot;historical_product_head&quot;: &quot;31babe87a7ef1e40a0d4bedc523077e7a45d63ab&quot;,
+  &quot;scope&quot;: &quot;Original bounded planning source mapping only, no proposal adoption&quot;,
+  &quot;authority_count&quot;: 796,
+  &quot;authority_drift&quot;: [],
+  &quot;proposal_binding&quot;: {
+    &quot;path&quot;: &quot;docs/requirements-confirmation/phase1-spec/tasks/M06/planning/merge-record-consistency-proposal/module-spec.json&quot;,
+    &quot;sha256&quot;: &quot;0f8da19c3e6a5ff57a952dac273f85ab7ff3b53178daa304098791140a54c890&quot;,
+    &quot;pointer&quot;: &quot;/owner_choices&quot;
+  },
+  &quot;bdd19_boundary&quot;: &quot;Original full restoration requirement remains authoritative pending explicit decision. Proposal description calling prior wording stale is not approval to narrow it; deferred postcommit retention requires explicit BEHAVIOR_CHANGE/replan and reconfirmed BDD. No choice made.&quot;,
+  &quot;search&quot;: {
+    &quot;argv&quot;: [
+      &quot;rg&quot;,
+      &quot;-n&quot;,
+      &quot;Merge|FreshImportedIds|rollback|DocumentMutation&quot;,
+      &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src&quot;,
+      &quot;apps/sgenaxis-desktop/crates/sgenaxis-host/src&quot;,
+      &quot;-g&quot;,
+      &quot;*.rs&quot;
+    ],
+    &quot;exit&quot;: 0,
+    &quot;stdout&quot;: &quot;apps/sgenaxis-desktop/crates/sgenaxis-work/src\\document_edit.rs:76:    Merge,\napps/sgenaxis-desktop/crates/sgenaxis-host/src\\project_definition.rs:118:/// No recursive rollback/cleanup. Created metadata in old root is NOT a newly created project root.\napps/sgenaxis-desktop/crates/sgenaxis-host/src\\project_definition.rs:149:/// Keep original stage/reason. Read error never implies a verified rollback.\napps/sgenaxis-desktop/crates/sgenaxis-host/src\\project_manifest.rs:490:    fn failed_readback_reports_unverified_durability_without_claiming_rollback() {\n&quot;,
+    &quot;stderr&quot;: &quot;&quot;,
+    &quot;scope&quot;: &quot;Only named work/src and host/src Rust files; no global/runtime absence inference.&quot;
+  },
+  &quot;limits&quot;: [
+    &quot;Source static evidence only, no native transaction/race/restart proof&quot;,
+    &quot;Product/build/native/regression/valid RED NOT RUN&quot;,
+    &quot;Historical PASS not rerun&quot;,
+    &quot;No board/product/spec/tests/hooks/roles/git changes&quot;,
+    &quot;No schema/Port/Skeleton or semantics adopted&quot;
+  ]
+}</pre>

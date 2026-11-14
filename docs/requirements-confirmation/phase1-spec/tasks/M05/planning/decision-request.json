@@ -1,0 +1,68 @@
+{
+  "status": "PROPOSED_NOT_APPROVED",
+  "module": "M05",
+  "items": [
+    {
+      "id": "D2",
+      "gate": "G01/G03",
+      "title": "文件權威與多視窗同步",
+      "observation": "UI持archDoc/designDoc；HOST DesignMeta與JS擴充metadata未全對齊；scene command直接HOST helper。",
+      "recommendation": "漸進由WORK持提交內容/revision，Editor留draft；提交經Tauri→DispatchHost→HOST usecase→Ports。先一文件一寫者，其他視窗投影或明確租約；不大搬app.js。",
+      "alternatives": "讓UI繼續唯一authority需明確修改架構規則；立即全面重寫過大，不建議。",
+      "affected_modules": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "ownership/mutation/Skeleton門檻；未批准不得靜默搬模型。"
+    },
+    {
+      "id": "D3",
+      "gate": "G04",
+      "title": "首版模板、Viewer及媒體矩陣",
+      "observation": "有Vanilla/Tauri與卡片communication preview；尚未見版本化雙骨架模板與完整media codec。",
+      "recommendation": "首個生成模板採本機Vanilla UI＋Tauri2；空白可定義草稿；Viewer先做批准的導覽/表單/對話框假資料。PNG/JPEG/受限靜態SVG優先；動圖/影片逐格式實測切片，不刪需求也不假稱支援。",
+      "alternatives": "一次全部框架/宿主/媒體需要擴大驗證；只存定義不生成會縮已確認需求，不能自行採用。",
+      "affected_modules": [
+        "M02",
+        "M03",
+        "M05",
+        "M08"
+      ],
+      "blocking": "只阻擋對應生成/preview/media；非全域停工。"
+    },
+    {
+      "id": "D5",
+      "gate": "G02/G03",
+      "title": "完整回復與並發提交",
+      "observation": "write_atomic單檔temp＋rename、last-commit-wins；Port沒有CAS/list/transaction。",
+      "recommendation": "先不可變素材＋pins，後單文件commit pointer，保留舊版本；成功才入Undo。正式檔多程序需OS鎖或具體協定拒過期覆寫，不能把Mutex當跨程序鎖。新能力先列精確Port提案；rollback失敗保留復原資料並阻擋破壞性後續。",
+      "alternatives": "依次寫檔best-effort rollback不滿足完整回復；整個DB框架成本高，先不採。",
+      "affected_modules": [
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "transaction未批准，merge/replace/undo/GC不可實作；失敗保證不可自降為warning。"
+    },
+    {
+      "id": "D6",
+      "gate": "G01/G03",
+      "title": "BIN、素材引用根及保留預設",
+      "observation": "SGB三entry不含新BIN完整manifest/material；快照及GC協定未存在。",
+      "recommendation": "BIN版本化archive＋manifest（ZIP為候選，先固定版本與限額）；roots含活文件/Undo/快照/交易。未處理快照不自動刪；已處理30天/至少10份、2GiB軟警告、歷史50項都是待批准預設；未知root一律保留。",
+      "alternatives": "可選SGB擴充但需安全parser/版本契約；自動刪未處理快照有資料遺失風險不建議。",
+      "affected_modules": [
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "blocking": "archive/schema阻擋BIN；保留數值只阻擋自動清理，不阻擋保守不刪方案。"
+    }
+  ]
+}

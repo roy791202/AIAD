@@ -1,0 +1,82 @@
+{
+  "module": "M05",
+  "status": "PLANNED_NOT_EXECUTED",
+  "projectA": {
+    "persistentId": "project-A-proposed",
+    "legacyRootId": "proj_A",
+    "root": "${TEMP_ROOT}/A",
+    "sessionId": "A-1"
+  },
+  "projectB": {
+    "persistentId": "project-B-proposed",
+    "root": "${TEMP_ROOT}/B",
+    "sessionId": "B-1"
+  },
+  "document": {
+    "id": "doc-1",
+    "revision": "R0",
+    "nodes": [
+      "n1",
+      "n2"
+    ],
+    "relations": [
+      [
+        "n1",
+        "n2"
+      ]
+    ],
+    "assetRefs": [
+      "shared@v1"
+    ],
+    "bindingState": "valid"
+  },
+  "otherDocument": {
+    "id": "doc-2",
+    "assetRefs": [
+      "shared@v1"
+    ]
+  },
+  "assetBytes": {
+    "shared@v1": "SHARED-V1",
+    "new@v1": "NEW-V1"
+  },
+  "baselines": {
+    "formal": "R0",
+    "snapshot": "R0"
+  },
+  "clockSeconds": [
+    0,
+    59,
+    60,
+    61,
+    120
+  ],
+  "faults": [
+    "read",
+    "validate",
+    "stage",
+    "commit",
+    "history-publish",
+    "index-publish",
+    "rollback",
+    "cleanup"
+  ],
+  "cases": {
+    "BDD-31": {
+      "given": "合併新增素材已被成功快照引用",
+      "when": "Undo合併並執行素材清理評估",
+      "expected": "活文件引用撤回但快照所需素材保留"
+    },
+    "BDD-M05-A": {
+      "given": "兩文件共用v1且快照pin v1",
+      "when": "只替換第一文件素材",
+      "expected": "其他文件與快照v1 bytes不變"
+    },
+    "BDD-M05-B": {
+      "given": "Undo或保留快照仍引用素材",
+      "when": "執行清理評估",
+      "expected": "不刪且顯示引用原因"
+    }
+  },
+  "safety": "Never operate user projects or reset real board. Fixture schemas are proposals, not product schemas."
+}

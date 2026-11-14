@@ -1,0 +1,116 @@
+{
+  "module": "M06",
+  "slice": "pure preflight precision proposal",
+  "status": "CORRECTION_PROPOSAL_DELIVERED_PENDING_DOCUMENT_REACCEPTANCE",
+  "at": "2026-11-01T06:56:11.361722+00:00",
+  "addresses": [
+    "F1",
+    "F2",
+    "F3"
+  ],
+  "source_review": "../preflight-document-review/review.json",
+  "historical_proposal": "../pure-preflight-design/module-spec.json",
+  "source_sha256": "d1b877c62409f49afb1625601186045b92265876740bbd6766033f9d8156abc4",
+  "contract": {
+    "status": "PROPOSED_PENDING_OWNER_NOT_APPROVED",
+    "error_contract": {
+      "InvalidInput": {
+        "field": "RFC6901 JSON pointer, rooted at /report, /context or /choice; indices decimal zero-based",
+        "reason": [
+          "Empty",
+          "ContainsNul",
+          "TooLongUtf8",
+          "TooManyItems",
+          "InvalidDigest",
+          "InvalidRevision",
+          "InvalidChoice",
+          "InvalidBlockerKind"
+        ]
+      },
+      "StaleSource": "unit",
+      "StaleTarget": "unit",
+      "CrossDocumentChangeRequired": "unit"
+    },
+    "validation_order": [
+      "/report/source_digest",
+      "/context/expected_source_digest",
+      "/report/target_document_id",
+      "/context/target_document_id",
+      "/report/target_revision",
+      "/context/target_revision",
+      "/report/blockers count",
+      "each /report/blockers/i: kind, subject, reason in ascending index",
+      "/report/missing_external_dependencies count",
+      "each missing ID ascending index",
+      "/choice"
+    ],
+    "string_validation": "No trim/normalization. Check Empty -> ContainsNul -> TooLongUtf8. Whitespace-only nonempty IDs/diagnostics remain literal data in this pure slice; HOST must apply authoritative identity rules. UTF-8 bytes, not scalar count. Digest syntax exact sha256:+64 lowercase hexadecimal; any mismatch InvalidDigest.",
+    "semantic_precedence": [
+      "after ALL structural input validation, nonempty blockers -> Blocked before freshness or cross-document checks",
+      "no blockers: source digest mismatch -> StaleSource",
+      "then target ID or revision mismatch -> StaleTarget",
+      "then requires_other_document_change -> CrossDocumentChangeRequired",
+      "then empty missing list -> AllowedComplete regardless of choice",
+      "then NotConfirmed -> NeedsDependencyConfirmation",
+      "then ExplicitlyAcceptMissingExternal -> AllowedIncomplete with dependent_capabilities_blocked=true"
+    ],
+    "blocker_order": [
+      "UnsupportedFormat",
+      "UnsupportedVersion",
+      "Integrity",
+      "MissingInternalPayload",
+      "UnsafePath",
+      "AmbiguousEntry"
+    ],
+    "blocker_duplicate_policy": "Keep identical blockers, including exact duplicates. Sort stable by kind ordinal then subject UTF-8 bytes then reason UTF-8 bytes; every supplied valid reason remains represented. Missing dependency IDs alone sort/deduplicate by UTF-8 bytes. No locale sorting/casefold.",
+    "typed_boundary": "Actual Rust report/context revisions are u64 and enum values are closed. InvalidRevision/InvalidChoice/InvalidBlockerKind are reserved future decoding oracle errors, NOT constructible L0 Rust values. No serde/decoder added to this slice. Do not count impossible enum/out-of-range construction as executable domain RED.",
+    "bounds": {
+      "document_dependency_ID_UTF8_bytes": "1..256; no NUL",
+      "diagnostic_subject_UTF8_bytes": "1..1024; no NUL",
+      "diagnostic_reason_UTF8_bytes": "1..4096; no NUL",
+      "blockers": 256,
+      "missing_external_dependencies": 4096,
+      "revision": "u64, including0",
+      "digest": "sha256: plus64 lowercase hex",
+      "overflow": "typed InvalidInput, no truncation"
+    },
+    "authority": "Clarifies unapproved M06-R1-R4 proposal; not adopted product behavior. Full archive/schema/extract/Undo remains separate."
+  },
+  "case_count": 64,
+  "decisions": [
+    "M06-R1 normalized trusted report/no mutation",
+    "M06-R2 hard-block and explicit incomplete semantics including proposed exact precedence",
+    "M06-R3 source/target freshness and single-document guard",
+    "M06-R4 input bounds, blocker duplicate retention/sort order and original three-file envelope"
+  ],
+  "architecture": {
+    "hexagonal": "Future decoder/validator adapter -> HOST trusted report mapping -> WORK evaluate_import_preflight -> immutable decision. No new output port or actual archive parser in S1.",
+    "dependencies": "M01 project/document identity and M04 revision binding are context; M05 material validity and future M06 decoder supply observations. None are mutated.",
+    "ownership": "External package bytes and target document remain owned by original source/target boundary. A preflight report/decision is derived evidence, not a new document SSOT or authority to write.",
+    "mutation": "None. No extraction, identity allocation, reference remapping, Undo entry or filesystem path access. HOST must bind verified source and target revisions before actual apply in later slices.",
+    "transaction": "S1 returns a pure decision. Real verified-source capture, staged merge/rollback and single Undo are later separately approved transactions; Allowed is not a commit receipt."
+  },
+  "envelope": {
+    "existing": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs"
+    ],
+    "new": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/src/merge_plan.rs"
+    ],
+    "test": [
+      "apps/sgenaxis-desktop/crates/sgenaxis-work/tests/phase1_import_preflight.rs"
+    ],
+    "scope": "Only proposed module declaration + pure preflight data/function/tests. No actual merge mutation in this file/slice.",
+    "future_command": "cargo test -p sgenaxis-work --test phase1_import_preflight --no-run --locked then same without --no-run",
+    "target": "NOT CREATED"
+  },
+  "approval": "All corrections remain proposed; no test or product Skeleton. Does not self-close full M06 PREP or claim reacceptance PASS.",
+  "results": {
+    "product_tests": "NOT RUN",
+    "RED": "NOT RUN",
+    "build": "NOT RUN",
+    "native": "NOT RUN",
+    "source_unchanged": 796
+  },
+  "next": "Read-only document reacceptance of F1-F3 fixture/oracle coverage; then consolidate R1-R4 Owner adoption. Other M06 archive/merge scope remains separately planned."
+}

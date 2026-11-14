@@ -1,0 +1,95 @@
+{
+  "module": "filesystem-persistence",
+  "task": "PD-RUST-FS-TDD-01",
+  "status": "INDEPENDENT_GREEN_VERIFIED",
+  "build": "PASS",
+  "classification": "All nine failures intended missing behavior. No compile/fixture/environment/barrier-timeout failure.",
+  "frozen_test_sha256": "a1436ca0f37f5364d413af7f403cb6e3915a85929f80ffbdc44d2bbf3b9f6a59",
+  "scope": "New private child tests + coordinated cfg(test) registration only; no production bodies changed by test owner.",
+  "contract_mapping": {
+    "FS-C1": [
+      "FS-T01",
+      "FS-T02",
+      "FS-T07",
+      "FS-T08"
+    ],
+    "FS-C2": [
+      "FS-T02",
+      "FS-T06"
+    ],
+    "FS-C3": [
+      "FS-T04",
+      "FS-T05",
+      "FS-T07"
+    ],
+    "FS-C4": [
+      "FS-T03"
+    ],
+    "FS-C5": [
+      "FS-T04",
+      "FS-T05",
+      "FS-T06"
+    ],
+    "FS-C6": [
+      "Windows local real overwrite tested; no other platform/crash durability claim"
+    ]
+  },
+  "concurrency": "Both writers reach BeforeRename after handles close. Record distinct paths; release/join first, capture bytes; release/join second, capture bytes; only then assert. Exact A then B and B then A schedules, no sleeps.",
+  "injection": "Private checkpoint hook before write can write partial temp then fail; before sync/rename independently fail; cleanup-denial returns secondary Other error while primary PermissionDenied must remain. Separate prepared peer path survives.",
+  "red_failures": [
+    "A then B same temp path",
+    "B then A same temp path",
+    "same process candidate alias",
+    "collision sentinel removed by rename",
+    "collision exhaustion unexpectedly succeeds",
+    "cleanup denial never attempted",
+    "partial-write cleanup never attempted",
+    "sync cleanup never attempted",
+    "failed writer own temp remains"
+  ],
+  "notes": [
+    "Checkpoints inject transaction-phase failures; not actual hardware/fsync failure.",
+    "Windows local filesystem only; non-Windows/network FS not tested.",
+    "No CAS/crash durability or cross-file atomicity promised.",
+    "Cleanup denial may leave owned residual temp; primary error preserved."
+  ],
+  "commands": [
+    "cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-adapters std_fs_tests --offline --no-run",
+    "cargo test --manifest-path apps/sgenaxis-desktop/Cargo.toml -p sgenaxis-adapters std_fs_tests --offline -- --test-threads=1"
+  ],
+  "historical_red": {
+    "total": 13,
+    "passed": 4,
+    "failed": 9,
+    "ignored": 0
+  },
+  "tests": {
+    "focused": {
+      "passed": 13,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 1
+    },
+    "workspace": {
+      "passed": 290,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 24
+    },
+    "exec": {
+      "passed": 56,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 1
+    },
+    "tauri": {
+      "passed": 79,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 1
+    }
+  },
+  "green_source_sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a",
+  "scope_review": "No public API/dependency changes; only std_fs.rs production change for filesystem slice, private child tests unchanged since RED. Guard planning files separate completed planning task. No board/index/commit/push.",
+  "verification": "Independent Windows local focused, full workspace (includes adapters/HOST/packet15/EXEC default), EXEC all-features and Tauri79 PASS. Current existing MCP79 behavior retained."
+}

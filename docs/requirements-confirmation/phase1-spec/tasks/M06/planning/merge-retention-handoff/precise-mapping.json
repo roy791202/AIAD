@@ -1,0 +1,48 @@
+{
+  "protocol": "Exact effective CXv3 SGA-TRANSITION-v2, not historical SGA-TRANSITION-v1 or old RootManifest descriptor",
+  "schema_source": "transition-request.schema.json byte value equals shared-contract.request_hash_schema",
+  "request_fields": [
+    "protocol",
+    "issuer",
+    "role",
+    "ordinal",
+    "context",
+    "body"
+  ],
+  "context_fields": [
+    "project_uuid",
+    "document_uuid",
+    "session_id",
+    "owner_generation",
+    "captured_revision",
+    "workflow_id"
+  ],
+  "roles": {
+    "import": "VerifiedBundle body = mode,bundle,purpose,store_identity,expected_catalog_generation; bundle includes issuer_proof/source_digest/entries/legacy_alias_mapping; no omitted hash fields",
+    "publish": "registration_id,provider_capability_id,expected_epoch,manifest,expected_catalog_generation",
+    "transfer-live": "pin_id,store_identity,root_manifest,external_proof,expected_catalog_generation; applied to explicitly bound live/history manifests; no transfer-undo invented",
+    "undo": "owner_handle,binding_ref,history_entry_id,history_content_digest,expected_revision,expected_generation,pin_receipt",
+    "Merge": "NO CLOSED MERGE ROLE. Candidate M04 observation only; MH1 pending, no install-role substitution"
+  },
+  "roots": [
+    "manifest_id",
+    "provider_id",
+    "kind",
+    "epoch",
+    "completeness",
+    "assets"
+  ],
+  "receipt_ref": [
+    "issuer",
+    "receipt_id",
+    "kind",
+    "context_digest",
+    "evidence_digest"
+  ],
+  "issuer_record_fields": "Every effective proof_registry_record field represented in immutable import/transfer records; source receipt refs typed and ordered; runtime mutation evidence kept in M04 fixture, not M05 success record",
+  "digest": "SHA256 complete validated request canonical JSON UTF8; recursively includes body. Role/ordinal changes alter UUIDv5 operation ID and request hash. Closed Unicode/u64 handling central; checker limited documented subset and fixture ASCII vectors, not exhaustive canonicalizer conformance.",
+  "mapping": "source-parent→fresh-parent; source-child→fresh-child; parent and internal edge rewritten to fresh IDs; original source names and legacy asset alias preserved; metadata asset_id equals admitted version. Mapping is immutable and digest confirmed; no label matching.",
+  "held": "Import Held binds Merge context/version; independent supplied Undo Held binds new Undo context and before/after asset union; neither releases in this packet",
+  "formal": "formal/recovery baselines unchanged at revisions 10→11→12; zero formal Save/ACK; DocumentMutation cannot be satisfied by IO FormalFile receipt",
+  "receipt_atomicity": "Catalog record + transition same CAS is assumed. External raw digest retained separately, never self-embedded in own catalog hash. Trusted fixture lookup is not native authentication."
+}

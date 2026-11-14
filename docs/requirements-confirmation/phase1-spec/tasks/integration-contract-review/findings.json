@@ -1,0 +1,266 @@
+[
+  {
+    "id": "CX-01",
+    "severity": "P1",
+    "classification": "PENDING_PROPOSALS_OWNERSHIP_DIVERGENCE",
+    "modules": [
+      "M03-H2",
+      "M04"
+    ],
+    "source_fields": "M03 owner_binding.owner / M04 architecture.ownership",
+    "finding": "H2 design_owner holds DocumentSession; newer M04 requires one common DocumentOwner. Both cannot own independent registries.",
+    "proposed_exact_amendment": "M04 document_owner.rs owns exactly one session per project/document. M03 design_owner.rs is facade over owner token; writer transfer increments common generation, invalidates all M02/M03/M06/M07 plans tied to old generation. Content/history unchanged. No independent session initializer in facade.",
+    "blocked_scope": "M03 runtime owner and all consumers until joint owner amendment",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-02",
+    "severity": "P1",
+    "classification": "PENDING_PROPOSALS_DIGEST_DIVERGENCE",
+    "modules": [
+      "M03-H2",
+      "M04",
+      "M07"
+    ],
+    "source_fields": "M03 owner_binding.semantic_profile / M04 output_serialization / M07 capture_fingerprint",
+    "finding": "Old H2 untagged JSON differs shared tagged decimal-value profile; raw payload/RECOVERY-FP hashes are distinct.",
+    "proposed_exact_amendment": "SGA-DESIGN-SEM-v1 is sole proposed design semantic bytes; XML uses M04-EssXmlV1-semantic-v1. All consumers carry {profile,digest}; no cross-profile equality or baseline relabeling. M07 RECOVERY-FP wraps content semantic+asset/binding evidence and ACKs M04 original semantic only. Existing S1 hash APIs unchanged.",
+    "blocked_scope": "New design capture/ACK/generation/restore integration",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-03",
+    "severity": "P1",
+    "classification": "WIRE_PRECISION_GAP",
+    "modules": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "DTO revision/generation/u64 fields across packets",
+    "finding": "Several DTOs use u64 JSON number while UI JS cannot represent all u64 exactly; M01 has decimal-string projection.",
+    "proposed_exact_amendment": "All UI wire revisions/generations/sequences/byte sizes beyond safe range use canonical decimal STRING 0|[1-9][0-9]* ≤u64MAX; no leading plus/zero/space/exponent. HOST parses checked u64; JS retains strings/BigInt for compare. Internal Rust u64 unchanged. Persisted machine schema numbers remain their declared integer contract, not UI parse/re-serialize.",
+    "blocked_scope": "All affected UI DTO transport; no domain migration",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-04",
+    "severity": "P1",
+    "classification": "INCOMPLETE_HANDOFF_ORDER",
+    "modules": [
+      "M04",
+      "M05"
+    ],
+    "source_fields": "M04 save_health.receipt / M05 transactions.formal_save",
+    "finding": "M04 original receipt→ACK omits catalog root promotion required by newer M05.",
+    "proposed_exact_amendment": "Save captures content/profile+exact assets→durable Save pin→file commit verified→durable formal-root transfer receipt→ACK captured revision+semantic. Transfer fail after file commit returns CommittedAckDeferred (stage=RetentionTransfer), keeps Held and original file receipt, never retries write blindly. Snapshot baseline untouched.",
+    "blocked_scope": "Formal save integrated with material pins",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-05",
+    "severity": "P1",
+    "classification": "SCHEMA_ENUM_CONFLICT",
+    "modules": [
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "M05 schema.pin_record.state/purpose / transactions.release / M06 lifecycle.export",
+    "finding": "Pin schema Held|Transferred omits Released used by release flow; M06 adds Export purpose absent M05.",
+    "proposed_exact_amendment": "PinState=Held|Transferred|Released. PinPurpose=Candidate|Save|Undo|Redo|Recovery|Import|Export. Only verified catalog transition updates state; Transferred/Released immutable terminal metadata. No TTL. Add matching operation results and strict decoder/negative fixtures; old product S1 untouched.",
+    "blocked_scope": "M05 catalog schema/decoder and M06 Export pin",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-06",
+    "severity": "P1",
+    "classification": "PORT_SIGNATURE_DRIFT",
+    "modules": [
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "M04 MaterialResolutionPort / M05 application_inputs / M07 M05_extension / M06 ports",
+    "finding": "M04 resolve snapshot has root_proof_id; M05 snapshot lacks matching field; later export/import methods and signatures differ.",
+    "proposed_exact_amendment": "Normalize app API: resolve(Context,Requests)->ResolutionSnapshot{context,catalog_generation,catalog_raw_digest,snapshot_digest,completeness,assets,bindings}; pin(snapshot,purpose,operation_id)->PinReceipt; validate_pin; read_pinned_version; import_verified_versions(context,verified_bundle,purpose,operation_id); transfer(pin,RootManifest,ExternalCommitProof,operation_id); release(pin,RootBundle,operation_id). Remove root_proof_id from resolve (root observation not asset resolution proof). Versioned receipt types below authoritative proposed overlay.",
+    "blocked_scope": "Material import/export/resolve callers; real provider readiness",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-07",
+    "severity": "P1",
+    "classification": "DEPENDENCY_CYCLE",
+    "modules": [
+      "M03",
+      "M04",
+      "M05",
+      "M07"
+    ],
+    "source_fields": "Codec/projector/owner dependencies across packets",
+    "finding": "M04 open needs M05, M05 binding identity might depend M03 owner, M07 root completeness needs future providers. Whole-module prerequisite would deadlock.",
+    "proposed_exact_amendment": "M03-C1/M04 codec projectors pure HOST decode+typed entity/reference inventory before runtime owner install. M05 resolves asset IDs/versions using that inventory, never calls M03 Viewer/runtime. Root-provider completeness is separate from material resolution: missing M07 root=>Unknown blocks release/cleanup, not valid pinned install. Build ports/fakes independently after adoption, then providers in order below.",
+    "blocked_scope": "Remove runtime construction cycle; do not weaken Unknown retention",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-08",
+    "severity": "P1",
+    "classification": "PIN_TRANSFER_MUTATION_OUTCOME",
+    "modules": [
+      "M03-H2",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "candidate install / merge/undo/restore deferred outcomes",
+    "finding": "Precommit failure preservation does not cover postcommit root-transfer failure. H2 still expects ordinary successful projection or rejection.",
+    "proposed_exact_amendment": "Common MutationReceipt {context,before_revision,after_revision,content_semantic,pin_id,result:Applied|NoChange|AppliedRetentionDeferred}. Once S1 commit occurred never ErrorUnchanged; retain Held/old+new union roots. M03 edit, M04 clear/undo, M06 merge/undo and M07 restore map tagged deferred result to real changed revision. No automatic rollback after publication.",
+    "blocked_scope": "All content-mutation/root integration",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-09",
+    "severity": "P0",
+    "classification": "NATIVE_SOURCE_BINDING_INCOMPATIBILITY",
+    "modules": [
+      "M01-copy",
+      "M05",
+      "M06"
+    ],
+    "source_fields": "M06 ProjectCopyStoragePort directory rename / IO file_commit.rs decode f[1]!=target",
+    "finding": "New-project copy stages M05 FileCommit catalog then renames directory; existing journal embeds canonical target path and rejects changed target. Rebinding a handle alone cannot fix journal.",
+    "proposed_exact_amendment": "Recommended A: exclusive create FINAL directory with authenticated QuarantinedCopy marker; all child/catalog commits use final stable canonical path. Project is not selectable/openable until M01 durable Ready marker commit verified. All official M01 project-open/selection paths reject quarantine (including restart). No rename of any directory containing FileCommit journals. Failed copy retains quarantined diagnostics; no recursive delete. Alternative B publish journal-free initial tree then first index commit at final path requires separate initial-publication receipt and larger schema scope; not recommended here. Never edit/move IO journal to repair.",
+    "blocked_scope": "New-project copy blocked REPLAN_REQUIRED until new M01/M06 publication protocol adopted",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-10",
+    "severity": "P1",
+    "classification": "RECOVERY_AVAILABILITY_GAP",
+    "modules": [
+      "M05",
+      "M07"
+    ],
+    "source_fields": "M07 restart/root_transfer_failed / self-contained recovery requirement",
+    "finding": "Self-contained verified bundle can remain forever unavailable if original project catalog/root transfer proof inaccessible after relocation/loss.",
+    "proposed_exact_amendment": "Separate LocalIntegrityReady from PublicationAcknowledged. Verified recovery index+payload+ALL asset copies permits explicit restore to authorized new destination even if SOURCE root transfer is pending; label SourceRetentionDeferred, retain original Held/Unknown, no original S1 Published/ACK. Destination import+pin+owner commit still mandatory. Missing/corrupt local bundle always blocks restore. Do not claim source retention proof merely from local readability.",
+    "blocked_scope": "Restore readiness UI and recovery evidence state machine",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-11",
+    "severity": "P1",
+    "classification": "GENERATION_FENCE_SEAM_GAP",
+    "modules": [
+      "M01",
+      "M02",
+      "M04"
+    ],
+    "source_fields": "M02 source_contracts.stale_window and envelope",
+    "finding": "Holding source fences is stated but provider handles and source writer coordination are not in exact Store3trait envelope; naive final check races.",
+    "proposed_exact_amendment": "Add application SourceReadReservation trait validate()->Result<SourceSnapshotId> with lifetime guard; definition/design providers acquire held native read fences compatible with their existing exclusive write protocol BEFORE generation active writer. Approval evidence uses immutable Approved revision plus HOST source-epoch reservation; no domain OS dependency or SPEC source mutation. Add proposed Ports generation_sources.rs, adapter generation_sources.rs/tests and existing M01 dispatch/M04 document_owner provider hooks as explicit child envelope delta; if full writer coverage cannot be proven return DependencyNotReady. Store3traits remain unchanged.",
+    "blocked_scope": "M02 activation blocked until exact provider-fence envelope/Skeleton accepted",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-12",
+    "severity": "P1",
+    "classification": "IO_PRIVATE_READ_SEAM_PRECISION",
+    "modules": [
+      "M02",
+      "IO"
+    ],
+    "source_fields": "M02 store_contract.private_IO_seam / existing IO inspect",
+    "finding": "New journal-read helper is necessary but must not turn arbitrary metadata read into recovery approval or share files incompatibly.",
+    "proposed_exact_amendment": "IO-owned crate-private read guard constructed only after OS shared lock on exact canonical FileCommit sidecar; readonly inspect under that guard validates normalized target/journal terminal state/target raw digest. Generic caller cannot forge guard or clear journal. Signature and native alias/access matrix refined in IO child packet before Skeleton; public FileCommitPort unchanged. Definition-source read coordination treated separate declared consumer, not silently widened active-only helper.",
+    "blocked_scope": "Only new readonly integration, accepted IO implementation not reopened",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-13",
+    "severity": "P1",
+    "classification": "CAPTURE_VS_HEALTH_POLICY_DIFFERENCE",
+    "modules": [
+      "M04",
+      "M07"
+    ],
+    "source_fields": "M04 save_health.reserve / M07 capture_fingerprint.newer_edit",
+    "finding": "M04 blocks edits during formal WriteInFlight; M07 allows newer edits during immutable snapshot publication. These are different reservations, not one global saving state.",
+    "proposed_exact_amendment": "FormalWriteReservation blocks same-owner content mutations until matching commit completion. RecoveryAttemptReservation blocks only another recovery attempt and unstable capture; after pinned immutable capture, ordinary healthy owner edits may proceed. Shared M05 catalog short transitions do not create global document mutation lock. Both reserve per-target IO as needed; no OS locks held during owner callbacks.",
+    "blocked_scope": "Common owner reservation model/late ACK tests",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-14",
+    "severity": "P1",
+    "classification": "FORMAT_PROFILE_FEATURE_GAP",
+    "modules": [
+      "M03",
+      "M04",
+      "M06"
+    ],
+    "source_fields": "M04 lossless XML inspection/closed clear / M06 typed merge",
+    "finding": "Lossless XML inventory is not an adopted full entity/binding merge projector. C1 JSON cannot validate ESS XML or define every merge field.",
+    "proposed_exact_amendment": "Inspection may preserve unknown XML. Clear/merge/install require complete format-specific projector; unsupported fields hard-block affected mutation with exact paths. Freeze typed node/edge/parent/binding mapping before M06 Skeleton; no generic recursive ID rewrite, no label guessing. FreshImportedIds only on explicit confirmed preview; no identity changes hidden under codec.",
+    "blocked_scope": "M06 actual merge and ESS clear/import typed semantics; not plain readonly inspection",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-15",
+    "severity": "P1",
+    "classification": "ERROR_AND_PROOF_DOMAIN_GAP",
+    "modules": [
+      "M01",
+      "M02",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "errors and result tags across packages",
+    "finding": "Opaque proof IDs/CommitReceipt DTO fields alone do not authenticate external commits or caller authority; identical digest string shapes have unrelated meanings.",
+    "proposed_exact_amendment": "AuthenticatedExternalProof is server-owned immutable record with issuer module, operation kind, exact context, raw byte/receipt evidence and target identity; callers pass opaque receipt ID and service resolves in trusted registry or revalidates durable owner record. Never trust UI-copied receipt/complete bool. On restart missing owner record=>Unverified/DependencyNotReady; no fabricated ACK. Result phase codes below normalized, original module reason fields retained.",
+    "blocked_scope": "All cross-owner proof constructors/IPC error DTOs",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-16",
+    "severity": "P2",
+    "classification": "ENVELOPE_OVERLAP_AND_ORDER",
+    "modules": [
+      "M01",
+      "M02",
+      "M03",
+      "M04",
+      "M05",
+      "M06",
+      "M07"
+    ],
+    "source_fields": "candidate envelope overlap",
+    "finding": "Multiple packets name same pending owner modules and shared composition files; union is not blanket authority.",
+    "proposed_exact_amendment": "One integration patch per owned module, explicit owner edits only; serial shared-path queue. Proposed overlay adds source-fence child and replaces M01 copy rename protocol only after Owner adopts. Rebaseline all already-dirty product paths before each Skeleton slice. Old packet hashes remain immutable; regenerated module revision must point central overlay before gate acceptance.",
+    "blocked_scope": "Shared-file work scheduling, all future Skeletons",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  },
+  {
+    "id": "CX-17",
+    "severity": "P2",
+    "classification": "READINESS_NOT_CONTRACT_PASS",
+    "modules": [
+      "M02",
+      "M06"
+    ],
+    "source_fields": "M02 render.golden_gate / M06 integration gates",
+    "finding": "Template source bytes/transitive lock golden and typed ESS merge mappings still incomplete; count-only BDD/recipes are not executable oracle acceptance.",
+    "proposed_exact_amendment": "Central adoption approves contract choices only. Mark BUILD_GOLDEN_REQUIRED / PROJECTOR_FIXTURES_REQUIRED. Exact module packet updates+independent fixture self-checks required before Skeleton/valid RED; no automatic product-ready promotion. Windows11 native remains separate gate.",
+    "blocked_scope": "M02 renderer/template and M06 merge readiness only; others can proceed within ready scopes",
+    "status": "PROPOSED_CORRECTION_PENDING_OWNER_NOT_APPLIED"
+  }
+]

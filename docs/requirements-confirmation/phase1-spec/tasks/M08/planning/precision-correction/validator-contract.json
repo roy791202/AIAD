@@ -1,0 +1,138 @@
+{
+  "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+  "primary_module": "M08",
+  "subtask": "M08-H1-PURE-RECORD-CHECK",
+  "proposed_file": "tests/test_p1_portable_acceptance.py",
+  "current_file_exists": false,
+  "entry_signature": "_validate_evidence_claim(record: Mapping[str, JSONValue], observed_bindings: Mapping[str, JSONValue], case_policy: Mapping[str, JSONValue]) -> EvidenceCheck",
+  "local_types": {
+    "JSONValue": "None | bool | int | str | list[JSONValue] | dict[str, JSONValue]; float not used for digests/PIDs/time samples",
+    "EvidenceIssue": "frozen dataclass(code: EvidenceCode, pointer: RFC6901 absolute string)",
+    "EvidenceCheck": "frozen dataclass(classification: Literal[SCHEMA_VALID, REJECTED], issue: EvidenceIssue | None, evidence_scope: Literal[SCHEMA_UNIT]); never returns PASS or native verdict"
+  },
+  "preconditions": [
+    "All three inputs borrowed read-only, no mutation or normalization",
+    "observed_bindings.mode must be SCHEMA_UNIT for this first pure slice; fixture facts are synthetic test doubles",
+    "No native collector, PID lookup, filesystem hashing, process launch, file write, network or live aggregation capability in this slice"
+  ],
+  "postconditions": [
+    "SCHEMA_VALID iff all declared structural/cross-field checks pass against supplied facts; NOT proof those facts physically exist",
+    "REJECTED has exactly the first declared EvidenceIssue; stable priority below, no assertion weakening",
+    "Inputs remain deeply/canonically equal before and after both success and error",
+    "No native/system PASS can be produced by this return type or incorporated as actual evidence"
+  ],
+  "priority_groups": [
+    {
+      "priority": 0,
+      "checks": [
+        "record format/module/case shape; RFC3339 timestamp includes timezone; hash/PID primitive syntax"
+      ],
+      "tie_break": "schema property order from existing record-fields.json, then RFC6901 index order"
+    },
+    {
+      "priority": 1,
+      "checks": [
+        "PASS requires EXECUTED",
+        "assertions executed",
+        "fixture health",
+        "unmet prerequisites empty"
+      ]
+    },
+    {
+      "priority": 2,
+      "checks": [
+        "case-policy Windows11 x64",
+        "required nonempty valid source inventory hash",
+        "required build manifest source reference and manifest SHA",
+        "ELIGIBLE artifact",
+        "actual artifact SHA equals manifest executable SHA and supplied expected artifact binding"
+      ]
+    },
+    {
+      "priority": 3,
+      "checks": [
+        "exact source revision/inventory/spec binding",
+        "exact process run/PID/start/path/hash binding",
+        "canonical root ownership proof for each root, not caller boolean or path prefix",
+        "capture run/PID/start/hash binding"
+      ]
+    },
+    {
+      "priority": 4,
+      "checks": [
+        "illustrative native PASS rejected",
+        "E0/E1/E2 cannot satisfy native-layer required case",
+        "profile and source-preservation requirements from case policy"
+      ]
+    }
+  ],
+  "non_PASS_records": "NOT RUN/BLOCKED record may retain truthful read-only artifact identification, but cannot invent PID/start/result/capture. Validate present fields, shape and truthful missing prerequisite representation; do not require an executable or Win11 to validate its schema.",
+  "timestamp_rule": "RFC3339 timezone Z or explicit offset required; date/time/offset validity checked, no locale parsing. Missing timezone has specific E_TIMESTAMP_OFFSET_REQUIRED.",
+  "source_inventory_rule": "Missing, null or empty /source/dirty_inventory_sha256 receives E_SOURCE_INVENTORY_REQUIRED before generic digest-shape validation; present wrong-length/case token receives E_DIGEST_FORMAT.",
+  "PID_rule": "EXECUTED requires type exactly int (bool is not int here), 1 <= pid <= 4294967295; reject0/negative/out-of-range without touching OS.",
+  "source_truth_boundary": "Supplied bindings do not establish authenticity. A later separately designed/approved native runner must acquire actual observations and own aggregation. No untrusted record can grant itself authority by setting eligibility, root boolean, illustrative flag or PID.",
+  "runtime_aggregation": "OUT_OF_SCOPE; no native PASS result type/function in H1",
+  "error_codes": [
+    "E_ACCOUNT_REQUIRED",
+    "E_ARTIFACT_DIGEST_MISMATCH",
+    "E_ASSERTIONS_REQUIRED",
+    "E_BUILD_MANIFEST_REQUIRED",
+    "E_CAPTURE_BINDING",
+    "E_CASE_BINDING",
+    "E_CONTEXT_MODE",
+    "E_DIGEST_FORMAT",
+    "E_EVIDENCE_LAYER_REQUIRED",
+    "E_EXECUTION_REQUIRED",
+    "E_FIELD_ENUM",
+    "E_FIELD_REQUIRED",
+    "E_FIELD_TYPE",
+    "E_FIXTURE_HEALTH_REQUIRED",
+    "E_ILLUSTRATIVE_NOT_RUNTIME",
+    "E_PID_INVALID",
+    "E_PROCESS_BINDING",
+    "E_RECORD_FORMAT",
+    "E_SANDBOX_OWNERSHIP",
+    "E_SOURCE_BINDING",
+    "E_SOURCE_CONTENT_CHANGED",
+    "E_SOURCE_INVENTORY_REQUIRED",
+    "E_TIMESTAMP_INVALID",
+    "E_TIMESTAMP_OFFSET_REQUIRED",
+    "E_UNEXECUTED_CAPTURE",
+    "E_UNEXECUTED_PROCESS_FIELDS",
+    "E_UNKNOWN_FIELD",
+    "E_UNMET_PREREQUISITES",
+    "E_WIN11_REQUIRED"
+  ],
+  "applicability": {
+    "all_records": "mode guard, closed shape, required source identity syntax, timestamp and every present field type; output always SCHEMA_UNIT",
+    "PASS_records": "priority groups1-4 evaluate every eligibility/execution/binding/native-claim predicate",
+    "non_PASS_records": "may remain truthfully BLOCKED without Win11/eligible artifact/owned native fixture; NOT RUN state requires pid/start/selected path null, no operation_result or captures; surplus process fields use E_UNEXECUTED_PROCESS_FIELDS, captures use E_UNEXECUTED_CAPTURE",
+    "executed_failure_records": "retain actual provided process identity/evidence when known; require supplied binding consistency without treating it as a PASS; no facts invented for a missing prerequisite"
+  },
+  "shape_policy": {
+    "status": "PROPOSED_NOT_APPROVED_NOT_RUN",
+    "closed_objects": "top-level and each named source/artifact/environment/execution/fixture/evidence/result object reject unknown fields; operation_result is explicitly free JSON scalar/object/null, source-hash maps use fixture-relative IDs",
+    "required": "all original record-fields.json keys are required, except specifically nullable fields still require the key",
+    "error_mapping": {
+      "missing_key": "E_FIELD_REQUIRED at exact missing pointer, with source inventory special case E_SOURCE_INVENTORY_REQUIRED",
+      "wrong_primitive_or_container": "E_FIELD_TYPE at field pointer",
+      "unknown_named_key": "E_UNKNOWN_FIELD at unexpected pointer",
+      "invalid_enumeration": "E_FIELD_ENUM at field pointer",
+      "bad_RFC3339_date_or_offset": "E_TIMESTAMP_INVALID; absent timezone specifically E_TIMESTAMP_OFFSET_REQUIRED",
+      "mismatched_case_policy": "E_CASE_BINDING /case_id",
+      "context_mode_not_SCHEMA_UNIT": "E_CONTEXT_MODE /observed_bindings/mode"
+    },
+    "specific_primitive_precedence": "format/PID/digest/source inventory/timestamp specialized errors precede generic type check at that same field; missing source inventory always uses E_SOURCE_INVENTORY_REQUIRED",
+    "maps_and_refs": "original_source_hashes_before_after requires per-fixture {before:64hex,after:64hex}; capture refs are opaque lookup keys resolved only against supplied capture_bindings, never file-opened",
+    "array_order": "record arrays retained; issues chosen by stable priority, then documented field/index order; no mutation/default-filling"
+  },
+  "deterministic_order_note": "All vector fields not explicitly mutated retain valid base values. N05 execution-state priority precedes NOT RUN extraneous PID checks; N06 missing manifest precedes artifact/binding checks; N08 process identity precedes capture consistency. Return one stable first issue, never mask a higher-priority mismatch.",
+  "tests": {
+    "negative": 12,
+    "positive_and_boundary": 14,
+    "command": "python -m pytest tests/test_p1_portable_acceptance.py -k m08_claim -q",
+    "cwd": "D:/AIAD",
+    "target_status": "PROPOSED TARGET NOT CREATED; command NOT RUN",
+    "fixture_materialization": "After approval embed these exact synthetic vectors as private fixture dictionaries in the single permitted test file, or request explicit fixture-file scope before adding external test files; never load a mutable real run as the base."
+  }
+}

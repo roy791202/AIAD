@@ -1,0 +1,161 @@
+//! IO-PREREQ ownership Skeleton only. No OS acquire, directory creation,
+//! journal codec, filesystem commit, rollback or cleanup behavior implemented.
+//! Tests must stay RED until separate product implementation authorization.
+
+use sgenaxis_ports::{CommitError, CommitReceipt, CommitStage, FileCommitPort, FileWriteLease};
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct StdFileCommit;
+
+impl StdFileCommit {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+fn not_implemented(stage: CommitStage, path: &str) -> CommitError {
+    CommitError::Storage {
+        stage,
+        path: path.into(),
+        reason: "SKELETON_NOT_IMPLEMENTED".into(),
+    }
+}
+
+impl FileCommitPort for StdFileCommit {
+    fn create_directory_exclusive(
+        &self,
+        parent: &str,
+        _single_name: &str,
+    ) -> Result<String, CommitError> {
+        Err(not_implemented(CommitStage::CreateDirectory, parent))
+    }
+
+    fn acquire_write(&self, path: &str) -> Result<Box<dyn FileWriteLease>, CommitError> {
+        Err(not_implemented(CommitStage::Acquire, path))
+    }
+}
+
+/// RAII ownership seam. A production lease cannot currently be constructed:
+/// acquire_write intentionally returns the explicit Skeleton error above.
+pub(crate) struct StdFileWriteLease {
+    target_path: String,
+    _lock_handle: std::fs::File,
+    #[cfg(test)]
+    _checkpoints: TestCheckpoints,
+}
+
+impl FileWriteLease for StdFileWriteLease {
+    fn read_current(&self) -> Result<Option<Vec<u8>>, CommitError> {
+        Err(not_implemented(CommitStage::Read, &self.target_path))
+    }
+
+    fn replace_checked(
+        &mut self,
+        _expected_digest: Option<&str>,
+        _bytes: &[u8],
+    ) -> Result<CommitReceipt, CommitError> {
+        Err(not_implemented(CommitStage::Publish, &self.target_path))
+    }
+}
+
+// Private persistence structure only; binary encoding/decoding is NOT filled.
+#[allow(dead_code)]
+enum JournalState {
+    Prepared,
+    Committed,
+    RolledBack,
+    RecoveryRequired,
+}
+
+#[allow(dead_code)]
+struct JournalRecord {
+    version: u32,
+    transaction_id: String,
+    target_path: String,
+    previous_digest: Option<String>,
+    new_digest: String,
+    old_version_relative: Option<String>,
+    new_version_relative: String,
+    state: JournalState,
+}
+
+/// Internal fault-injection seam, absent from the shipping crate interface.
+/// Storing callbacks/observations does not execute transaction behavior.
+#[cfg(test)]
+#[derive(Clone, Default)]
+#[allow(dead_code)]
+pub(crate) struct TestCheckpoints {
+    pub fail_at: Vec<CommitStage>,
+    pub observed: std::sync::Arc<std::sync::Mutex<Vec<CommitStage>>>,
+    pub before_publish: Option<std::sync::Arc<dyn Fn() + Send + Sync>>,
+    pub temp_candidates: Vec<String>,
+    pub consumed: std::sync::Arc<std::sync::Mutex<Vec<CommitStage>>>,
+    pub fault_points: Vec<&'static str>,
+    pub observed_points: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    pub consumed_points: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    pub at_point: Option<std::sync::Arc<dyn Fn(&str) + Send + Sync>>,
+}
+
+// Approved IO-G1..G6 test seams. These deliberately contain no codec or IO.
+#[cfg(test)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(dead_code)]
+pub(crate) enum JournalDecodeError {
+    SkeletonNotImplemented,
+    Size,
+    Framing,
+    Version,
+    Checksum,
+    Text,
+    Field,
+    State,
+    Binding,
+    RelativePath,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct JournalProbe {
+    pub transaction_id: String,
+    pub target_path: String,
+    pub previous_digest: Option<String>,
+    pub new_digest: String,
+    pub state: u8,
+}
+
+#[cfg(test)]
+pub(crate) fn decode_journal_for_test(
+    _bytes: &[u8],
+    _expected_target: &str,
+) -> Result<JournalProbe, JournalDecodeError> {
+    Err(JournalDecodeError::SkeletonNotImplemented)
+}
+
+#[cfg(test)]
+impl StdFileCommit {
+    // Private test-consumer entry; acquisition/transaction algorithms remain absent.
+    pub(crate) fn acquire_with_checkpoints(
+        &self,
+        path: &str,
+        _checkpoints: TestCheckpoints,
+    ) -> Result<Box<dyn FileWriteLease>, CommitError> {
+        Err(not_implemented(CommitStage::Acquire, path))
+    }
+}
+
+#[cfg(test)]
+impl StdFileWriteLease {
+    /// Data/ownership constructor for tests that independently establish the
+    /// handle precondition; not a public way to bypass product acquisition.
+    pub(crate) fn for_test(
+        target_path: String,
+        handle: std::fs::File,
+        checkpoints: TestCheckpoints,
+    ) -> Self {
+        Self {
+            target_path,
+            _lock_handle: handle,
+            _checkpoints: checkpoints,
+        }
+    }
+}

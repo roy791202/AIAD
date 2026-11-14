@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>MCP transport Live smoke — design</title>
+<style>
+body{font:16px/1.65 system-ui,sans-serif;max-width:1100px;margin:32px auto;padding:0 20px;color:#1a2330;background:#f6f8fb}
+h1,h2{color:#0f3d4c}h2{border-bottom:1px solid #c5d0db;padding-bottom:6px;margin-top:28px}
+.status{background:#fff3cd;border:1px solid #e0c36a;padding:12px 16px;border-radius:6px}
+.not-run{background:#eef2f7;border:1px solid #9aa8b8;padding:12px 16px;border-radius:6px}
+table{border-collapse:collapse;width:100%;margin:12px 0}
+th,td{border:1px solid #9aa8b8;padding:8px 10px;text-align:left;vertical-align:top}
+th{background:#e4ebf2}
+pre{white-space:pre-wrap;background:#eef2f7;padding:14px;border-radius:6px}
+code{font-family:ui-monospace,Consolas,monospace}
+.forbid{color:#8b1a1a}
+</style>
+<h1>MCP transport — Live smoke design</h1>
+<p><strong>PD-RUST-MCP-TRANSPORT-SMOKE-01</strong> · module <code>mcp-transport</code> · 2026-10-26 Asia/Taipei</p>
+<p class="status"><strong>READY_FOR_TDD</strong> (planning / smoke-design packet). Zone stays <strong>yellow</strong> — never green. Product acceptance not claimed.</p>
+<p class="not-run"><strong>Live execution: NOT RUN.</strong>
+<code>SGENAXIS_MCP_LIVE_ENDPOINT</code> was <strong>UNSET</strong> at planning probe.
+Dependency <code>PD-RUST-MCP-TRANSPORT-IMPL-01</code> dispatch report is <strong>absent</strong>.
+Fake / Stub / DryRun / this static page <span class="forbid">must not</span> be recorded as Live PASS.</p>
+
+<section>
+<h2>1. Intent</h2>
+<p>Given an approved module contract and controlled inputs, When this card’s Live smoke runs,
+Then only approved targets are exercised for
+<strong>success / invalidtool / reject / timeout / cancel / disconnect</strong>,
+each with evidence fields <code>request</code>, <code>result</code>, <code>terminal</code>, and <code>version</code>.
+Unconfigured → honest <strong>NOT RUN</strong>. No automatic product acceptance.</p>
+</section>
+
+<section>
+<h2>2. Dependencies</h2>
+<table>
+<tr><th>Dependency</th><th>Role</th><th>Now</th></tr>
+<tr><td><code>PD-RUST-MCP-TRANSPORT-IMPL-01</code></td><td>Real <code>McpClientPort</code> composition (not production Stub alone)</td><td>Missing report · blocks Live</td></tr>
+<tr><td><code>PD-RUST-MCP-TRANSPORT-DEC-01</code></td><td>stdio vs loopback HTTP · exact server/argv/tool · timeout/cancel bounds</td><td>Owner target still required for Live</td></tr>
+<tr><td><code>probe_mcp_live_smoke_target()</code></td><td>Secret-free env gate; never dials</td><td>Returns none when endpoint unset</td></tr>
+</table>
+</section>
+
+<section>
+<h2>3. Scenario matrix</h2>
+<table>
+<tr><th>ID</th><th>Name</th><th>Given</th><th>When</th><th>Then (terminal)</th><th>Now</th></tr>
+<tr><td>SMOKE-S1</td><td>success</td><td>IMPL ready; activatable approved tool; controlled args</td><td>connect + call_tool completes in bound</td><td><code>success</code> + full evidence; no product green</td><td>NOT RUN</td></tr>
+<tr><td>SMOKE-S2</td><td>invalidtool</td><td>Live target up; tool not approved / unknown</td><td>call_tool for invalid tool</td><td><code>invalid_tool</code>; no success claim; no secret echo</td><td>NOT RUN</td></tr>
+<tr><td>SMOKE-S3</td><td>reject</td><td>Empty / :8787 / :8788 / policy reject before dial</td><td>Live requested</td><td><code>reject</code> or <code>not_run</code>; no dial for forbidden</td><td>NOT RUN</td></tr>
+<tr><td>SMOKE-S4</td><td>timeout</td><td>Peer stalls past approved initialize/tool bound</td><td>wait exceeds timeout</td><td><code>timeout</code>; one terminal; no auto-retry success</td><td>NOT RUN</td></tr>
+<tr><td>SMOKE-S5</td><td>cancel</td><td>In-flight Live session</td><td>host/operator cancel</td><td><code>cancel</code>; best-effort close; no unrelated kill</td><td>NOT RUN</td></tr>
+<tr><td>SMOKE-S6</td><td>disconnect</td><td>Open session then peer drop / disconnect</td><td>disconnect path</td><td><code>disconnect</code>; dead session cannot claim success</td><td>NOT RUN</td></tr>
+</table>
+<p>Canonical machine matrix: <a href="./scenario-matrix.json"><code>scenario-matrix.json</code></a></p>
+</section>
+
+<section>
+<h2>4. Evidence fields (required for any Live claim)</h2>
+<table>
+<tr><th>Field</th><th>Meaning</th></tr>
+<tr><td><code>request</code></td><td>Secret-free call identity: transport kind, server_name, tool, args digest — never raw tokens/credentials</td></tr>
+<tr><td><code>result</code></td><td>Payload digest or typed error class — never raw endpoint credentials</td></tr>
+<tr><td><code>terminal</code></td><td>Exactly one of: success | invalid_tool | reject | timeout | cancel | disconnect | not_run</td></tr>
+<tr><td><code>version</code></td><td>Build/feature/protocol revision binding for the attempt</td></tr>
+</table>
+<p>Missing any field ⇒ evidence incomplete ⇒ cannot claim Live PASS.</p>
+</section>
+
+<section>
+<h2>5. Live vs Fake prohibition</h2>
+<pre>Live PASS/FAIL  ← only real dial/stdio against owner-approved activatable target
+                  + IMPL composition + full evidence quartet
+
+NOT Live evidence:
+  · FakeMcpClient (in-process fixture)
+  · StubMcpClient / RealMcpDisabled (availability honesty only)
+  · DryRun AgentChunk simulation
+  · Static module.html / JSON / markdown (this packet)
+
+Unconfigured endpoint or missing IMPL → terminal class not_run / status NOT RUN
+Never invent Live success from simulation.</pre>
+</section>
+
+<section>
+<h2>6. Proposed policy (DEC — not runtime guarantees)</h2>
+<pre>initialize/tool timeout: 10_000 ms (proposed)
+cancel/disconnect bound: 2_000 ms (proposed)
+concurrency: one request at a time
+auto_retry: false
+secrets: excluded from logs and evidence request/result text</pre>
+<p>Values lock only after DEC/IMPL; smoke design records them for TDD review, does not assert current enforcement.</p>
+</section>
+
+<section>
+<h2>7. Gate before Live execution</h2>
+<ol>
+<li><code>PD-RUST-MCP-TRANSPORT-IMPL-01</code> delivers real transport composition.</li>
+<li>Owner-approved explicit target (stdio argv <em>or</em> activatable loopback endpoint + tool).</li>
+<li><code>probe_mcp_live_smoke_target()</code> returns <code>Some</code> (or DEC-locked stdio equivalent).</li>
+<li>Evidence writer emits request / result / terminal / version.</li>
+<li>Results stay yellow for owner; never auto product acceptance.</li>
+</ol>
+</section>
+
+<section>
+<h2>8. Hexagonal smoke view</h2>
+<pre>Operator / smoke harness (driving)
+        ↓ controlled StartRun / call_tool inputs
+HOST / EXEC McpAgentAdapter
+        ↓ McpClientPort (after IMPL)
+Live adapter (stdio | loopback HTTP/SSE) ──→ approved local server
+        ↑
+Evidence: request · result · terminal · version
+
+Forbidden shortcuts: Fake/Stub/DryRun/static HTML → Live claim</pre>
+</section>
+
+<section>
+<h2>9. Current health</h2>
+<ul>
+<li>Planning packet: <strong>READY_FOR_TDD</strong></li>
+<li>Live smoke execution: <strong>NOT RUN</strong></li>
+<li>Production edits this card: <strong>none</strong></li>
+<li>Board green / commit / push: <strong>not performed</strong></li>
+</ul>
+</section>
+
+<script type="application/json" id="module-spec">
+{
+  "module": "mcp-transport",
+  "task": "PD-RUST-MCP-TRANSPORT-SMOKE-01",
+  "status": "READY_FOR_TDD",
+  "plan_state": "PLANNING_ONLY",
+  "implementation": "NOT_READY_FOR_IMPLEMENTATION",
+  "zone_rule": "stay_yellow_never_green",
+  "live_availability": {
+    "status": "NOT_RUN",
+    "endpoint_probe": "UNSET",
+    "impl_report": "absent"
+  },
+  "scenarios": ["success", "invalidtool", "reject", "timeout", "cancel", "disconnect"],
+  "evidence_fields": ["request", "result", "terminal", "version"],
+  "dependencies": ["PD-RUST-MCP-TRANSPORT-IMPL-01"],
+  "prohibitions": ["fake_as_live", "stub_as_live", "dry_run_as_live", "static_html_as_live", "auto_product_accept"],
+  "artifacts": {
+    "scenario_matrix": "scenario-matrix.json",
+    "module_json": "module.json",
+    "dispatch": "reports/dispatch-pd/PD-RUST-MCP-TRANSPORT-SMOKE-01.md"
+  }
+}
+</script>
+</html>

@@ -1,0 +1,34 @@
+{
+  "request": {
+    "M03_candidate": [
+      "binding_ref",
+      "expected_generation decimal U64 string",
+      "expected_revision decimal U64 string",
+      "request_id"
+    ],
+    "M04_missing": "Exact resolver mapping binding_ref → unique owner/session/canonical target, captured material pair set and codec profile remains owner-gated; no UI supplied target/digest accepted."
+  },
+  "outcomes": [
+    {
+      "M04": "CommitEvidenceMismatch",
+      "M03_candidate": "ok:false UnverifiedOutcome / CommitOutcomeUnknown / retry_allowed:false",
+      "gate": "G1,G3"
+    },
+    {
+      "M04": "verified file, root deferred",
+      "M03_candidate": "ok:true CommittedAckDeferred / RootTransfer; pin_state Unverified; opaque proof_id",
+      "gate": "G1,G2"
+    },
+    {
+      "M04": "root verified, ACK rejected",
+      "M03_candidate": "ok:true CommittedAckDeferred / SemanticAck / AckRejected",
+      "gate": "G1,G4"
+    },
+    {
+      "M04": "SavedAcked",
+      "M03_candidate": "ok:true Saved with captured_revision/live_revision decimal strings, dirty, proof_id, replayed",
+      "gate": "G1"
+    }
+  ],
+  "not_equivalent": "ok:true alone does not authorize UI clean/close. Root-deferred must not map to Saved; response delivery additionally requires same authorized binding. Raw receipt/error fields stay server-side; existing IO errors remain unmodified."
+}

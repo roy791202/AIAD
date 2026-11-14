@@ -1,0 +1,92 @@
+{
+  "module": "M04",
+  "status": "PLANNED_NOT_EXECUTED",
+  "projectA": {
+    "persistentId": "project-A-proposed",
+    "legacyRootId": "proj_A",
+    "root": "${TEMP_ROOT}/A",
+    "sessionId": "A-1"
+  },
+  "projectB": {
+    "persistentId": "project-B-proposed",
+    "root": "${TEMP_ROOT}/B",
+    "sessionId": "B-1"
+  },
+  "document": {
+    "id": "doc-1",
+    "revision": "R0",
+    "nodes": [
+      "n1",
+      "n2"
+    ],
+    "relations": [
+      [
+        "n1",
+        "n2"
+      ]
+    ],
+    "assetRefs": [
+      "shared@v1"
+    ],
+    "bindingState": "valid"
+  },
+  "otherDocument": {
+    "id": "doc-2",
+    "assetRefs": [
+      "shared@v1"
+    ]
+  },
+  "assetBytes": {
+    "shared@v1": "SHARED-V1",
+    "new@v1": "NEW-V1"
+  },
+  "baselines": {
+    "formal": "R0",
+    "snapshot": "R0"
+  },
+  "clockSeconds": [
+    0,
+    59,
+    60,
+    61,
+    120
+  ],
+  "faults": [
+    "read",
+    "validate",
+    "stage",
+    "commit",
+    "history-publish",
+    "index-publish",
+    "rollback",
+    "cleanup"
+  ],
+  "cases": {
+    "BDD-07": {
+      "given": "文件有修改且保存將失敗",
+      "when": "在切換專案提示中選保存",
+      "expected": "原有效檔、修改與目前專案保留，切換未發生"
+    },
+    "BDD-08": {
+      "given": "目前文件有未保存修改",
+      "when": "在關閉提示中選取消",
+      "expected": "文件與內容保持原樣且仍開啟"
+    },
+    "BDD-20": {
+      "given": "目前文件含階層、關係與引用",
+      "when": "清空後Undo一次",
+      "expected": "完整還原內容與引用，只撤回該次操作"
+    },
+    "BDD-21": {
+      "given": "單文件合併已成功並含待綁定狀態",
+      "when": "Undo一次",
+      "expected": "還原整次變更及綁定限制，不刪來源或共用素材"
+    },
+    "BDD-M04-A": {
+      "given": "文件有修改",
+      "when": "分別選保存/不保存/取消",
+      "expected": "只在成功保存或明確不保存後離開；失敗保持編輯及原有效檔"
+    }
+  },
+  "safety": "Never operate user projects or reset real board. Fixture schemas are proposals, not product schemas."
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "RS01",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 1,
+    "end": 12,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "//! M07-S1 pure recovery-state policy.\n//! HOST supplies elapsed time, verified capture and durable-publication outcomes.\n//! No timer, filesystem, codec, fingerprint computation or asset pinning lives here.\n\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct CapturedAttempt {\n    pub attempt_id: String,\n    pub captured_revision: u64,\n    pub captured_fingerprint: String,\n    pub asset_manifest_digest: String,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]",
+    "meaning": "CapturedAttempt carries supplied identifiers, fingerprint and manifest digest; no index receipt/ordinal/provider authentication fields."
+  },
+  {
+    "id": "RS02",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 24,
+    "end": 44,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "    Published,\n    Failed,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub enum RecoveryEventKind {\n    Check {\n        now_ms: u64,\n        current_fingerprint: Option<String>,\n        mutation_in_progress: bool,\n    },\n    BeginAttempt {\n        capture: CapturedAttempt,\n    },\n    Complete {\n        attempt_id: String,\n        outcome: CompletionOutcome,\n    },\n    Close,\n}\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct RecoveryEvent {",
+    "meaning": "Published/Failed completion is supplied event data, not durable index verification."
+  },
+  {
+    "id": "RS03",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 77,
+    "end": 83,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "/// Returns a new state/action; it cannot mutate the caller or publish a snapshot.\n/// Published is a trusted HOST receipt, not a claim authenticated by this policy.\npub fn transition_recovery(\n    state: &RecoveryPolicyState,\n    event: &RecoveryEvent,\n) -> Result<RecoveryTransition, RecoveryPolicyError> {\n    validate_id(\"state.project_id\", &state.project_id)?;",
+    "meaning": "Pure transition returns state/action; Published explicitly trusted HOST receipt."
+  },
+  {
+    "id": "RS04",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 125,
+    "end": 158,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "            } else if state.inflight.is_some() || state.capture_requested {\n                next.last_check_ms = *now_ms;\n                RecoveryAction::WaitInFlight\n            } else if *mutation_in_progress {\n                RecoveryAction::DeferMutation\n            } else {\n                let current = current_fingerprint.as_ref().ok_or_else(|| {\n                    invalid(\n                        \"current_fingerprint\",\n                        \"stable content fingerprint is required\",\n                    )\n                })?;\n                next.last_check_ms = *now_ms;\n                if state.successful_fingerprint.as_ref() == Some(current) {\n                    RecoveryAction::SkipUnchanged\n                } else {\n                    next.capture_requested = true;\n                    RecoveryAction::RequestCapture\n                }\n            }\n        }\n        RecoveryEventKind::BeginAttempt { capture } => {\n            if state.inflight.is_some() {\n                return Err(RecoveryPolicyError::AttemptAlreadyActive);\n            }\n            if !state.capture_requested {\n                return Err(RecoveryPolicyError::CaptureNotRequested);\n            }\n            next.capture_requested = false;\n            next.inflight = Some(capture.clone());\n            RecoveryAction::AttemptRegistered\n        }\n        RecoveryEventKind::Complete {\n            attempt_id,",
+    "meaning": "Elapsed time is supplied; 60000 check requests capture rather than running OS timer/capture."
+  },
+  {
+    "id": "RS05",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 171,
+    "end": 192,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "                }\n                CompletionOutcome::Failed => RecoveryAction::RetryPending,\n            }\n        }\n        RecoveryEventKind::Close => {\n            next.closed = true;\n            next.capture_requested = false;\n            RecoveryAction::Closed\n        }\n    };\n    Ok(RecoveryTransition {\n        state: next,\n        action,\n    })\n}\n\nfn invalid(field: &str, reason: &str) -> RecoveryPolicyError {\n    RecoveryPolicyError::InvalidInput {\n        field: field.into(),\n        reason: reason.into(),\n    }\n}",
+    "meaning": "Matching attempt Published advances supplied captured fingerprint; no issuer/index/root evidence consulted."
+  },
+  {
+    "id": "RS06",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/recovery_state.rs",
+    "start": 236,
+    "end": 240,
+    "sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+    "text": "",
+    "meaning": "Capture validates syntax of supplied strings; revision and raw index durability are not authenticated here."
+  },
+  {
+    "id": "DE01",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "start": 272,
+    "end": 280,
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "text": "    pub fn capture(&self) -> Result<ImmutableDocumentSnapshot, EditError> {\n        self.check_editable()?;\n        Ok(ImmutableDocumentSnapshot {\n            document_uuid: self.state.document_uuid.clone(),\n            session_uuid: self.state.session_uuid.clone(),\n            revision: self.state.content_revision,\n            content: self.state.content.clone(),\n        })\n    }",
+    "meaning": "Capture clones current content and revision locally; persistence provider not invoked."
+  },
+  {
+    "id": "DE02",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "start": 282,
+    "end": 312,
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "text": "    pub fn acknowledge_formal_save(\n        &mut self,\n        captured: Revision,\n        digest: &str,\n    ) -> Result<SaveProjection, EditError> {\n        self.check_ack(captured, digest, self.state.formal_baseline.as_ref())?;\n        self.state.formal_baseline = Some(SavedContentBaseline {\n            revision: captured,\n            semantic_digest: digest.into(),\n        });\n        Ok(SaveProjection {\n            captured_revision: captured,\n            dirty: self.dirty(),\n        })\n    }\n\n    pub fn acknowledge_recovery_save(\n        &mut self,\n        captured: Revision,\n        digest: &str,\n    ) -> Result<RecoveryProjection, EditError> {\n        self.check_ack(captured, digest, self.state.snapshot_baseline.as_ref())?;\n        self.state.snapshot_baseline = Some(SavedContentBaseline {\n            revision: captured,\n            semantic_digest: digest.into(),\n        });\n        Ok(RecoveryProjection {\n            captured_revision: captured,\n            needs_snapshot: self.state.content.semantic_digest != digest,\n        })\n    }",
+    "meaning": "Formal and recovery baseline setters are separate; recovery does not modify formal baseline."
+  },
+  {
+    "id": "DE03",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/document_edit.rs",
+    "start": 354,
+    "end": 377,
+    "sha256": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0",
+    "text": "    fn check_ack(\n        &self,\n        captured: Revision,\n        digest: &str,\n        baseline: Option<&SavedContentBaseline>,\n    ) -> Result<(), EditError> {\n        self.check_editable()?;\n        if !valid_digest(digest) {\n            return Err(EditError::InvalidInput {\n                field: \"semanticDigest\".into(),\n            });\n        }\n        if captured.0 > self.state.content_revision.0\n            || (captured == self.state.content_revision\n                && digest != self.state.content.semantic_digest)\n            || baseline.is_some_and(|saved| {\n                captured.0 < saved.revision.0\n                    || (captured == saved.revision && digest != saved.semantic_digest)\n            })\n        {\n            return Err(EditError::RevisionConflict);\n        }\n        Ok(())\n    }",
+    "meaning": "check_ack enforces digest/revision consistency and monotonic baseline, not issuer proof/replay atomicity."
+  },
+  {
+    "id": "IO01",
+    "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/file_commit.rs",
+    "start": 19,
+    "end": 29,
+    "sha256": "22b402d28d97257dfd8af6464bfeddf1756b8e2690326e9906e6edaced73910c",
+    "text": "}\n\n#[derive(Debug, Clone, PartialEq, Eq)]\npub struct CommitReceipt {\n    pub target_path: String,\n    pub previous_digest: Option<String>,\n    pub committed_digest: String,\n    pub transaction_id: String,\n}\n\n#[derive(Debug, Clone, PartialEq, Eq)]",
+    "meaning": "Single-file receipt raw fields cannot stand for full recovery index/transfer/ACK evidence."
+  }
+]

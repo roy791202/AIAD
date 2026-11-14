@@ -1,0 +1,33 @@
+# PD-CI-01 — PR gate (lint + fixed unit test subset)
+# Free GitHub-hosted runner only (ubuntu-latest). No paid/self-hosted runners.
+# Failure of this workflow must not be treated as green / merge-ready.
+#
+# Local equivalent (same commands):
+#   python scripts/pd_ci_pr_gate.py
+# See docs/CI-PR-GATE.md
+
+name: PR gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pr-gate:
+    name: lint + test subset
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest (PR subset)
+        run: pip install "pytest==9.1.1"
+
+      - name: Run PR gate (lint + unit subset)
+        run: python scripts/pd_ci_pr_gate.py

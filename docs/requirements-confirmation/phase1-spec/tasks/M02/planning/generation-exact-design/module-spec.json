@@ -1,0 +1,2766 @@
+{
+  "identity": {
+    "module": "M02",
+    "task": "M02-GENERATION-INTEGRATION",
+    "status": "ONE_OWNER_CONFIRMATION_PENDING_NOT_READY_FOR_IMPLEMENTATION",
+    "at": "2026-11-01T10:23:38.802925+00:00",
+    "branch": "cursor/ui-bhv-arch-layer-editor",
+    "head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+    "product_sources": 796
+  },
+  "overview": "模板渲染、Store Port、不可變版本發布與生成生命週期完整候選；C+B方向及已驗收S1保留。",
+  "architecture": {
+    "purpose": "M02 converts authenticated immutable M01 definition and separately confirmed design contract into deterministic Program and UiUx generated source artifacts, then publishes an immutable version via one active descriptor. This is generation, not application build/install/release.",
+    "hexagonal": "Editor/Test → closed generation commands → DispatchHost GenerationOwner → HOST TemplateGeneration → accepted WORK generation_plan policy. Output ports: authenticated Definition/Approval/Design/Template sources, GenerationArtifactPort and existing FileCommitPort. WindowsGenerationStore adapter implements store/reader coordination; domain has no filesystem/render/framework dependency.",
+    "dependency_map": "M01 definition owner → authenticated immutable definition snapshot → M02; M03/M04 single DocumentOwner → explicit saved design capture → M02 typed renderer projection; M02 → immutable source snapshot → M03 preview consumer. No consumer loads arbitrary active paths and no generated code is executed by preview.",
+    "ownership": {
+      "M01": "Project UUID, definition/revision and actual definition save. Missing decisions remain Draft/SaveDefinitionOnly; M02 never invents approvalRefs or Defined.",
+      "M02": "Prepared generation bytes, preview plans, version manifest, activation proof and operation state. No mutable project definition copy.",
+      "M03/M04": "Design content, revision/semantic profile, formal-save proof and single session ownership. M02 only reads authenticated snapshot, never saves/clamps design.",
+      "Store adapter": "Safe exclusive stages/sealed tree/readonly snapshot leases; IO owns active journal.",
+      "approval owner": "SPEC Approved revision/content-hash authentication, not merely reference strings.",
+      "UI": "Review projection and confirmation; cannot supply files/paths/approval booleans."
+    },
+    "mutation": "Only GenerationOwner publishes captured bytes through approved Store/IO. M01 definition save and M04 design save are explicit independent operations outside generation; no hidden save-on-generate.",
+    "transactions": "Unconfirmed prepare has no storage writes. Confirm revalidates inputs then owned staging → durable no-replace seal → fresh binding check → active descriptor CAS. One active file transaction chooses entire sealed dual-product version. Failure after seal retains unactivated tree; no rollback deletion of old versions.",
+    "approval": "C+B direction adopted historically; exact render/store/reader/integration changes below still pending Owner. WORK S1 source/types/tests remain unchanged.",
+    "forbidden": [
+      "WORK infrastructure dependency",
+      "UI direct filesystem/adapter",
+      "template executes expression/shell or package install",
+      "generation writes project definition/design/formal baselines",
+      "S1 Prepared treated as approval authentication",
+      "reader directly reads uncoordinated active.json",
+      "seal existence treated as activation success"
+    ]
+  },
+  "source_contracts": {
+    "definition_port": "DefinitionSource.capture(project_binding) -> DefinitionEvidence {typed ProjectDefinition, exact codec bytes, prefixed sha256 digest, revision, owner_generation}; revalidate(evidence) -> Current|Changed|Unavailable. M01 existing adopted S2 owner remains authoritative; new UI/S3 unavailable => DependencyNotReady, no JSON ad-hoc fallback.",
+    "approval_port": "ApprovalSource.verify(definition_evidence, required_refs[]) -> ApprovalEvidence {sorted approved module/revision/content_hash refs, approval_digest,source_epoch}; every ref must resolve actual Approved immutable SPEC revision with matching raw content_hash. Digest sha256 of compact JSON [\"SGA-GENERATION-APPROVAL-v1\",sorted tuples]; lowercase sha256: prefix. Unknown/unapproved refs yield missing requirements for S1 SaveDefinitionOnly; integrity mismatch explicit error. Revalidate exact source epoch/content at confirm and activation.",
+    "template_port": "TemplateSource.read_exact(TemplateReference) -> verified packaged manifest + all source bytes; verify manifest source_digest and each resource digest, target compatibility, exact artifact set, no extra resource/unknown token. No network/template discovery/install script. Bundled template bytes must be sealed reviewed golden, not a name match.",
+    "design_port": "DesignSource.capture_saved(context) -> DesignEvidence {project/document/session/generation,revision,format,semantic_profile,digest,canonical_payload,formal_save_proof}; revalidate(evidence) under owner fence. Initial source proposal requires current captured revision exactly covered by verified M04 formal Saved proof (including pending M05 transfer-before-ACK amendment if adopted); dirty/deferred/missing proof returns DesignSaveRequired. User chooses explicit save separately. Headless/blank UI generation may omit design only when definition explicitly authorizes empty design contract; never infer approval from absent doc.",
+    "design_projection": "C1/H2 adopted projector turns validated canonical design into closed UI schema (forms/controls/events/data bindings). Unknown nodes/behaviors/invalid bindings unsupported, never silently dropped. Pending bindings remain explicit disabled mock fields and block executable command generation. Material rendering not imported into first template: explicit referenced assets fail UnsupportedDesignFeature until asset export recipe jointly adopted. No props script/event execution.",
+    "binding_extension": "Existing S1 GenerationBinding unchanged. HOST GenerationInputEnvelope adds design_document_uuid/revision/semantic_profile/digest/formal_proof_digest and renderer_recipe_digest. Preview digest binds S1 plan +all source evidence+exact rendered file hashes. Confirm rechecks both S1 validate_plan_binding and envelope equality; no new WORK field.",
+    "stale_window": "Confirm acquires trusted input read-fences in order definition→approval→design BEFORE active writer lease, after rendering/preview. Fences authenticate captured revisions and remain held through staging/seal/active CAS receipt; producer mutations return Busy/defer while held, never merely invalidate a token after final check. No lock upgrade or producer callback while writer held; release all on every terminal result. This may temporarily block definition/design edits and is an explicit Owner lifecycle choice. If native/provider cannot express held cross-process revision fences, DependencyNotReady; no check-then-write safety claim.",
+    "prefix_boundary": "M01/M02 S1 digests use sha256:lowerhex64. M03/M04 lowerhex semantic digests carried with profile and explicitly wrapped only in HOST comparison where required, never passed incorrectly into S1. Definition/template raw hash, design semantic hash, preview hash and active raw CAS hash have different meanings."
+  },
+  "render_contract": {
+    "template": {
+      "id": "local-tauri-vanilla",
+      "template_version": "1.0.0",
+      "matrix": "desktop/windows-x64/rust/tauri2+vanilla/has_ui=true",
+      "product_paths": [
+        "program/src-tauri/Cargo.toml",
+        "program/src-tauri/build.rs",
+        "program/src-tauri/tauri.conf.json",
+        "program/src-tauri/src/main.rs",
+        "program/src-tauri/src/domain/mod.rs",
+        "program/src-tauri/src/ports/mod.rs",
+        "program/README.md",
+        "ui-ux/index.html",
+        "ui-ux/app.js",
+        "ui-ux/styles.css",
+        "ui-ux/ui-schema.json",
+        "ui-ux/README.md",
+        "program/src-tauri/Cargo.lock",
+        "program/src-tauri/rust-toolchain.toml"
+      ],
+      "rules": "只產生可審查的骨架/契約標記與未實作行為，不生成假的成功業務邏輯。依賴pins與toolchain matrix需在模板golden封存時從已稽核本機lock明列，不下載或宣稱建置成功。此JSON/example只是schema/plan fixture，完整模板內容與build golden不是本輪已交付產品。",
+      "pins_proposed_from_local_lock": {
+        "serde": "1.0.229",
+        "serde_json": "1.0.154",
+        "tauri": "2.12.5",
+        "tauri-build": "2.7.4"
+      },
+      "rust_toolchain_proposed": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "pin_gate": "S2前封存該模板自己的完整transitive Cargo.lock及resource字節golden；不能把含其他workspace根包的現有Cargo.lock原樣搬給生成專案。固定直接pins不等於已證明transitive build；此gate未做不宣稱可建置。",
+      "pins_source": {
+        "path": "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+        "sha256": "85f6daa9b5ee95aa37950bf2f92a9f90e9a8187361dd4395306cc867c053849a"
+      }
+    },
+    "scope": "First local-tauri-vanilla1.0.0 template produces reviewed source contracts/behavior skeleton artifacts only, not working business implementation. Preserve two products and all14 declared paths. No build/package/install/launch as generation side effect. Broader target/media/runtime behavior stays unsupported with explicit reason.",
+    "token_grammar": "UTF8 source text scanner accepts only {{TOKEN:CONTEXT}} exactly. TOKEN set PROJECT_UUID, PACKAGE_ID, APP_IDENTIFIER, DISPLAY_NAME, PURPOSE, REQUIREMENTS_JSON, UI_SCHEMA_JSON. CONTEXT enum literal|json|html_text; fixed allowlist per resource. {{ unmatched/unknown token/context or dynamic template_key rejects. No recursive token evaluation: injected text never scanned again. Raw source verified before rendering, output separately bounded.",
+    "mapping": {
+      "PROJECT_UUID": "literal validated UUIDv4 from definition",
+      "PACKAGE_ID": "literal project_<uuid without hyphens> ASCII",
+      "APP_IDENTIFIER": "literal local.sgenaxis.p<uuid32>",
+      "DISPLAY_NAME": "json string value or HTML text escaped only, never filename/Rust identifier",
+      "PURPOSE": "json string value or HTML text escaped only",
+      "REQUIREMENTS_JSON": "canonical compact JSON array of confirmed requirement id/intent/acceptance; no executable text",
+      "UI_SCHEMA_JSON": "closed typed schema projection from exact authenticated design capture; JSON data file only, no inline raw script"
+    },
+    "escapes": "json context emits complete JSON value with RFC8259 quoting, no concatenation into JS/code token; html_text escapes &,<,>,double/single quote in that order. Embedded JSON lives in separate ui-schema.json fetched as inert data; not inside <script>. Valid Unicode literal, controls escaped; reject lone surrogates/NUL where source contract disallows. No path interpolation.",
+    "resource_recipe": {
+      "program/src-tauri/Cargo.toml": "fixed direct dependency pins and UUID package identifier; dependency constraints never user-controlled",
+      "program/src-tauri/build.rs": "fixed reviewed template, no user interpolation",
+      "program/src-tauri/tauri.conf.json": "fixed Tauri2 shape +UUID identifier+JSON escaped display title; frontendDist relative path ../../ui-ux",
+      "program/src-tauri/src/main.rs": "fixed bootstrap only; no generated arbitrary command allowlist",
+      "program/src-tauri/src/domain/mod.rs": "confirmed requirement contract data as inert Rust string/JSON include; no fake success logic",
+      "program/src-tauri/src/ports/mod.rs": "explicit unimplemented business seam contracts; not runtime implementations",
+      "program/README.md": "fixed explanation generated-source-only +confirmed intent as inert text",
+      "ui-ux/index.html": "fixed UI root +external app.js/style links; no raw injected HTML",
+      "ui-ux/app.js": "fixed closed renderer reading ui-schema.json, textContent/control construction, no eval/innerHTML from data",
+      "ui-ux/styles.css": "fixed reviewed styles, no user CSS injection",
+      "ui-ux/ui-schema.json": "canonical closed design/requirement projection",
+      "ui-ux/README.md": "fixed projection/mocking/unsupported behaviors explanation",
+      "program/src-tauri/Cargo.lock": "template-specific complete transitive lock golden, never workspace lock copy",
+      "program/src-tauri/rust-toolchain.toml": "reviewed fixed toolchain from sealed template matrix"
+    },
+    "golden_gate": "BUILD_GOLDEN_REQUIRED before template-source Skeleton acceptance: author/review the14 exact resource bytes, standalone transitive lock, source digests and template manifest in separate accepted template-resource subtask. This proposal defines recipes, not delivered Rust Skeleton or build golden. Existing direct pins/toolchain are historical candidate values from frozen packet, not freshly verified compatibility or a current recommendation. No network resolution/build performed here; changed pins require Owner revision.",
+    "design_failure": "Unsupported format/profile/node/event/external binding/material returns exact source_path reason; preview can show incompatibility, cannot silently render partial success. Empty supported schema explicit placeholder projection only if authorized by definition."
+  },
+  "store_contract": {
+    "layout": {
+      "root": "<authorized project root>/.sgenaxis/generated/",
+      "identity": "store.json",
+      "activation": "active.json（不存在表示尚無啟用版本）",
+      "coordination": "active.json.eluslot-lock及FileCommit自己的journal區；沿IO方案A，不另創writer鎖規約",
+      "staging": "staging/<generation_id>/",
+      "versions": "versions/<generation_id>/",
+      "generation_id": "32個小寫hex，由HOST於confirm分配；exclusive create才確定擁有，碰撞至多32次後明確失敗，無密碼學授權含義",
+      "version_manifest": "versions/<generation_id>/artifact-manifest.json",
+      "protected": [
+        ".sgenaxis/project-manifest.json",
+        "原.ess/.sgendesign/專案定義",
+        "來源模板",
+        "所有未受管資料與既有生成版本"
+      ],
+      "bootstrap": "prepare只inspect，不建目錄。確認後initialize獨佔建立generated根；先準備固定child dirs與協調側檔，持內部writer協調handle，最後create_new完整寫入+sync store.json。既有Ready marker須綁定相同project_uuid且固定根/非reparse。缺/壞marker或不明殘留fail closed；不自動補寫、清空或接管。並行初始化者Busy，先前中斷則RecoveryRequired。",
+      "no_gc": "本階段不刪已seal版本，不清舊active版本。取消只可顯式abort未seal的本次owned staging；abort不確定時保留路徑診斷。Drop只關閉handle，不隱式刪樹。"
+    },
+    "ports": {
+      "new_file": "sgenaxis-ports/src/generation_store.rs；3個object-safe trait，10方法；沒有新Manager/Repository",
+      "GenerationArtifactPort": [
+        "inspect(&self,key:&GenerationStoreKey)->Result<GenerationStoreObservation,GenerationStoreError>",
+        "initialize(&self,key:&GenerationStoreKey)->Result<(),GenerationStoreError>",
+        "begin_owned(&self,key:&GenerationStoreKey,generation_id:&str)->Result<Box<dyn OwnedGenerationStage>,GenerationStoreError>",
+        "acquire_read(&self,key:&GenerationStoreKey)->Result<Box<dyn GenerationReadLease>,GenerationStoreError>"
+      ],
+      "OwnedGenerationStage": [
+        "write_new(&mut self,relative_path:&str,bytes:&[u8])->Result<(),GenerationStoreError>",
+        "seal(self:Box<Self>,manifest_bytes:&[u8],projection:&GenerationManifestProjection)->Result<SealedGeneration,GenerationStoreError>",
+        "abort(self:Box<Self>)->Result<StageAbortReceipt,GenerationStoreError>"
+      ],
+      "GenerationReadLease": [
+        "active_bytes(&self)->Option<&[u8]>",
+        "read_manifest(&self,generation_id:&str)->Result<Vec<u8>,GenerationStoreError>",
+        "verify_sealed(&self,generation_id:&str,projection:&GenerationManifestProjection)->Result<VerifiedGenerationSnapshot,GenerationStoreError>"
+      ],
+      "DTO": {
+        "GenerationStoreKey": "project_root:String + project_uuid:String；資料構造不是授權，每次Port都重新確認根/marker/固定路徑",
+        "GenerationStoreObservation": "Absent | Ready{store_root:String}；inspect唯讀，不能觀察未提交active當SSOT",
+        "GenerationFileRef": "relative_path:String,product:String,size_bytes:u64,digest:String；product只允許program/ui_ux",
+        "GenerationManifestProjection": "project_uuid:String,generation_id:String,manifest_digest:String,files:Vec<GenerationFileRef>；HOST先驗證manifest bytes/schema/投影一致性，adapter不批准業務資料",
+        "SealedGeneration": "project_uuid,generation_id,version_root,manifest_digest:String；只有驗證且no-replace seal成功才產生",
+        "VerifiedGenerationSnapshot": "project_uuid,generation_id,manifest_digest:String; files:Vec<{relative_path:String,digest:String,bytes:Vec<u8>}>；總bytes受上限限制，讀租約保護下複製",
+        "StageAbortReceipt": "removed_owned_paths:Vec<String>；只有本次owned staging全部移除才Ok；未清項目以GenerationStoreError::RecoveryRequired{owned_paths,reason}回報",
+        "GenerationStoreError": "InvalidPath{path,reason}/StoreIdentityMismatch{path}/Busy{path}/AlreadyExists{path}/UnsupportedVersion{schema,version}/Integrity{path,reason}/LimitExceeded{field,limit}/Storage{stage,path,reason}/RecoveryRequired{owned_paths,reason}"
+      },
+      "contracts": [
+        "write_new只能create_new，不覆寫stage內同名檔；以ASCII casefold檢查碰撞，拒reparse/hardlink和穿越。",
+        "seal驗證每個預期檔size/hash及完整tree無未知entries，先create_new manifest，完整sync，再同卷no-replace發布到versions；即使目標是空目錄也不覆寫。",
+        "seal失敗消耗handle後只關閉資源，錯誤必回保留路徑；已seal版本不由abort/Drop刪除。",
+        "verify_sealed檢查fixed manifest raw hash與HOST已驗證投影、所有檔的真實bytes/hash、沒有多餘/缺失/被修改檔；不以marker存在代替驗證。",
+        "reader不得寫入或清journal；private共享coordination檢查沿用已確認IO v1終態，不另改FileCommit公開trait。",
+        "只讀marker與固定metadata，無合法marker之既有namespace一律拒絕；不遞迴刪使用者專案。",
+        "verify_sealed屬read lease自身方法，root/project及協調handle由lease私有持有；caller不能用任意DTO取代guard。回傳完整bounded bytes snapshot後才可釋放。HOST只解析metadata，codec不持有OS handle。"
+      ]
+    },
+    "wire_contracts": {
+      "common": "UTF-8 JSON，無BOM；寫出物用LF結尾。schema/version固定1，unknown keys/duplicate JSON keys/float數字/無效UTF8/trailing bytes拒絕。definition_revision使用canonical decimal string（0..u64MAX），activation_sequence為1..u64MAX，其餘size/count為有界整數。JSON Schema另存schemas/，byte界限與重複keys由語意驗證補足。",
+      "hashes": "sha256:＋64小寫hex。template source_digest=已封裝template.json原始bytes之hash（file table含各source檔hash）；不在自身JSON內嵌自己的hash。artifact-manifest digest=其實際序列化bytes；file table不列manifest自身。active descriptor也不含自身digest；base digest由FileCommit讀raw bytes後計算。未改bytes不重新排版；模板檔案內容變動必須改version與digest。",
+      "store_marker": "schema=sgenaxis.generation-store,version=1,project_uuid,store_id(32lowerhex)；固定根不存在才建立，不含active/current狀態。",
+      "template_manifest": "schema=sgenaxis.generation-template,version=1,template_id,template_version,compatibility{form,platform,language,framework,has_ui},artifacts[{relative_path,product,template_key,source_digest,encoding}]；source檔內容在已授權bundle固定根；不允許commands/install/scripts欄位。",
+      "artifact_manifest": "schema=sgenaxis.generation-artifacts,version=1,project_uuid,generation_id,binding{definition_revision,definition_digest,target_id,template_id,template_version,template_digest,approval_digest},files[{relative_path,product,size_bytes,digest}]；files依relative_path ASCII byte升冪，program/ui_ux各至少一筆且與準備plan完全相同。",
+      "activation_descriptor": "schema=sgenaxis.generation-activation,version=1,project_uuid,generation_id,activation_sequence(1..u64MAX decimal string),manifest_digest；不儲存任意version_root。根由固定layout＋generation_id組成。序號取前一合法active+1；滿額SequenceOverflow拒絕，原active不變。",
+      "limits_proposed": {
+        "active_bytes": 16384,
+        "store_marker_bytes": 4096,
+        "template_manifest_bytes": 262144,
+        "artifact_manifest_bytes": 1048576,
+        "files": 128,
+        "each_file_bytes": 4194304,
+        "total_payload_bytes": 33554432,
+        "relative_path_ascii_bytes": 240,
+        "path_components": 16,
+        "definition_name_utf8_bytes": 1024,
+        "definition_purpose_utf8_bytes": 16384
+      },
+      "relative_path_grammar": "首尾不能斜線；以/分段，每段1..64 ASCII bytes，僅A-Z a-z 0-9 _ - .；拒.和..、空段、尾點、Windows保留名含副檔名、反斜線/冒號/NUL/UNC/drive/device；整個path≤240且≤16段；ASCII casefold後唯一。檔案表不允許file/dir prefix碰撞。",
+      "template_variables": "只允許declared文字插值，不執行expression。display_name/purpose只能以JSON字串常值或HTML text escaped輸出；Rust identifiers/包識別由UUID衍生ASCII project_<uuid32>與local.sgenaxis.p<uuid32>，不把任意名稱當檔名或程式碼。未知token拒絕；source原始bytes與render後bytes各自界限驗證。",
+      "scope_of_limits": "以上為本次建議預設，不冒稱已採納；Unicode長度以UTF8 bytes另驗，不拿JSON Schema maxLength代替。任何新需求超限須重審，不默默截斷。"
+    },
+    "reader_consistency": {
+      "hazard": "FileCommit可能先發布active再驗證/回復；直接read(active.json)會看見尚未完成的瞬間值，因此不允許consumer繞過讀租約。",
+      "rule": "GenerationReadLease在同一active側檔取得OS共享read handle；與FileCommit exclusive writer互斥，允許多reader。側檔必須已存在，reader不create、不寫。取得後唯讀檢查IO journal：PREPARED/未知/損毀/RecoveryRequired拒絕，合法terminal需與active bytes一致。缺協調檔/未Ready namespace拒絕，不假稱已初始化。",
+      "lifetime": "HOST持read lease到active/manifest解析、所有檔hash與完整性驗證及byte snapshot複製完成才釋放。M03接收此不可變byte snapshot，不再直接讀活動檔案。writer不得在持read lease時重入；同一用例鎖順序為namespace bootstrap（若必要，先完成並釋放）→active writer或reader二選一→stage handle。",
+      "readonly": "初始化已完成的唯讀專案可用read-only handle讀；寫權不足不自動降級為未協調讀取。生成不可用不妨礙另一模組以原既有流程檢視.ess。",
+      "scope": "新增的是本提案的consumer能力與private coordination seam，須確認後才建骨架；不把IO-A-F1原生證據當已完成。"
+    },
+    "clarifications": "Reuse frozen proposed3traits/10methods and exact wire schemas, not a new alternative store. Existing FileCommit public API unchanged. Native store must authenticate project root/marker/handle identity for every operation; UI project_root is never accepted. Secure identity provider is explicit M01 seam dependency.",
+    "private_IO_seam": "Generation read lease must inspect current IO journal under shared OS lock compatible with active FileCommit writer. Proposed bounded crate-private file_commit.rs helper exposes ONLY readonly terminal/active consistency validation for already-locked canonical active target. No journal format rewrite, cleanup, public Port extension or bypass. This is new IO-owned integration scope requiring approval/review, not implied by accepted IO product. If wrapper cannot preserve IO invariants, REPLAN_REQUIRED before implementation.",
+    "seal_proof": "seal checks every output filename/length/hash, exact table/no extra/missing files, symlink/reparse/hardlink rejection and directory identity. Flush every file+manifest+durable no-replace directory publication. SealedGeneration only after verified success. Existing destination even empty never overwritten. Partial/unverifiable seal returns preserved stage/version paths and no activation.",
+    "initialization": "prepare inspect does not create namespace. confirm explicit bootstrap only absent authorized namespace, store marker written last. Unknown existing namespace is IdentityMismatch/RecoveryRequired, no takeover. Reader missing sidecar cannot create one; bootstrap happens separately and never under held read lease.",
+    "rollback": "No deletion of sealed versions. abort only exact owned unsealed staging and requires native ownership/containment verification; cancellation/cleanup refusal returns retained diagnostic evidence. Drop closes handles only. No generic recursive project cleanup.",
+    "reader_output": "VerifiedGenerationSnapshot bounded immutable bytes includes generation ID/manifest+each file digest. M03 consumer accepts this snapshot, never resolves path again after lease release. Busy keeps prior verified cache tagged stale, no current proof claim; corrupt/missing/unknown schema stops new load and never repairs automatically."
+  },
+  "lifecycle": {
+    "prepare": "Authenticate caller/project then definition/template/approval/design sources; call existing S1 prepare_generation. SaveDefinitionOnly returns missing sorted IDs and no render/store writes; actual definition save delegated M01 explicit command. Prepared renders all exact bytes in memory, checks limits and emits preview plan. No generated root mkdir during prepare.",
+    "plan": "Server opaque plan_id ASCII1..128 bound actual window instance/project/session/generation, typed definition equality+revision, S1 binding, HOST design envelope, per-file digests and preview digest. TTL60s monotonic, max16plans/runtime, max128MiB rendered-plan memory aggregate; reject capacity, no eviction. Cancel consumes plan only before confirm.",
+    "confirm": "DTO plan_id+preview_digest+operation_id only. Revalidate sources/fences/S1 binding and base active raw digest. Bootstrap if absent then acquire active writer lease; exact observed bytes digest must equal captured base, sequence+1 checked. Allocate32hex generation ID with exclusive stage create, max32collision attempts. Stage/rendered bytes are the previewed bytes, not re-rendered mutable inputs.",
+    "publish": "Write+verify owned stage, seal immutable dual tree; revalidate input fences and target identity before activation; replace_checked(base raw,exact active descriptor). Validate CommitReceipt target/previous/committed digest and nonempty transaction_id. Success GenerationActivated carries version+manifest+active raw proof, definition/design capture IDs. M01/M04 baselines never ACKed by M02.",
+    "failure": "Before active transaction known failure preserves previous active; sealed tree retained as VersionSealedNotActivated. RecoveryRequired/receipt mismatch blocks current publishing/reader truth and retains IO evidence. Once active transaction begins cancel cannot report Cancelled: await actual commit outcome. Valid committed result after owner detach becomes ActivatedDeliveryDeferred, not unchanged failure. No blind retry of active CAS.",
+    "replay": "Runtime operation cache max128/session1024/runtime; no silent eviction. Same operation/body returns proof; changed body ReplayConflict. Across restart exactly-once not claimed: inspect verified active+manifest by generation/preview binding before manual reconcile; cannot retry lost confirmation to create new activation automatically. New sealed versions retained.",
+    "read_refresh": "Shared read lease verifies IO terminal state then active/schema/project/sequence; parse manifest and verify exact sealed tree under same lease to immutable bytes. All references in one version, never mix Program/UiUx. Release lease only after snapshot copy. No build or generated-code execution.",
+    "design_saved": "M04 formal save proof is captured input provenance only. Generating does not mark current design clean, update snapshot baseline or mutate formal file; changed design during render invalidates plan before activation. Later edit after successful activation makes generated version outdated, but historical version/proof stays immutable.",
+    "launch_build": "Explicit separate future build/package/preview execution scope and approvals. GenerationActivated means source version active only; product_pass stays false, no build/install/native acceptance inference."
+  },
+  "errors": {
+    "shape": "GenerationError {code,stage,field_or_path?,reason,plan_id?,operation_id?,details}; Result SaveDefinitionOnly|PreviewReady|GenerationActivated|VersionSealedNotActivated|ActivatedDeliveryDeferred|Error, no boolean/error contradiction.",
+    "codes": {
+      "InvalidInput": [
+        "unknown_field",
+        "type",
+        "empty",
+        "invalid_id",
+        "invalid_digest",
+        "byte_limit",
+        "count_limit"
+      ],
+      "DependencyNotReady": [
+        "definition_owner",
+        "approval_source",
+        "design_owner",
+        "codec_projector",
+        "target_identity",
+        "template_golden",
+        "read_coordination"
+      ],
+      "StalePlan": [
+        "definition",
+        "template",
+        "approval",
+        "design",
+        "active_base",
+        "owner_generation"
+      ],
+      "DesignSaveRequired": [
+        "dirty",
+        "proof_missing",
+        "ack_deferred"
+      ],
+      "UnsupportedDesignFeature": [
+        "format",
+        "profile",
+        "node",
+        "event",
+        "binding",
+        "material"
+      ],
+      "RenderError": [
+        "unknown_token",
+        "invalid_context",
+        "unclosed_token",
+        "output_limit"
+      ],
+      "Store": [
+        "IdentityMismatch",
+        "AlreadyExists",
+        "Busy",
+        "Integrity",
+        "UnsupportedVersion",
+        "RecoveryRequired",
+        "AbortFailed"
+      ],
+      "CapacityExceeded": [
+        "plans",
+        "plan_bytes",
+        "requests"
+      ],
+      "PlanExpired": [
+        "confirm"
+      ],
+      "ReplayConflict": [
+        "same_id_different_payload"
+      ],
+      "PermissionDenied": [
+        "role",
+        "project_binding",
+        "caller_instance"
+      ],
+      "SequenceOverflow": [
+        "active_sequence"
+      ],
+      "IO": [
+        "exact CommitError variant fields"
+      ]
+    },
+    "precedence": "caller/project/closed DTO → owner binding/replay/TTL → exact source authentication → S1 invalid structure/missing decisions → saved-design projection → render/token/output guards → namespace identity → writer lease/base CAS → stage/seal integrity → source fence freshness → active receipt → response delivery. Earliest stage fails, no unrelated IO afterward.",
+    "passthrough": "Preserve accepted GenerationPlanError field and reason; preserve FileCommitError expected/observed/stage/paths/recovery journal evidence. Native StoreError includes owned stage/sealed version preserved paths on failure; no hidden cleanup success. UI hides unauthorized native paths/source content.",
+    "timer_cancel": "No automatic generation/timer. TTL uses monotonic clock only; cancel after activation boundary returns operation pending until proof. No automatic retry/package install/template network fetch."
+  },
+  "ui": {
+    "commands": {
+      "generation_prepare": [
+        "project_binding",
+        "target_id",
+        "design_document_uuid?"
+      ],
+      "generation_confirm": [
+        "plan_id",
+        "preview_digest",
+        "operation_id"
+      ],
+      "generation_cancel": [
+        "plan_id"
+      ],
+      "generation_get_active": [
+        "project_binding"
+      ],
+      "generation_get_operation": [
+        "operation_id"
+      ]
+    },
+    "controls": "Generate disabled with accessible missing-definition/approval/design-save/template-golden reason. Preview both Program and UiUx file lists, bytes/hashes, input revisions and explicit source-only status; Confirm/Cancel. Active version display separate from Build/Release status. Errors preserve current project/design draft.",
+    "ACL": "Editor only; Viewer denied all generation commands except trusted internal immutable snapshot consumer. No arbitrary files/source/root/approval boolean fields. Project switch invalidates plans but retains in-flight proof; prior cached snapshot tagged stale if refresh Busy.",
+    "integration": "M01 finish-review Draft/missing decisions never auto-authorizes render; explicit generation SaveOnly list routed back to owner. M03 receives verified UiUx schema snapshot, uses closed mock capabilities, not generated arbitrary dispatch. M04 controls explicit design save; no legacy FS fallback.",
+    "a11y": "Keyboard preview/confirm/cancel, focus retained on error; aria-live pending/deferred states; no success badge from sealed-only version."
+  },
+  "decisions": [
+    {
+      "id": "M02-G1",
+      "proposal": "Retain adopted C+B direction and S1; adopt authenticated source/fence/approval and saved-design input envelope.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G2",
+      "proposal": "Adopt deterministic14-resource render recipes/token escaping/unsupported matrix and mandatory template golden+standalone lock gate.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G3",
+      "proposal": "Adopt existing proposed Store3traits/10methods, schema/limits/layout and no-replace sealing; native evidence remains required.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G4",
+      "proposal": "Adopt IO-owned crate-private read-coordination helper scope and exact reader proof lifetime; no public IO/journal change.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G5",
+      "proposal": "Adopt preview/confirm/activation/cancel/replay/deferred proof lifecycle and source-only completion meaning.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G6",
+      "proposal": "Adopt explicit M01/M03/M04 input/consumer seams without moving definition/design ownership or saving implicitly.",
+      "status": "PENDING_OWNER"
+    },
+    {
+      "id": "M02-G7",
+      "proposal": "Adopt closed commands/errors, exact candidate envelope, BDD/TDD and staged acceptance; no Skeleton before readiness gates.",
+      "status": "PENDING_OWNER"
+    }
+  ],
+  "envelope": {
+    "status": "CANDIDATE_REQUIRES_OWNER",
+    "primary_module": "M02",
+    "integration_children": [
+      "IO readonly private seam",
+      "M04 saved-design capture/fence",
+      "M01 definition source/M03 consumer contracts only"
+    ],
+    "files": [
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/generation_store.rs",
+        "change": "three proposed store traits and DTO/error types",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/lib.rs",
+        "change": "generation port exports only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/generation_store.rs",
+        "change": "Windows store/bootstrap/stage/read lease implementation",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/file_commit.rs",
+        "change": "bounded crate-private readonly locked-target journal inspection wrapper only; IO review required",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/lib.rs",
+        "change": "generation adapter export",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/tests/phase1_generation_store.rs",
+        "change": "native stage/reader/writer/alias/durability tests",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/template_generation.rs",
+        "change": "source authentication/render/publication orchestration and ports",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+        "change": "generation module export",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/ipc.rs",
+        "change": "five exact generation command allowlist additions",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/tests/phase1_template_generation.rs",
+        "change": "source/render/fake store module tests",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/generation_owner.rs",
+        "change": "plan/operation registry, ACL/source composition",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/document_owner.rs",
+        "change": "pending M04 shared path: saved-design capture/fence read seam only",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+        "change": "five closed generation handlers",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+        "change": "GenerationOwner and evidence provider construction only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+        "change": "five generation DTO/result types",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+        "change": "module/commands/lifecycle revocation only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/dispatch.toml",
+        "change": "five explicit permissions",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/permissions/host.toml",
+        "change": "matching closed mapping",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/capabilities/default.json",
+        "change": "Editor only; no Viewer privilege",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/src-tauri/tests/phase1_generation_owner.rs",
+        "change": "M01/M03/M04 binding+approval+ACL integration",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/app.js",
+        "change": "generation review/confirm/active status only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/index.html",
+        "change": "dual product preview/status UI only",
+        "exists_now": true
+      },
+      {
+        "path": "apps/sgenaxis-desktop/ui/generation-lifecycle.test.cjs",
+        "change": "observable source-only UI lifecycle cases",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/template.json",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/Cargo.toml.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/build.rs.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/tauri.conf.json.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/src/main.rs.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/src/domain/mod.rs.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/src/ports/mod.rs.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/README.md.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/ui-ux/index.html.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/ui-ux/app.js.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/ui-ux/styles.css.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/ui-ux/ui-schema.json.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/ui-ux/README.md.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/Cargo.lock.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      },
+      {
+        "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/templates/phase1-local-desktop/program/src-tauri/rust-toolchain.toml.tmpl",
+        "change": "Exact reviewed resource in template-golden subtask; no generated Skeleton created by current planning packet",
+        "exists_now": false
+      }
+    ],
+    "protected": [
+      "all WORK S1 generation_plan/project_definition/document_edit source/publictypes/tests",
+      "IO public FileCommitPort,journal format/helpers except exact readonly wrapper listed",
+      "all Cargo manifests/locks (template resource lock is distinct new golden resource, not workspace lock)",
+      "M01 definition save implementation and S3 native target adapter",
+      "M03 codec/Viewer runtime and M05/M07 product code",
+      "project definition/design/formal/recovery files",
+      "build/package/install/launch/delete-old-version behavior"
+    ],
+    "template_gate": "Resource recipes and historical candidate pins are NOT full bytes/golden acceptance. Separate exact resource review+lock closure before Skeleton of renderer/store integration. No hidden download dependency or copying workspace lock. Any new dependency/IO seam expansion requires replan."
+  },
+  "bdd_tdd": {
+    "cases": [
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-001",
+        "tdd": "TDD-M02-GEN-001",
+        "contract": "G1",
+        "title": "Missing decisions",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "SaveDefinitionOnly exact missing paths, zero render/store writes",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Missing decisions",
+          "oracle": "SaveDefinitionOnly exact missing paths, zero render/store writes"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-002",
+        "tdd": "TDD-M02-GEN-002",
+        "contract": "G1",
+        "title": "Approval text forged",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "not authenticated; missing/error no publish",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Approval text forged",
+          "oracle": "not authenticated; missing/error no publish"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-003",
+        "tdd": "TDD-M02-GEN-003",
+        "contract": "G1",
+        "title": "Approved revision hash wrong",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "integrity error before policy/store",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Approved revision hash wrong",
+          "oracle": "integrity error before policy/store"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-004",
+        "tdd": "TDD-M02-GEN-004",
+        "contract": "G1",
+        "title": "Definition changed",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "StalePlan before active update",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Definition changed",
+          "oracle": "StalePlan before active update"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-005",
+        "tdd": "TDD-M02-GEN-005",
+        "contract": "G1",
+        "title": "Approval revoked",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "StalePlan before active update",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Approval revoked",
+          "oracle": "StalePlan before active update"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-006",
+        "tdd": "TDD-M02-GEN-006",
+        "contract": "G1",
+        "title": "Template replaced",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "TemplateMismatch/hash error",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Template replaced",
+          "oracle": "TemplateMismatch/hash error"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-007",
+        "tdd": "TDD-M02-GEN-007",
+        "contract": "G1",
+        "title": "Design dirty",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "DesignSaveRequired no implicit save",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Design dirty",
+          "oracle": "DesignSaveRequired no implicit save"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-008",
+        "tdd": "TDD-M02-GEN-008",
+        "contract": "G1",
+        "title": "Design ACK deferred",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "DesignSaveRequired no render",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Design ACK deferred",
+          "oracle": "DesignSaveRequired no render"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-009",
+        "tdd": "TDD-M02-GEN-009",
+        "contract": "G1",
+        "title": "Unsupported design",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "exact source path no partial success",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Unsupported design",
+          "oracle": "exact source path no partial success"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-010",
+        "tdd": "TDD-M02-GEN-010",
+        "contract": "G1",
+        "title": "Digest prefix",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "HOST explicit conversions, S1 receives sha256: syntax",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Digest prefix",
+          "oracle": "HOST explicit conversions, S1 receives sha256: syntax"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G1",
+        "bdd": "BDD-M02-GEN-011",
+        "tdd": "TDD-M02-GEN-011",
+        "contract": "G1",
+        "title": "Fence missing",
+        "given": "Trusted source/fake owner evidence with named change",
+        "when": "prepare/confirm",
+        "then": "DependencyNotReady no race-prone publish",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Fence missing",
+          "oracle": "DependencyNotReady no race-prone publish"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-012",
+        "tdd": "TDD-M02-GEN-012",
+        "contract": "G2",
+        "title": "Dual outputs",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "all14 exact paths and both products present",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Dual outputs",
+          "oracle": "all14 exact paths and both products present"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-013",
+        "tdd": "TDD-M02-GEN-013",
+        "contract": "G2",
+        "title": "Literal text injection",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "quotes/<script>/backticks stay inert data",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Literal text injection",
+          "oracle": "quotes/<script>/backticks stay inert data"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-014",
+        "tdd": "TDD-M02-GEN-014",
+        "contract": "G2",
+        "title": "Unknown token",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "RenderError unknown_token before FS",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Unknown token",
+          "oracle": "RenderError unknown_token before FS"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-015",
+        "tdd": "TDD-M02-GEN-015",
+        "contract": "G2",
+        "title": "Unclosed token",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "RenderError unclosed_token",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Unclosed token",
+          "oracle": "RenderError unclosed_token"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-016",
+        "tdd": "TDD-M02-GEN-016",
+        "contract": "G2",
+        "title": "Recursive substitution",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "inserted {{TOKEN}} not re-expanded",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Recursive substitution",
+          "oracle": "inserted {{TOKEN}} not re-expanded"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-017",
+        "tdd": "TDD-M02-GEN-017",
+        "contract": "G2",
+        "title": "UI schema data",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "no inline executable props/event text",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "UI schema data",
+          "oracle": "no inline executable props/event text"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-018",
+        "tdd": "TDD-M02-GEN-018",
+        "contract": "G2",
+        "title": "Package identity",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "UUID-derived ASCII identifiers only",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Package identity",
+          "oracle": "UUID-derived ASCII identifiers only"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-019",
+        "tdd": "TDD-M02-GEN-019",
+        "contract": "G2",
+        "title": "Golden absent",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "DependencyNotReady template_golden, no placeholder lock",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Golden absent",
+          "oracle": "DependencyNotReady template_golden, no placeholder lock"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-020",
+        "tdd": "TDD-M02-GEN-020",
+        "contract": "G2",
+        "title": "Version source changed",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "template version/digest required new reference",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Version source changed",
+          "oracle": "template version/digest required new reference"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-021",
+        "tdd": "TDD-M02-GEN-021",
+        "contract": "G2",
+        "title": "No business fake success",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "generated behavior explicitly unimplemented",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "No business fake success",
+          "oracle": "generated behavior explicitly unimplemented"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G2",
+        "bdd": "BDD-M02-GEN-022",
+        "tdd": "TDD-M02-GEN-022",
+        "contract": "G2",
+        "title": "Wrong target",
+        "given": "Fixed template sources and raw input fixtures",
+        "when": "render source preview",
+        "then": "existing S1 UnsupportedTarget; no fallback",
+        "level": "L0",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Wrong target",
+          "oracle": "existing S1 UnsupportedTarget; no fallback"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-023",
+        "tdd": "TDD-M02-GEN-023",
+        "contract": "G3",
+        "title": "active_bytes 16383",
+        "given": "Independent expanded byte/count fixture exactly16383, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "active_bytes",
+          "value": 16383,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-024",
+        "tdd": "TDD-M02-GEN-024",
+        "contract": "G3",
+        "title": "active_bytes 16384",
+        "given": "Independent expanded byte/count fixture exactly16384, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "active_bytes",
+          "value": 16384,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-025",
+        "tdd": "TDD-M02-GEN-025",
+        "contract": "G3",
+        "title": "active_bytes 16385",
+        "given": "Independent expanded byte/count fixture exactly16385, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error active_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "active_bytes",
+          "value": 16385,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-026",
+        "tdd": "TDD-M02-GEN-026",
+        "contract": "G3",
+        "title": "store_marker_bytes 4095",
+        "given": "Independent expanded byte/count fixture exactly4095, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "store_marker_bytes",
+          "value": 4095,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-027",
+        "tdd": "TDD-M02-GEN-027",
+        "contract": "G3",
+        "title": "store_marker_bytes 4096",
+        "given": "Independent expanded byte/count fixture exactly4096, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "store_marker_bytes",
+          "value": 4096,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-028",
+        "tdd": "TDD-M02-GEN-028",
+        "contract": "G3",
+        "title": "store_marker_bytes 4097",
+        "given": "Independent expanded byte/count fixture exactly4097, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error store_marker_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "store_marker_bytes",
+          "value": 4097,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-029",
+        "tdd": "TDD-M02-GEN-029",
+        "contract": "G3",
+        "title": "template_manifest_bytes 262143",
+        "given": "Independent expanded byte/count fixture exactly262143, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "template_manifest_bytes",
+          "value": 262143,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-030",
+        "tdd": "TDD-M02-GEN-030",
+        "contract": "G3",
+        "title": "template_manifest_bytes 262144",
+        "given": "Independent expanded byte/count fixture exactly262144, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "template_manifest_bytes",
+          "value": 262144,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-031",
+        "tdd": "TDD-M02-GEN-031",
+        "contract": "G3",
+        "title": "template_manifest_bytes 262145",
+        "given": "Independent expanded byte/count fixture exactly262145, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error template_manifest_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "template_manifest_bytes",
+          "value": 262145,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-032",
+        "tdd": "TDD-M02-GEN-032",
+        "contract": "G3",
+        "title": "artifact_manifest_bytes 1048575",
+        "given": "Independent expanded byte/count fixture exactly1048575, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "artifact_manifest_bytes",
+          "value": 1048575,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-033",
+        "tdd": "TDD-M02-GEN-033",
+        "contract": "G3",
+        "title": "artifact_manifest_bytes 1048576",
+        "given": "Independent expanded byte/count fixture exactly1048576, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "artifact_manifest_bytes",
+          "value": 1048576,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-034",
+        "tdd": "TDD-M02-GEN-034",
+        "contract": "G3",
+        "title": "artifact_manifest_bytes 1048577",
+        "given": "Independent expanded byte/count fixture exactly1048577, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error artifact_manifest_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "artifact_manifest_bytes",
+          "value": 1048577,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-035",
+        "tdd": "TDD-M02-GEN-035",
+        "contract": "G3",
+        "title": "files 127",
+        "given": "Independent expanded byte/count fixture exactly127, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "files",
+          "value": 127,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-036",
+        "tdd": "TDD-M02-GEN-036",
+        "contract": "G3",
+        "title": "files 128",
+        "given": "Independent expanded byte/count fixture exactly128, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "files",
+          "value": 128,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-037",
+        "tdd": "TDD-M02-GEN-037",
+        "contract": "G3",
+        "title": "files 129",
+        "given": "Independent expanded byte/count fixture exactly129, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error files, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "files",
+          "value": 129,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-038",
+        "tdd": "TDD-M02-GEN-038",
+        "contract": "G3",
+        "title": "each_file_bytes 4194303",
+        "given": "Independent expanded byte/count fixture exactly4194303, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "each_file_bytes",
+          "value": 4194303,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-039",
+        "tdd": "TDD-M02-GEN-039",
+        "contract": "G3",
+        "title": "each_file_bytes 4194304",
+        "given": "Independent expanded byte/count fixture exactly4194304, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "each_file_bytes",
+          "value": 4194304,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-040",
+        "tdd": "TDD-M02-GEN-040",
+        "contract": "G3",
+        "title": "each_file_bytes 4194305",
+        "given": "Independent expanded byte/count fixture exactly4194305, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error each_file_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "each_file_bytes",
+          "value": 4194305,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-041",
+        "tdd": "TDD-M02-GEN-041",
+        "contract": "G3",
+        "title": "total_payload_bytes 33554431",
+        "given": "Independent expanded byte/count fixture exactly33554431, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "total_payload_bytes",
+          "value": 33554431,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-042",
+        "tdd": "TDD-M02-GEN-042",
+        "contract": "G3",
+        "title": "total_payload_bytes 33554432",
+        "given": "Independent expanded byte/count fixture exactly33554432, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "total_payload_bytes",
+          "value": 33554432,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-043",
+        "tdd": "TDD-M02-GEN-043",
+        "contract": "G3",
+        "title": "total_payload_bytes 33554433",
+        "given": "Independent expanded byte/count fixture exactly33554433, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error total_payload_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "total_payload_bytes",
+          "value": 33554433,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-044",
+        "tdd": "TDD-M02-GEN-044",
+        "contract": "G3",
+        "title": "relative_path_ascii_bytes 239",
+        "given": "Independent expanded byte/count fixture exactly239, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "relative_path_ascii_bytes",
+          "value": 239,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-045",
+        "tdd": "TDD-M02-GEN-045",
+        "contract": "G3",
+        "title": "relative_path_ascii_bytes 240",
+        "given": "Independent expanded byte/count fixture exactly240, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "relative_path_ascii_bytes",
+          "value": 240,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-046",
+        "tdd": "TDD-M02-GEN-046",
+        "contract": "G3",
+        "title": "relative_path_ascii_bytes 241",
+        "given": "Independent expanded byte/count fixture exactly241, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error relative_path_ascii_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "relative_path_ascii_bytes",
+          "value": 241,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-047",
+        "tdd": "TDD-M02-GEN-047",
+        "contract": "G3",
+        "title": "path_components 15",
+        "given": "Independent expanded byte/count fixture exactly15, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "path_components",
+          "value": 15,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-048",
+        "tdd": "TDD-M02-GEN-048",
+        "contract": "G3",
+        "title": "path_components 16",
+        "given": "Independent expanded byte/count fixture exactly16, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "path_components",
+          "value": 16,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-049",
+        "tdd": "TDD-M02-GEN-049",
+        "contract": "G3",
+        "title": "path_components 17",
+        "given": "Independent expanded byte/count fixture exactly17, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error path_components, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "path_components",
+          "value": 17,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-050",
+        "tdd": "TDD-M02-GEN-050",
+        "contract": "G3",
+        "title": "definition_name_utf8_bytes 1023",
+        "given": "Independent expanded byte/count fixture exactly1023, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_name_utf8_bytes",
+          "value": 1023,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-051",
+        "tdd": "TDD-M02-GEN-051",
+        "contract": "G3",
+        "title": "definition_name_utf8_bytes 1024",
+        "given": "Independent expanded byte/count fixture exactly1024, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_name_utf8_bytes",
+          "value": 1024,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-052",
+        "tdd": "TDD-M02-GEN-052",
+        "contract": "G3",
+        "title": "definition_name_utf8_bytes 1025",
+        "given": "Independent expanded byte/count fixture exactly1025, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error definition_name_utf8_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_name_utf8_bytes",
+          "value": 1025,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-053",
+        "tdd": "TDD-M02-GEN-053",
+        "contract": "G3",
+        "title": "definition_purpose_utf8_bytes 16383",
+        "given": "Independent expanded byte/count fixture exactly16383, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_purpose_utf8_bytes",
+          "value": 16383,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-054",
+        "tdd": "TDD-M02-GEN-054",
+        "contract": "G3",
+        "title": "definition_purpose_utf8_bytes 16384",
+        "given": "Independent expanded byte/count fixture exactly16384, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "within inclusive limit accepted",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_purpose_utf8_bytes",
+          "value": 16384,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-055",
+        "tdd": "TDD-M02-GEN-055",
+        "contract": "G3",
+        "title": "definition_purpose_utf8_bytes 16385",
+        "given": "Independent expanded byte/count fixture exactly16385, other guards valid",
+        "when": "validate source/store boundary",
+        "then": "limit error definition_purpose_utf8_bytes, no activation",
+        "level": "L0",
+        "fixture": {
+          "token": "definition_purpose_utf8_bytes",
+          "value": 16385,
+          "self_check": "UTF8 vsASCII byte/count oracle independent; malformed fixture not valid RED"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-056",
+        "tdd": "TDD-M02-GEN-056",
+        "contract": "G3",
+        "title": "Case collision",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "reject before stage",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Case collision",
+          "oracle": "reject before stage"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-057",
+        "tdd": "TDD-M02-GEN-057",
+        "contract": "G3",
+        "title": "Prefix collision",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "file/dir collision rejected",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Prefix collision",
+          "oracle": "file/dir collision rejected"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-058",
+        "tdd": "TDD-M02-GEN-058",
+        "contract": "G3",
+        "title": "Reserved Windows path",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "reject exact path",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Reserved Windows path",
+          "oracle": "reject exact path"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-059",
+        "tdd": "TDD-M02-GEN-059",
+        "contract": "G3",
+        "title": "Bootstrap unknown namespace",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "no takeover/cleanup",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Bootstrap unknown namespace",
+          "oracle": "no takeover/cleanup"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-060",
+        "tdd": "TDD-M02-GEN-060",
+        "contract": "G3",
+        "title": "Bootstrap interrupted",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "RecoveryRequired no auto repair",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Bootstrap interrupted",
+          "oracle": "RecoveryRequired no auto repair"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-061",
+        "tdd": "TDD-M02-GEN-061",
+        "contract": "G3",
+        "title": "Write failed",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "old active untouched; owned stage abort evidence",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Write failed",
+          "oracle": "old active untouched; owned stage abort evidence"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-062",
+        "tdd": "TDD-M02-GEN-062",
+        "contract": "G3",
+        "title": "Seal destination exists",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "AlreadyExists even empty; no replace",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Seal destination exists",
+          "oracle": "AlreadyExists even empty; no replace"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-063",
+        "tdd": "TDD-M02-GEN-063",
+        "contract": "G3",
+        "title": "Extra tree file",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "Integrity rejects seal",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Extra tree file",
+          "oracle": "Integrity rejects seal"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-064",
+        "tdd": "TDD-M02-GEN-064",
+        "contract": "G3",
+        "title": "Corrupt tree",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "hash mismatch no activate",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Corrupt tree",
+          "oracle": "hash mismatch no activate"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-065",
+        "tdd": "TDD-M02-GEN-065",
+        "contract": "G3",
+        "title": "Sealed not active",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "retain VersionSealedNotActivated",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Sealed not active",
+          "oracle": "retain VersionSealedNotActivated"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G3",
+        "bdd": "BDD-M02-GEN-066",
+        "tdd": "TDD-M02-GEN-066",
+        "contract": "G3",
+        "title": "Abort fails",
+        "given": "Native/fake store stages and exact file table",
+        "when": "write/seal version",
+        "then": "stage retained diagnostic, no fake cleanup",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Abort fails",
+          "oracle": "stage retained diagnostic, no fake cleanup"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-067",
+        "tdd": "TDD-M02-GEN-067",
+        "contract": "G4",
+        "title": "Reader writer overlap",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "Busy; no uncommitted active read",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Reader writer overlap",
+          "oracle": "Busy; no uncommitted active read"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-068",
+        "tdd": "TDD-M02-GEN-068",
+        "contract": "G4",
+        "title": "Multiple readers",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "same verified immutable version permitted",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Multiple readers",
+          "oracle": "same verified immutable version permitted"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-069",
+        "tdd": "TDD-M02-GEN-069",
+        "contract": "G4",
+        "title": "Missing sidecar",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "reader no create, explicit error",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Missing sidecar",
+          "oracle": "reader no create, explicit error"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-070",
+        "tdd": "TDD-M02-GEN-070",
+        "contract": "G4",
+        "title": "Nonterminal journal",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "reader refuses, no cleanup",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Nonterminal journal",
+          "oracle": "reader refuses, no cleanup"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-071",
+        "tdd": "TDD-M02-GEN-071",
+        "contract": "G4",
+        "title": "Terminal mismatch",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "reader Integrity/RecoveryRequired",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Terminal mismatch",
+          "oracle": "reader Integrity/RecoveryRequired"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-072",
+        "tdd": "TDD-M02-GEN-072",
+        "contract": "G4",
+        "title": "Snapshot lifetime",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "lease held until all bytes copied",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Snapshot lifetime",
+          "oracle": "lease held until all bytes copied"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-073",
+        "tdd": "TDD-M02-GEN-073",
+        "contract": "G4",
+        "title": "Read-only project",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "read handle works only existing valid coordination",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Read-only project",
+          "oracle": "read handle works only existing valid coordination"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G4",
+        "bdd": "BDD-M02-GEN-074",
+        "tdd": "TDD-M02-GEN-074",
+        "contract": "G4",
+        "title": "Alias reparse",
+        "given": "Shared read/exclusive writer process fixtures with IO journal states",
+        "when": "read active/store",
+        "then": "native identity reject unsafe root/stage",
+        "level": "L3",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Alias reparse",
+          "oracle": "native identity reject unsafe root/stage"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-075",
+        "tdd": "TDD-M02-GEN-075",
+        "contract": "G5",
+        "title": "Prepare cancel",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "zero filesystem writes",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Prepare cancel",
+          "oracle": "zero filesystem writes"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-076",
+        "tdd": "TDD-M02-GEN-076",
+        "contract": "G5",
+        "title": "Plan expired",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "PlanExpired no stage",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Plan expired",
+          "oracle": "PlanExpired no stage"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-077",
+        "tdd": "TDD-M02-GEN-077",
+        "contract": "G5",
+        "title": "Preview tampered",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "StalePlan before writer",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Preview tampered",
+          "oracle": "StalePlan before writer"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-078",
+        "tdd": "TDD-M02-GEN-078",
+        "contract": "G5",
+        "title": "Active CAS conflict",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "old active not overwritten",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Active CAS conflict",
+          "oracle": "old active not overwritten"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-079",
+        "tdd": "TDD-M02-GEN-079",
+        "contract": "G5",
+        "title": "Receipt target wrong",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "block proof retain no Activated",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Receipt target wrong",
+          "oracle": "block proof retain no Activated"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-080",
+        "tdd": "TDD-M02-GEN-080",
+        "contract": "G5",
+        "title": "Receipt previous wrong",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "block proof retain",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Receipt previous wrong",
+          "oracle": "block proof retain"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-081",
+        "tdd": "TDD-M02-GEN-081",
+        "contract": "G5",
+        "title": "Receipt new wrong",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "block proof retain",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Receipt new wrong",
+          "oracle": "block proof retain"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-082",
+        "tdd": "TDD-M02-GEN-082",
+        "contract": "G5",
+        "title": "Receipt transaction empty",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "block proof retain",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Receipt transaction empty",
+          "oracle": "block proof retain"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-083",
+        "tdd": "TDD-M02-GEN-083",
+        "contract": "G5",
+        "title": "Cancel after activate starts",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "await actual outcome no false Cancelled",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Cancel after activate starts",
+          "oracle": "await actual outcome no false Cancelled"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-084",
+        "tdd": "TDD-M02-GEN-084",
+        "contract": "G5",
+        "title": "Owner detached commit",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "ActivatedDeliveryDeferred with proof",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Owner detached commit",
+          "oracle": "ActivatedDeliveryDeferred with proof"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-085",
+        "tdd": "TDD-M02-GEN-085",
+        "contract": "G5",
+        "title": "Same request",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "same proof no second activation",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Same request",
+          "oracle": "same proof no second activation"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-086",
+        "tdd": "TDD-M02-GEN-086",
+        "contract": "G5",
+        "title": "Replay different body",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "ReplayConflict",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Replay different body",
+          "oracle": "ReplayConflict"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-087",
+        "tdd": "TDD-M02-GEN-087",
+        "contract": "G5",
+        "title": "Restart lost result",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "manual proof reconciliation, no exactly-once claim",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Restart lost result",
+          "oracle": "manual proof reconciliation, no exactly-once claim"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G5",
+        "bdd": "BDD-M02-GEN-088",
+        "tdd": "TDD-M02-GEN-088",
+        "contract": "G5",
+        "title": "Sequence overflow",
+        "given": "Preview plan and exact base/manifest/active receipt fixtures",
+        "when": "confirm/publish",
+        "then": "no active update",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Sequence overflow",
+          "oracle": "no active update"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-089",
+        "tdd": "TDD-M02-GEN-089",
+        "contract": "G6",
+        "title": "M01 Draft only",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "no invented Defined/approvalRefs",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "M01 Draft only",
+          "oracle": "no invented Defined/approvalRefs"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-090",
+        "tdd": "TDD-M02-GEN-090",
+        "contract": "G6",
+        "title": "M04 baseline",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "generation changes neither formal nor recovery baseline",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "M04 baseline",
+          "oracle": "generation changes neither formal nor recovery baseline"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-091",
+        "tdd": "TDD-M02-GEN-091",
+        "contract": "G6",
+        "title": "M03 preview",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "closed immutable data consumer, no generated-code execution",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "M03 preview",
+          "oracle": "closed immutable data consumer, no generated-code execution"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-092",
+        "tdd": "TDD-M02-GEN-092",
+        "contract": "G6",
+        "title": "Saved design later changed",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "new active version tagged outdated, immutable old proof retained",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Saved design later changed",
+          "oracle": "new active version tagged outdated, immutable old proof retained"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-093",
+        "tdd": "TDD-M02-GEN-093",
+        "contract": "G6",
+        "title": "One design owner",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "no competing registry",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "One design owner",
+          "oracle": "no competing registry"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G6",
+        "bdd": "BDD-M02-GEN-094",
+        "tdd": "TDD-M02-GEN-094",
+        "contract": "G6",
+        "title": "Missing native provider",
+        "given": "Joint source/consumer contracts represented by approved future fakes",
+        "when": "prepare/consume generation",
+        "then": "DependencyNotReady no raw root fallback",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Missing native provider",
+          "oracle": "DependencyNotReady no raw root fallback"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-095",
+        "tdd": "TDD-M02-GEN-095",
+        "contract": "G7",
+        "title": "Viewer denied",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "PermissionDenied before IO",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Viewer denied",
+          "oracle": "PermissionDenied before IO"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-096",
+        "tdd": "TDD-M02-GEN-096",
+        "contract": "G7",
+        "title": "UI arbitrary files",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "closed DTO rejects",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "UI arbitrary files",
+          "oracle": "closed DTO rejects"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-097",
+        "tdd": "TDD-M02-GEN-097",
+        "contract": "G7",
+        "title": "Capacity full",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "reject before FS no silent eviction",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Capacity full",
+          "oracle": "reject before FS no silent eviction"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-098",
+        "tdd": "TDD-M02-GEN-098",
+        "contract": "G7",
+        "title": "Generation not build",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "UI source-active only; build/release NOT RUN",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Generation not build",
+          "oracle": "UI source-active only; build/release NOT RUN"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-099",
+        "tdd": "TDD-M02-GEN-099",
+        "contract": "G7",
+        "title": "Refresh Busy",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "prior cache stale tag no current proof",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Refresh Busy",
+          "oracle": "prior cache stale tag no current proof"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-100",
+        "tdd": "TDD-M02-GEN-100",
+        "contract": "G7",
+        "title": "Unknown schema",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "no execute/repair/fallback",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "Unknown schema",
+          "oracle": "no execute/repair/fallback"
+        },
+        "status": "PLANNED_NOT_RUN"
+      },
+      {
+        "req": "REQ-M02-G7",
+        "bdd": "BDD-M02-GEN-101",
+        "tdd": "TDD-M02-GEN-101",
+        "contract": "G7",
+        "title": "No old version deletion",
+        "given": "Editor/Viewer binding and deterministic UI/fake backend",
+        "when": "invoke generation lifecycle",
+        "then": "zero sealed-delete calls",
+        "level": "L2",
+        "fixture": {
+          "base": "definitionR7+approved immutable refs; saved designR4 with semanticA; templateT1; base active rawB; rendered manifestC; all distinct digest domains",
+          "mutation": "No old version deletion",
+          "oracle": "zero sealed-delete calls"
+        },
+        "status": "PLANNED_NOT_RUN"
+      }
+    ],
+    "coverage": {
+      "B1": "dual render+activation",
+      "B2": "all frozen limits",
+      "B3": "tokens/schema/paths/DTO",
+      "B4": "source/approval/IO/store failure",
+      "B5": "sealed-only/committed-delivery deferred",
+      "B6": "single definition/design owner/baselines",
+      "B7": "staging seal+active CAS",
+      "B8": "cancel/detach/replay/restart",
+      "B9": "IO uncertain retain/repair deferred",
+      "B10": "M01/M03/M04 seams",
+      "B11": "S1 and digest prefixes/template version",
+      "B12": "no execution/no overwrite/no fake approval"
+    },
+    "valid_red": "Accepted Skeleton compiles; exact template golden/fixture independently self-checks; missing declared behavior only. Missing resource/lock/dependency/native setup is not RED. Current packet creates no executable test or template Skeleton.",
+    "commands_planned_NOT_RUN": [
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml --test phase1_template_generation",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-adapters/Cargo.toml --test phase1_generation_store",
+      "cargo test --manifest-path apps/sgenaxis-desktop/src-tauri/Cargo.toml --test phase1_generation_owner",
+      "node --test apps/sgenaxis-desktop/ui/generation-lifecycle.test.cjs",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-work/Cargo.toml",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "cargo test --manifest-path apps/sgenaxis-desktop/crates/sgenaxis-adapters/Cargo.toml"
+    ],
+    "acceptance": [
+      "Owner adopts G1-G7 and IO/M04 coordination before Skeleton",
+      "template14resource+standalone lock exact golden accepted before renderer implementation",
+      "S1 unchanged, effective compilable RED accepted separately",
+      "module/adjacent regressions GREEN or classified; IO readonly wrapper gets focused conformance review",
+      "Windows11 native reader/writer/alias/durability gates tested, NOT RUN remains NOT RUN",
+      "build/package/install/generated business acceptance separate from source activation",
+      "same-assistant vs independent reviewer explicitly disclosed"
+    ],
+    "pending_automation": [
+      "full template-resource bytes/transitive lock golden not authored now per no-Skeleton request",
+      "native Windows11 multi-process/journal/alias environment",
+      "source-provider fences and actual Approved SPEC evidence integration accepted under own scope"
+    ]
+  },
+  "previous_exact_contract_embedded": {
+    "identity": {
+      "module": "M02",
+      "revision": "M02-EXACT-CB-v1",
+      "date": "2026-11-01",
+      "state": "EXACT_DESIGN_PROPOSED_PENDING_ONE_CONFIRMATION",
+      "source_head": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab"
+    },
+    "requirement_summary": "先以C完成不寫檔的生成門檻、綁定與雙骨架計畫；之後以B將完整不可變產物版本發布，再用單一active描述檔切換。此文件只精確化已採納方向，不自行批准新Port/schema/布局。",
+    "confirmed": [
+      "C＋B方向已採納，不重問方向",
+      "缺必要決策只保存定義並列出差額；足夠時預設程式與UI UX雙骨架",
+      "本機作者不需Git或開發知識；不執行模板、不自動build/下載/安裝依賴",
+      "IO單文件Skeleton/RED階段已通過，不等同FileCommit產品實作或多檔原子提交",
+      "整個M02模組完成與C純計畫切片完成分開"
+    ],
+    "assumptions": [
+      "初始模板只對已採納的Windows11 x64／local desktop／Rust＋Vanilla UI／Tauri2／has_ui=true組合驗證；其他組合明示UnsupportedTarget並保存定義，不偽造支援。",
+      "純C切片不依賴IO runtime或新Store Port；B及consumer切片需IO實作、M01持久化與原生驗證就緒。",
+      "生成版本預設保留，不新增自動GC。M05/M07的素材/快照清理規則不自動套用到生成版本。",
+      "生成不是.ess文件Undo操作；不改M04歷史或源文件。重生改動以新生成版本表示，非覆寫使用者內容。",
+      "不承諾對惡意同權限程序、任意非合作writer或硬體斷電的全域CAS/絕對耐久。"
+    ],
+    "architecture": {
+      "A1_context": "作者確認生成預覽；M01提供不可變定義，M02產生計畫與版本，M03僅消費已啟用且驗證的不可變內容，M08另做環境驗收。",
+      "A2_hexagonal": "UI/Test → Tauri Command → DispatchHost → HOST GenerationUseCase → WORK pure generation policy；HOST → existing FileSystemPort/FileCommitPort + proposed GenerationArtifactPort ← Windows generation-store adapter。",
+      "A3_dependency": "M01 ProjectDefinition → M02 WORK plan；HOST maps template/approval codecs and renders bytes；Adapters → Ports + existing SPEC hash；WORK不新增serde/SPEC/FS/OS依賴。",
+      "A4_responsibility": "WORK只驗證欄位與不可變綁定/產物意圖；HOST核實approval來源、模板內容、渲染與發布；adapter獨佔擁有staging並提供受保護讀取快照。",
+      "A5_input": [
+        "prepare_generation（唯讀）",
+        "confirm_generation（明確寫入）",
+        "cancel_generation（消耗未套用計畫）",
+        "read_current_generation（唯讀consumer）"
+      ],
+      "A6_output": [
+        "FileSystemPort：已授權根的模板/SPEC bytes讀取，不擴充現有語意",
+        "FileCommitPort/FileWriteLease：active.json單檔writer lease/read_current/replace_checked",
+        "GenerationArtifactPort + OwnedGenerationStage + GenerationReadLease：本提案三trait，10方法，公開值均為primitive/opaque bytes"
+      ],
+      "A7_driving": "Vanilla UI、公開邊界測試與受控child consumer；本輪未接入。",
+      "A8_driven": "Windows generation store、本機唯讀template catalog；假Port用於L2 fault injection。",
+      "A9_direction": "UI不可呼叫FS/Store adapter；Domain無OS/serializer；Host只經Port寫入。新adapter可共享file_commit內部coordination/唯讀journal判斷，不更改公開FileCommit契約。",
+      "A10_ownership": "M01/WORK仍是專案定義SSOT。C的GenerationPlan為派生值；HOST每專案GenerationSession最多持有1個準備計畫及其渲染bytes。版本目錄是派生產物，active.json僅指定可見版本，不是另一個專案內容SSOT。",
+      "A11_mutation": "只有核准HOST confirm用例可在固定受管區建立版本和替換active。prepare/cancel未確認計畫不寫FS；reader不清理、不恢復、不寫檔。",
+      "A12_transaction": "唯讀prepare → 使用者確認 → initialize namespace → acquire active writer lease → recheck binding → stage/write/verify → seal不可變版本 → 再查定義/approval → FileCommit替換active → receipt；失敗保留舊active或回RecoveryRequired。不是跨檔原子交易。",
+      "A13_external": "本機經HOST授權project root；所有relative artifact路徑驗證，拒絕reparse/hard-link/不確定別名；未知marker/版本/檔案不自動接管或刪除。",
+      "A14_forbidden": [
+        "逐檔覆寫當多檔原子",
+        "讀取未提交active瞬間值",
+        "UI直讀產物檔或使用file URL繞過驗證",
+        "adapters解析/批准業務approval",
+        "將測試通過外推build/功能驗收",
+        "模板任意eval/shell/網路/Plugin"
+      ],
+      "status": "PROPOSED_FOR_ONE_CONFIRMATION"
+    },
+    "layout": {
+      "root": "<authorized project root>/.sgenaxis/generated/",
+      "identity": "store.json",
+      "activation": "active.json（不存在表示尚無啟用版本）",
+      "coordination": "active.json.eluslot-lock及FileCommit自己的journal區；沿IO方案A，不另創writer鎖規約",
+      "staging": "staging/<generation_id>/",
+      "versions": "versions/<generation_id>/",
+      "generation_id": "32個小寫hex，由HOST於confirm分配；exclusive create才確定擁有，碰撞至多32次後明確失敗，無密碼學授權含義",
+      "version_manifest": "versions/<generation_id>/artifact-manifest.json",
+      "protected": [
+        ".sgenaxis/project-manifest.json",
+        "原.ess/.sgendesign/專案定義",
+        "來源模板",
+        "所有未受管資料與既有生成版本"
+      ],
+      "bootstrap": "prepare只inspect，不建目錄。確認後initialize獨佔建立generated根；先準備固定child dirs與協調側檔，持內部writer協調handle，最後create_new完整寫入+sync store.json。既有Ready marker須綁定相同project_uuid且固定根/非reparse。缺/壞marker或不明殘留fail closed；不自動補寫、清空或接管。並行初始化者Busy，先前中斷則RecoveryRequired。",
+      "no_gc": "本階段不刪已seal版本，不清舊active版本。取消只可顯式abort未seal的本次owned staging；abort不確定時保留路徑診斷。Drop只關閉handle，不隱式刪樹。"
+    },
+    "reader_consistency": {
+      "hazard": "FileCommit可能先發布active再驗證/回復；直接read(active.json)會看見尚未完成的瞬間值，因此不允許consumer繞過讀租約。",
+      "rule": "GenerationReadLease在同一active側檔取得OS共享read handle；與FileCommit exclusive writer互斥，允許多reader。側檔必須已存在，reader不create、不寫。取得後唯讀檢查IO journal：PREPARED/未知/損毀/RecoveryRequired拒絕，合法terminal需與active bytes一致。缺協調檔/未Ready namespace拒絕，不假稱已初始化。",
+      "lifetime": "HOST持read lease到active/manifest解析、所有檔hash與完整性驗證及byte snapshot複製完成才釋放。M03接收此不可變byte snapshot，不再直接讀活動檔案。writer不得在持read lease時重入；同一用例鎖順序為namespace bootstrap（若必要，先完成並釋放）→active writer或reader二選一→stage handle。",
+      "readonly": "初始化已完成的唯讀專案可用read-only handle讀；寫權不足不自動降級為未協調讀取。生成不可用不妨礙另一模組以原既有流程檢視.ess。",
+      "scope": "新增的是本提案的consumer能力與private coordination seam，須確認後才建骨架；不把IO-A-F1原生證據當已完成。"
+    },
+    "pure_C_contract": {
+      "public_functions_proposed": [
+        "prepare_generation(definition: &ProjectDefinition, template: &GenerationTemplateContract, context: &GenerationPolicyContext) -> Result<GenerationDecision, GenerationPlanError>",
+        "validate_plan_binding(plan: &GenerationPlan, current: &GenerationBinding) -> Result<(), GenerationPlanError>"
+      ],
+      "types": {
+        "GenerationTemplateContract": "template_ref: existing TemplateReference; target: TargetCapability; artifacts: Vec<ArtifactIntent>",
+        "TargetCapability": "form/platform/language/framework strings, has_ui:bool；第一模板要求desktop/windows-x64/rust/tauri2＋vanilla/true",
+        "GenerationPolicyContext": "binding: GenerationBinding; verified_approval_refs:Vec<String>; required_approvals_satisfied:bool；僅HOST核實後輸入，不是domain自證授權",
+        "GenerationBinding": "project_uuid:String; definition_revision:DefinitionRevision; definition_digest:String; target_id:String; template_ref:TemplateReference; approval_digest:String; base_activation_digest:Option<String>",
+        "ArtifactIntent": "relative_path:String; product: Program|UiUx; template_key:String",
+        "GenerationPlan": "binding:GenerationBinding; artifact_intents:Vec<ArtifactIntent>；無FS handle、Clock、serializer、可變專案別名",
+        "GenerationDecision": "SaveDefinitionOnly { missing:Vec<FieldPath> } | Prepared { plan:GenerationPlan }",
+        "GenerationPlanError": "InvalidInput{field,reason} / UnsupportedTarget{target_id} / TemplateMismatch{field} / ApprovalMismatch{field} / InvalidArtifactPath{path,reason} / DuplicateArtifact{path} / StaleBinding{field}"
+      },
+      "order": "先拒壞身份/型別/重複ID/非法模板或路徑；再合併M01 completeness projection、未confirmed需求/open_decisions與未滿足approval為sorted/dedup missing清單，回SaveOnly不生成；完整才檢查選定target與模板相容性，Prepared必含program與ui_ux。",
+      "requirements": "confirmed requirements需有非空intent與acceptance；unresolved/tentative需求列missing。definition/template/target綁定必須相同，不能只憑名稱。approval_refs非空不等同真實批准。",
+      "identity_and_hash": "WORK不做crypto認證或讀SPEC；digest語法要求sha256:＋64lowerhex，由HOST以既有SPEC hash驗證原始bytes。HOST保存定義typed snapshot及同次codec bytes，confirm以typed equality＋revision與重新核實approval檢查新鮮度，不能以原始approval字串自行放行。",
+      "mutations": "所有函數不改輸入、不保存定義或檔案。SaveOnly是建議動作值；真正保存由M01已批准用例負責。",
+      "not_in_C": [
+        "JSON codec/模板讀取與render",
+        "真實approval驗證",
+        "新Port或IO",
+        "active/版本區初始化",
+        "UI/dispatch"
+      ]
+    },
+    "ports_proposed": {
+      "new_file": "sgenaxis-ports/src/generation_store.rs；3個object-safe trait，10方法；沒有新Manager/Repository",
+      "GenerationArtifactPort": [
+        "inspect(&self,key:&GenerationStoreKey)->Result<GenerationStoreObservation,GenerationStoreError>",
+        "initialize(&self,key:&GenerationStoreKey)->Result<(),GenerationStoreError>",
+        "begin_owned(&self,key:&GenerationStoreKey,generation_id:&str)->Result<Box<dyn OwnedGenerationStage>,GenerationStoreError>",
+        "acquire_read(&self,key:&GenerationStoreKey)->Result<Box<dyn GenerationReadLease>,GenerationStoreError>"
+      ],
+      "OwnedGenerationStage": [
+        "write_new(&mut self,relative_path:&str,bytes:&[u8])->Result<(),GenerationStoreError>",
+        "seal(self:Box<Self>,manifest_bytes:&[u8],projection:&GenerationManifestProjection)->Result<SealedGeneration,GenerationStoreError>",
+        "abort(self:Box<Self>)->Result<StageAbortReceipt,GenerationStoreError>"
+      ],
+      "GenerationReadLease": [
+        "active_bytes(&self)->Option<&[u8]>",
+        "read_manifest(&self,generation_id:&str)->Result<Vec<u8>,GenerationStoreError>",
+        "verify_sealed(&self,generation_id:&str,projection:&GenerationManifestProjection)->Result<VerifiedGenerationSnapshot,GenerationStoreError>"
+      ],
+      "DTO": {
+        "GenerationStoreKey": "project_root:String + project_uuid:String；資料構造不是授權，每次Port都重新確認根/marker/固定路徑",
+        "GenerationStoreObservation": "Absent | Ready{store_root:String}；inspect唯讀，不能觀察未提交active當SSOT",
+        "GenerationFileRef": "relative_path:String,product:String,size_bytes:u64,digest:String；product只允許program/ui_ux",
+        "GenerationManifestProjection": "project_uuid:String,generation_id:String,manifest_digest:String,files:Vec<GenerationFileRef>；HOST先驗證manifest bytes/schema/投影一致性，adapter不批准業務資料",
+        "SealedGeneration": "project_uuid,generation_id,version_root,manifest_digest:String；只有驗證且no-replace seal成功才產生",
+        "VerifiedGenerationSnapshot": "project_uuid,generation_id,manifest_digest:String; files:Vec<{relative_path:String,digest:String,bytes:Vec<u8>}>；總bytes受上限限制，讀租約保護下複製",
+        "StageAbortReceipt": "removed_owned_paths:Vec<String>；只有本次owned staging全部移除才Ok；未清項目以GenerationStoreError::RecoveryRequired{owned_paths,reason}回報",
+        "GenerationStoreError": "InvalidPath{path,reason}/StoreIdentityMismatch{path}/Busy{path}/AlreadyExists{path}/UnsupportedVersion{schema,version}/Integrity{path,reason}/LimitExceeded{field,limit}/Storage{stage,path,reason}/RecoveryRequired{owned_paths,reason}"
+      },
+      "contracts": [
+        "write_new只能create_new，不覆寫stage內同名檔；以ASCII casefold檢查碰撞，拒reparse/hardlink和穿越。",
+        "seal驗證每個預期檔size/hash及完整tree無未知entries，先create_new manifest，完整sync，再同卷no-replace發布到versions；即使目標是空目錄也不覆寫。",
+        "seal失敗消耗handle後只關閉資源，錯誤必回保留路徑；已seal版本不由abort/Drop刪除。",
+        "verify_sealed檢查fixed manifest raw hash與HOST已驗證投影、所有檔的真實bytes/hash、沒有多餘/缺失/被修改檔；不以marker存在代替驗證。",
+        "reader不得寫入或清journal；private共享coordination檢查沿用已確認IO v1終態，不另改FileCommit公開trait。",
+        "只讀marker與固定metadata，無合法marker之既有namespace一律拒絕；不遞迴刪使用者專案。",
+        "verify_sealed屬read lease自身方法，root/project及協調handle由lease私有持有；caller不能用任意DTO取代guard。回傳完整bounded bytes snapshot後才可釋放。HOST只解析metadata，codec不持有OS handle。"
+      ]
+    },
+    "wire_contracts": {
+      "common": "UTF-8 JSON，無BOM；寫出物用LF結尾。schema/version固定1，unknown keys/duplicate JSON keys/float數字/無效UTF8/trailing bytes拒絕。definition_revision使用canonical decimal string（0..u64MAX），activation_sequence為1..u64MAX，其餘size/count為有界整數。JSON Schema另存schemas/，byte界限與重複keys由語意驗證補足。",
+      "hashes": "sha256:＋64小寫hex。template source_digest=已封裝template.json原始bytes之hash（file table含各source檔hash）；不在自身JSON內嵌自己的hash。artifact-manifest digest=其實際序列化bytes；file table不列manifest自身。active descriptor也不含自身digest；base digest由FileCommit讀raw bytes後計算。未改bytes不重新排版；模板檔案內容變動必須改version與digest。",
+      "store_marker": "schema=sgenaxis.generation-store,version=1,project_uuid,store_id(32lowerhex)；固定根不存在才建立，不含active/current狀態。",
+      "template_manifest": "schema=sgenaxis.generation-template,version=1,template_id,template_version,compatibility{form,platform,language,framework,has_ui},artifacts[{relative_path,product,template_key,source_digest,encoding}]；source檔內容在已授權bundle固定根；不允許commands/install/scripts欄位。",
+      "artifact_manifest": "schema=sgenaxis.generation-artifacts,version=1,project_uuid,generation_id,binding{definition_revision,definition_digest,target_id,template_id,template_version,template_digest,approval_digest},files[{relative_path,product,size_bytes,digest}]；files依relative_path ASCII byte升冪，program/ui_ux各至少一筆且與準備plan完全相同。",
+      "activation_descriptor": "schema=sgenaxis.generation-activation,version=1,project_uuid,generation_id,activation_sequence(1..u64MAX decimal string),manifest_digest；不儲存任意version_root。根由固定layout＋generation_id組成。序號取前一合法active+1；滿額SequenceOverflow拒絕，原active不變。",
+      "limits_proposed": {
+        "active_bytes": 16384,
+        "store_marker_bytes": 4096,
+        "template_manifest_bytes": 262144,
+        "artifact_manifest_bytes": 1048576,
+        "files": 128,
+        "each_file_bytes": 4194304,
+        "total_payload_bytes": 33554432,
+        "relative_path_ascii_bytes": 240,
+        "path_components": 16,
+        "definition_name_utf8_bytes": 1024,
+        "definition_purpose_utf8_bytes": 16384
+      },
+      "relative_path_grammar": "首尾不能斜線；以/分段，每段1..64 ASCII bytes，僅A-Z a-z 0-9 _ - .；拒.和..、空段、尾點、Windows保留名含副檔名、反斜線/冒號/NUL/UNC/drive/device；整個path≤240且≤16段；ASCII casefold後唯一。檔案表不允許file/dir prefix碰撞。",
+      "template_variables": "只允許declared文字插值，不執行expression。display_name/purpose只能以JSON字串常值或HTML text escaped輸出；Rust identifiers/包識別由UUID衍生ASCII project_<uuid32>與local.sgenaxis.p<uuid32>，不把任意名稱當檔名或程式碼。未知token拒絕；source原始bytes與render後bytes各自界限驗證。",
+      "scope_of_limits": "以上為本次建議預設，不冒稱已採納；Unicode長度以UTF8 bytes另驗，不拿JSON Schema maxLength代替。任何新需求超限須重審，不默默截斷。"
+    },
+    "first_template": {
+      "id": "local-tauri-vanilla",
+      "template_version": "1.0.0",
+      "matrix": "desktop/windows-x64/rust/tauri2+vanilla/has_ui=true",
+      "product_paths": [
+        "program/src-tauri/Cargo.toml",
+        "program/src-tauri/build.rs",
+        "program/src-tauri/tauri.conf.json",
+        "program/src-tauri/src/main.rs",
+        "program/src-tauri/src/domain/mod.rs",
+        "program/src-tauri/src/ports/mod.rs",
+        "program/README.md",
+        "ui-ux/index.html",
+        "ui-ux/app.js",
+        "ui-ux/styles.css",
+        "ui-ux/ui-schema.json",
+        "ui-ux/README.md",
+        "program/src-tauri/Cargo.lock",
+        "program/src-tauri/rust-toolchain.toml"
+      ],
+      "rules": "只產生可審查的骨架/契約標記與未實作行為，不生成假的成功業務邏輯。依賴pins與toolchain matrix需在模板golden封存時從已稽核本機lock明列，不下載或宣稱建置成功。此JSON/example只是schema/plan fixture，完整模板內容與build golden不是本輪已交付產品。",
+      "pins_proposed_from_local_lock": {
+        "serde": "1.0.229",
+        "serde_json": "1.0.154",
+        "tauri": "2.12.5",
+        "tauri-build": "2.7.4"
+      },
+      "rust_toolchain_proposed": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+      "pin_gate": "S2前封存該模板自己的完整transitive Cargo.lock及resource字節golden；不能把含其他workspace根包的現有Cargo.lock原樣搬給生成專案。固定直接pins不等於已證明transitive build；此gate未做不宣稱可建置。",
+      "pins_source": {
+        "path": "apps/sgenaxis-desktop/src-tauri/Cargo.lock",
+        "sha256": "85f6daa9b5ee95aa37950bf2f92a9f90e9a8187361dd4395306cc867c053849a"
+      }
+    },
+    "publication_flow": [
+      {
+        "step": "prepare",
+        "effect": "只讀定義、可信catalog/SPEC。HOST用既有SpecStore驗證所需revision為Approved、content_hash與來源相符，再映射WORK policy；不足SaveOnly或明確error。讀現行active必持read lease；捕捉base digest。渲染bytes與plan只存在HOST本專案session。"
+      },
+      {
+        "step": "confirm",
+        "effect": "請求只有plan_id與預覽digest，不接受UI回傳路徑/任意files。檢查同project/session、完整typed定義相等與revision、template raw hash和approval來源仍有效。initialize之後取active writer lease；再次比對base digest。"
+      },
+      {
+        "step": "prepare-owned",
+        "effect": "分配generation_id、exclusive stage，逐個create_new寫入已預覽bytes，sync/驗證每檔、manifest及tree；全部通過才seal到versions，不自動接管任何既有目錄。"
+      },
+      {
+        "step": "activate",
+        "effect": "仍持writer lease，再檢查definition/template/approval綁定未變；replace_checked(base_digest,active bytes)。receipt成功後回GenerationActivated；COMMITTED後cleanup問題沿IO語意，不把已提交誤報為未寫入。"
+      },
+      {
+        "step": "reader",
+        "effect": "取得共享read lease＋檢查IO journal；讀active，核對project/序號/id；解析manifest raw bytes＋digest及投影；verify_sealed得到有界byte snapshot，釋放lease後交給consumer。Busy保留前一已驗證snapshot並標示尚未刷新。"
+      }
+    ],
+    "failure_matrix": [
+      {
+        "at": "prepare/cancel未確認",
+        "result": "無FS寫入；取消只消耗待確認計畫；原專案/active不變"
+      },
+      {
+        "at": "舊計畫/approval/template/base變動",
+        "result": "StalePlan或Conflict，原active不變；不得用同名稱猜版本"
+      },
+      {
+        "at": "initialize損壞/unknown marker",
+        "result": "StoreIdentityMismatch/RecoveryRequired；不清空namespace，不自動選版本"
+      },
+      {
+        "at": "begin/write/verify/seal之前失敗或取消",
+        "result": "不啟用；對本次owned stage顯式abort，刪除失敗則保留診斷，不修改未知/舊版本。Drop只關閉handle"
+      },
+      {
+        "at": "seal目的版本已存在",
+        "result": "AlreadyExists，即使empty也不覆寫；stage仍有可診斷ownership，明確重試新id或取消"
+      },
+      {
+        "at": "seal後active更新前失敗/取消",
+        "result": "舊active不變；sealed新版本保留為未啟用，不做即時GC"
+      },
+      {
+        "at": "active IO普通失敗",
+        "result": "沿FileCommit已驗證回復語意回錯誤；保留所有新舊sealed版本；不把新版本存在當已啟用"
+      },
+      {
+        "at": "active IO RecoveryRequired",
+        "result": "保留IO journal/old/new描述檔及版本；後續publishing與reader fail closed，舊已驗證記憶snapshot可檢視但不宣稱目前狀態已確認"
+      },
+      {
+        "at": "確認後/activate臨界點取消",
+        "result": "activate一旦開始不把cancel當可回退；等單檔交易結果再回Activated或明確error，不能已成功卻回Cancelled"
+      },
+      {
+        "at": "consumer遇未知/壞/缺檔/hash不符",
+        "result": "Integrity/UnsupportedVersion，不執行、不載入新內容，不改active或原檔"
+      },
+      {
+        "at": "seal/activate間程序異常",
+        "result": "未啟用版本保留；reader遵IOjournal和active的已驗證終態，不自動修復或清理"
+      }
+    ],
+    "IPC_and_UI_proposed": {
+      "commands": [
+        "generation_prepare { target_id, template_ref }",
+        "generation_confirm { plan_id, preview_digest }",
+        "generation_cancel { plan_id }",
+        "generation_current {}"
+      ],
+      "binding": "project/session由HOST目前已授權context解析；不接受UI傳入project_root、files、store_root、approval_passed。每個計畫限目前開啟session，重啟失效。",
+      "controls": "模板id/version/source_digest唯讀；預覽程式/UI UX兩樹與缺決策；明確生成/重新準備/取消。缺決策、過期、未知模板、Busy時禁用生成並給文字原因。",
+      "statuses": [
+        "DefinitionOnly",
+        "Prepared",
+        "Publishing",
+        "ActivatedSkeletonOnly",
+        "CancelledBeforeActivation",
+        "StalePlan",
+        "Busy",
+        "RecoveryRequired"
+      ],
+      "publication_error": "typed result成功與error互斥，保持先前已驗證內容；不顯示『功能完成』或『build成功』。M03 consumer無UI→FS。",
+      "plan_lifecycle": {
+        "id": "HOST assigns unique 32-lowercase-hex plan_id; one pending plan per authorized project/session. No wall-clock TTL or new Clock port.",
+        "digest": "preview_digest = sha256 of exact UTF-8 preview JSON response bytes stored by HOST; UI echoes the opaque digest. Not a digest reconstructed from UI fields.",
+        "invalidate": "New prepare replaces old plan; cancel, successful activation, project switch, session close and restart invalidate it. Stale binding rejects confirmation and requires prepare again.",
+        "confirm": "Compare plan_id and preview_digest, then freshly compare definition revision/digest, template raw digest, trusted approvals and base activation under writer lease before mutation.",
+        "result": "Tagged response: DefinitionOnly{missing}, Prepared{plan_id,preview_digest,preview}, ActivatedSkeletonOnly{generation_id,activation_sequence}, CancelledBeforeActivation{}, Error{code,message,retryable,recovery_paths}. Error and success payloads are mutually exclusive. Busy/StalePlan/RecoveryRequired are error codes; Publishing is progress only."
+      }
+    },
+    "decision_batch": [
+      {
+        "id": "M02-DX1",
+        "topic": "C純計畫兩函數/八類primitive模型、HOST驗證approval責任、SaveOnly語意與三檔envelope",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX2",
+        "topic": ".sgenaxis/generated固定布局、marker bootstrap、無自動GC、單active序號",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX3",
+        "topic": "三trait十方法＋共享read lease與private IO協調 seam，防止consumer看見未完成active",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX4",
+        "topic": "四種JSON schema、raw-byte digest規則、UTF8/ASCII路徑與數量/容量上限",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX5",
+        "topic": "發布/取消臨界點、失敗保全、封存版本保留與讀取一致性表",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX6",
+        "topic": "第一模板id/version、14個雙骨架產物路徑、相容矩陣與不可執行模板變數規則",
+        "status": "建議採用，待本次一次確認"
+      },
+      {
+        "id": "M02-DX7",
+        "topic": "S1先Skeleton/RED，再各自審查S2/HOST、S3/adapter、S4/consumer的精確範圍及測試門檻",
+        "status": "建議採用，待本次一次確認"
+      }
+    ],
+    "implementation_authority": "本輪只有文件與看板證據更新。採納C+B方向不等於本提案新API/schema/limits全數核准。本次細節確認後先建立C/S1 Skeleton與有效RED；產品實作與S2～S4仍需各自完整engineering packet/原生gate，不跳步。"
+  },
+  "frozen_sources": {
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/commands.json": "43019916e5919919745d2ada92c49856b12bdd1cd8bceff4b719c0d206036671",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/delivery-evidence.json": "b314123e66509e63b05d36ccfa38baddd880448f720a46a9310337c203e7ac56",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/host-lib.txt": "e41f90e528b784e96a391026670f43169b779f77390cae3129763a409989b946",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/index.html": "d6ea4e5f2c4fc803aadcf47f9ee58a3c1024cac858fb2563b704f16995fb4128",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/review.json": "8ae453cff88198f73179bf72af8d4b4e9f9ba1364b304fbe64f691fe96fc775b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/work-build.txt": "dab4e4707b2e6fdbdead361b4487be475974a047edea846dd92bac44f319f872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/s1/green/acceptance/work-full.txt": "ff1ee4d9176e9c4b1b3c44436c0b14b0af710af7f1ff88fcd44a15017df7663a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/authorization-and-baseline.json": "0905ebbfdbc164d656b1b5f01993fa961ea4d2c57eec08570647d43eb95ccaa6",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/delivery-evidence.json": "499cc05b61bbb5dfc0c80fa2f395d207fa21d63882f3f173426c78144af8580c",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/direction-adoption.json": "b4c4e6ffea477ff8ccdfc467da704d829184b2af5507fbb11d4025a1e1bc4539",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/envelope.json": "5d53ec0009aceda2f7e99624e34d9ba5eb1d96baa0da15381fca72a04bc9f367",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/finalize.py": "05d119d9e4c997578ab0338d7fb2457b9532df1189075b32fd9af2b0e0f68027",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/fixture-catalog.json": "785f90819eaff9abdda1dbb0c5f3943eca45ce7c702eca9a6f9ef43bf61e708e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/fixtures.json": "69bfaea082daafdce721d90cb08b1f916afe806edb61e90a4a6f7d28c056a8ef",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/index.html": "71480f88af95397569ebbea5d857342b09b3e389f3f1530c0966c27038a2a0fc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/module-spec.json": "295b5d85780a3ad2602ae24a3f6e40bc62750994f5206119276950d4f588cdd7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/module.feature": "799e21d5671028e4ceebc299c7c539459a2267a3d788f5582603b411665ce75f",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/schema-semantic-rules.json": "7b92c6b3a9f0cc90a55a22410db453422f6eb72affe8de122bcc37de3378bac0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/steps-pending.json": "4882fa0cdfce2d70b6cbabacfc8af48745182d8de2640478b994f8bd47c73a3e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/test-plan.json": "289d21efcf5fe4d785b8ee0c223b8fa102cabdaa8338697511a2354a138dd511",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/verification.json": "25f15039017c3a11fe53194324d920a8a8dd54d2528e59d41852290335b4cbfe",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/schemas/generation-activation.schema.json": "655f722dbfaf0bf8babf51e927c27af0f5d67cc73cffce37bf8f454fdbe73af4",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/schemas/generation-artifacts.schema.json": "2af3b04bbab6a065d2d01ded0618fdb94fd649870471825b50589c7649a23763",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/schemas/generation-store.schema.json": "22fea619aefaeaa0bfa08e3f8f75c30363ecb91c96584e54db2ca829f3c5920e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/exact-design/schemas/generation-template.schema.json": "095afce290a1034bf0fc7a7979aadba4495ca4b30a8246855dd7b0675c6a0b05",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/fixture-catalog.json": "605023a273439beea423641715290fc69134b92bf61cddfbb4f69fd3e7579669",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/index.html": "2f13a0b03505aa65ee042715e1def1f8052ef8213f7b9340bd39fea6f1188d4f",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/module.feature": "371f927592486690ca6cc470a49d92bc5e020834b40bb729cfd96ba917500fec",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/proposal.json": "9e34367e14ae094be0ff24322e75e5eadc3add156b4168304df22850023a1356",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/steps-pending.json": "dcf327be2ebd199c371cff8cd4137fc559886759f6abd1d5be8b235e28532a7c",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/test-plan.json": "492e91046de565017a65577e1f3ed3295bd94fa3d92e3a8fdebf4843b4056742",
+    "docs/requirements-confirmation/phase1-spec/tasks/M02/planning/publication-gap/verification.json": "0b7b730d217773b6b828b10359f2b9cb1264ca1bc84094f6b793650ab69aea50",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/artifact-hashes.json": "3bb01877241d28b84e5a3be8487c12721c93e44ecc5b76b9ce612e22a9dc1ed9",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/build_packet.py": "a914c836873ff2f52113085fe25fb297f343270a168feb604985e2e3c70af447",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/decisions.json": "757a36acdc94c5bef9ef4770b4116978faca1111c53379f93de4d3506e9c4364",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/definition-wire-schema.json": "70ffaf77d5ededa0b8cfd413a1cd7d7a09688b8943df0acaca2c4e13c50b00cd",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/dto-contract.json": "4dec6433259b5fc66c734c192b170cbf35d7cdd806ed39c81f6c17c77136ca20",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/envelope.json": "19dc4f71ff9bc846726002bb4e503aea82e486066b1ce79dda565de63bf34122",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/fixtures.json": "27b44ebd984e97217b6daa985921d623bb5b4842caaa0a7679aed8e10e773ea2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/index.html": "e9e2cc9c82ba5e45676b0461f41be33b34bc2add84cc6f918b83d58a60cfb937",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json": "6c8f3c8ed9591f65430dbfe0fd6a8937645d99ae3085bcf1e1c89d143d486457",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/module-spec.json": "118cd3d583b7ca2f1c90289e8e2f6ffde533ccec8ce9d2479fe488e83d997e5a",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/module.feature": "37eca672bada28e455c7d8c66868a147ef750c3e8c40d84018e277251869bbd7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/native-contract.json": "48c29a296e99010747e42723f8f8ad580a9b82172691909e77f562edf73d53cb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/permissions-and-migration.json": "2fe7d00f8f9a6244ef3dbca82862bb391566bb41c384fb7a49bdd9480e0670f2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/provenance.json": "12cbe04b948deb4872d5afdabd67abc450a3fad0423e0b63d461219fe80b47c5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/review-request.json": "23dbabb449dcd5cb45eb6b5176e69297f2c4a5c28b3966a4e8841d89ae5c7214",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/s2-wire-types.json": "3c09592ee14e8e0750229a33911e1c399bb84310a1dc8df3b1eb741e7f56791e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/step-definition-stubs.json": "15eafdbc689e7aa5fd65a2b56c29cc69419b35edcaf7659d7725c39eedb4ca20",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/test-plan.json": "742d8c0a2eef0f7f90cbd9a074c4b2ee2ff9a37adfe8fdfa94ae2a7fab6ba080",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/traceability.json": "ca165756a87a0dda24ae5e05d46ed82c382d0c009573c7420686540c57137518",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/ui-schema.json": "6bc480f735a2ad52f72f1bf98d7c12cbb766a120e5fa078450689068975075fc",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/verification.json": "37d4feecd560bc8f7701008ee755b59736c9f44433bb18a2b9191be5d7760144",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/artifact-hashes.json": "3d99e0c4ef62111142c279f80c1e9bd5b741d396766107aeeb5540fece5019ab",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/board-evidence.json": "fd04822979279b3b281a83c2e51a474bee582110f56e3e22c0d68d4b986d66d0",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/build_packet.py": "ddcb9679d1f168efc0fb6d1d748da21c6e56ad8693eb5c84df2d8180a9db17cb",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/decisions.json": "7b5bf6bf3b8dabbbc7cb9d6358756f14221873a97f65b6254f375c933f7da83e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/dto-errors.json": "f33fb36558131148cfa83622606c915ff429ea622b05c91f26c2f903f52ffa9e",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/envelope.json": "ce30c4213f7963778283cda341923db1071a894931c1eec4aa3799bc15b76982",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/fixtures.json": "c4e5977ac0b160b707d07c4f7f913f04e09877f75326d76deb19764a409e95b7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/index.html": "600b45a4cedbf506f679770b2c8dcb721000b7985689ec423e451dc113c0df2f",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/lifecycle.json": "ab3d5b9011d22ee4ec0d25d27e3a429a37f2970d6e821dfedc3189f4f1efe438",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/module-spec.json": "7a6380539c904471c29ba2af504afcb4eae7995a4f709f24ba0f4828e8cd0a55",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/module.feature": "ebc456e6cd55fc47724a14f92020086a638e8ae9ce9aa7b4276ee1fcd7ba4f30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/owner-binding.json": "83a980f034c044421c506d28a5bc7e94f6708e5807c670bb68223bac232944d7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/permissions.json": "facf08c4f02bae07191a19e6d68630b5f47ec6aeabb36020be8ae48a9e5f9d71",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/review-request.json": "fb3d53d8893e016547d5a474b49201dfc50f137e1a8c05e4c19ba6d173ba1144",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/source-evidence.json": "737077dc2b7424b1375e19627eef9964a5ddacd1c5d9c4933e9c58db4e070847",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/step-definition-stubs.json": "1568e23343672d8cdd11a5fce2f76b22e1a13ba7db56ff01e24f0dd20d3664a5",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/test-plan.json": "5c11d890d7669323364aea8f663171523f0e33a59803ec899e6a693eb6c9db1d",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/traceability.json": "d958273d26868d6181c03ec7423644e22b7cc1f54b59e7cd0b65f4bbd967fac7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/ui-schema.json": "b295401ecc1af9a5d9577ee4a0a455277efa9e70a6cd7ba69e1980d4eb609754",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/verification.json": "a38ce89535c439418df9718c999e0a332bea7d37186433f68dcdeb876d173796",
+    "docs/requirements-confirmation/phase1-spec/tasks/M03/planning/h2-exact-design/viewer-capability.json": "96f44bbf54e3d433d859c0413d966426be82c10f77f4fff6054f45ba6ae27a50",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/artifact-hashes.json": "fbc6f2cce9c2dbd30c98a5c6d3839303f6b86b621e7368c40ad9b4dcaad80fd2",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/board-evidence.json": "a1ed9f33bae6be93672260fd0f3e1645810e51adabfd10d143f982377ef26b30",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/build_packet.py": "4233782829a99e08395722e0ff3a57dd0a84cf3e3006045bbeae2f3057a74044",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/envelope.json": "6c2a64dbbda90fe58638e0839d8cc7ee559c4fe1b80ef86ab81142fb6af2c50b",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/fixtures.json": "471bf2972b787b9781d870e198b7fc0d6876f2a36b0e163b4d65719ea64aa231",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/index.html": "d23925aac4489b60acb31c2a323f333926dbd7d6e4054a99111e0a05c73d3e24",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module-spec.json": "18e2225595f83bc09a897fc35a622adb6c69e4348a7dcec6588e8e02178780f8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/module.feature": "69098048808d9a839c664eb7e0edc1dbb4511797707fad211ef0fd4c2b97aad7",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/review-request.json": "50ede96105c2a8f66a8af66a90e3e2b5dc84cdf1df89b672e9ad5ae745dff3d8",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/step-definition-stubs.txt": "fce7a8f8889891e51c165fc77179a0fba22effa9395b632ddf927f143e39b466",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/test-plan.json": "a70ade690c4a690a426923e1dc27117bb497a06c1f9a9408bab915c60d585872",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/s2-exact-design/verification.json": "1673b3ac193642e5651241e0b25b44a0e9424361b42143122feb6d45d60cc069"
+  },
+  "verification_boundary": "Static planning only. No Skeleton/product source/test/template resource changes. compile/build/RED/GREEN/native/independent review NOT RUN. Resource golden/provider gates remain explicit; full module/release not complete."
+}

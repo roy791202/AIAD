@@ -1,0 +1,141 @@
+{
+  "module": "M06",
+  "task": "PD-P1-M06-PREP-01",
+  "branch": "cursor/ui-bhv-arch-layer-editor",
+  "sha": "31babe87a7ef1e40a0d4bedc523077e7a45d63ab",
+  "dirty": true,
+  "evidence": "SOURCE_INSPECTION_ONLY",
+  "files": [
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+      "exists": true,
+      "sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/Cargo.toml",
+      "exists": true,
+      "sha256": "74af5dba61df135c9585843d309b8a5be47df96f61c914b0679dfd98ec797dbb"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/lib.rs",
+      "exists": true,
+      "sha256": "d14c73649db1fdeb4e86f01be6353146272235b78a8ece88cda2a01f0d66ddee"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+      "exists": true,
+      "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-ports/src/fs.rs",
+      "exists": true,
+      "sha256": "aec2d92015752e32fd5187feba753a6ee11d6f87f202a6806b8df2757e5e8f2a"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/lib.rs",
+      "exists": true,
+      "sha256": "851c11fc23360deee9a85c4238aa81a76849247eea968a5432ac443e346f0774"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/manifest.rs",
+      "exists": true,
+      "sha256": "7d8b6b56886c1a5aa2d6813c3cfd9f1c1c85910f5d540c41868bc0767aa8a7ec"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-work/src/project.rs",
+      "exists": true,
+      "sha256": "8f9a9caeabaae0d91bb5e9c56f1dd13ac3b4b5d2c81b0533aedf16fd33c071b4"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/Cargo.toml",
+      "exists": true,
+      "sha256": "a345a17fe1aca9b22b3f31180daba3fba379d9a25f5697f1ca9c8bd0cf873a01"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/commands.rs",
+      "exists": true,
+      "sha256": "90d01a5abe14cdf0b5773957c98ad54b5971eb0e36dba62973749731a02fe135"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dispatch.rs",
+      "exists": true,
+      "sha256": "6920c693c4944b84a630e3884d757e83dc4596f6312cc3dbdb709416b64b6655"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/document_identity.rs",
+      "exists": true,
+      "sha256": "14ea16b234f8bffb9ef1666794ad0f304d9a2e531ae8eee87c28059756330069"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/dto.rs",
+      "exists": true,
+      "sha256": "6555a9d92e85dd3af8b0edee72b2d385b77df9e8bba8c5fa6c6eacd1a511f93d"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/src/lib.rs",
+      "exists": true,
+      "sha256": "8097e8e02564bf4bda2dab3699497b3fe73000d28a0dcfc058e086a5323988a3"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/tests/project_document_commands.rs",
+      "exists": true,
+      "sha256": "9f683ec9c26a0823f382b523e9a5ee0d116ac6464b08e5930b9a32f1280569bb"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "exists": true,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/index.html",
+      "exists": true,
+      "sha256": "5af83010133cdb423413b2a31e5152a2d03ae54fc6b5369af59b21c18fff62f2"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/ui/project-document-ui.test.cjs",
+      "exists": true,
+      "sha256": "71c154e9d53a40d39e1a3785312d598984442947b81d744b27c1f9593d6b7c13"
+    }
+  ],
+  "findings": [
+    {
+      "path": "apps/sgenaxis-desktop/ui/app.js",
+      "line_start": 359,
+      "line_end": 449,
+      "sha256": "ba43fdbc412a2f17d753efa2fa4879bdb8310909c105ab5819ad5c7e2893335b",
+      "excerpt": "  function packSgbBinary(entries) {\n    const chunks = [utf8Encode(SGB_MAGIC)];\n    const countBuf = new Uint8Array(2);\n    new DataView(countBuf.buffer).setUint16(0, entries.length, true);\n    chunks.push(countBuf);\n    entries.forEach(function (ent) {\n      const nameBytes = utf8Encode(ent.name);\n      const dataBytes =\n        ent.data instanceof Uint8Array ? ent.data : utf8Encode(ent.data);\n      const nh = new Uint8Array(2);\n      new DataView(nh.buffer).setUint16(0, nameBytes.length, true);\n      const dh = new Uint8Array(4);\n      new DataView(dh.buffer).setUint32(0, dataBytes.length, true);\n      chunks.push(nh, nameBytes, dh, dataBytes);\n    });\n    return concatUint8(chunks);\n  }\n\n  function unpackSgbBinary(buf) {\n    const bytes =\n      buf instanceof Uint8Array\n        ? buf\n        : new Uint8Array(buf);\n    if (bytes.length < 6) throw new Error(\"SGB too short\");\n    const magic = utf8Decode(bytes.subarray(0, 4));\n    if (magic !== SGB_MAGIC) throw new Error(\"not SGB1 magic\");\n    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);\n    let o = 4;\n    const count = view.getUint16(o, true);\n    o += 2;\n    const map = Object.create(null);\n    for (let i = 0; i < count; i++) {\n      if (o + 2 > bytes.length) throw new Error(\"SGB truncated name len\");\n      const nlen = view.getUint16(o, true);\n      o += 2;\n      if (o + nlen + 4 > bytes.length) throw new Error(\"SGB truncated name\");\n      const name = utf8Decode(bytes.subarray(o, o + nlen));\n      o += nlen;\n      const dlen = view.getUint32(o, true);\n      o += 4;\n      if (o + dlen > bytes.length) throw new Error(\"SGB truncated data\");\n      map[name] = utf8Decode(bytes.subarray(o, o + dlen));\n      o += dlen;\n    }\n    return map;\n  }\n\n  function buildWorkSgJson() {\n    const board =\n      lastBoard && typeof lastBoard === \"object\"\n        ? lastBoard\n        : { tasks: [], active_run_id: null };\n    return JSON.stringify(\n      {\n        format: \"eluslot.es\",\n        formatVersion: 1,\n        encoding: \"json\",\n        meta: {\n          savedAt: new Date().toISOString(),\n          boardFilter: boardFilter || \"overview\",\n          product_pass: false,\n        },\n        board: board,\n      },\n      null,\n      2\n    );\n  }\n\n  function buildDesignSguiJson() {\n    const doc = designDoc && typeof designDoc === \"object\" ? designDoc : blankDesignDoc();\n    const copy = JSON.parse(JSON.stringify(doc));\n    copy.format = \"eluslot.esui\";\n    copy.formatVersion = copy.formatVersion || 1;\n    copy.product_pass = false;\n    if (!copy.meta) copy.meta = {};\n    copy.meta.updatedAt = new Date().toISOString();\n    copy.meta.encoding = \"json\";\n    return JSON.stringify(copy, null, 2);\n  }\n\n  function buildSceneSgbBytes() {\n    const archXml =\n      typeof archDocToXml === \"function\"\n        ? archDocToXml(archDoc)\n        : '<?xml version=\"1.0\"?><eluslotArch/>';\n    return packSgbBinary([\n      { name: SGB_ENTRY_WORK, data: buildWorkSgJson() },\n      { name: SGB_ENTRY_ARCH, data: archXml },\n      { name: SGB_ENTRY_DESIGN, data: buildDesignSguiJson() },\n    ]);",
+      "observation": "SGB三entry pack/unpack不是新版BIN；未含完整manifest及素材集合",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-host/src/project_manifest.rs",
+      "line_start": 38,
+      "line_end": 78,
+      "sha256": "9b80b39cefd73ebd74b9cb1422bcac52cd420213e59daeba5f99c697f8d81691",
+      "excerpt": "struct WireManifest {\n    schema: String,\n    #[serde(rename = \"schemaVersion\")]\n    schema_version: u32,\n    documents: Vec<WireDocument>,\n}\n\n#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]\n#[serde(deny_unknown_fields)]\nstruct WireDocument {\n    #[serde(rename = \"documentId\")]\n    document_id: String,\n    kind: String,\n    reference: String,\n    #[serde(rename = \"revisionId\")]\n    revision_id: String,\n}\n\n/// Explicitly adopt one existing project-local .ess or .sgendesign reference.\n///\n/// WORK computes identity and conflict outcomes. HOST only reads bytes and\n/// persists the returned whole-manifest plan via the existing FileSystemPort.\n/// The UUID candidate is supplied by the outer Tauri adapter; this adapter\n/// does not create identity entropy.\n/// Callers must serialize mutations for a project. The current FileSystemPort\n/// offers atomic replacement but no cross-process compare-and-swap; the read\n/// recheck below does not claim a cross-process transaction.\npub fn adopt_project_document(\n    fs: &dyn FileSystemPort,\n    project: &Project,\n    reference: &str,\n    document_id_candidate: &str,\n) -> Result<DocumentAdoptionOutcome, ProjectManifestStoreError> {\n    use sgenaxis_work::{\n        document_kind_from_str, normalize_project_reference, validate_document_id,\n        validate_revision_id, PROJECT_MANIFEST_SCHEMA, PROJECT_MANIFEST_VERSION,\n    };\n\n    validate_document_id(document_id_candidate).map_err(map_work_error)?;\n    let normalized_reference = normalize_project_reference(reference).map_err(map_work_error)?;\n    let kind =",
+      "observation": "adopt登記documentId/kind/reference/revision，不拷貝payload，不是匯入合併",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/src-tauri/tests/project_document_commands.rs",
+      "line_start": 1,
+      "line_end": 74,
+      "sha256": "9f683ec9c26a0823f382b523e9a5ee0d116ac6464b08e5930b9a32f1280569bb",
+      "excerpt": "#[path = \"../src/dispatch.rs\"] mod dispatch;\n#[path = \"../src/dto.rs\"] mod dto;\n#[path = \"../src/git_index_commit.rs\"] mod git_index_commit;\nuse dispatch::DispatchHost;\nuse dto::{DocumentAdoptArgs,DocumentAdoptErrorDto as E};\nuse sgenaxis_ports::{FileSystemPort,PortError};\nuse std::sync::{Mutex,atomic::{AtomicBool,AtomicUsize,Ordering}};\nuse std::collections::{BTreeMap,BTreeSet};\nconst ROOT:&str=\"/doc-entry/A\";\nconst SOURCE:&str=\"/doc-entry/A/docs/sample.ess\";\nconst MANIFEST:&str=\"/doc-entry/A/.sgenaxis/project-manifest.json\";\nconst UUID:&str=\"a2b7aa65-87e8-4ad1-9f4c-f191401a0c11\";\n#[derive(Default)]\nstruct Fs { files:Mutex<BTreeMap<String,Vec<u8>>>,dirs:Mutex<BTreeSet<String>>,probes:AtomicUsize,reads:AtomicUsize,writes:AtomicUsize,fail_write:AtomicBool,fail_readback:AtomicBool,fail_exists:AtomicBool,fail_is_file:AtomicBool }\nimpl Fs {fn put(&self,p:&str,b:&[u8]){self.files.lock().unwrap().insert(p.into(),b.into());} fn bytes(&self,p:&str)->Option<Vec<u8>>{self.files.lock().unwrap().get(p).cloned()}}\nimpl FileSystemPort for Fs {\n fn exists(&self,p:&str)->Result<bool,PortError>{self.probes.fetch_add(1,Ordering::SeqCst);if self.fail_exists.load(Ordering::SeqCst){return Err(PortError::Io(\"exists\".into()))}Ok(self.bytes(p).is_some()||self.dirs.lock().unwrap().contains(p))}\n fn read(&self,p:&str)->Result<Vec<u8>,PortError>{self.reads.fetch_add(1,Ordering::SeqCst);if self.fail_readback.load(Ordering::SeqCst)&&self.writes.load(Ordering::SeqCst)>0&&p==MANIFEST{return Err(PortError::Io(\"readback\".into()))}self.bytes(p).ok_or_else(||PortError::NotFound(p.into()))}\n fn read_to_string(&self,p:&str)->Result<String,PortError>{String::from_utf8(self.read(p)?).map_err(|_|PortError::Io(\"utf8\".into()))}\n fn write_atomic(&self,p:&str,b:&[u8])->Result<(),PortError>{if self.fail_write.load(Ordering::SeqCst){return Err(PortError::Io(\"before replace\".into()))}self.put(p,b);self.writes.fetch_add(1,Ordering::SeqCst);Ok(())}\n fn create_dir_all(&self,_:&str)->Result<(),PortError>{Ok(())}\n fn is_file(&self,p:&str)->Result<bool,PortError>{self.probes.fetch_add(1,Ordering::SeqCst);if self.fail_is_file.load(Ordering::SeqCst){return Err(PortError::Io(\"is_file\".into()))}Ok(self.bytes(p).is_some())}\n fn remove_file(&self,_:&str)->Result<(),PortError>{panic!(\"adoption must not delete\")}\n}\nfn fixture()->(DispatchHost,Fs,DocumentAdoptArgs){let mut h=DispatchHost::new();let id=h.document_test_register(ROOT);let fs=Fs::default();fs.put(SOURCE,b\"source bytes stay unchanged\");(h,fs,DocumentAdoptArgs{expected_project_id:id,reference:\"docs/sample.ess\".into()})}\n#[test]\nfn doc_e01_adopts_and_preserves_source(){let(mut h,fs,a)=fixture();let v=h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();assert_eq!(v.outcome,\"Adopted\");assert_eq!(v.document_id,UUID);assert_eq!(fs.bytes(SOURCE).unwrap(),b\"source bytes stay unchanged\");assert!(fs.bytes(MANIFEST).is_some());}\n#[test]\nfn doc_e02_untrusted_callers_reject_before_reads(){let(mut h,fs,a)=fixture();for(label,local)in[(\"secondary\",true),(\"main\",false)]{assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,label,local),Err(E::UnauthorizedCaller));}assert_eq!(fs.reads.load(Ordering::SeqCst),0);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}\n#[test]\nfn doc_e02_unbound_and_stale_projects_reject_before_reads(){let(mut h,fs,mut a)=fixture();assert_eq!(h.project_document_adopt(&fs,\"\",&a,UUID,\"main\",true),Err(E::ProjectNotBound));assert_eq!(h.project_document_adopt(&fs,\"/doc-entry/B\",&a,UUID,\"main\",true),Err(E::ProjectMismatch));a.expected_project_id=\"unknown\".into();assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::ProjectNotBound));assert_eq!(fs.reads.load(Ordering::SeqCst),0);}\n#[test]\nfn doc_e03_repeat_is_idempotent_without_write(){let(mut h,fs,a)=fixture();h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();let before=fs.bytes(MANIFEST);let writes=fs.writes.load(Ordering::SeqCst);let v=h.project_document_adopt(&fs,ROOT,&a,\"b2b7aa65-87e8-4ad1-9f4c-f191401a0c11\",\"main\",true).unwrap();assert_eq!(v.outcome,\"AlreadyAdopted\");assert_eq!(v.document_id,UUID);assert_eq!(fs.writes.load(Ordering::SeqCst),writes);assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e04_revision_conflict_preserves_manifest(){let(mut h,fs,a)=fixture();h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true).unwrap();let before=fs.bytes(MANIFEST);fs.put(SOURCE,b\"changed\");assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::RevisionConflict));assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e04_atomic_failure_preserves_manifest(){let(mut h,fs,a)=fixture();fs.put(MANIFEST,br#\"{\"schema\":\"sgenaxis.project-manifest\",\"schemaVersion\":1,\"documents\":[]}\"#);let before=fs.bytes(MANIFEST);fs.fail_write.store(true,Ordering::SeqCst);assert!(matches!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::Write(_))));assert_eq!(fs.bytes(MANIFEST),before);}\n#[test]\nfn doc_e05_readback_failure_reports_uncertain_commit(){let(mut h,fs,a)=fixture();fs.fail_readback.store(true,Ordering::SeqCst);assert_eq!(h.project_document_adopt(&fs,ROOT,&a,UUID,\"main\",true),Err(E::DurabilityUnverified));assert!(fs.bytes(MANIFEST).is_some());assert_eq!(fs.bytes(SOURCE).unwrap(),b\"source bytes stay unchanged\");}\n#[test]\nfn doc_dto_rejects_caller_root_or_identity_authority(){assert!(serde_json::from_value::<DocumentAdoptArgs>(serde_json::json!({\"expected_project_id\":\"A\",\"reference\":\"docs/a.ess\",\"document_id\":UUID})).is_err());}\n#[test]\nfn doc_e02_fresh_host_requires_existing_work_registration() {\n    let mut host = DispatchHost::new();\n    let fs = Fs::default();\n    let args = DocumentAdoptArgs {\n        expected_project_id: sgenaxis_work::ProjectId::from_canonical_root(ROOT).to_string(),\n        reference: \"docs/sample.ess\".into(),\n    };\n    assert_eq!(host.project_document_adopt(&fs, ROOT, &args, UUID, \"main\", true), Err(E::ProjectNotBound));\n    assert_eq!(fs.reads.load(Ordering::SeqCst), 0);\n    assert_eq!(fs.writes.load(Ordering::SeqCst), 0);\n}\n\nuse dto::{DocumentPrepareArgs,DocumentPrepareErrorDto as P};\nfn prep_fixture()->(DispatchHost,Fs,DocumentPrepareArgs){let fs=Fs::default();fs.dirs.lock().unwrap().insert(ROOT.into());(DispatchHost::new(),fs,DocumentPrepareArgs{expected_project_root:ROOT.into()})}\n#[test]\nfn ui02_prepare_registers_selects_and_repeats_without_manifest_write(){let(mut h,fs,a)=prep_fixture();assert_eq!(h.document_test_projection().0,0);let first=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(first.project_root,ROOT);assert_eq!(h.document_test_projection(),(1,Some(first.project_id.clone())));let second=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(first,second);assert_eq!(h.document_test_projection().0,1);assert_eq!(fs.writes.load(Ordering::SeqCst),0);assert_eq!(fs.reads.load(Ordering::SeqCst),0);}\n#[test]\nfn ui02_caller_rejection_precedes_root_or_filesystem(){let(mut h,fs,a)=prep_fixture();for(label,local)in[(\"secondary\",true),(\"main\",false)]{assert_eq!(h.project_document_prepare(&fs,\"\",&a,label,local),Err(P::UnauthorizedCaller));}assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection().0,0);}\n#[test]\nfn ui02_unbound_and_changed_root_precede_filesystem(){let(mut h,fs,a)=prep_fixture();assert_eq!(h.project_document_prepare(&fs,\"\",&a,\"main\",true),Err(P::ProjectNotBound));assert_eq!(h.project_document_prepare(&fs,\"/other\",&a,\"main\",true),Err(P::ProjectChanged));assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection().0,0);}\n#[test]\nfn ui02_unavailable_root_never_registers_or_changes_selection(){for kind in [\"missing\",\"file\",\"exists_error\",\"is_file_error\"]{let(mut h,fs,a)=prep_fixture();h.document_test_register(\"/prior\");let before=h.document_test_projection();match kind{\"missing\"=>{fs.dirs.lock().unwrap().clear();},\"file\"=>fs.put(ROOT,b\"file\"),\"exists_error\"=>fs.fail_exists.store(true,Ordering::SeqCst),_=>fs.fail_is_file.store(true,Ordering::SeqCst)}assert_eq!(h.project_document_prepare(&fs,ROOT,&a,\"main\",true),Err(P::RootUnavailable),\"{kind}\");assert_eq!(h.document_test_projection(),before);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}}\n#[test]\nfn ui02_all_busy_predicates_reject_before_filesystem(){for kind in [\"run\",\"lease_flag\",\"capture\",\"active_lease\"]{let(mut h,fs,a)=prep_fixture();h.document_test_busy(kind,ROOT);let before=h.document_test_projection();assert_eq!(h.project_document_prepare(&fs,ROOT,&a,\"main\",true),Err(P::Busy),\"{kind}\");assert_eq!(fs.probes.load(Ordering::SeqCst),0);assert_eq!(h.document_test_projection(),before);}}\n#[test]\nfn ui02_reserved_and_unresolved_keep_work_error_category(){for kind in [\"reserved\",\"unresolved\"]{let(mut h,fs,a)=prep_fixture();h.document_test_busy(kind,ROOT);let before=h.document_test_projection();let result=h.project_document_prepare(&fs,ROOT,&a,\"main\",true);match result{Err(P::WorkspaceRejected{reason})=>assert!(reason.contains(if kind==\"reserved\"{\"RunBindingReserved\"}else{\"RunBindingUnresolved\"}),\"{reason}\"),other=>panic!(\"{kind}: {other:?}\")}assert_eq!(h.document_test_projection(),before);assert_eq!(fs.writes.load(Ordering::SeqCst),0);}}\n#[test]\nfn ui02_prepare_may_select_bound_project_without_rewriting_settings(){let(mut h,fs,a)=prep_fixture();h.document_test_register(ROOT);let prior=h.document_test_register(\"/prior\");assert_eq!(h.document_test_projection().1,Some(prior));let p=h.project_document_prepare(&fs,ROOT,&a,\"main\",true).unwrap();assert_eq!(h.document_test_projection().1,Some(p.project_id));assert_eq!(p.project_root,ROOT);}\n#[test]\nfn ui02_windows_and_unicode_root_spellings_match_existing_work_identity(){for bound in [\"C:\\\\Fixture\\\\Ä\",\"c:/fixture/ä/\",\"C:/FIXTURE/Ä\"]{let mut h=DispatchHost::new();let id=h.document_test_register(\"C:\\\\Fixture\\\\Ä\");let fs=Fs::default();fs.put(\"C:/Fixture/Ä/docs/sample.ess\",b\"unchanged\");let a=DocumentAdoptArgs{expected_project_id:id,reference:\"docs/sample.ess\".into()};assert!(h.project_document_adopt(&fs,bound,&a,UUID,\"main\",true).is_ok(),\"{bound}\");}}\n#[test]\nfn ui02_sibling_and_drive_mismatch_still_reject_before_reads(){let(mut h,fs,a)=fixture();for root in [\"/doc-entry/AB\",\"D:/doc-entry/A\"]{assert_eq!(h.project_document_adopt(&fs,root,&a,UUID,\"main\",true),Err(E::ProjectMismatch));}assert_eq!(fs.reads.load(Ordering::SeqCst),0);}",
+      "observation": "有來源保全/重送/讀回不確定測試；本輪未執行",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    },
+    {
+      "path": "apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/std_fs.rs",
+      "line_start": 9,
+      "line_end": 84,
+      "sha256": "97dc4c4d9dc3a9e8ee33719c6cc932f5009e78cfe72f4edd3617b18796d5084a",
+      "excerpt": "/// Real-ish filesystem adapter via `std::fs`.\n///\n/// Atomic write: exclusively prepare an owned sibling, then rename over target.\n/// Concurrent successful commits use last-commit-wins; no crash durability promise.\n#[derive(Debug, Default, Clone, Copy)]\npub struct StdFileSystem;\n\nimpl StdFileSystem {\n    pub fn new() -> Self {\n        Self\n    }\n}\n\nfn map_io(err: std::io::Error, path: &str) -> PortError {\n    use std::io::ErrorKind;\n    match err.kind() {\n        ErrorKind::NotFound => PortError::NotFound(path.into()),\n        ErrorKind::PermissionDenied => PortError::PermissionDenied(path.into()),\n        ErrorKind::AlreadyExists => PortError::AlreadyExists(path.into()),\n        _ => PortError::Io(format!(\"{path}: {err}\")),\n    }\n}\n\n// Private transaction seams; production supplies a no-op checkpoint closure.\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\nenum WriteCheckpoint { TempCreated, BeforeWrite, BeforeSync, BeforeRename, BeforeCleanup }\n\nfn temp_candidate(target: &Path) -> PathBuf {\n    let mut name = target.as_os_str().to_owned();\n    // Naming assistance only: exclusive creation below determines ownership.\n    static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);\n    let sequence = NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);\n    name.push(format!(\".sgenaxis-tmp-{}-{sequence}\", std::process::id()));\n    PathBuf::from(name)\n}\n\nfn write_atomic_with<C, H>(path: &str, contents: &[u8], mut candidate: C, mut checkpoint: H) -> Result<(), PortError>\nwhere C: FnMut() -> PathBuf, H: FnMut(WriteCheckpoint, &Path) -> std::io::Result<()>,\n{\n    let target = Path::new(path);\n    if let Some(parent) = target.parent() {\n        if !parent.as_os_str().is_empty() {\n            fs::create_dir_all(parent).map_err(|e| map_io(e, path))?;\n        }\n    }\n    let mut prepared = None;\n    for _ in 0..128 {\n        let tmp = candidate();\n        match fs::OpenOptions::new().write(true).create_new(true).open(&tmp) {\n            Ok(file) => { prepared = Some((tmp, file)); break; }\n            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,\n            Err(error) => return Err(map_io(error, path)),\n        }\n    }\n    let (tmp, file) = prepared.ok_or_else(|| PortError::AlreadyExists(path.into()))?;\n    let result = (|| -> std::io::Result<()> {\n        {\n            // Keep the handle inside this scope so every early failure closes it\n            // before outer cleanup, including on Windows.\n            let mut file = file;\n            checkpoint(WriteCheckpoint::TempCreated, &tmp)?;\n            checkpoint(WriteCheckpoint::BeforeWrite, &tmp)?;\n            file.write_all(contents)?;\n            checkpoint(WriteCheckpoint::BeforeSync, &tmp)?;\n            file.sync_all()?;\n        }\n        checkpoint(WriteCheckpoint::BeforeRename, &tmp)?;\n        fs::rename(&tmp, target)\n    })();\n    result.map_err(|error| {\n        if checkpoint(WriteCheckpoint::BeforeCleanup, &tmp).is_ok() {\n            let _ = fs::remove_file(&tmp);\n        }\n        map_io(error, path)\n    })?;\n    Ok(())",
+      "observation": "write_atomic owned temp+rename；last-commit-wins且無crash durability，不是CAS/多檔交易",
+      "evidence": "SOURCE_INSPECTION_ONLY"
+    }
+  ],
+  "tests": "NOT RUN",
+  "native_ui": "NOT RUN",
+  "confidence": "Presence means source exists only. Gaps are limited to inspected modules and search log; not a whole-repo runtime verdict."
+}
