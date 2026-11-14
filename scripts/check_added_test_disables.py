@@ -219,16 +219,28 @@ def disabled_lines(path: str, source: str) -> set[int]:
     """Return executable test-disable locations, excluding quoted evidence."""
     suffix = Path(path).suffix.lower()
     if suffix == ".py":
-        code = _python_code(source)
+        masker = _python_code
         pattern = r"(?:\b[A-Za-z_]\w*\s*)?\.\s*(?:skip|skipif|only)\b"
     elif suffix == ".rs":
-        code = _rust_code(source)
+        masker = _rust_code
         pattern = r"#[ \t]*\[[ \t]*ignore\b"
     elif suffix in (".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"):
-        code = _javascript_code(source)
+        masker = _javascript_code
         pattern = r"(?:\b[A-Za-z_$][\w$]*\s*)?\.\s*(?:skip|only)\s*\(|\b(?:xit|xdescribe|fit|fdescribe)\s*\("
     else:
         return set()
+    try:
+        code = masker(source)
+    except (ValueError, tokenize.TokenError, SyntaxError, UnicodeError):
+        # Fail-soft: the structural masker could not fully tokenize this source
+        # (a dense file at the edge of the hand-rolled lexers -- e.g. a UI mock
+        # built from deeply nested template literals). Rather than abort the
+        # whole PR check fail-closed, degrade to scanning the raw source: a
+        # genuinely added `.skip`/`#[ignore]`/`xit` is still caught (main() only
+        # counts lines that intersect the diff's added lines), and the only
+        # thing lost is excluding quoted/comment evidence -- which errs toward
+        # flagging, never toward hiding a real disable.
+        code = source
     found = set()
     for match in re.finditer(pattern, code):
         first = code.count("\n", 0, match.start()) + 1
