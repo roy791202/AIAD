@@ -67,8 +67,9 @@
 //! - Error text is credential-redacted.
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
 
@@ -129,6 +130,91 @@ impl StdGitWrite {
 
         String::from_utf8(output.stdout)
             .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn run_stdin(
+        &self,
+        repo: &str,
+        args: &[&str],
+        stdin_bytes: &[u8],
+    ) -> Result<String, PortError> {
+        if repo.trim().is_empty() {
+            return Err(PortError::InvalidPath("empty git repo path".into()));
+        }
+        let mut child = Command::new(&self.program)
+            .arg("-C")
+            .arg(repo)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(stdin_bytes)
+                .map_err(|e| PortError::Io(e.to_string()))?;
+        }
+        let output = child
+            .wait_with_output()
+            .map_err(|e| git_error_redacted(&format!("{} wait", self.program), &e.to_string()))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let code = output.status.code().unwrap_or(-1);
+            return Err(git_error_redacted(
+                &format!("git {:?} exit {code}", args),
+                &stderr,
+            ));
+        }
+        String::from_utf8(output.stdout)
+            .map_err(|e| PortError::Git(crate::git_write::redact_credentials(&e.to_string())))
+    }
+
+    fn require_hunk_path(path: &str) -> Result<(), PortError> {
+        if path.trim().is_empty() {
+            return Err(PortError::Other("empty hunk path".into()));
+        }
+        if path.contains('\n') || path.contains('\0') {
+            return Err(PortError::Other("hunk path must be a single line".into()));
+        }
+        if crate::git_write::conflict_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "path escape / add-all / force hunk paths are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_hunk_spec(spec: &str) -> Result<(), PortError> {
+        let t = spec.trim();
+        if t.is_empty() {
+            return Err(PortError::Other("empty hunk spec".into()));
+        }
+        if t.contains('\0') {
+            return Err(PortError::Other("hunk spec must be text".into()));
+        }
+        if t.starts_with('-') && !t.starts_with("@@") {
+            return Err(PortError::Other(
+                "flag-like hunk specs are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn refuse_in_progress_unmerged(&self, repo: &str) -> Result<(), PortError> {
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before hunk-unstage".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use hunk-unstage to clear conflict state"
+                    .into(),
+            ));
+        }
+        Ok(())
     }
 
     fn require_local_identity(name: &str, email: &str) -> Result<(), PortError> {
@@ -387,6 +473,55 @@ fn is_stash_selector(value: &str) -> bool {
         return false;
     };
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn extract_cached_hunk_patch(diff: &str, spec: &str) -> Result<String, PortError> {
+    let mut preamble = Vec::new();
+    let mut hunks: Vec<Vec<&str>> = Vec::new();
+    let mut current: Option<Vec<&str>> = None;
+    for line in diff.lines() {
+        if line.starts_with("@@") {
+            if let Some(hunk) = current.take() {
+                hunks.push(hunk);
+            }
+            current = Some(vec![line]);
+            continue;
+        }
+        match current.as_mut() {
+            Some(hunk) => hunk.push(line),
+            None => preamble.push(line),
+        }
+    }
+    if let Some(hunk) = current {
+        hunks.push(hunk);
+    }
+    let matched: Vec<&Vec<&str>> = hunks
+        .iter()
+        .filter(|hunk| hunk_matches_spec(hunk, spec))
+        .collect();
+    if matched.is_empty() {
+        return Err(PortError::Git("hunk not in index".into()));
+    }
+    if matched.len() > 1 {
+        return Err(PortError::Git(
+            "hunk spec matches multiple index hunks".into(),
+        ));
+    }
+    let mut out = preamble.join("\n");
+    if !out.is_empty() {
+        out.push('\n');
+    }
+    out.push_str(&matched[0].join("\n"));
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    Ok(out)
+}
+
+fn hunk_matches_spec(hunk: &[&str], spec: &str) -> bool {
+    let header = hunk.first().copied().unwrap_or("");
+    let text = hunk.join("\n");
+    header == spec || header.starts_with(spec) || text.contains(spec)
 }
 
 /// Tokens that would widen identity writes beyond `--local user.name` / `user.email`.
@@ -934,6 +1069,45 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn hunk_unstage(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk_spec: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        let spec = hunk_spec.trim();
+        Self::require_hunk_path(rel)?;
+        Self::require_hunk_spec(spec)?;
+        self.refuse_in_progress_unmerged(repo)?;
+        let listed = self.run(repo, &["ls-files", "--", rel])?;
+        let on_disk = Path::new(repo).join(rel).exists();
+        if listed.trim().is_empty() && !on_disk {
+            return Err(PortError::Git(format!("missing path '{rel}'")));
+        }
+        let numstat = self.run(repo, &["diff", "--cached", "--numstat", "--", rel])?;
+        if numstat.lines().any(|line| line.starts_with("-\t-\t")) {
+            return Err(PortError::Git(format!(
+                "binary path '{rel}' cannot be hunk-unstaged"
+            )));
+        }
+        let cached = self.run(repo, &["diff", "--cached", "--", rel])?;
+        if cached.trim().is_empty() {
+            return Err(PortError::Git("hunk not in index".into()));
+        }
+        if cached.contains("Binary files") || cached.contains("GIT binary patch") {
+            return Err(PortError::Git(format!(
+                "binary path '{rel}' cannot be hunk-unstaged"
+            )));
+        }
+        let patch = extract_cached_hunk_patch(&cached, spec)?;
+        // Index only: reverse the specified hunk. Never worktree apply. Never --force.
+        self.run_stdin(repo, &["apply", "--cached", "-R", "--"], patch.as_bytes())?;
         Ok(())
     }
 

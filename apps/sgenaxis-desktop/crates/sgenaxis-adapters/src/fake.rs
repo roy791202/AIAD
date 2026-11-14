@@ -601,6 +601,12 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// repo → last approved hunk-unstage `(path, hunk_spec)`.
+    last_hunk_unstage: HashMap<String, (String, String)>,
+    /// repo → path → staged text hunk specs still in the index.
+    staged_hunks: HashMap<String, HashMap<String, Vec<String>>>,
+    /// repo → binary paths that must fail hunk-unstage honestly.
+    binary_paths: HashMap<String, Vec<String>>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +854,47 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Last approved hunk-unstage for `repo` as `(path, hunk_spec)`.
+    pub fn last_hunk_unstage(&self, repo: &str) -> Option<(String, String)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_hunk_unstage.get(&Self::key(repo)).cloned()
+    }
+
+    /// Staged text hunk specs still recorded for `repo` / `path`.
+    pub fn staged_hunks(&self, repo: &str, path: &str) -> Vec<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.staged_hunks
+            .get(&Self::key(repo))
+            .and_then(|m| m.get(path))
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Record a staged text hunk so `hunk_unstage` can remove only that spec.
+    pub fn stage_text_hunk(
+        &self,
+        repo: &str,
+        path: impl Into<String>,
+        hunk_spec: impl Into<String>,
+    ) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.staged_hunks
+            .entry(Self::key(repo))
+            .or_default()
+            .entry(path.into())
+            .or_default()
+            .push(hunk_spec.into());
+    }
+
+    /// Mark `path` as binary in `repo` (hunk-unstage must fail honestly).
+    pub fn mark_binary_path(&self, repo: &str, path: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.binary_paths
+            .entry(Self::key(repo))
+            .or_default()
+            .push(path.into());
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1890,6 +1937,76 @@ impl GitWritePort for FakeGitWrite {
             ));
         }
         st.last_unstage_all.insert(key, true);
+        Ok(())
+    }
+
+    fn hunk_unstage(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk_spec: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let rel = path.trim();
+        let spec = hunk_spec.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty hunk path".into()));
+        }
+        if spec.is_empty() {
+            return Err(PortError::Other("empty hunk spec".into()));
+        }
+        if crate::git_write::conflict_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "path escape / add-all / force hunk paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        if st.conflict_kind.contains_key(&key) {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before hunk-unstage".into(),
+            ));
+        }
+        let unmerged = st
+            .conflict_files
+            .get(&key)
+            .map(|files| !files.is_empty())
+            .unwrap_or(false);
+        if unmerged {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use hunk-unstage to clear conflict state"
+                    .into(),
+            ));
+        }
+        let binary = st
+            .binary_paths
+            .get(&key)
+            .map(|paths| paths.iter().any(|p| p == rel))
+            .unwrap_or(false);
+        if binary {
+            return Err(PortError::Git(format!(
+                "binary path '{rel}' cannot be hunk-unstaged"
+            )));
+        }
+        let hunks = st.staged_hunks.get_mut(&key).and_then(|m| m.get_mut(rel));
+        let Some(hunks) = hunks else {
+            return Err(PortError::Git(format!("missing path '{rel}'")));
+        };
+        let pos = hunks.iter().position(|h| h == spec);
+        let Some(idx) = pos else {
+            return Err(PortError::Git("hunk not in index".into()));
+        };
+        hunks.remove(idx);
+        st.last_hunk_unstage
+            .insert(key, (rel.to_string(), spec.to_string()));
         Ok(())
     }
 

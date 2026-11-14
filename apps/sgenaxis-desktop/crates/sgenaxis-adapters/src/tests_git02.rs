@@ -2188,4 +2188,151 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    #[test]
+    fn pd_git_hunk_unstage_01_std_write_unstages_one_hunk_only() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let mut lines = Vec::new();
+        for i in 1..=20 {
+            lines.push(format!("line{i}"));
+        }
+        fs::write(work.join("a.txt"), format!("{}\n", lines.join("\n"))).unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "twenty lines"]);
+        let head_before = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        lines[1] = "changed-top".into();
+        lines[17] = "changed-bottom".into();
+        fs::write(work.join("a.txt"), format!("{}\n", lines.join("\n"))).unwrap();
+        git(&work, &["add", "a.txt"]);
+        lines[9] = "worktree-only".into();
+        fs::write(work.join("a.txt"), format!("{}\n", lines.join("\n"))).unwrap();
+
+        let cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let cached = String::from_utf8_lossy(&cached.stdout);
+        let first_hunk = cached
+            .lines()
+            .find(|l| l.starts_with("@@"))
+            .expect("staged hunk header")
+            .to_string();
+
+        let w = StdGitWrite::new();
+        w.hunk_unstage(repo, "a.txt", &first_hunk, GitWriteApproval::denied())
+            .expect_err("denied hunk-unstage must not mutate");
+        let denied_cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let denied_cached = String::from_utf8_lossy(&denied_cached.stdout);
+        assert!(
+            denied_cached.contains("changed-top") && denied_cached.contains("changed-bottom"),
+            "denied must leave both staged hunks: {denied_cached}"
+        );
+
+        w.hunk_unstage(repo, "a.txt", &first_hunk, GitWriteApproval::granted())
+            .expect("approved hunk unstage");
+        let after_cached = Command::new("git")
+            .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+            .output()
+            .unwrap();
+        let after_cached = String::from_utf8_lossy(&after_cached.stdout);
+        assert!(
+            !after_cached.contains("changed-top"),
+            "specified hunk must leave the index: {after_cached}"
+        );
+        assert!(
+            after_cached.contains("changed-bottom"),
+            "remaining staged hunk must stay: {after_cached}"
+        );
+        let worktree = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert!(worktree.contains("changed-top"));
+        assert!(worktree.contains("changed-bottom"));
+        assert!(
+            worktree.contains("worktree-only"),
+            "worktree bytes outside the hunk must stay"
+        );
+        let head_after = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(head_after, head_before, "hunk-unstage must never commit");
+
+        let missing = w
+            .hunk_unstage(
+                repo,
+                "nope.txt",
+                "@@ -1,1 +1,1 @@",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("missing path");
+        assert!(missing.to_string().contains("missing path"));
+        let absent = w
+            .hunk_unstage(
+                repo,
+                "a.txt",
+                "@@ -99,1 +99,1 @@",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("hunk not in index");
+        assert!(absent.to_string().contains("hunk not in index"));
+
+        fs::write(work.join("pic.bin"), [0u8, 1, 2, 255]).unwrap();
+        git(&work, &["add", "pic.bin"]);
+        let binary = w
+            .hunk_unstage(
+                repo,
+                "pic.bin",
+                "@@ -1,1 +1,1 @@",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("binary");
+        assert!(binary.to_string().contains("binary"));
+
+        let escape = w.hunk_unstage(
+            repo,
+            "../outside.txt",
+            "@@ -1,1 +1,1 @@",
+            GitWriteApproval::granted(),
+        );
+        assert!(escape.is_err(), "path escape must fail");
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .hunk_unstage(
+                crepo,
+                "a.txt",
+                "@@ -1,1 +1,1 @@",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "hunk-unstage must not clear conflict state"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
 }

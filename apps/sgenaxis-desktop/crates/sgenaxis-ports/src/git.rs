@@ -541,6 +541,21 @@ pub trait GitWritePort: Send + Sync {
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 
+    /// Unstage one text hunk of `path` from the index. Requires approval.
+    /// `git apply --cached -R` of that hunk (or equivalent). Remaining staged
+    /// hunks stay staged. Worktree bytes outside that hunk stay unchanged.
+    /// Never commit / push / `git add -A` / `reset --hard` / `--force` / `-f`.
+    /// Never path-escape. Binary paths, missing paths, and hunks not in the
+    /// index fail honestly. In-progress merge/rebase/cherry-pick/revert with
+    /// unmerged paths fails honestly (`OPERATION_IN_PROGRESS`).
+    fn hunk_unstage(
+        &self,
+        repo: &str,
+        path: &str,
+        hunk_spec: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.
