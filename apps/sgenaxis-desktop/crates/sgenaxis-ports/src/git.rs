@@ -249,8 +249,13 @@ pub trait GitPort: Send + Sync {
 /// - Fetch requires approval (no skip default). Updates remote-tracking
 ///   refs only: `git fetch -- <remote>` with an optional non-force refspec.
 ///   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
-///   `--update-head-ok`. Never prune in this slice. Unknown remotes fail
+///   `--update-head-ok`. Never prune in this command. Unknown remotes fail
 ///   honestly and must not be created. HEAD and the worktree stay unchanged.
+/// - Fetch-prune requires approval (no skip default). Distinct from fetch:
+///   `git fetch --prune -- <remote>` deletes stale remote-tracking refs only.
+///   Never `--prune-tags`. Never `--force` / `+refspec` / `--update-head-ok` /
+///   `--add` / `--delete` / `--push` / `--mirror`. Never pull / merge / rebase.
+///   HEAD, local branches, and the worktree stay unchanged.
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -455,6 +460,18 @@ pub trait GitWritePort: Send + Sync {
         repo: &str,
         remote: &str,
         refspec: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Delete stale remote-tracking refs. Requires approval.
+    /// `git fetch --prune -- <remote>`. Never `--prune-tags`. Never `--force` /
+    /// `+refspec` / `--update-head-ok` / `--add` / `--delete` / `--push` /
+    /// `--mirror`. Never pull / merge / rebase. HEAD and the worktree stay
+    /// unchanged. Unknown remotes fail honestly.
+    fn fetch_prune(
+        &self,
+        repo: &str,
+        remote: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

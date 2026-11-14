@@ -663,6 +663,17 @@ pub struct GitWriteFetchArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git fetch --prune -- remote`. Never prune-tags/force/pull/merge.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteFetchPruneArgs {
+    pub repo: Option<String>,
+    /// Remote name. Empty → `origin`. Never flags (`--force`, `--prune-tags`, `--update-head-ok`).
+    #[serde(default)]
+    pub remote: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictSaveArgs {

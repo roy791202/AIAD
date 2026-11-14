@@ -2545,6 +2545,8 @@
           ? "審核 Remote Remove"
           : op === "fetch"
           ? "審核 Fetch"
+          : op === "fetch-prune"
+          ? "審核 Fetch prune"
           : op === "conflict-save"
           ? "審核 Conflict Save"
           : op === "conflict-continue"
@@ -2603,6 +2605,8 @@
             "（git remote remove -- name）。缺漏的遠端會誠實失敗。不 prune、不 fetch。拒絕則無突變。"
           : op === "fetch"
           ? "核准後經 git_write_fetch → GitWritePort；只更新遠端追蹤 refs（git fetch -- remote），不 merge／pull／rebase／checkout、不加 --force／+refspec／--prune。未知遠端誠實失敗且不建立遠端。拒絕則無突變。"
+          : op === "fetch-prune"
+          ? "核准後經 git_write_fetch_prune → GitWritePort；執行 git fetch --prune -- remote，只刪過期的遠端追蹤 refs。不加 --prune-tags／--force／+refspec／--update-head-ok／--add／--delete／--push／--mirror，不 pull／merge／rebase。HEAD 與工作區不變。拒絕則無突變。"
           : op === "conflict-save"
           ? "核准後經 git_write_conflict_save → GitWritePort；寫入 " +
             (payload.path || "") +
@@ -2638,7 +2642,7 @@
         );
       }
     }
-    if (remoteWrap) remoteWrap.hidden = op !== "push" && op !== "fetch";
+    if (remoteWrap) remoteWrap.hidden = op !== "push" && op !== "fetch" && op !== "fetch-prune";
     if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
@@ -2685,7 +2689,7 @@
         urlEl.value = payload.url != null ? String(payload.url) : "";
         if (op === "remote-set-url") urlEl.focus();
       }
-    } else if (op === "push" || op === "fetch") {
+    } else if (op === "push" || op === "fetch" || op === "fetch-prune") {
       const remote = document.getElementById("git-approve-remote");
       if (remote) {
         if (payload.remote != null && String(payload.remote).trim()) {
@@ -3142,6 +3146,48 @@
             true
           );
           toast("Fetch 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "fetch-prune") {
+        const remoteEl = document.getElementById("git-approve-remote");
+        const remote =
+          remoteEl && remoteEl.value && remoteEl.value.trim()
+            ? remoteEl.value.trim()
+            : "origin";
+        if (
+          remote.charAt(0) === "+" ||
+          remote.indexOf("--force") === 0 ||
+          remote.indexOf("--prune-tags") === 0 ||
+          remote === "--prune" ||
+          remote === "-p"
+        ) {
+          setGitStatusLine("force／prune-tags fetch 不在範圍內", true);
+          toast("禁止 force／prune-tags fetch");
+          return;
+        }
+        const dto = await invoke("git_write_fetch_prune", {
+          args: {
+            repo: repo,
+            remote: remote,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已 fetch prune " + remote + "（經 GitWritePort；僅刪過期 refs/remotes；HEAD 未變）",
+            false
+          );
+          toast("Fetch prune 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "fetch prune 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（HEAD 與工作區依 Git 真實結果保留）",
+            true
+          );
+          toast("Fetch prune 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "conflict-save") {
@@ -3780,6 +3826,12 @@
         remoteFetch: function (remote) {
           const picker = document.getElementById("git-ux-remote-picker");
           showGitApprove("fetch", {
+            remote: remote || (picker && picker.value) || "origin",
+          });
+        },
+        remoteFetchPrune: function (remote) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          showGitApprove("fetch-prune", {
             remote: remote || (picker && picker.value) || "origin",
           });
         },

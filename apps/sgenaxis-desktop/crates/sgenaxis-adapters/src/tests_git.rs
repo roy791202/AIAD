@@ -924,6 +924,10 @@ fn fake_git_write_fetch_updates_remote_tracking_without_moving_head() {
     assert!(matches!(force, Err(PortError::Other(_))));
     assert!(w.last_fetch("/r").is_none());
 
+    w.fetch("/r", "origin", Some("--prune"), GitWriteApproval::granted())
+        .expect_err("ordinary fetch must reject --prune refspec");
+    w.fetch("/r", "--prune", None, GitWriteApproval::granted())
+        .expect_err("ordinary fetch must reject --prune remote");
     w.fetch("/r", "origin", None, GitWriteApproval::granted())
         .expect("fetch");
     assert_eq!(w.last_fetch("/r"), Some(("origin".to_string(), None)));
@@ -936,10 +940,75 @@ fn fake_git_write_fetch_updates_remote_tracking_without_moving_head() {
 }
 
 #[test]
+fn fake_git_write_fetch_prune_deletes_stale_remote_tracking_without_moving_head() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    w.create_branch("/r", "keep-local", GitWriteApproval::granted())
+        .expect("seed local branch");
+    w.seed_remote_tracking("/r", "refs/remotes/origin/main", "aaa");
+    w.seed_remote_tracking("/r", "refs/remotes/origin/stale", "bbb");
+    w.mark_stale_remote_tracking("/r", "refs/remotes/origin/stale");
+    let head_before = w.local_head("/r");
+    let branches_before = w.created_branches("/r");
+
+    w.fetch_prune("/r", "origin", GitWriteApproval::denied())
+        .expect_err("denied fetch-prune must not mutate");
+    assert!(w.last_fetch_prune("/r").is_none());
+    assert!(w
+        .remote_tracking_refs("/r")
+        .iter()
+        .any(|(r, _)| r == "refs/remotes/origin/stale"));
+    assert_eq!(w.local_head("/r"), head_before);
+
+    w.fetch_prune("/r", "--force", GitWriteApproval::granted())
+        .expect_err("force flag remote is out of scope");
+    w.fetch_prune(
+        "/r",
+        "+refs/heads/main:refs/remotes/origin/main",
+        GitWriteApproval::granted(),
+    )
+    .expect_err("force refspec remote is out of scope");
+    w.fetch_prune("/r", "--prune-tags", GitWriteApproval::granted())
+        .expect_err("prune-tags is out of scope");
+    w.fetch_prune("/r", "--update-head-ok", GitWriteApproval::granted())
+        .expect_err("update-head-ok is out of scope");
+    w.fetch_prune("/r", "--mirror", GitWriteApproval::granted())
+        .expect_err("mirror is out of scope");
+    w.fetch_prune("/r", "--push", GitWriteApproval::granted())
+        .expect_err("push is out of scope");
+    assert!(w.last_fetch_prune("/r").is_none());
+
+    let missing = w.fetch_prune("/r", "ghost", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+
+    w.fetch_prune("/r", "origin", GitWriteApproval::granted())
+        .expect("fetch-prune");
+    assert_eq!(w.last_fetch_prune("/r"), Some("origin".to_string()));
+    let refs = w.remote_tracking_refs("/r");
+    assert!(refs.iter().any(|(r, _)| r == "refs/remotes/origin/main"));
+    assert!(!refs.iter().any(|(r, _)| r == "refs/remotes/origin/stale"));
+    assert_eq!(w.local_head("/r"), head_before);
+    assert_eq!(w.created_branches("/r"), branches_before);
+    assert!(w.switched_branch("/r").is_none());
+    assert_eq!(w.push_count("/r"), 0);
+    assert!(w.last_fetch("/r").is_none());
+}
+
+#[test]
 fn gated_git_write_blocks_fetch_even_when_approved() {
     let w = GatedGitWrite::new();
     let err = w.fetch("/any", "origin", None, GitWriteApproval::granted());
     assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let prune = w.fetch_prune("/any", "origin", GitWriteApproval::granted());
+    assert!(matches!(prune, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
 #[test]

@@ -50,13 +50,14 @@ use crate::dto::{
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
     GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteFetchArgs,
-    GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs, GitWriteRemoteAddArgs,
-    GitWriteRemoteRemoveArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteStashArgs,
-    GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs,
-    ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs,
-    PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto,
-    SpecReviseArgs, SpecRevisionDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs,
-    StartRunResult, UpsertTaskArgs, WorkItemGateArgs,
+    GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
+    GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto,
+    GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
+    GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
+    OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs,
+    SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
+    SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
+    WorkItemGateArgs,
 };
 use crate::git_index_commit::{
     IndexCommitErrorDto, IndexCommitOutcomeDto, IndexCommitPreviewDto, IndexCommitRequestDto,
@@ -430,6 +431,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_remote_remove",
         "git_write_remote_set_url",
         "git_write_fetch",
+        "git_write_fetch_prune",
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
@@ -3134,6 +3136,65 @@ pub fn git_write_fetch(
     )
 }
 
+fn perform_git_write_fetch_prune(
+    write: &dyn GitWritePort,
+    repo: &str,
+    remote: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    let name = if remote.trim().is_empty() {
+        "origin"
+    } else {
+        remote.trim()
+    };
+    reject_remote_scope(name, None)?;
+    if fetch_refspec_out_of_scope(name) {
+        return Err("force/prune/update-head-ok fetch refspecs are out of scope".into());
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "fetch-prune".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.fetch_prune(repo, name, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "fetch-prune".into(),
+            message: "fetch prune ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "fetch-prune".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated `git fetch --prune -- remote`. Never merge / pull / --prune-tags / force.
+#[tauri::command]
+pub fn git_write_fetch_prune(
+    state: State<'_, HostState>,
+    args: GitWriteFetchPruneArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_fetch_prune").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "fetch-prune".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_fetch_prune(root.git_write(), &repo, &args.remote, args.approved)
+}
+
 fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -4996,6 +5057,11 @@ mod git_ui_tests {
         assert!(force.contains("out of scope"));
         let flag = perform_git_write_fetch(&w, "/r", "origin", Some("--force"), true).unwrap_err();
         assert!(flag.contains("out of scope"));
+        let prune_spec =
+            perform_git_write_fetch(&w, "/r", "origin", Some("--prune"), true).unwrap_err();
+        assert!(prune_spec.contains("out of scope"));
+        let prune_name = perform_git_write_fetch(&w, "/r", "--prune", None, true).unwrap_err();
+        assert!(prune_name.contains("out of scope"));
         assert!(w.last_fetch("/r").is_none());
 
         let missing = perform_git_write_fetch(&w, "/r", "ghost", None, true).unwrap();
@@ -5017,6 +5083,73 @@ mod git_ui_tests {
         assert_eq!(w.local_head("/r"), head_before);
         assert!(w.switched_branch("/r").is_none());
         assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_fetch_prune_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_fetch_prune"));
+        assert!(!is_allowed("git_fetch_prune"));
+        assert!(!is_allowed("git_pull"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w.seed_remote_tracking("/r", "refs/remotes/origin/main", "aaa");
+        w.seed_remote_tracking("/r", "refs/remotes/origin/stale", "bbb");
+        w.mark_stale_remote_tracking("/r", "refs/remotes/origin/stale");
+        w.create_branch("/r", "keep-local", GitWriteApproval::granted())
+            .unwrap();
+        let head_before = w.local_head("/r");
+        let branches_before = w.created_branches("/r");
+
+        let denied = perform_git_write_fetch_prune(&w, "/r", "origin", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_fetch_prune("/r").is_none());
+        assert!(w
+            .remote_tracking_refs("/r")
+            .iter()
+            .any(|(r, _)| r == "refs/remotes/origin/stale"));
+
+        let force = perform_git_write_fetch_prune(&w, "/r", "--force", true).unwrap_err();
+        assert!(force.contains("out of scope"));
+        let plus = perform_git_write_fetch_prune(
+            &w,
+            "/r",
+            "+refs/heads/main:refs/remotes/origin/main",
+            true,
+        )
+        .unwrap_err();
+        assert!(plus.contains("out of scope"));
+        let prune_tags = perform_git_write_fetch_prune(&w, "/r", "--prune-tags", true).unwrap_err();
+        assert!(prune_tags.contains("out of scope"));
+        assert!(w.last_fetch_prune("/r").is_none());
+
+        let missing = perform_git_write_fetch_prune(&w, "/r", "ghost", true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
+
+        let ok = perform_git_write_fetch_prune(&w, "/r", "", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "fetch-prune");
+        assert_eq!(w.last_fetch_prune("/r"), Some("origin".to_string()));
+        let refs = w.remote_tracking_refs("/r");
+        assert!(refs.iter().any(|(r, _)| r == "refs/remotes/origin/main"));
+        assert!(!refs.iter().any(|(r, _)| r == "refs/remotes/origin/stale"));
+        assert_eq!(w.local_head("/r"), head_before);
+        assert_eq!(w.created_branches("/r"), branches_before);
+        assert!(w.switched_branch("/r").is_none());
+        assert_eq!(w.push_count("/r"), 0);
+        assert!(w.last_fetch("/r").is_none());
     }
 
     #[test]

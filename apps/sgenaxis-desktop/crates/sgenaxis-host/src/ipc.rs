@@ -86,6 +86,8 @@ pub enum AllowedIpcCommand {
     GitWriteConflictSkip,
     /// Approval-gated `git fetch -- remote` via GitWritePort (never merge/pull/force/prune).
     GitWriteFetch,
+    /// Approval-gated `git fetch --prune -- remote` via GitWritePort (never prune-tags/force/pull).
+    GitWriteFetchPrune,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -174,6 +176,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictAbort => "git_write_conflict_abort",
             AllowedIpcCommand::GitWriteConflictSkip => "git_write_conflict_skip",
             AllowedIpcCommand::GitWriteFetch => "git_write_fetch",
+            AllowedIpcCommand::GitWriteFetchPrune => "git_write_fetch_prune",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -240,6 +243,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictAbort,
             AllowedIpcCommand::GitWriteConflictSkip,
             AllowedIpcCommand::GitWriteFetch,
+            AllowedIpcCommand::GitWriteFetchPrune,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -367,6 +371,7 @@ mod tests {
         assert!(is_allowed("git_write_conflict_abort"));
         assert!(is_allowed("git_write_conflict_skip"));
         assert!(is_allowed("git_write_fetch"));
+        assert!(is_allowed("git_write_fetch_prune"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -384,6 +389,7 @@ mod tests {
         assert!(!is_allowed("git_remote_remove"));
         assert!(!is_allowed("git_remote_set_url"));
         assert!(!is_allowed("git_fetch"));
+        assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
         assert!(!is_allowed("git_conflict_save"));
         assert!(!is_allowed("git_merge_continue"));
@@ -537,6 +543,10 @@ mod tests {
             authorize("git_write_fetch").unwrap(),
             AllowedIpcCommand::GitWriteFetch
         );
+        assert_eq!(
+            authorize("git_write_fetch_prune").unwrap(),
+            AllowedIpcCommand::GitWriteFetchPrune
+        );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());
         assert!(authorize("git_stash_clear").is_err());
@@ -551,6 +561,7 @@ mod tests {
         assert!(authorize("git_remote_add").is_err());
         assert!(authorize("git_remote_set_url").is_err());
         assert!(authorize("git_fetch").is_err());
+        assert!(authorize("git_fetch_prune").is_err());
         assert!(authorize("git_pull").is_err());
         assert!(authorize("git_conflict_save").is_err());
         assert!(authorize("git_rebase_skip").is_err());

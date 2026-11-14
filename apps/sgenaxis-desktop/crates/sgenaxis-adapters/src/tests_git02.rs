@@ -1115,6 +1115,10 @@ mod std_write_temp {
             GitWriteApproval::granted(),
         )
         .expect_err("force refspec is out of scope");
+        w.fetch(repo, "origin", Some("--prune"), GitWriteApproval::granted())
+            .expect_err("ordinary fetch must reject --prune refspec");
+        w.fetch(repo, "--prune", None, GitWriteApproval::granted())
+            .expect_err("ordinary fetch must reject --prune remote");
         assert_eq!(rev_parse(repo, "refs/remotes/origin/main"), tracking_before);
 
         w.fetch(repo, "origin", None, GitWriteApproval::granted())
@@ -1130,6 +1134,104 @@ mod std_write_temp {
             worktree_before,
             "fetch must not merge into the worktree"
         );
+        assert_eq!(
+            Command::new("git")
+                .args(["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap(),
+            "main"
+        );
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    fn ref_exists(repo: &str, rev: &str) -> bool {
+        Command::new("git")
+            .args(["-C", repo, "show-ref", "--verify", "--quiet", rev])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+    }
+
+    #[test]
+    fn std_write_fetch_prune_deletes_stale_remote_tracking_without_moving_head() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let root = work.parent().unwrap();
+        let other = root.join("other");
+        git(
+            root,
+            &["clone", bare.to_str().unwrap(), other.to_str().unwrap()],
+        );
+        init_identity(&other);
+        git(&other, &["checkout", "-b", "stale"]);
+        fs::write(other.join("s.txt"), "stale\n").unwrap();
+        git(&other, &["add", "s.txt"]);
+        git(&other, &["commit", "-m", "stale branch"]);
+        git(&other, &["push", "origin", "stale"]);
+        git(&other, &["checkout", "main"]);
+
+        let w = StdGitWrite::new();
+        w.fetch(repo, "origin", None, GitWriteApproval::granted())
+            .expect("fetch stale tracking");
+        assert!(
+            ref_exists(repo, "refs/remotes/origin/stale"),
+            "setup must create origin/stale"
+        );
+
+        let head_before = rev_parse(repo, "HEAD");
+        let worktree_before = fs::read_to_string(work.join("a.txt")).unwrap();
+        let branches_before = local_branch_list(repo);
+        assert!(!branches_before.contains("stale"));
+
+        w.fetch(repo, "origin", Some("--prune"), GitWriteApproval::granted())
+            .expect_err("ordinary fetch must still reject --prune");
+        w.fetch(
+            repo,
+            "origin",
+            Some("+refs/heads/main:refs/remotes/origin/main"),
+            GitWriteApproval::granted(),
+        )
+        .expect_err("ordinary fetch must still reject force refspec");
+        assert!(ref_exists(repo, "refs/remotes/origin/stale"));
+
+        git(&other, &["push", "origin", "--delete", "stale"]);
+
+        w.fetch_prune(repo, "origin", GitWriteApproval::denied())
+            .expect_err("denied fetch-prune must not mutate");
+        assert!(ref_exists(repo, "refs/remotes/origin/stale"));
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+
+        w.fetch_prune(repo, "--force", GitWriteApproval::granted())
+            .expect_err("force flag is out of scope");
+        w.fetch_prune(repo, "--prune-tags", GitWriteApproval::granted())
+            .expect_err("prune-tags is out of scope");
+        w.fetch_prune(
+            repo,
+            "+refs/heads/main:refs/remotes/origin/main",
+            GitWriteApproval::granted(),
+        )
+        .expect_err("force refspec is out of scope");
+        let missing = w
+            .fetch_prune(repo, "ghost", GitWriteApproval::granted())
+            .expect_err("unknown remote must fail honestly");
+        assert!(matches!(missing, PortError::Git(_)));
+
+        w.fetch_prune(repo, "origin", GitWriteApproval::granted())
+            .expect("approved fetch-prune");
+        assert!(
+            !ref_exists(repo, "refs/remotes/origin/stale"),
+            "fetch-prune must delete stale remote-tracking refs"
+        );
+        assert!(ref_exists(repo, "refs/remotes/origin/main"));
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            worktree_before,
+            "fetch-prune must not change the worktree"
+        );
+        assert_eq!(local_branch_list(repo), branches_before);
         assert_eq!(
             Command::new("git")
                 .args(["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"])

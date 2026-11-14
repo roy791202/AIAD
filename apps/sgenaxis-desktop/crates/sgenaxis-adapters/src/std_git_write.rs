@@ -28,6 +28,9 @@
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
+//! - Fetch-prune: `git fetch --prune -- <remote>`. Never `--prune-tags`.
+//!   Never `--force` / `+refspec` / `--update-head-ok` / `--add` / `--delete` /
+//!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -758,6 +761,27 @@ impl GitWritePort for StdGitWrite {
             args.push(s);
         }
         self.run(repo, &args)?;
+        Ok(())
+    }
+
+    fn fetch_prune(
+        &self,
+        repo: &str,
+        remote: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let name = remote.trim();
+        Self::require_remote_name(name)?;
+        let listed = self.run(repo, &["remote"])?;
+        if !listed.lines().any(|line| line.trim() == name) {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        // Remote-tracking refs only: `git fetch --prune -- <remote>`.
+        // `--prune` is a dedicated flag on this path; `--` stops option parse.
+        // Never `--prune-tags`. Never `--force` / `+refspec` / `--update-head-ok`.
+        // Never pull / merge / rebase / checkout.
+        self.run(repo, &["fetch", "--prune", "--", name])?;
         Ok(())
     }
 }

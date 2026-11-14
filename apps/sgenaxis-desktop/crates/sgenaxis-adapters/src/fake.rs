@@ -585,6 +585,10 @@ struct FakeGitWriteState {
     remote_set_url: HashMap<String, (String, String)>,
     /// repo → last approved fetch `(remote, optional refspec)`.
     last_fetch: HashMap<String, (String, Option<String>)>,
+    /// repo → last approved fetch-prune remote.
+    last_fetch_prune: HashMap<String, String>,
+    /// repo → remote-tracking refs marked stale on the remote (fetch-prune deletes these).
+    stale_remote_tracking: HashMap<String, Vec<String>>,
     /// repo → remote-tracking refs `(refs/remotes/…, oid)`. Fetch updates these only.
     remote_tracking: HashMap<String, Vec<(String, String)>>,
     /// repo → synthetic local HEAD oid (fetch must not move this).
@@ -761,6 +765,35 @@ impl FakeGitWrite {
     pub fn last_fetch(&self, repo: &str) -> Option<(String, Option<String>)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_fetch.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved fetch-prune remote for `repo`, if any.
+    pub fn last_fetch_prune(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_fetch_prune.get(&Self::key(repo)).cloned()
+    }
+
+    /// Seed a remote-tracking ref without fetching (tests for prune).
+    pub fn seed_remote_tracking(
+        &self,
+        repo: &str,
+        refname: impl Into<String>,
+        oid: impl Into<String>,
+    ) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.remote_tracking
+            .entry(Self::key(repo))
+            .or_default()
+            .push((refname.into(), oid.into()));
+    }
+
+    /// Mark a remote-tracking ref as deleted on the remote (fetch-prune removes it).
+    pub fn mark_stale_remote_tracking(&self, repo: &str, refname: impl Into<String>) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.stale_remote_tracking
+            .entry(Self::key(repo))
+            .or_default()
+            .push(refname.into());
     }
 
     /// Remote-tracking refs recorded for `repo` as `(name, oid)`.
@@ -1513,6 +1546,55 @@ impl GitWritePort for FakeGitWrite {
         }
         st.last_fetch
             .insert(key, (name.to_string(), spec.map(str::to_string)));
+        Ok(())
+    }
+
+    fn fetch_prune(
+        &self,
+        repo: &str,
+        remote: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let name = remote.trim();
+        if name.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(name)
+            || crate::git_write::fetch_refspec_out_of_scope(name)
+        {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        let has_remote = {
+            let remotes = st.remotes.entry(key.clone()).or_default();
+            remotes.iter().any(|(n, _)| n == name)
+        };
+        if !has_remote {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        let stale: Vec<String> = st
+            .stale_remote_tracking
+            .get(&key)
+            .cloned()
+            .unwrap_or_default();
+        if let Some(refs) = st.remote_tracking.get_mut(&key) {
+            refs.retain(|(r, _)| !stale.iter().any(|s| s == r));
+        }
+        st.last_fetch_prune.insert(key, name.to_string());
         Ok(())
     }
 }

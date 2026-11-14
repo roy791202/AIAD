@@ -145,6 +145,7 @@ pub fn run() {
             commands::git_write_conflict_abort,
             commands::git_write_conflict_skip,
             commands::git_write_fetch,
+            commands::git_write_fetch_prune,
             commands::deploy_status,
             commands::deploy_check,
             commands::list_artifacts,
@@ -213,6 +214,7 @@ mod host_ipc_integration {
             "git_write_conflict_abort",
             "git_write_conflict_skip",
             "git_write_fetch",
+            "git_write_fetch_prune",
             "deploy_status",
             "deploy_check",
             "list_artifacts",
@@ -243,6 +245,7 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_remote_add"));
         assert!(!is_allowed("git_remote_set_url"));
         assert!(!is_allowed("git_fetch"));
+        assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
         assert!(!is_allowed("git_conflict_save"));
         assert!(!is_allowed("git_rebase_skip"));
