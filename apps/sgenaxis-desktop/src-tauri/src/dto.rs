@@ -697,6 +697,16 @@ pub struct GitWriteStageAllArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git add -- path` (FILE-STAGE). Never commit/push/-A/force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteStagePathArgs {
+    pub repo: Option<String>,
+    /// Repo-relative worktree path. Never `.` / `-A` / traversal / absolute outside repo.
+    pub path: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated `git reset -- .` (ALL-UNSTAGE). Never commit/push/hard/force.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteUnstageAllArgs {
