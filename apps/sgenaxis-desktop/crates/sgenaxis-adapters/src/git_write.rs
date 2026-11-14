@@ -181,6 +181,30 @@ pub(crate) fn conflict_markers_present(text: &str) -> bool {
     })
 }
 
+/// Commit OIDs / revs that would become flags or widen `git revert`.
+pub(crate) fn commit_sha_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.is_empty()
+        || t.starts_with('-')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || matches!(
+            lower.as_str(),
+            "--no-commit"
+                | "-n"
+                | "--force"
+                | "-f"
+                | "--abort"
+                | "--continue"
+                | "--skip"
+                | "reset"
+                | "--hard"
+                | "--no-edit"
+        )
+}
+
 /// Always-deny write adapter. Host boot wires this by default so write entry
 /// points exist but cannot mutate a repo until an approving adapter is chosen.
 #[derive(Debug, Default, Clone, Copy)]
@@ -445,6 +469,15 @@ impl GitWritePort for GatedGitWrite {
         _repo: &str,
         _remote: &str,
         _branch: Option<&str>,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn revert_commit(
+        &self,
+        _repo: &str,
+        _sha: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
