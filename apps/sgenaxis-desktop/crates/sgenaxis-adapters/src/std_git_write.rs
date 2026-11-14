@@ -37,6 +37,10 @@
 //!   Empty local → current branch. Never `--unset-upstream`. Never `-M` / `-C`
 //!   / `--force`. Never fetch / pull / push / rebase / merge / checkout /
 //!   switch. Never create remotes, tracking refs, or local branches.
+//! - Unset-upstream: `git branch --unset-upstream -- <local>`.
+//!   Empty local → current branch. Never `--set-upstream-to` / `-u`. Never
+//!   `-M` / `-C` / `--force`. Never fetch / pull / push. Never create
+//!   remotes, tracking refs, or local branches.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -847,6 +851,39 @@ impl GitWritePort for StdGitWrite {
         // Never fetch / pull / push / rebase / merge / checkout / switch.
         // `--` stops option parse so a local name cannot be read as a flag.
         self.run(repo, &["branch", &spec, "--", &local_name])?;
+        Ok(())
+    }
+
+    fn unset_upstream(
+        &self,
+        repo: &str,
+        local: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let local_name = if local.trim().is_empty() {
+            let head = self.run(repo, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+            let head = head.trim();
+            if head.is_empty() || head == "HEAD" {
+                return Err(PortError::Other(
+                    "cannot unset upstream on detached HEAD".into(),
+                ));
+            }
+            head.to_string()
+        } else {
+            local.trim().to_string()
+        };
+        Self::require_branch_name(&local_name)?;
+        let local_ref = format!("refs/heads/{local_name}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &local_ref])
+            .is_err()
+        {
+            return Err(PortError::Git(format!("branch '{local_name}' not found")));
+        }
+        // Tracking clear only. Never `--set-upstream-to` / `-u`. Never `-M` /
+        // `-C` / `--force`. Never fetch / pull / push. `--` stops option parse.
+        self.run(repo, &["branch", "--unset-upstream", "--", &local_name])?;
         Ok(())
     }
 

@@ -595,6 +595,8 @@ struct FakeGitWriteState {
     remote_rename: HashMap<String, (String, String)>,
     /// repo → last approved set-upstream `(local, remote, branch)`.
     last_set_upstream: HashMap<String, (String, String, String)>,
+    /// repo → last approved unset-upstream local branch.
+    last_unset_upstream: HashMap<String, String>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -824,6 +826,12 @@ impl FakeGitWrite {
     pub fn last_set_upstream(&self, repo: &str) -> Option<(String, String, String)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_set_upstream.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved unset-upstream local branch for `repo`, if any.
+    pub fn last_unset_upstream(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_unset_upstream.get(&Self::key(repo)).cloned()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -1749,6 +1757,61 @@ impl GitWritePort for FakeGitWrite {
                 remote_branch.to_string(),
             ),
         );
+        Ok(())
+    }
+
+    fn unset_upstream(
+        &self,
+        repo: &str,
+        local: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        let local_name = if local.trim().is_empty() {
+            st.current_branch
+                .get(&key)
+                .cloned()
+                .filter(|n| !n.is_empty() && n != "HEAD")
+                .ok_or_else(|| PortError::Other("cannot unset upstream on detached HEAD".into()))?
+        } else {
+            local.trim().to_string()
+        };
+        if crate::git_write::branch_name_out_of_scope(&local_name) {
+            return Err(PortError::Other(
+                "force/delete/upstream/switch branch writes are out of scope".into(),
+            ));
+        }
+        let has_local = st
+            .branches
+            .get(&key)
+            .map(|names| names.iter().any(|n| n == &local_name))
+            .unwrap_or(false);
+        if !has_local {
+            return Err(PortError::Git(format!("branch '{local_name}' not found")));
+        }
+        let had_upstream = st
+            .upstreams
+            .get(&key)
+            .map(|m| m.contains_key(&local_name))
+            .unwrap_or(false);
+        if !had_upstream {
+            return Err(PortError::Git(format!(
+                "branch '{local_name}' has no upstream information"
+            )));
+        }
+        if let Some(map) = st.upstreams.get_mut(&key) {
+            map.remove(&local_name);
+        }
+        st.last_unset_upstream.insert(key, local_name);
         Ok(())
     }
 

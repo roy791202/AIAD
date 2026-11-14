@@ -678,6 +678,17 @@ pub struct GitWriteSetUpstreamArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git branch --unset-upstream -- local`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteUnsetUpstreamArgs {
+    pub repo: Option<String>,
+    /// Local branch. Empty after trim → current branch. Never `--set-upstream-to` / `-u`.
+    #[serde(default)]
+    pub local: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {

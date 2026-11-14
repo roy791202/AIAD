@@ -383,6 +383,15 @@ impl GitWritePort for GatedGitWrite {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
+    fn unset_upstream(
+        &self,
+        _repo: &str,
+        _local: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
     fn conflict_save(
         &self,
         _repo: &str,

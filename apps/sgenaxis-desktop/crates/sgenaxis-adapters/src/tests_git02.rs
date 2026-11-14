@@ -1905,4 +1905,75 @@ mod std_write_temp {
 
         let _ = fs::remove_dir_all(work.parent().unwrap());
     }
+
+    #[test]
+    fn std_write_unset_upstream_clears_tracking_when_approved() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        git(&work, &["branch", "--", "topic"]);
+        git(
+            &work,
+            &["branch", "--set-upstream-to=origin/main", "--", "topic"],
+        );
+        assert_eq!(upstream_of(repo, "main"), "origin/main");
+        assert_eq!(upstream_of(repo, "topic"), "origin/main");
+        assert_eq!(head_ref(repo), "main");
+        let w = StdGitWrite::new();
+
+        w.unset_upstream(repo, "main", GitWriteApproval::denied())
+            .expect_err("denied unset-upstream must not mutate");
+        assert_eq!(upstream_of(repo, "main"), "origin/main");
+
+        w.unset_upstream(repo, "-u", GitWriteApproval::granted())
+            .expect_err("set-upstream shorthand is out of scope");
+        w.unset_upstream(repo, "--set-upstream-to", GitWriteApproval::granted())
+            .expect_err("set-upstream-to as name is out of scope");
+        w.unset_upstream(repo, "--force", GitWriteApproval::granted())
+            .expect_err("force flag local is out of scope");
+
+        let missing = w
+            .unset_upstream(repo, "missing-local", GitWriteApproval::granted())
+            .expect_err("missing local branch must fail");
+        assert!(
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("not found")
+                || missing.to_string().contains("missing-local")
+        );
+        assert!(
+            !local_branch_list(repo).contains("missing-local"),
+            "must not create local branches"
+        );
+
+        git(&work, &["branch", "--", "lonely"]);
+        w.unset_upstream(repo, "lonely", GitWriteApproval::granted())
+            .expect_err("no upstream must fail honestly");
+        assert_eq!(head_ref(repo), "main");
+        assert_eq!(upstream_of(repo, "main"), "origin/main");
+
+        w.unset_upstream(repo, "", GitWriteApproval::granted())
+            .expect("empty local uses current");
+        let cleared = Command::new("git")
+            .args(["-C", repo, "rev-parse", "--abbrev-ref", "main@{upstream}"])
+            .output()
+            .unwrap();
+        assert!(
+            !cleared.status.success(),
+            "main must have no upstream after unset"
+        );
+        assert_eq!(upstream_of(repo, "topic"), "origin/main");
+        assert_eq!(head_ref(repo), "main");
+
+        w.unset_upstream(repo, "topic", GitWriteApproval::granted())
+            .expect("explicit local");
+        let topic_cleared = Command::new("git")
+            .args(["-C", repo, "rev-parse", "--abbrev-ref", "topic@{upstream}"])
+            .output()
+            .unwrap();
+        assert!(!topic_cleared.status.success());
+        assert_eq!(head_ref(repo), "main");
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
 }

@@ -1423,6 +1423,80 @@ fn gated_git_write_blocks_set_upstream_even_when_approved() {
 }
 
 #[test]
+fn fake_git_write_unset_upstream_records_when_approved() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    w.create_branch("/r", "main", GitWriteApproval::granted())
+        .expect("seed local");
+    w.create_branch("/r", "topic", GitWriteApproval::granted())
+        .expect("seed topic");
+    w.set_current_branch("/r", "main");
+    w.seed_remote_tracking("/r", "refs/remotes/origin/main", "oid-main");
+    w.set_upstream("/r", "origin", "main", "main", GitWriteApproval::granted())
+        .expect("seed upstream");
+    w.set_upstream("/r", "origin", "main", "topic", GitWriteApproval::granted())
+        .expect("seed topic upstream");
+
+    let denied = w.unset_upstream("/r", "main", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_unset_upstream("/r").is_none());
+    assert_eq!(
+        w.upstream_of("/r", "main"),
+        Some(("origin".into(), "main".into()))
+    );
+
+    let flag = w.unset_upstream("/r", "-u", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    let set_to = w.unset_upstream("/r", "--set-upstream-to", GitWriteApproval::granted());
+    assert!(matches!(set_to, Err(PortError::Other(_))));
+    let force = w.unset_upstream("/r", "--force", GitWriteApproval::granted());
+    assert!(matches!(force, Err(PortError::Other(_))));
+
+    let missing = w.unset_upstream("/r", "ghost", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found"))
+    );
+    assert!(!w.created_branches("/r").iter().any(|b| b == "ghost"));
+    assert!(w.last_unset_upstream("/r").is_none());
+
+    w.create_branch("/r", "lonely", GitWriteApproval::granted())
+        .expect("seed lonely");
+    let none = w.unset_upstream("/r", "lonely", GitWriteApproval::granted());
+    assert!(
+        matches!(none, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no upstream"))
+    );
+    assert!(w.last_unset_upstream("/r").is_none());
+
+    w.unset_upstream("/r", "", GitWriteApproval::granted())
+        .expect("empty local uses current");
+    assert_eq!(w.last_unset_upstream("/r"), Some("main".into()));
+    assert!(w.upstream_of("/r", "main").is_none());
+    assert_eq!(
+        w.upstream_of("/r", "topic"),
+        Some(("origin".into(), "main".into()))
+    );
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.unset_upstream("/r", "topic", GitWriteApproval::granted())
+        .expect("explicit local");
+    assert_eq!(w.last_unset_upstream("/r"), Some("topic".into()));
+    assert!(w.upstream_of("/r", "topic").is_none());
+}
+
+#[test]
+fn gated_git_write_blocks_unset_upstream_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.unset_upstream("/any", "main", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
 fn fake_git_write_conflict_save_continue_abort_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.conflict_save("/r", "src/a.rs", GitWriteApproval::denied());

@@ -2551,6 +2551,8 @@
           ? "審核 Remote Rename"
           : op === "set-upstream"
           ? "審核 Set Upstream"
+          : op === "unset-upstream"
+          ? "審核 Unset Upstream"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2625,6 +2627,8 @@
             " 重新命名（git remote rename -- old new）。不改 URL（用 set-url 改 URL）。不加 fetch／set-url／push。未知遠端、重名與無效名稱誠實失敗。拒絕則無突變。"
           : op === "set-upstream"
           ? "核准後經 git_write_set_upstream → GitWritePort；設定本機分支追蹤（git branch --set-upstream-to=remote/branch -- local）。空白本機＝目前分支。不建立遠端／追蹤 refs／本機分支，不加 --unset-upstream／-M／-C／--force，不 fetch／pull／push。未知遠端、缺追蹤 ref、缺本機分支誠實失敗。拒絕則無突變。"
+          : op === "unset-upstream"
+          ? "核准後經 git_write_unset_upstream → GitWritePort；清除本機分支追蹤（git branch --unset-upstream -- local）。空白本機＝目前分支。不建立遠端／追蹤 refs／本機分支，不加 --set-upstream-to／-u／-M／-C／--force，不 fetch／pull／push。缺本機分支或沒有 upstream 誠實失敗。拒絕則無突變。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -2687,7 +2691,10 @@
     if (tagWrap) tagWrap.hidden = op !== "tag-create";
     if (branchWrap)
       branchWrap.hidden =
-        op !== "branch-create" && op !== "branch-rename" && op !== "set-upstream";
+        op !== "branch-create" &&
+        op !== "branch-rename" &&
+        op !== "set-upstream" &&
+        op !== "unset-upstream";
     if (remoteNameWrap)
       remoteNameWrap.hidden =
         op !== "remote-add" && op !== "remote-set-url" && op !== "remote-rename";
@@ -2713,7 +2720,12 @@
       if (msg) {
         msg.value = payload.message != null ? String(payload.message) : "";
       }
-    } else if (op === "branch-create" || op === "branch-rename" || op === "set-upstream") {
+    } else if (
+      op === "branch-create" ||
+      op === "branch-rename" ||
+      op === "set-upstream" ||
+      op === "unset-upstream"
+    ) {
       const branch = document.getElementById("git-approve-branch");
       if (branch) {
         const span = branchWrap ? branchWrap.querySelector("span") : null;
@@ -2721,7 +2733,7 @@
           span.textContent =
             op === "branch-rename"
               ? "新本機分支名稱"
-              : op === "set-upstream"
+              : op === "set-upstream" || op === "unset-upstream"
               ? "本機分支（空白＝目前分支）"
               : "本機分支名稱";
         }
@@ -3281,6 +3293,36 @@
             true
           );
           toast("Set upstream 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "unset-upstream") {
+        const localEl = document.getElementById("git-approve-branch");
+        const local = localEl && localEl.value ? localEl.value.trim() : "";
+        const dto = await invoke("git_write_unset_upstream", {
+          args: {
+            repo: repo,
+            local: local,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已清除 upstream" +
+              (local ? " ← " + local : " ← 目前分支") +
+              "（經 GitWritePort；git branch --unset-upstream；未 fetch／未 push）",
+            false
+          );
+          toast("Unset upstream 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "unset-upstream 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機分支與遠端設定依 Git 真實結果保留）",
+            true
+          );
+          toast("Unset upstream 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "remote-rename") {
@@ -4125,6 +4167,16 @@
             branch: local ? String(local) : current,
             remote: remote || (picker && picker.value) || "origin",
             name: branch || "main",
+          });
+        },
+        unsetUpstream: function (local) {
+          const branchEl = document.getElementById("git-ux-branch");
+          let current = "";
+          if (branchEl && branchEl.textContent && branchEl.textContent.indexOf("（") < 0) {
+            current = branchEl.textContent.trim();
+          }
+          showGitApprove("unset-upstream", {
+            branch: local ? String(local) : current,
           });
         },
         remoteRemove: function (name) {
