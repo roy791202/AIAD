@@ -601,4 +601,16 @@ pub trait GitWritePort: Send + Sync {
         branch: Option<&str>,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Create a revert commit for one existing commit. Requires approval.
+    /// `git revert --no-edit -- <sha>`. Never `--no-commit` / `-n`. Never
+    /// `--force` / `reset --hard`. Missing / unknown `sha` fails honestly.
+    /// Merge commits fail honestly (do not invent `-m 1`). Denied → no new
+    /// commit; HEAD unchanged.
+    fn revert_commit(
+        &self,
+        repo: &str,
+        sha: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
 }
