@@ -541,6 +541,22 @@ pub trait GitWritePort: Send + Sync {
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 
+    /// Stage one selected dirty/untracked path without committing. Requires approval.
+    /// `git add -- <path>` from the repo root. Exactly one pathspec.
+    /// Never `.` / `-A` / commit / push / `reset --hard` / `--force` / `-f` /
+    /// `-D`. Never merge / rebase / pull / fetch. Distinct from
+    /// [`Self::conflict_save`]: FILE-STAGE is worktree staging, not marking
+    /// conflicts resolved. Empty, option-like (`-…`), and `..` paths fail
+    /// honestly with no mutation. In-progress merge/rebase/cherry-pick/revert
+    /// with unmerged paths fails honestly (`OPERATION_IN_PROGRESS`). An
+    /// already-staged path succeeds as a no-op. Missing paths fail honestly.
+    fn stage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.

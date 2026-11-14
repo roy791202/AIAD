@@ -51,6 +51,11 @@
 //!   In-progress merge/rebase/cherry-pick/revert fails with
 //!   `OPERATION_IN_PROGRESS`. Clean index → success no-op. Untracked files
 //!   remain `??`.
+//! - Stage-file: `git add -- <path>` from the repo root (exactly one pathspec).
+//!   Never `.` / `-A` / commit / push / `reset --hard` / `--force`. Distinct
+//!   from conflict-save. In-progress merge/rebase/cherry-pick/revert fails
+//!   with `OPERATION_IN_PROGRESS`. Empty / `-flag` / `..` paths fail honestly.
+//!   Already-staged path → success no-op. Missing path fails honestly.
 //! - Fetch: `git fetch -- <remote>` with an optional non-force refspec.
 //!   Never merge / pull / rebase / checkout. Never `--force` / `+refspec` /
 //!   `--update-head-ok`. Never prune. Unknown remotes fail honestly.
@@ -934,6 +939,40 @@ impl GitWritePort for StdGitWrite {
         // Mixed pathspec reset from repo root: index → HEAD. Worktree unchanged.
         // Never `--hard`. Never commit / push / add -A / --force.
         self.run(repo, &["reset", "--", "."])?;
+        Ok(())
+    }
+
+    fn stage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let rel = path.trim();
+        if rel.is_empty() {
+            return Err(PortError::Other("empty stage path".into()));
+        }
+        if crate::git_write::stage_file_path_out_of_scope(rel) {
+            return Err(PortError::Other(
+                "flag/traversal/all stage paths are out of scope".into(),
+            ));
+        }
+        if self.require_conflict_kind(repo).is_ok() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: resolve or abort before stage-file".into(),
+            ));
+        }
+        let unmerged = self.run(repo, &["ls-files", "-u"])?;
+        if !unmerged.trim().is_empty() {
+            return Err(PortError::Git(
+                "OPERATION_IN_PROGRESS: unmerged paths; do not use stage-file to mark conflicts resolved"
+                    .into(),
+            ));
+        }
+        // Worktree-only: exactly one pathspec. Never `.` / `-A`.
+        // Never commit / push / reset --hard / --force.
+        self.run(repo, &["add", "--", rel])?;
         Ok(())
     }
 

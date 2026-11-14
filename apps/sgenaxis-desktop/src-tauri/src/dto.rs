@@ -705,6 +705,16 @@ pub struct GitWriteUnstageAllArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git add -- path` (FILE-STAGE). Never commit/push/-A/`.`/force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteStageFileArgs {
+    pub repo: Option<String>,
+    /// Single selected dirty/untracked path. Never `.` / `-A` / flags / `..`.
+    pub path: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated local `git remote rename -- old new`. Never fetch/set-url/push.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteRemoteRenameArgs {
