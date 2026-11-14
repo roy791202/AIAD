@@ -2547,6 +2547,8 @@
           ? "審核 Fetch"
           : op === "fetch-prune"
           ? "審核 Fetch prune"
+          : op === "pull-ff-only"
+          ? "審核 Pull (ff-only)"
           : op === "conflict-save"
           ? "審核 Conflict Save"
           : op === "conflict-continue"
@@ -2607,6 +2609,8 @@
           ? "核准後經 git_write_fetch → GitWritePort；只更新遠端追蹤 refs（git fetch -- remote），不 merge／pull／rebase／checkout、不加 --force／+refspec／--prune。未知遠端誠實失敗且不建立遠端。拒絕則無突變。"
           : op === "fetch-prune"
           ? "核准後經 git_write_fetch_prune → GitWritePort；執行 git fetch --prune -- remote，只刪過期的遠端追蹤 refs。不加 --prune-tags／--force／+refspec／--update-head-ok／--add／--delete／--push／--mirror，不 pull／merge／rebase。HEAD 與工作區不變。拒絕則無突變。"
+          : op === "pull-ff-only"
+          ? "核准後經 git_write_pull_ff_only → GitWritePort；執行 git pull --ff-only -- remote [branch]，只允許快轉。不加 --rebase／--no-ff／--force／+refspec。分歧或髒覆寫會誠實失敗並保留本機。拒絕則無突變。"
           : op === "conflict-save"
           ? "核准後經 git_write_conflict_save → GitWritePort；寫入 " +
             (payload.path || "") +
@@ -2642,8 +2646,10 @@
         );
       }
     }
-    if (remoteWrap) remoteWrap.hidden = op !== "push" && op !== "fetch" && op !== "fetch-prune";
-    if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch";
+    if (remoteWrap)
+      remoteWrap.hidden =
+        op !== "push" && op !== "fetch" && op !== "fetch-prune" && op !== "pull-ff-only";
+    if (refWrap) refWrap.hidden = op !== "push" && op !== "fetch" && op !== "pull-ff-only";
     if (authorWrap) authorWrap.hidden = op !== "identity";
     if (emailWrap) emailWrap.hidden = op !== "identity";
     if (ignoreWrap) ignoreWrap.hidden = op !== "ignore";
@@ -2689,7 +2695,7 @@
         urlEl.value = payload.url != null ? String(payload.url) : "";
         if (op === "remote-set-url") urlEl.focus();
       }
-    } else if (op === "push" || op === "fetch" || op === "fetch-prune") {
+    } else if (op === "push" || op === "fetch" || op === "fetch-prune" || op === "pull-ff-only") {
       const remote = document.getElementById("git-approve-remote");
       if (remote) {
         if (payload.remote != null && String(payload.remote).trim()) {
@@ -2700,8 +2706,13 @@
         remote.focus();
       }
       const refEl = document.getElementById("git-approve-refspec");
-      if (refEl && op === "fetch") {
-        refEl.value = payload.refspec != null ? String(payload.refspec) : "";
+      if (refEl && (op === "fetch" || op === "pull-ff-only")) {
+        refEl.value =
+          payload.refspec != null
+            ? String(payload.refspec)
+            : payload.branch != null
+            ? String(payload.branch)
+            : "";
       }
     } else if (op === "identity") {
       const author = document.getElementById("git-approve-author");
@@ -3188,6 +3199,65 @@
             true
           );
           toast("Fetch prune 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
+      } else if (op === "pull-ff-only") {
+        const remoteEl = document.getElementById("git-approve-remote");
+        const refEl = document.getElementById("git-approve-refspec");
+        const remote =
+          remoteEl && remoteEl.value && remoteEl.value.trim()
+            ? remoteEl.value.trim()
+            : "origin";
+        const branch =
+          refEl && refEl.value && refEl.value.trim() ? refEl.value.trim() : null;
+        if (
+          remote.charAt(0) === "+" ||
+          remote.indexOf("--rebase") === 0 ||
+          remote.indexOf("--no-ff") === 0 ||
+          remote === "--force" ||
+          remote === "-f"
+        ) {
+          setGitStatusLine("rebase／no-ff pull 不在範圍內", true);
+          toast("禁止 rebase／no-ff pull");
+          return;
+        }
+        if (
+          branch &&
+          (branch.charAt(0) === "+" ||
+            branch.indexOf("--rebase") === 0 ||
+            branch.indexOf("--no-ff") === 0)
+        ) {
+          setGitStatusLine("rebase／no-ff 分支參數不在範圍內", true);
+          toast("禁止 rebase／no-ff pull");
+          return;
+        }
+        const dto = await invoke("git_write_pull_ff_only", {
+          args: {
+            repo: repo,
+            remote: remote,
+            branch: branch,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已 pull (ff-only) " +
+              remote +
+              (branch ? " " + branch : "") +
+              "（經 GitWritePort；無 merge commit）",
+            false
+          );
+          toast("Pull 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "pull 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（本機內容與提交依 Git 真實結果保留）",
+            true
+          );
+          toast("Pull 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
       } else if (op === "conflict-save") {
@@ -3833,6 +3903,17 @@
           const picker = document.getElementById("git-ux-remote-picker");
           showGitApprove("fetch-prune", {
             remote: remote || (picker && picker.value) || "origin",
+          });
+        },
+        remotePull: function (remote, branch) {
+          const picker = document.getElementById("git-ux-remote-picker");
+          const branchEl = document.getElementById("git-ux-branch");
+          showGitApprove("pull-ff-only", {
+            remote: remote || (picker && picker.value) || "origin",
+            branch:
+              branch ||
+              (branchEl && branchEl.textContent && branchEl.textContent.trim()) ||
+              "",
           });
         },
         conflictSave: function (path, contents) {

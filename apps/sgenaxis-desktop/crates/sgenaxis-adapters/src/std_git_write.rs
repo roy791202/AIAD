@@ -31,6 +31,8 @@
 //! - Fetch-prune: `git fetch --prune -- <remote>`. Never `--prune-tags`.
 //!   Never `--force` / `+refspec` / `--update-head-ok` / `--add` / `--delete` /
 //!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
+//! - Pull (ff-only): `git pull --ff-only -- <remote> [<branch>]`. Never
+//!   `--rebase` / `--no-ff` / `--force` / `+refspec` / `--update-head-ok`.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -782,6 +784,34 @@ impl GitWritePort for StdGitWrite {
         // Never `--prune-tags`. Never `--force` / `+refspec` / `--update-head-ok`.
         // Never pull / merge / rebase / checkout.
         self.run(repo, &["fetch", "--prune", "--", name])?;
+        Ok(())
+    }
+
+    fn pull_ff_only(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let name = remote.trim();
+        Self::require_remote_name(name)?;
+        let branch_owned = branch.map(str::trim).filter(|s| !s.is_empty());
+        if let Some(b) = branch_owned {
+            Self::require_branch_name(b)?;
+        }
+        let listed = self.run(repo, &["remote"])?;
+        if !listed.lines().any(|line| line.trim() == name) {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        // Only fast-forward pull: `git pull --ff-only -- <remote> [<branch>]`.
+        // `--` stops option parse. Never `--rebase` / `--no-ff` / `--force`.
+        let mut args = vec!["pull", "--ff-only", "--", name];
+        if let Some(b) = branch_owned {
+            args.push(b);
+        }
+        self.run(repo, &args)?;
         Ok(())
     }
 }

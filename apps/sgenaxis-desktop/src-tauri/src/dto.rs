@@ -674,6 +674,20 @@ pub struct GitWriteFetchPruneArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git pull --ff-only -- remote [branch]`. Never rebase/no-ff/force.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWritePullFfOnlyArgs {
+    pub repo: Option<String>,
+    /// Remote name. Empty → `origin`. Never flags (`--rebase`, `--no-ff`, `--force`).
+    #[serde(default)]
+    pub remote: String,
+    /// Optional branch name on `remote`. Never flags.
+    #[serde(default)]
+    pub branch: Option<String>,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictSaveArgs {

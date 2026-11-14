@@ -50,7 +50,8 @@ use crate::dto::{
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
     GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs, GitWriteFetchArgs,
-    GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePushArgs,
+    GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs, GitWritePullFfOnlyArgs,
+    GitWritePushArgs,
     GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto,
     GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs,
     GitWriteTagDeleteArgs, ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult,
@@ -432,6 +433,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_remote_set_url",
         "git_write_fetch",
         "git_write_fetch_prune",
+        "git_write_pull_ff_only",
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
@@ -3195,6 +3197,75 @@ pub fn git_write_fetch_prune(
     perform_git_write_fetch_prune(root.git_write(), &repo, &args.remote, args.approved)
 }
 
+fn perform_git_write_pull_ff_only(
+    write: &dyn GitWritePort,
+    repo: &str,
+    remote: &str,
+    branch: Option<&str>,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    let name = if remote.trim().is_empty() {
+        "origin"
+    } else {
+        remote.trim()
+    };
+    reject_remote_scope(name, None)?;
+    if fetch_refspec_out_of_scope(name) {
+        return Err("force/rebase/no-ff pull remotes are out of scope".into());
+    }
+    if let Some(b) = branch.map(str::trim).filter(|s| !s.is_empty()) {
+        reject_branch_scope(b)?;
+    }
+    if !approved {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "pull-ff-only".into(),
+            message: "approval denied; no mutation".into(),
+            local_preserved: true,
+        });
+    }
+    match write.pull_ff_only(repo, name, branch, GitWriteApproval::granted()) {
+        Ok(()) => Ok(GitWriteResultDto {
+            ok: true,
+            op: "pull-ff-only".into(),
+            message: "pull ff-only ok".into(),
+            local_preserved: true,
+        }),
+        Err(e) => Ok(GitWriteResultDto {
+            ok: false,
+            op: "pull-ff-only".into(),
+            message: e.to_string(),
+            local_preserved: true,
+        }),
+    }
+}
+
+/// Approval-gated `git pull --ff-only -- remote [branch]`. Never rebase / no-ff / force.
+#[tauri::command]
+pub fn git_write_pull_ff_only(
+    state: State<'_, HostState>,
+    args: GitWritePullFfOnlyArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_pull_ff_only").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "pull-ff-only".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_pull_ff_only(
+        root.git_write(),
+        &repo,
+        &args.remote,
+        args.branch.as_deref(),
+        args.approved,
+    )
+}
+
 fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -5150,6 +5221,91 @@ mod git_ui_tests {
         assert!(w.switched_branch("/r").is_none());
         assert_eq!(w.push_count("/r"), 0);
         assert!(w.last_fetch("/r").is_none());
+    }
+
+    #[test]
+    fn git_write_pull_ff_only_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_pull_ff_only"));
+        assert!(!is_allowed("git_pull"));
+
+        let w = FakeGitWrite::new();
+        w.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w.fetch("/r", "origin", None, GitWriteApproval::granted())
+            .expect("seed tracking");
+        let head_before = w.local_head("/r");
+
+        let denied = perform_git_write_pull_ff_only(&w, "/r", "origin", None, false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_pull_ff_only("/r").is_none());
+        assert_eq!(w.local_head("/r"), head_before);
+
+        let rebase = perform_git_write_pull_ff_only(&w, "/r", "--rebase", None, true).unwrap_err();
+        assert!(rebase.contains("out of scope"));
+        let noff = perform_git_write_pull_ff_only(&w, "/r", "origin", Some("--no-ff"), true)
+            .unwrap_err();
+        assert!(noff.contains("out of scope"));
+        assert!(w.last_pull_ff_only("/r").is_none());
+
+        w.mark_pull_local_ahead("/r");
+        let diverged = perform_git_write_pull_ff_only(&w, "/r", "origin", None, true).unwrap();
+        assert!(!diverged.ok);
+        assert!(diverged.message.to_ascii_lowercase().contains("fast-forward"));
+        assert_eq!(w.local_head("/r"), head_before);
+
+        let w2 = FakeGitWrite::new();
+        w2.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w2.fetch("/r", "origin", None, GitWriteApproval::granted())
+            .expect("seed tracking");
+        let head2 = w2.local_head("/r");
+        w2.mark_pull_dirty_overwrite("/r");
+        let dirty = perform_git_write_pull_ff_only(&w2, "/r", "origin", None, true).unwrap();
+        assert!(!dirty.ok);
+        assert!(dirty
+            .message
+            .to_ascii_lowercase()
+            .contains("overwritten"));
+        assert_eq!(w2.local_head("/r"), head2);
+
+        let w3 = FakeGitWrite::new();
+        w3.add_remote(
+            "/r",
+            "origin",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .unwrap();
+        w3.fetch("/r", "origin", None, GitWriteApproval::granted())
+            .expect("seed tracking");
+        let before3 = w3.local_head("/r");
+        let ok = perform_git_write_pull_ff_only(&w3, "/r", "", None, true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "pull-ff-only");
+        assert_eq!(
+            w3.last_pull_ff_only("/r"),
+            Some(("origin".to_string(), None))
+        );
+        assert_ne!(w3.local_head("/r"), before3);
+
+        let missing = perform_git_write_pull_ff_only(&w3, "/r", "ghost", None, true).unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("no such remote"));
     }
 
     #[test]

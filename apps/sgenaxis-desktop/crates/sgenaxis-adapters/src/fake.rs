@@ -587,6 +587,12 @@ struct FakeGitWriteState {
     last_fetch: HashMap<String, (String, Option<String>)>,
     /// repo → last approved fetch-prune remote.
     last_fetch_prune: HashMap<String, String>,
+    /// repo → last approved ff-only pull `(remote, optional branch)`.
+    last_pull_ff_only: HashMap<String, (String, Option<String>)>,
+    /// repo → local has commits not reachable by ff-only pull.
+    pull_local_ahead: HashMap<String, bool>,
+    /// repo → dirty worktree would be overwritten by pull.
+    pull_dirty_overwrite: HashMap<String, bool>,
     /// repo → remote-tracking refs marked stale on the remote (fetch-prune deletes these).
     stale_remote_tracking: HashMap<String, Vec<String>>,
     /// repo → remote-tracking refs `(refs/remotes/…, oid)`. Fetch updates these only.
@@ -771,6 +777,24 @@ impl FakeGitWrite {
     pub fn last_fetch_prune(&self, repo: &str) -> Option<String> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_fetch_prune.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved ff-only pull for `repo` as `(remote, optional branch)`.
+    pub fn last_pull_ff_only(&self, repo: &str) -> Option<(String, Option<String>)> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_pull_ff_only.get(&Self::key(repo)).cloned()
+    }
+
+    /// Mark `repo` as diverged for pull (local commits block ff-only).
+    pub fn mark_pull_local_ahead(&self, repo: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.pull_local_ahead.insert(Self::key(repo), true);
+    }
+
+    /// Mark `repo` as having dirty overwrites that block pull.
+    pub fn mark_pull_dirty_overwrite(&self, repo: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.pull_dirty_overwrite.insert(Self::key(repo), true);
     }
 
     /// Seed a remote-tracking ref without fetching (tests for prune).
@@ -1595,6 +1619,87 @@ impl GitWritePort for FakeGitWrite {
             refs.retain(|(r, _)| !stale.iter().any(|s| s == r));
         }
         st.last_fetch_prune.insert(key, name.to_string());
+        Ok(())
+    }
+
+    fn pull_ff_only(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let name = remote.trim();
+        if name.is_empty() {
+            return Err(PortError::Other("empty remote name".into()));
+        }
+        if crate::git_write::remote_name_out_of_scope(name)
+            || crate::git_write::fetch_refspec_out_of_scope(name)
+        {
+            return Err(PortError::Other(
+                "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        let branch_owned = branch.map(str::trim).filter(|s| !s.is_empty());
+        if let Some(b) = branch_owned {
+            if crate::git_write::branch_name_out_of_scope(b) {
+                return Err(PortError::Other(
+                    "force/delete/upstream/switch branch writes are out of scope".into(),
+                ));
+            }
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        let has_remote = {
+            let remotes = st.remotes.entry(key.clone()).or_default();
+            remotes.iter().any(|(n, _)| n == name)
+        };
+        if !has_remote {
+            return Err(PortError::Git(format!("No such remote: '{name}'")));
+        }
+        if st.pull_dirty_overwrite.get(&key).copied().unwrap_or(false) {
+            return Err(PortError::Git(
+                "Your local changes to the following files would be overwritten by merge"
+                    .into(),
+            ));
+        }
+        if st.pull_local_ahead.get(&key).copied().unwrap_or(false) {
+            return Err(PortError::Git("Not possible to fast-forward, aborting".into()));
+        }
+        let br = branch_owned.as_deref().unwrap_or("main");
+        let tracking = format!("refs/remotes/{name}/{br}");
+        let branch_record = branch_owned.map(|s| s.to_string());
+        let remote_oid = st
+            .remote_tracking
+            .get(&key)
+            .and_then(|refs| refs.iter().find(|(r, _)| r == &tracking).map(|(_, o)| o.clone()));
+        let remote_oid = remote_oid.unwrap_or_else(|| {
+            st.next_hash = st.next_hash.saturating_add(1);
+            format!("{:012x}", st.next_hash)
+        });
+        if let Some(refs) = st.remote_tracking.get_mut(&key) {
+            if let Some(existing) = refs.iter_mut().find(|(r, _)| r == &tracking) {
+                existing.1 = remote_oid.clone();
+            } else {
+                refs.push((tracking, remote_oid.clone()));
+            }
+        } else {
+            st.remote_tracking
+                .insert(key.clone(), vec![(tracking, remote_oid.clone())]);
+        }
+        st.local_head.insert(key.clone(), remote_oid);
+        st.last_pull_ff_only.insert(key, (name.to_string(), branch_record));
         Ok(())
     }
 }

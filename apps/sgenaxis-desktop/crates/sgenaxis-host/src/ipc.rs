@@ -88,6 +88,8 @@ pub enum AllowedIpcCommand {
     GitWriteFetch,
     /// Approval-gated `git fetch --prune -- remote` via GitWritePort (never prune-tags/force/pull).
     GitWriteFetchPrune,
+    /// Approval-gated `git pull --ff-only -- remote [branch]` via GitWritePort (never rebase/no-ff/force).
+    GitWritePullFfOnly,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -177,6 +179,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictSkip => "git_write_conflict_skip",
             AllowedIpcCommand::GitWriteFetch => "git_write_fetch",
             AllowedIpcCommand::GitWriteFetchPrune => "git_write_fetch_prune",
+            AllowedIpcCommand::GitWritePullFfOnly => "git_write_pull_ff_only",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -244,6 +247,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteConflictSkip,
             AllowedIpcCommand::GitWriteFetch,
             AllowedIpcCommand::GitWriteFetchPrune,
+            AllowedIpcCommand::GitWritePullFfOnly,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -372,6 +376,7 @@ mod tests {
         assert!(is_allowed("git_write_conflict_skip"));
         assert!(is_allowed("git_write_fetch"));
         assert!(is_allowed("git_write_fetch_prune"));
+        assert!(is_allowed("git_write_pull_ff_only"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -546,6 +551,10 @@ mod tests {
         assert_eq!(
             authorize("git_write_fetch_prune").unwrap(),
             AllowedIpcCommand::GitWriteFetchPrune
+        );
+        assert_eq!(
+            authorize("git_write_pull_ff_only").unwrap(),
+            AllowedIpcCommand::GitWritePullFfOnly
         );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());

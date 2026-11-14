@@ -1009,6 +1009,82 @@ fn gated_git_write_blocks_fetch_even_when_approved() {
     assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let prune = w.fetch_prune("/any", "origin", GitWriteApproval::granted());
     assert!(matches!(prune, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let pull = w.pull_ff_only("/any", "origin", None, GitWriteApproval::granted());
+    assert!(matches!(pull, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
+fn fake_git_write_pull_ff_only_denied_diverged_dirty_and_ff_success() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .unwrap();
+    w.fetch("/r", "origin", None, GitWriteApproval::granted())
+        .expect("seed tracking");
+    let head_before = w.local_head("/r");
+
+    w.pull_ff_only("/r", "origin", None, GitWriteApproval::denied())
+        .expect_err("denied pull");
+    assert!(w.last_pull_ff_only("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+
+    w.pull_ff_only("/r", "--rebase", None, GitWriteApproval::granted())
+        .expect_err("rebase remote");
+    w.pull_ff_only(
+        "/r",
+        "origin",
+        Some("--no-ff"),
+        GitWriteApproval::granted(),
+    )
+    .expect_err("noff branch");
+    assert!(w.last_pull_ff_only("/r").is_none());
+
+    w.mark_pull_local_ahead("/r");
+    let diverged = w
+        .pull_ff_only("/r", "origin", None, GitWriteApproval::granted())
+        .expect_err("diverged");
+    assert!(matches!(diverged, PortError::Git(_)));
+    assert!(w.last_pull_ff_only("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+
+    let w2 = FakeGitWrite::new();
+    w2.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .unwrap();
+    w2.fetch("/r", "origin", None, GitWriteApproval::granted())
+        .expect("seed");
+    w2.mark_pull_dirty_overwrite("/r");
+    let dirty = w2
+        .pull_ff_only("/r", "origin", None, GitWriteApproval::granted())
+        .expect_err("dirty");
+    assert!(matches!(dirty, PortError::Git(_)));
+
+    let w3 = FakeGitWrite::new();
+    w3.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/r.git",
+        GitWriteApproval::granted(),
+    )
+    .unwrap();
+    w3.fetch("/r", "origin", None, GitWriteApproval::granted())
+        .expect("seed");
+    let before = w3.local_head("/r");
+    w3.pull_ff_only("/r", "origin", None, GitWriteApproval::granted())
+        .expect("ff pull");
+    assert_eq!(
+        w3.last_pull_ff_only("/r"),
+        Some(("origin".to_string(), None))
+    );
+    assert_ne!(w3.local_head("/r"), before);
 }
 
 #[test]

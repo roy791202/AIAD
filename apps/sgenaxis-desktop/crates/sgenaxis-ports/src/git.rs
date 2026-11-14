@@ -256,6 +256,11 @@ pub trait GitPort: Send + Sync {
 ///   Never `--prune-tags`. Never `--force` / `+refspec` / `--update-head-ok` /
 ///   `--add` / `--delete` / `--push` / `--mirror`. Never pull / merge / rebase.
 ///   HEAD, local branches, and the worktree stay unchanged.
+/// - Pull (ff-only) requires approval (no skip default). Distinct from fetch:
+///   `git pull --ff-only -- <remote> [<branch>]`. Never `--rebase` / `--no-ff` /
+///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
+///   branches and dirty overwrites fail honestly; local commits and files stay
+///   intact. Unknown remotes fail honestly.
 /// - Conflict save/continue/abort require approval (no skip default).
 ///   Save stages one resolved path: `git add -- <path>` after the UI (or host)
 ///   wrote the worktree file. Never `git add -A` / `.`. Remaining conflict
@@ -472,6 +477,19 @@ pub trait GitWritePort: Send + Sync {
         &self,
         repo: &str,
         remote: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Fast-forward pull only. Requires approval.
+    /// `git pull --ff-only -- <remote> [<branch>]`. Never `--rebase` / `--no-ff`
+    /// / `--force` / `+refspec` / `--update-head-ok`. Never merge commits.
+    /// Diverged histories and dirty overwrites fail honestly. Unknown remotes
+    /// fail honestly.
+    fn pull_ff_only(
+        &self,
+        repo: &str,
+        remote: &str,
+        branch: Option<&str>,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

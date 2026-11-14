@@ -1146,6 +1146,94 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(root);
     }
 
+    #[test]
+    fn std_write_pull_ff_only_updates_head_or_refuses_diverged_and_dirty() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let root = work.parent().unwrap();
+        let other = root.join("other");
+        git(
+            root,
+            &["clone", bare.to_str().unwrap(), other.to_str().unwrap()],
+        );
+        init_identity(&other);
+        fs::write(other.join("a.txt"), "v2-remote\n").unwrap();
+        git(&other, &["add", "a.txt"]);
+        git(&other, &["commit", "-m", "remote tip"]);
+        git(&other, &["push", "origin", "main"]);
+
+        let head_before = rev_parse(repo, "HEAD");
+        let worktree_before = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert_eq!(worktree_before, "v1\n");
+
+        let w = StdGitWrite::new();
+        w.pull_ff_only(repo, "origin", None, GitWriteApproval::denied())
+            .expect_err("denied pull must not mutate");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert_eq!(
+            fs::read_to_string(work.join("a.txt")).unwrap(),
+            worktree_before
+        );
+
+        w.pull_ff_only(repo, "--rebase", None, GitWriteApproval::granted())
+            .expect_err("rebase pull out of scope");
+        w.pull_ff_only(repo, "origin", Some("--no-ff"), GitWriteApproval::granted())
+            .expect_err("no-ff branch out of scope");
+
+        w.pull_ff_only(repo, "origin", None, GitWriteApproval::granted())
+            .expect("approved ff pull");
+        let head_after = rev_parse(repo, "HEAD");
+        assert_ne!(head_after, head_before);
+        assert_eq!(fs::read_to_string(work.join("a.txt")).unwrap(), "v2-remote\n");
+        assert_eq!(rev_parse(repo, "origin/main"), head_after);
+
+        // Diverged: local commit while remote already moved (other pushes v3).
+        fs::write(work.join("b.txt"), "local-only\n").unwrap();
+        git(&work, &["add", "b.txt"]);
+        git(&work, &["commit", "-m", "local ahead"]);
+        let local_head = rev_parse(repo, "HEAD");
+        fs::write(other.join("c.txt"), "remote-only\n").unwrap();
+        git(&other, &["add", "c.txt"]);
+        git(&other, &["commit", "-m", "remote ahead"]);
+        git(&other, &["push", "origin", "main"]);
+        let diverged = w
+            .pull_ff_only(repo, "origin", None, GitWriteApproval::granted())
+            .expect_err("diverged must refuse merge");
+        assert!(matches!(diverged, PortError::Git(_)));
+        assert_eq!(rev_parse(repo, "HEAD"), local_head);
+        assert!(work.join("b.txt").exists());
+        assert!(!work.join("c.txt").exists());
+
+        // Dirty overwrite: remote has file change, local has unstaged edit to same path.
+        let (work2, bare2) = make_worktree_with_bare_remote();
+        let repo2 = work2.to_str().unwrap();
+        let root2 = work2.parent().unwrap();
+        let other2 = root2.join("other");
+        git(
+            root2,
+            &["clone", bare2.to_str().unwrap(), other2.to_str().unwrap()],
+        );
+        init_identity(&other2);
+        fs::write(other2.join("a.txt"), "v2-remote\n").unwrap();
+        git(&other2, &["add", "a.txt"]);
+        git(&other2, &["commit", "-m", "remote tip"]);
+        git(&other2, &["push", "origin", "main"]);
+        fs::write(work2.join("a.txt"), "dirty local\n").unwrap();
+        let head_dirty = rev_parse(repo2, "HEAD");
+        let dirty = StdGitWrite::new()
+            .pull_ff_only(repo2, "origin", None, GitWriteApproval::granted())
+            .expect_err("dirty must block pull");
+        assert!(matches!(dirty, PortError::Git(_)));
+        assert_eq!(rev_parse(repo2, "HEAD"), head_dirty);
+        assert_eq!(
+            fs::read_to_string(work2.join("a.txt")).unwrap(),
+            "dirty local\n"
+        );
+
+        let _ = fs::remove_dir_all(root);
+        let _ = fs::remove_dir_all(root2);
+    }
+
     fn ref_exists(repo: &str, rev: &str) -> bool {
         Command::new("git")
             .args(["-C", repo, "show-ref", "--verify", "--quiet", rev])

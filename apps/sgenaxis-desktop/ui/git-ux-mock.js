@@ -274,6 +274,7 @@ function handle(el){const id=el.dataset.op;if($('#git-ux-inspect')?.checked){spe
  if(id==='REMOTE-REMOVE'&&state&&state.live){if(liveHooks&&liveHooks.remoteRemove){Promise.resolve(liveHooks.remoteRemove(el.dataset.value||state.remote)).catch(function(){});return}}
  if(id==='REMOTE-FETCH'&&state&&state.live){if(liveHooks&&liveHooks.remoteFetch){Promise.resolve(liveHooks.remoteFetch(el.dataset.value||state.remote)).catch(function(){});return}}
  if(id==='REMOTE-FETCH-PRUNE'&&state&&state.live){if(liveHooks&&liveHooks.remoteFetchPrune){Promise.resolve(liveHooks.remoteFetchPrune(el.dataset.value||state.remote)).catch(function(){});return}}
+ if(id==='REMOTE-PULL'&&state&&state.live){if(liveHooks&&liveHooks.remotePull){Promise.resolve(liveHooks.remotePull(el.dataset.value||state.remote,state.branch)).catch(function(){});return}}
  if(id==='CONFLICT-SAVE'&&state&&state.live){if(liveHooks&&liveHooks.conflictSave){var f=currentConflict();Promise.resolve(liveHooks.conflictSave(state.conflict&&state.conflict.selected,f&&f.draft||state.draft||'')).catch(function(){});return}}
  if(id==='OP-CONTINUE'&&state&&state.live){if(liveHooks&&liveHooks.conflictContinue){Promise.resolve(liveHooks.conflictContinue()).catch(function(){});return}}
  if(id==='OP-ABORT'&&state&&state.live){if(liveHooks&&liveHooks.conflictAbort){Promise.resolve(liveHooks.conflictAbort()).catch(function(){});return}}
