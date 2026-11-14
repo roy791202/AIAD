@@ -156,6 +156,11 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
         })
 }
 
+/// Same single-path rules as FILE-STAGE / FILE-UNSTAGE / CONFLICT-SAVE.
+pub(crate) fn worktree_path_out_of_scope(value: &str) -> bool {
+    conflict_path_out_of_scope(value)
+}
+
 /// Paths that would become flags or widen `git add` beyond one conflicted file.
 pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -397,6 +402,15 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn unstage_all(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn unstage_path(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 
