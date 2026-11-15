@@ -36,14 +36,13 @@ use sgenaxis_exec::{
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
-    perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
-    perform_git_unstage_all,
-    perform_git_unset_upstream, save_design_file, save_scene_text, CompositionRoot,
-    DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
-    GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitStageAllResult,
-    GitSwitchResult, GitTagPushResult, GitUnstageAllResult, GitUnsetUpstreamResult,
-    GuardDecisionView, GuardPacketDto,
-    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
+    perform_git_repo_init, perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
+    perform_git_unset_upstream, perform_git_unstage_all, save_design_file, save_scene_text,
+    CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
+    GitRemoteRenameResult, GitRenameResult, GitRepoInitResult, GitSetUpstreamResult,
+    GitStageAllResult, GitSwitchResult, GitTagPushResult, GitUnsetUpstreamResult,
+    GitUnstageAllResult, GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
+    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -58,14 +57,14 @@ use crate::dto::{
     GitWriteBranchRenameArgs, GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs,
     GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
     GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
-    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
-    GitWriteStageAllArgs, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteUnstageAllArgs,
-    GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteTagPushArgs, GitWriteUnsetUpstreamArgs,
-    ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs,
-    PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto,
-    SpecReviseArgs, SpecRevisionDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs,
-    StartRunResult, UpsertTaskArgs, WorkItemGateArgs,
+    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteRepoInitArgs, GitWriteResultDto,
+    GitWriteSetUpstreamArgs, GitWriteStageAllArgs, GitWriteStashArgs, GitWriteStashPushArgs,
+    GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteTagPushArgs,
+    GitWriteUnsetUpstreamArgs, GitWriteUnstageAllArgs, ListenProjectionDto, LoadLocalBoardArgs,
+    LoadLocalBoardResult, OwnerClassifyGuardTaskArgs, PollResult, ProviderDto, SetZoneArgs,
+    SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs, SpecRevisionDto,
+    SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult, UpsertTaskArgs,
+    WorkItemGateArgs,
 };
 use crate::git_index_commit::{
     IndexCommitErrorDto, IndexCommitOutcomeDto, IndexCommitPreviewDto, IndexCommitRequestDto,
@@ -445,6 +444,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_unset_upstream",
         "git_write_stage_all",
         "git_write_unstage_all",
+        "git_write_repo_init",
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
@@ -3408,6 +3408,45 @@ pub fn git_write_unstage_all(
     perform_git_write_unstage_all(root.git_write(), &repo, args.approved)
 }
 
+fn git_repo_init_result_dto(r: GitRepoInitResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_repo_init(
+    write: &dyn GitWritePort,
+    dir: &str,
+    approved: bool,
+) -> Result<GitWriteResultDto, String> {
+    Ok(git_repo_init_result_dto(perform_git_repo_init(
+        write, dir, approved,
+    )))
+}
+
+/// Approval-gated `git init -- dir` (REPO-INIT). Never clone/bare/template/remote/fetch.
+#[tauri::command]
+pub fn git_write_repo_init(
+    state: State<'_, HostState>,
+    args: GitWriteRepoInitArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_repo_init").map_err(|e| e.to_string())?;
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let dir = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "repo-init".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_repo_init(root.git_write(), &dir, args.approved)
+}
+
 fn fetch_refspec_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -5921,6 +5960,39 @@ mod git_ui_tests {
         assert_eq!(w.last_unstage_all("/r"), Some(true));
         assert_eq!(w.local_commit_count("/r"), 0);
         assert_eq!(w.push_count("/r"), 0);
+    }
+
+    #[test]
+    fn git_write_repo_init_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_repo_init"));
+        assert!(!is_allowed("git_init"));
+        assert!(!is_allowed("git_clone"));
+
+        let w = FakeGitWrite::new();
+        let denied = perform_git_write_repo_init(&w, "/empty", false).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_init_repo("/empty").is_none());
+
+        let bare = perform_git_write_repo_init(&w, "--bare", true).unwrap();
+        assert!(!bare.ok);
+        assert!(w.last_init_repo("--bare").is_none());
+
+        let url = perform_git_write_repo_init(&w, "https://example.com/r.git", true).unwrap();
+        assert!(!url.ok);
+        assert!(w.last_init_repo("https://example.com/r.git").is_none());
+
+        let ok = perform_git_write_repo_init(&w, "/empty", true).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "repo-init");
+        assert_eq!(w.last_init_repo("/empty"), Some(true));
+        assert!(w.configured_remotes("/empty").is_empty());
+        assert_eq!(w.push_count("/empty"), 0);
+
+        let existing = perform_git_write_repo_init(&w, "/empty", true).unwrap();
+        assert!(!existing.ok);
+        assert!(existing.message.to_ascii_lowercase().contains("already"));
     }
 
     #[test]

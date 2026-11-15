@@ -2188,4 +2188,104 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    fn git_text(cwd: &Path, args: &[&str]) -> String {
+        let out = Command::new("git")
+            .args(args)
+            .current_dir(cwd)
+            .output()
+            .expect("spawn git");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_init_repo_denied_leaves_no_git() {
+        let root = unique_temp("init-denied");
+        fs::create_dir_all(&root).unwrap();
+        let dir = root.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.init_repo(dir, GitWriteApproval::denied())
+            .expect_err("denied init must not mutate");
+        assert!(
+            !root.join(".git").exists(),
+            "PD-GIT-REPO-INIT-01-1: denied must leave no .git"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn std_write_init_repo_creates_non_bare_without_remote_or_clone() {
+        let root = unique_temp("init-ok");
+        fs::create_dir_all(&root).unwrap();
+        let dir = root.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.init_repo(dir, GitWriteApproval::granted())
+            .expect("approved git init -- <dir>");
+        assert!(
+            root.join(".git").is_dir(),
+            "PD-GIT-REPO-INIT-01-2: non-bare .git directory inside chosen dir"
+        );
+        let git_dir = git_text(&root, &["rev-parse", "--absolute-git-dir"]);
+        let canon = fs::canonicalize(&root).unwrap();
+        let git_canon = fs::canonicalize(&git_dir).unwrap();
+        assert!(
+            git_canon.starts_with(&canon),
+            "git dir must stay inside chosen directory: {git_canon:?} vs {canon:?}"
+        );
+        assert_eq!(
+            git_text(&root, &["rev-parse", "--is-bare-repository"]),
+            "false",
+            "must never create a --bare repo"
+        );
+        assert!(
+            git_text(&root, &["remote"]).is_empty(),
+            "init must never add a remote / clone"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn std_write_init_repo_rejects_existing_bare_template_and_urls() {
+        let root = unique_temp("init-reject");
+        fs::create_dir_all(&root).unwrap();
+        let dir = root.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.init_repo(dir, GitWriteApproval::granted())
+            .expect("seed existing repo");
+        let head_before = git_text(&root, &["rev-parse", "--absolute-git-dir"]);
+        let existing = w
+            .init_repo(dir, GitWriteApproval::granted())
+            .expect_err("existing repo must fail honestly");
+        let msg = existing.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("already") || msg.contains("exist"),
+            "PD-GIT-REPO-INIT-01-3 existing repo: {existing}"
+        );
+        assert_eq!(
+            git_text(&root, &["rev-parse", "--absolute-git-dir"]),
+            head_before,
+            "existing repo must be left unchanged"
+        );
+        assert_eq!(
+            git_text(&root, &["rev-parse", "--is-bare-repository"]),
+            "false"
+        );
+
+        for path in [
+            "--bare",
+            "--template",
+            "--template=/tmp/evil",
+            "--separate-git-dir=/tmp/out",
+            "https://example.com/org/repo.git",
+            "git@example.com:org/repo.git",
+        ] {
+            w.init_repo(path, GitWriteApproval::granted())
+                .expect_err(path);
+        }
+        assert!(
+            git_text(&root, &["remote"]).is_empty(),
+            "rejects must not add a remote"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
 }

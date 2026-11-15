@@ -2557,6 +2557,8 @@
           ? "審核全部暫存"
           : op === "unstage-all"
           ? "審核全部取消暫存"
+          : op === "repo-init"
+          ? "審核初始化儲存庫"
           : op === "remote-remove"
           ? "審核 Remote Remove"
           : op === "fetch"
@@ -2637,6 +2639,8 @@
           ? "核准後經 git_write_stage_all → GitWritePort；於儲存庫根執行 git add -- .。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部暫存標記衝突已解決。乾淨工作區為成功 no-op。拒絕則無突變。"
           : op === "unstage-all"
           ? "核准後經 git_write_unstage_all → GitWritePort；於儲存庫根執行 git reset -- .（mixed pathspec，索引回到 HEAD，不改工作區內容）。不提交、不推送、不加 -A、不做 reset --hard／--force。進行中 merge／rebase／cherry-pick／revert（未合併路徑）誠實失敗（OPERATION_IN_PROGRESS），不以全部取消暫存清除衝突。乾淨索引為成功 no-op。拒絕則無突變。"
+          : op === "repo-init"
+          ? "核准後經 git_write_repo_init → GitWritePort；於選定空目錄執行 git init -- dir。不 clone、不加 --bare／--template／--separate-git-dir、不加 remote、不 fetch。已存在的儲存庫與選項型路徑誠實失敗。拒絕則不建立 .git。"
           : op === "remote-remove"
           ? "核准後經 git_write_remote_remove → GitWritePort；只移除本機遠端設定 " +
             (payload.name || "") +
@@ -3382,6 +3386,30 @@
           );
           toast("全部取消暫存失敗（未假裝成功）");
           await cmdGitRefresh();
+        }
+      } else if (op === "repo-init") {
+        const dto = await invoke("git_write_repo_init", {
+          args: {
+            repo: repo,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已初始化儲存庫（經 GitWritePort；git init -- dir；非 bare、未 clone、未加 remote）",
+            false
+          );
+          toast("初始化儲存庫完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "初始化儲存庫失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（未 clone；既有目錄依 Git 真實結果保留）",
+            true
+          );
+          toast("初始化儲存庫失敗（未假裝成功）");
         }
       } else if (op === "remote-rename") {
         const old = pendingGitWrite.old;
@@ -4232,6 +4260,9 @@
         },
         unstageAll: function () {
           showGitApprove("unstage-all", {});
+        },
+        repoInit: function () {
+          showGitApprove("repo-init", {});
         },
         unsetUpstream: function (local) {
           const branchEl = document.getElementById("git-ux-branch");
