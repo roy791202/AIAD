@@ -1118,6 +1118,83 @@ mod std_write_temp {
     }
 
     #[test]
+    fn pd_git_add_remote_01_1_denied_approval_does_not_add_remote() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        let err = w
+            .add_remote(repo, "upstream", url, GitWriteApproval::denied())
+            .expect_err("denied add must fail");
+        assert!(matches!(err, PortError::PermissionDenied(_)));
+        assert!(!remote_list(repo).contains("upstream"));
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn pd_git_add_remote_01_2_approved_add_records_url_without_fetch() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        assert!(!remote_list(repo).contains("upstream"));
+
+        w.add_remote(repo, "upstream", url, GitWriteApproval::granted())
+            .expect("approved add");
+        let listed = remote_list(repo);
+        assert!(listed.contains("upstream"), "remote missing: {listed}");
+        assert!(listed.contains(url), "url missing: {listed}");
+        assert!(
+            !work.join(".git").join("FETCH_HEAD").exists(),
+            "add must not fetch as a side effect"
+        );
+        assert!(
+            !work
+                .join(".git")
+                .join("refs")
+                .join("remotes")
+                .join("upstream")
+                .exists(),
+            "add must not create remote-tracking refs"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn pd_git_add_remote_01_3_duplicate_and_option_like_names_fail_honestly() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        assert!(remote_list(repo).contains("origin"));
+
+        let before = remote_list(repo);
+        let dup = w
+            .add_remote(repo, "origin", url, GitWriteApproval::granted())
+            .expect_err("duplicate origin must fail");
+        assert!(matches!(dup, PortError::Git(_)));
+        assert_eq!(remote_list(repo), before);
+
+        w.add_remote(repo, "  ", url, GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.add_remote(repo, "upstream", "  ", GitWriteApproval::granted())
+            .expect_err("empty url must fail");
+        w.add_remote(repo, "-f", url, GitWriteApproval::granted())
+            .expect_err("fetch flag name is out of scope");
+        w.add_remote(repo, "--mirror", url, GitWriteApproval::granted())
+            .expect_err("mirror flag name is out of scope");
+        w.add_remote(repo, "upstream", "-u", GitWriteApproval::granted())
+            .expect_err("flag-like url is out of scope");
+        assert!(!remote_list(repo).contains("upstream"));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
     fn std_write_add_and_remove_remote_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
