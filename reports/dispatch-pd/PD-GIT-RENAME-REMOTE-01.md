@@ -3,7 +3,7 @@
 **Agent:** Cloud mid-tier dev agent (Composer), role `dev-agent` — not verifier.
 
 **BDD:** `PD-GIT-RENAME-REMOTE-01-1`, `PD-GIT-RENAME-REMOTE-01-2`, `PD-GIT-RENAME-REMOTE-01-3`  
-(`.feature` not edited)
+(added `docs/bdd/PD-GIT-RENAME-REMOTE-01.feature` in this PR only; no other `.feature` files)
 
 ## Summary
 
@@ -17,7 +17,8 @@ Implementation already matched the port contract on `main`; this task adds scena
 |------|--------|
 | `apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/tests_git.rs` | `pd_git_rename_remote_01_1_*`, `pd_git_rename_remote_01_3_*` (Fake) |
 | `apps/sgenaxis-desktop/crates/sgenaxis-adapters/src/tests_git02.rs` | `pd_git_rename_remote_01_{1,2,3}_*` (Std) |
-| `docs/board.json` | Task card → In Review / TDD Green |
+| `docs/bdd/PD-GIT-RENAME-REMOTE-01.feature` | BDD scenarios for this Task |
+| `docs/board.json` | Story + Task cards (RENAME-REMOTE batch slice only) |
 | `reports/dispatch-pd/PD-GIT-RENAME-REMOTE-01.md` | This report |
 | `reports/dispatch-pd/PD-GIT-RENAME-REMOTE-01-test-output.txt` | `cargo test` log |
 
@@ -42,6 +43,10 @@ Evidence: `reports/dispatch-pd/PD-GIT-RENAME-REMOTE-01-test-output.txt`
 
 `feature/PD-GIT-RENAME-REMOTE-01-rename-remote`
 
+## PR
+
+https://github.com/roy791202/AIAD/pull/77
+
 ## Blockers
 
-None (`READY_FOR_TDD`). Independent verifier required per AI Dev workflow.
+None (`READY_FOR_TDD`). High-tier review CHANGES_REQUIRED on scope/board addressed in follow-up commit. Independent verifier required per AI Dev workflow.
