@@ -167,3 +167,21 @@ def test_ci_pr1_preserves_generic_local_hook_skip_detection(alias):
 ])
 def test_ci_pr1_preserves_original_hook_chained_receiver_detection(path, source):
     assert guard.disabled_lines(path, source) == {1}
+
+
+@pytest.mark.parametrize("path,source,expected", [
+    # Fail-soft (general robustness): when the structural masker cannot fully
+    # tokenize a source -- a dense non-test file at the edge of the hand-rolled
+    # lexers, like a UI mock built from deeply nested template literals -- the
+    # guard must not crash fail-closed. It degrades to a raw scan of the same
+    # source, so a file carrying no executable disable yields nothing instead
+    # of aborting the whole PR check.
+    ("mock.js", "render();\nconst t = `a ${ `b ${c} ` + `d\n", set()),
+    ("mock.rs", 'let s = r#"oops never closed\n fn only(){}\n', set()),
+    # ...and a genuinely added disable is still caught through the fallback,
+    # so detection is never weakened, only the quoted-evidence nicety is lost.
+    ("mock.js", "const t = `a ${ `b\ntest.skip('case', () => {});\n", {2}),
+    ("mock.rs", 'let s = r#"oops never closed\n#[ignore]\nfn real() {}\n', {2}),
+])
+def test_failsoft_raw_scan_when_masker_cannot_tokenize(path, source, expected):
+    assert guard.disabled_lines(path, source) == expected

@@ -156,6 +156,119 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
         })
 }
 
+/// Paths that would become flags or widen `git add` / `git reset` beyond one selected file.
+pub(crate) fn stage_file_path_out_of_scope(value: &str) -> bool {
+    conflict_path_out_of_scope(value)
+}
+
+/// Hunk patches that must be refused before `git apply` (empty / binary / rename / truncated).
+pub(crate) fn stage_hunk_patch_refused(patch: &str) -> Option<&'static str> {
+    let t = patch.trim();
+    if t.is_empty() {
+        return Some("empty patch");
+    }
+    if t.contains('\0') {
+        return Some("binary hunks are disabled");
+    }
+    let lower = t.to_ascii_lowercase();
+    if lower.contains("git binary patch")
+        || lower.contains("binary files ")
+        || t.lines()
+            .any(|line| line.starts_with("delta ") && line.contains("GIT"))
+    {
+        return Some("binary hunks are disabled");
+    }
+    if t.lines().any(|line| {
+        let s = line.trim_start();
+        s.starts_with("rename from") || s.starts_with("rename to")
+    }) {
+        return Some("rename hunks are disabled");
+    }
+    if !t.contains("@@") {
+        return Some("truncated hunk");
+    }
+    if hunk_line_counts_truncated(t) {
+        return Some("truncated hunk");
+    }
+    None
+}
+
+fn hunk_line_counts_truncated(patch: &str) -> bool {
+    let mut pending_old: Option<usize> = None;
+    let mut pending_new: Option<usize> = None;
+    let mut old_seen = 0usize;
+    let mut new_seen = 0usize;
+    let mut in_hunk = false;
+    for line in patch.lines() {
+        if line.starts_with("@@") {
+            if in_hunk && hunk_counts_short(pending_old, pending_new, old_seen, new_seen) {
+                return true;
+            }
+            let (old_n, new_n) = match parse_hunk_header_counts(line) {
+                Some(v) => v,
+                None => return true,
+            };
+            pending_old = Some(old_n);
+            pending_new = Some(new_n);
+            old_seen = 0;
+            new_seen = 0;
+            in_hunk = true;
+            continue;
+        }
+        if !in_hunk {
+            continue;
+        }
+        if line.starts_with("diff --git") || line.starts_with("--- ") || line.starts_with("+++ ") {
+            if hunk_counts_short(pending_old, pending_new, old_seen, new_seen) {
+                return true;
+            }
+            in_hunk = false;
+            continue;
+        }
+        match line.as_bytes().first() {
+            Some(b'\\') => {}
+            Some(b' ') => {
+                old_seen += 1;
+                new_seen += 1;
+            }
+            Some(b'-') => old_seen += 1,
+            Some(b'+') => new_seen += 1,
+            _ => {}
+        }
+    }
+    in_hunk && hunk_counts_short(pending_old, pending_new, old_seen, new_seen)
+}
+
+fn hunk_counts_short(
+    pending_old: Option<usize>,
+    pending_new: Option<usize>,
+    old_seen: usize,
+    new_seen: usize,
+) -> bool {
+    match (pending_old, pending_new) {
+        (Some(o), Some(n)) => old_seen < o || new_seen < n,
+        _ => true,
+    }
+}
+
+fn parse_hunk_header_counts(header: &str) -> Option<(usize, usize)> {
+    // @@ -oldStart,oldCount +newStart,newCount @@
+    let rest = header.trim_start_matches('@').trim_start();
+    let mut parts = rest.split_whitespace();
+    let old = parts.next()?;
+    let new = parts.next()?;
+    Some((hunk_side_count(old)?, hunk_side_count(new)?))
+}
+
+fn hunk_side_count(token: &str) -> Option<usize> {
+    let body = token.trim_start_matches(['-', '+']);
+    if let Some((_, count)) = body.split_once(',') {
+        count.parse().ok()
+    } else {
+        Some(1)
+    }
+}
+
 /// Paths that would become flags or widen `git add` beyond one conflicted file.
 pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -397,6 +510,35 @@ impl GitWritePort for GatedGitWrite {
     }
 
     fn unstage_all(&self, _repo: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn stage_file(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn unstage_file(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn stage_hunk(
+        &self,
+        _repo: &str,
+        _path: &str,
+        _patch: &str,
+        _content_hash: &str,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 

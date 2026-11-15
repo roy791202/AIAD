@@ -541,6 +541,60 @@ pub trait GitWritePort: Send + Sync {
     /// a no-op. Untracked files remain untracked.
     fn unstage_all(&self, repo: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 
+    /// Stage one selected dirty/untracked path without committing. Requires approval.
+    /// `git add -- <path>` from the repo root. Exactly one pathspec.
+    /// Never `.` / `-A` / commit / push / `reset --hard` / `--force` / `-f` /
+    /// `-D`. Never merge / rebase / pull / fetch. Distinct from
+    /// [`Self::conflict_save`]: FILE-STAGE is worktree staging, not marking
+    /// conflicts resolved. Empty, option-like (`-…`), and `..` paths fail
+    /// honestly with no mutation. In-progress merge/rebase/cherry-pick/revert
+    /// with unmerged paths fails honestly (`OPERATION_IN_PROGRESS`). An
+    /// already-staged path succeeds as a no-op. Missing paths fail honestly.
+    fn stage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Unstage one selected path without touching worktree contents. Requires approval.
+    /// `git reset -- <path>` from the repo root (mixed pathspec reset: that path's
+    /// index → HEAD). Exactly one pathspec. Never `.` / commit / push /
+    /// `git add -A` / `git add -- .` / `reset --hard` / `--force` / `-f` / `-D`.
+    /// Never merge / rebase / pull / fetch. Distinct from [`Self::unstage_all`]
+    /// (`git reset -- .`) and from [`Self::conflict_abort`] (`--abort`). Empty,
+    /// option-like (`-…`), `..`, and `.` paths fail honestly with no mutation.
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`). An already-unstaged path succeeds as
+    /// a no-op. Untracked files remain untracked. Missing paths fail honestly.
+    fn unstage_file(
+        &self,
+        repo: &str,
+        path: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Stage one selected text hunk without committing. Requires approval.
+    /// `git apply --cached --check -` then `git apply --cached -` with the patch
+    /// on stdin. Never commit / push / `git add -A` / `git add -- .` /
+    /// `reset --hard` / `--force`. Never merge / rebase / pull / fetch.
+    /// Distinct from [`Self::stage_file`] and [`Self::conflict_save`].
+    /// Empty, option-like (`-…`), `..`, and `.` paths fail honestly with no
+    /// mutation. Empty, truncated, binary, and rename patches fail honestly.
+    /// Content-hash mismatch or `git apply --cached --check` failure is patch
+    /// drift: refuse with no mutation (do not guess hunk positions).
+    /// In-progress merge/rebase/cherry-pick/revert with unmerged paths fails
+    /// honestly (`OPERATION_IN_PROGRESS`). An already-applied matching hunk
+    /// succeeds as a no-op when Git can reverse-check the cached patch.
+    fn stage_hunk(
+        &self,
+        repo: &str,
+        path: &str,
+        patch: &str,
+        content_hash: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
     /// Stage one resolved conflict path (`git add -- <path>`). Requires approval.
     /// Never `git add -A` / `.`. Remaining conflict markers fail honestly.
     /// Missing in-progress merge/rebase/cherry-pick/revert fails honestly.

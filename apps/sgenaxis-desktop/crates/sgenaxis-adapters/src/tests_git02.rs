@@ -1121,7 +1121,11 @@ mod std_write_temp {
     fn std_write_add_and_remove_remote_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
-        let url = bare.to_str().unwrap();
+        // Local-path remote URL: git accepts forward slashes on every platform,
+        // and the adapter rejects backslashes as out-of-scope, so a Windows
+        // temp path (C:\...) must be given slash-normalized.
+        let url_buf = bare.to_str().unwrap().replace('\\', "/");
+        let url = url_buf.as_str();
         let w = StdGitWrite::new();
 
         w.add_remote(repo, "upstream", url, GitWriteApproval::denied())
@@ -1199,7 +1203,9 @@ mod std_write_temp {
         let next = unique_temp("set-url-bare");
         fs::create_dir_all(&next).unwrap();
         git(&next, &["init", "--bare"]);
-        let new_url = next.to_str().unwrap();
+        // Slash-normalized: adapter rejects backslashes; git accepts `/` on Windows.
+        let new_url_buf = next.to_str().unwrap().replace('\\', "/");
+        let new_url = new_url_buf.as_str();
 
         w.set_remote_url(repo, "origin", new_url, GitWriteApproval::denied())
             .expect_err("denied set-url must not mutate");
@@ -2188,4 +2194,481 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    fn head_of(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "rev-parse", "HEAD"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    #[test]
+    fn std_write_stage_file_adds_only_selected_path_without_commit() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = head_of(repo);
+        let w = StdGitWrite::new();
+
+        w.stage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-clean selected path is success no-op");
+        assert!(porcelain(repo).trim().is_empty());
+
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        fs::write(work.join("b.txt"), "dirty-b\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+
+        w.stage_file(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied stage-file must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains(" M a.txt")
+                || denied_st.contains("M a.txt")
+                || denied_st.contains(" a.txt"),
+            "denied must leave dirty a.txt: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("?? new.txt"),
+            "denied must leave untracked: {denied_st}"
+        );
+
+        for path in ["", "-", "-A", "--force", "../x", "a/../b", ".", "-u"] {
+            w.stage_file(repo, path, GitWriteApproval::granted())
+                .expect_err("invalid path must refuse");
+        }
+        let after_invalid = porcelain(repo);
+        assert!(
+            after_invalid.contains("?? new.txt"),
+            "invalid path must not stage others: {after_invalid}"
+        );
+
+        let missing = w
+            .stage_file(repo, "missing.txt", GitWriteApproval::granted())
+            .expect_err("missing path must fail honestly");
+        assert!(
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("pathspec")
+                || missing.to_string().contains("missing.txt")
+                || missing
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains("did not match"),
+            "expected missing pathspec error, got {missing}"
+        );
+        let after_missing = porcelain(repo);
+        assert!(
+            after_missing.contains("?? new.txt"),
+            "missing path must not mutate other files: {after_missing}"
+        );
+
+        w.stage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved git add -- a.txt");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("M  a.txt"),
+            "selected dirty path must be staged: {staged}"
+        );
+        assert!(
+            staged.contains(" M b.txt") || staged.contains("M b.txt") || staged.contains(" b.txt"),
+            "other dirty file must stay unstaged: {staged}"
+        );
+        assert!(
+            !staged.contains("M  b.txt"),
+            "b.txt must not be staged: {staged}"
+        );
+        assert!(
+            staged.contains("?? new.txt"),
+            "untracked other file must stay untracked: {staged}"
+        );
+        assert_eq!(head_of(repo), head_before, "stage-file must never commit");
+
+        w.stage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-staged path is success no-op");
+        assert_eq!(head_of(repo), head_before);
+
+        w.stage_file(repo, "new.txt", GitWriteApproval::granted())
+            .expect("untracked selected path stages via git add -- path");
+        let after_untracked = porcelain(repo);
+        assert!(
+            after_untracked.contains("A  new.txt"),
+            "untracked selected path must be staged: {after_untracked}"
+        );
+        let worktree_new = fs::read_to_string(work.join("new.txt")).unwrap();
+        assert_eq!(worktree_new, "untracked\n");
+        assert_eq!(head_of(repo), head_before);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .stage_file(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "stage-file must not mark conflicts resolved"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    #[test]
+    fn std_write_unstage_file_resets_only_selected_path_without_commit_or_hard() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = head_of(repo);
+        let w = StdGitWrite::new();
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-unstaged selected path is success no-op");
+        assert!(porcelain(repo).trim().is_empty());
+
+        fs::write(work.join("a.txt"), "dirty-a\n").unwrap();
+        fs::write(work.join("b.txt"), "dirty-b\n").unwrap();
+        fs::write(work.join("new.txt"), "untracked\n").unwrap();
+        w.stage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("stage a.txt for unstage fixture");
+        w.stage_file(repo, "b.txt", GitWriteApproval::granted())
+            .expect("stage b.txt to prove single-path unstage");
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::denied())
+            .expect_err("denied unstage-file must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains("M  a.txt"),
+            "denied must leave staged a.txt: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("A  b.txt") || denied_st.contains("M  b.txt"),
+            "denied must leave staged b.txt: {denied_st}"
+        );
+        assert!(
+            denied_st.contains("?? new.txt"),
+            "denied must leave untracked: {denied_st}"
+        );
+
+        for path in ["", "-", "-A", "--force", "../x", "a/../b", ".", "-u"] {
+            w.unstage_file(repo, path, GitWriteApproval::granted())
+                .expect_err("invalid path must refuse");
+        }
+        let after_invalid = porcelain(repo);
+        assert!(
+            after_invalid.contains("M  a.txt"),
+            "invalid path must not unstage a.txt: {after_invalid}"
+        );
+        assert!(
+            after_invalid.contains("?? new.txt"),
+            "invalid path must not mutate untracked: {after_invalid}"
+        );
+
+        let missing = w
+            .unstage_file(repo, "missing.txt", GitWriteApproval::granted())
+            .expect_err("missing path must fail honestly");
+        assert!(
+            missing
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("pathspec")
+                || missing.to_string().contains("missing.txt")
+                || missing
+                    .to_string()
+                    .to_ascii_lowercase()
+                    .contains("did not match"),
+            "expected missing pathspec error, got {missing}"
+        );
+        let after_missing = porcelain(repo);
+        assert!(
+            after_missing.contains("M  a.txt"),
+            "missing path must not mutate other files: {after_missing}"
+        );
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("approved git reset -- a.txt");
+        let unstaged = porcelain(repo);
+        assert!(
+            unstaged.contains(" M a.txt")
+                || unstaged.contains("M a.txt")
+                || unstaged.contains(" a.txt"),
+            "selected staged path must become unstaged: {unstaged}"
+        );
+        assert!(
+            !unstaged.contains("M  a.txt"),
+            "index must not keep staged a.txt: {unstaged}"
+        );
+        assert!(
+            unstaged.contains("A  b.txt") || unstaged.contains("M  b.txt"),
+            "other staged file must stay staged: {unstaged}"
+        );
+        assert!(
+            unstaged.contains("?? new.txt"),
+            "untracked other file must stay untracked: {unstaged}"
+        );
+        let worktree_a = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert_eq!(
+            worktree_a, "dirty-a\n",
+            "unstage-file must never reset --hard worktree contents"
+        );
+        assert_eq!(head_of(repo), head_before, "unstage-file must never commit");
+
+        w.unstage_file(repo, "a.txt", GitWriteApproval::granted())
+            .expect("already-unstaged path is success no-op");
+        assert_eq!(head_of(repo), head_before);
+
+        w.unstage_file(repo, "new.txt", GitWriteApproval::granted())
+            .expect("untracked selected path is success no-op");
+        let after_untracked = porcelain(repo);
+        assert!(
+            after_untracked.contains("?? new.txt"),
+            "untracked file must remain untracked: {after_untracked}"
+        );
+        let worktree_new = fs::read_to_string(work.join("new.txt")).unwrap();
+        assert_eq!(
+            worktree_new, "untracked\n",
+            "reset of a never-added file must not delete worktree"
+        );
+        assert_eq!(head_of(repo), head_before);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .unstage_file(crepo, "a.txt", GitWriteApproval::granted())
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+        let unmerged = Command::new("git")
+            .args(["-C", crepo, "ls-files", "-u"])
+            .output()
+            .unwrap();
+        assert!(
+            !String::from_utf8_lossy(&unmerged.stdout).trim().is_empty(),
+            "unstage-file must not clear conflict state"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    fn first_hunk_patch(full: &str) -> String {
+        let mut out = String::new();
+        let mut hunks = 0;
+        for line in full.lines() {
+            if line.starts_with("@@") {
+                hunks += 1;
+                if hunks > 1 {
+                    break;
+                }
+            }
+            if hunks <= 1 {
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn std_write_stage_hunk_applies_only_selected_hunk_without_commit() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let head_before = head_of(repo);
+        let committed = (1..=40)
+            .map(|n| format!("line-{n}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        fs::write(work.join("a.txt"), &committed).unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "lines"]);
+        let head_seed = head_of(repo);
+        let dirty = committed
+            .replace("line-2\n", "LINE-2\n")
+            .replace("line-35\n", "LINE-35\n");
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let full = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        let patch = first_hunk_patch(&full);
+        assert!(patch.contains("LINE-2"), "expected first hunk: {patch}");
+        assert!(
+            !patch.contains("LINE-35"),
+            "first hunk must not include second change: {patch}"
+        );
+        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let w = StdGitWrite::new();
+
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::denied())
+            .expect_err("denied stage-hunk must not mutate");
+        let denied_st = porcelain(repo);
+        assert!(
+            denied_st.contains(" M a.txt") || denied_st.contains("M a.txt"),
+            "denied must leave dirty a.txt: {denied_st}"
+        );
+
+        for path in ["", "-", "-A", "--force", "../x", "a/../b", ".", "-u"] {
+            w.stage_hunk(repo, path, &patch, &hash, GitWriteApproval::granted())
+                .expect_err("invalid path must refuse");
+        }
+
+        w.stage_hunk(repo, "a.txt", "", &hash, GitWriteApproval::granted())
+            .expect_err("empty patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "GIT binary patch\nliteral 1\nMc$`\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("binary patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "diff --git a/a.txt b/b.txt\nrename from a.txt\nrename to b.txt\n@@ -1 +1 @@\n-old\n+new\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("rename patch");
+        w.stage_hunk(
+            repo,
+            "a.txt",
+            "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,8 +1,8 @@\n-one\n",
+            &hash,
+            GitWriteApproval::granted(),
+        )
+        .expect_err("truncated hunk");
+
+        let drifted_hash = "0".repeat(64);
+        let drift_hash = w
+            .stage_hunk(
+                repo,
+                "a.txt",
+                &patch,
+                &drifted_hash,
+                GitWriteApproval::granted(),
+            )
+            .expect_err("hash mismatch is drift");
+        assert!(
+            drift_hash
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("drift")
+                || drift_hash.to_string().contains("hash"),
+            "expected hash drift, got {drift_hash}"
+        );
+
+        let index_drift = dirty.replace("LINE-2\n", "YYY\n");
+        fs::write(work.join("a.txt"), &index_drift).unwrap();
+        git(&work, &["add", "a.txt"]);
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let hash_now = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let index_before_drift = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        let drift_apply = w
+            .stage_hunk(
+                repo,
+                "a.txt",
+                &patch,
+                &hash_now,
+                GitWriteApproval::granted(),
+            )
+            .expect_err("apply check fail is drift");
+        assert!(
+            drift_apply
+                .to_string()
+                .to_ascii_lowercase()
+                .contains("drift"),
+            "expected patch drift refused, got {drift_apply}"
+        );
+        let index_after_drift = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        assert_eq!(
+            index_after_drift, index_before_drift,
+            "drift must not mutate index"
+        );
+        git(&work, &["reset", "--", "a.txt"]);
+
+        fs::write(work.join("a.txt"), &dirty).unwrap();
+        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::granted())
+            .expect("approved git apply --cached");
+        let staged = porcelain(repo);
+        assert!(
+            staged.contains("MM a.txt")
+                || (staged.contains("M  a.txt") && staged.contains(" M a.txt"))
+                || staged.contains("MM"),
+            "partial stage leaves both index and worktree dirty: {staged}"
+        );
+        let cached = {
+            let out = Command::new("git")
+                .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
+                .output()
+                .unwrap();
+            String::from_utf8_lossy(&out.stdout).to_string()
+        };
+        assert!(
+            cached.contains("LINE-2"),
+            "first hunk must be in index: {cached}"
+        );
+        assert!(
+            !cached.contains("LINE-35"),
+            "second hunk must stay unstaged: {cached}"
+        );
+        let wt = fs::read_to_string(work.join("a.txt")).unwrap();
+        assert!(wt.contains("LINE-35"), "worktree must remain dirty");
+        assert_eq!(head_of(repo), head_seed, "stage-hunk must never commit");
+        assert_ne!(head_seed, head_before);
+
+        w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::granted())
+            .expect("already-applied matching hunk is success no-op");
+        assert_eq!(head_of(repo), head_seed);
+
+        let conflict = make_merge_conflict();
+        let crepo = conflict.to_str().unwrap();
+        let fail = w
+            .stage_hunk(
+                crepo,
+                "a.txt",
+                TEXT_HUNK_FALLBACK,
+                "deadbeef",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("conflict must fail honestly");
+        assert!(
+            fail.to_string().contains("OPERATION_IN_PROGRESS"),
+            "expected OPERATION_IN_PROGRESS, got {fail}"
+        );
+        assert!(merge_head_exists(&conflict));
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&conflict);
+    }
+
+    const TEXT_HUNK_FALLBACK: &str =
+        "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n";
 }
