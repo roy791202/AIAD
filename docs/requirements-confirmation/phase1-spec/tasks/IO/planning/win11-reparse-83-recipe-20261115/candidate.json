@@ -1,0 +1,113 @@
+{
+  "kind": "DOCUMENT_ONLY_FIXTURE_RECIPE",
+  "primary_module": "IO-PREREQ",
+  "task_id": "PD-P1-IO-PREREQ-IMPL-01",
+  "packet": "win11-reparse-83-recipe-20261115",
+  "author": "dev-agent/cursor-cloud-pd-p1-io-prereq-impl-01-win11-recipe",
+  "generated_at": "2026-11-15T12:10:00+08:00",
+  "state": "BOUNDED_PLANNING_PACKET_ONLY",
+  "approval": null,
+  "owner_exact_selection": null,
+  "owner_adoption_required": false,
+  "product_pass": false,
+  "platform_pass": false,
+  "selected": null,
+  "host_observed": {
+    "uname": "Linux cursor 6.12.113+ x86_64",
+    "python_platform": "Linux-6.12.113+-x86_64-with-glibc2.39",
+    "windows11": false,
+    "build": null,
+    "arch": "x86_64",
+    "verdict": "NOT RUN"
+  },
+  "preserved_evidence": {
+    "win10_19045": "UNCHANGED",
+    "paths": [
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/index.html",
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/verification.json",
+      "docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/planning/current-state.json"
+    ],
+    "rewrite": false
+  },
+  "gate": {
+    "id": "IO-A-F1",
+    "remaining": ["Windows11 x64", "native reparse", "native 8.3"],
+    "already_pass_on_win10_only": ["hard-link refusal", "case-alias refusal"],
+    "success_predicate": "actual Windows 11 (build>=22000) x64 AND live reparse oracle AND live 8.3 oracle on the same host"
+  },
+  "commands_recipe_not_executed": {
+    "identity": [
+      "ver",
+      "systeminfo | findstr /B /C:\"OS Name\" /C:\"OS Version\"",
+      "wmic os get Caption,Version,BuildNumber,OSArchitecture",
+      "powershell -NoProfile -Command \"Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture\""
+    ],
+    "identity_accept": {
+      "caption_contains": "Windows 11",
+      "build_number_min": 22000,
+      "os_architecture": "64-bit"
+    },
+    "identity_reject": {
+      "windows_10_19045": "REJECT if labeled Windows 11 PASS",
+      "linux": "NOT RUN"
+    },
+    "reparse_disposable_temp_only": [
+      "set \"ROOT=%TEMP%\\io-fx-reparse-%RANDOM%\"",
+      "mkdir \"%ROOT%\\real-target\"",
+      "echo payload> \"%ROOT%\\real-target\\file.bin\"",
+      "mklink /J \"%ROOT%\\junction-alias\" \"%ROOT%\\real-target\"",
+      "fsutil reparsepoint query \"%ROOT%\\junction-alias\"",
+      "rmdir \"%ROOT%\\junction-alias\"",
+      "rmdir /s /q \"%ROOT%\""
+    ],
+    "eight_dot_three": [
+      "fsutil 8dot3name query %TEMP%",
+      "set \"ROOT=%TEMP%\\io-fx-83-%RANDOM%\"",
+      "mkdir \"%ROOT%\"",
+      "echo payload> \"%ROOT%\\LongFileNameForShortAlias.bin\"",
+      "dir /x \"%ROOT%\"",
+      "fsutil file queryShortName \"%ROOT%\\LongFileNameForShortAlias.bin\"",
+      "rmdir /s /q \"%ROOT%\""
+    ],
+    "execution_on_this_host": "NOT RUN: host_is_not_windows11_x64; destructive junction experiments not run outside disposable temp; commands documented only"
+  },
+  "rows": [
+    {
+      "id": "IO-FX-01",
+      "oracle": "Win11 x64 identity",
+      "status": "NOT RUN",
+      "reason": "authoring host is Linux"
+    },
+    {
+      "id": "IO-FX-02",
+      "oracle": "real reparse/junction in %TEMP%",
+      "status": "NOT RUN",
+      "reason": "NTFS reparse creation not available; commands not executed"
+    },
+    {
+      "id": "IO-FX-03",
+      "oracle": "real 8.3 short name",
+      "status": "NOT RUN",
+      "reason": "fsutil 8dot3name not available"
+    },
+    {
+      "id": "IO-FX-04",
+      "oracle": "combined native gate",
+      "status": "NOT RUN",
+      "reason": "IO-FX-01/02/03 all NOT RUN"
+    },
+    {
+      "id": "IO-FX-05",
+      "oracle": "reject Win10-as-Win11",
+      "status": "RECIPE_DEFINED",
+      "observed_execution": "NOT RUN",
+      "expected": "REJECT"
+    },
+    {
+      "id": "IO-FX-06",
+      "oracle": "non-Win11 host records NOT RUN",
+      "status": "DOCUMENT_OBSERVED",
+      "observed": "Linux host -> all native cases NOT RUN"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IO Win11 reparse/8.3 fixture RECIPE</title><style>body{font:16px/1.6 system-ui;background:#111827;color:#e5e7eb;max-width:1100px;margin:32px auto;padding:20px}h1,h2{color:#93c5fd}section{background:#1f2937;padding:20px;margin:20px 0;border-radius:10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 monospace}.badge{color:#fcd34d}a{color:#93c5fd}table{border-collapse:collapse;width:100%}td,th{border:1px solid #475569;padding:8px;vertical-align:top}</style><h1>PD-P1-IO-PREREQ-IMPL-01 · Win11 x64 reparse／8.3 RECIPE</h1><p class="badge">DOCUMENT-ONLY FIXTURE RECIPE · 本機 Linux · 平台 NOT RUN · 非 Owner 採納 · 非產品 PASS · 黃燈維持</p><p>用途：把 Windows 11 x64 身分、真實 reparse（僅 disposable %TEMP%）與 8.3 短檔名的<strong>精確命令與成功條件</strong>寫成可交接配方。本環境是 Linux，<strong>不得宣稱平台 PASS</strong>。既有 Win10 build 19045 證據保留、不改寫。不需新增 Owner 採納。</p><section><h2>成功謂詞</h2><p>SUCCESS 只有在同一台實際 Windows 11（build ≥ 22000）x64 主機上，IO-FX-01、IO-FX-02、IO-FX-03 都實際通過。其餘一律顯式 NOT RUN。把 Win10 19045 標成 Win11 PASS 為 REJECT（IO-FX-05）。</p></section><section><h2>BDD</h2><table><tr><th>ID</th><th>Oracle</th><th>本機</th></tr><tr><td>IO-FX-01</td><td>Win11 x64 身分</td><td>NOT RUN</td></tr><tr><td>IO-FX-02</td><td>真實 junction／reparse（僅 %TEMP%）</td><td>NOT RUN</td></tr><tr><td>IO-FX-03</td><td>真實 8.3 短名</td><td>NOT RUN</td></tr><tr><td>IO-FX-04</td><td>三項合取的 IO-A-F1 剩餘閘</td><td>NOT RUN</td></tr><tr><td>IO-FX-05</td><td>Win10 冒充 Win11</td><td>REJECT 配方；未執行偽稱</td></tr><tr><td>IO-FX-06</td><td>非 Win11 主機</td><td>NOT RUN（Linux 已觀測）</td></tr></table></section><section><h2>文件</h2><ul><li><a href="module.feature">module.feature</a></li><li><a href="candidate.json">candidate.json</a></li><li><a href="fixtures.json">fixtures.json</a></li><li><a href="steps.py">steps.py</a></li><li><a href="pending.json">pending.json</a></li></ul></section><section><h2>本機未執行的命令（配方）</h2><pre>ver
+systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
+wmic os get Caption,Version,BuildNumber,OSArchitecture
+
+set "ROOT=%TEMP%\io-fx-reparse-%RANDOM%"
+mkdir "%ROOT%\real-target"
+echo payload&gt; "%ROOT%\real-target\file.bin"
+mklink /J "%ROOT%\junction-alias" "%ROOT%\real-target"
+fsutil reparsepoint query "%ROOT%\junction-alias"
+rmdir "%ROOT%\junction-alias"
+rmdir /s /q "%ROOT%"
+
+fsutil 8dot3name query %TEMP%
+set "ROOT=%TEMP%\io-fx-83-%RANDOM%"
+mkdir "%ROOT%"
+echo payload&gt; "%ROOT%\LongFileNameForShortAlias.bin"
+dir /x "%ROOT%"
+fsutil file queryShortName "%ROOT%\LongFileNameForShortAlias.bin"
+rmdir /s /q "%ROOT%"</pre><p>junction 實驗禁止離開 disposable temp。本輪未在 Linux 執行這些命令。</p></section><section><h2>保留證據（不改寫）</h2><ul><li>docs/requirements-confirmation/phase1-spec/tasks/IO-PREREQ/implementation/acceptance/index.html</li><li>Win10 hard-link／case-alias 拒絕 PASS；reparse／8.3 仍缺</li></ul></section></html>

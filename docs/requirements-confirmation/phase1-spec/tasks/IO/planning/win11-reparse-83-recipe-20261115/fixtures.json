@@ -1,0 +1,70 @@
+{
+  "primary_module": "IO-PREREQ",
+  "task_id": "PD-P1-IO-PREREQ-IMPL-01",
+  "status": "DOCUMENT_FIXTURE_RECIPES_ONLY",
+  "expected_on_non_win11": "NOT RUN",
+  "authoring_host": {
+    "os": "Linux",
+    "kernel": "6.12.113+",
+    "windows11": false,
+    "expected_result": "NOT RUN"
+  },
+  "bytes": null,
+  "native_objects_created": false,
+  "cases": [
+    {
+      "id": "IO-FX-01",
+      "input": "OS identity capture (ver / CIM Win32_OperatingSystem)",
+      "expected_success": {
+        "caption": "Windows 11",
+        "build_number_min": 22000,
+        "architecture": "64-bit"
+      },
+      "expected_on_this_host": "NOT RUN",
+      "observed": "NOT RUN",
+      "reason": "host_is_not_windows11_x64"
+    },
+    {
+      "id": "IO-FX-02",
+      "input": "mklink /J inside %TEMP%\\io-fx-reparse-* then fsutil reparsepoint query",
+      "expected_success": "Reparse Tag present; junction confined to disposable temp",
+      "expected_on_this_host": "NOT RUN",
+      "observed": "NOT RUN",
+      "reason": "host_is_not_windows11_x64; junction experiment not executed"
+    },
+    {
+      "id": "IO-FX-03",
+      "input": "long filename in disposable temp; dir /x and fsutil 8dot3name query",
+      "expected_success": "short-name alias observed and distinct from long name",
+      "expected_on_this_host": "NOT RUN",
+      "observed": "NOT RUN",
+      "reason": "host_is_not_windows11_x64; 8.3 volume oracle not executed"
+    },
+    {
+      "id": "IO-FX-04",
+      "input": "conjunction of IO-FX-01/02/03",
+      "expected_success": "all three PASS on same Win11 x64 host",
+      "expected_on_this_host": "NOT RUN",
+      "observed": "NOT RUN",
+      "reason": "missing Win11/reparse/8.3 oracles"
+    },
+    {
+      "id": "IO-FX-05",
+      "input_mutation": "label Windows 10 build 19045 as Windows 11 PASS",
+      "expected": "REJECT",
+      "expected_on_this_host": "REJECT if claimed; native run NOT RUN",
+      "observed": "NOT RUN (negative recipe defined; no false Win11 claim authored)"
+    },
+    {
+      "id": "IO-FX-06",
+      "input": "Linux authoring host",
+      "expected": "explicit NOT RUN, never PASS",
+      "expected_on_this_host": "NOT RUN",
+      "observed": "NOT RUN"
+    }
+  ],
+  "win10_19045_evidence": {
+    "status": "RETAINED_UNCHANGED",
+    "may_substitute_for_win11": false
+  }
+}
