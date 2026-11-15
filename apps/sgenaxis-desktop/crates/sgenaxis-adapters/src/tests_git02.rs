@@ -1117,6 +1117,111 @@ mod std_write_temp {
         String::from_utf8_lossy(&out.stdout).to_string()
     }
 
+    fn remote_names_only(repo: &str) -> Vec<String> {
+        let out = Command::new("git")
+            .args(["-C", repo, "remote"])
+            .output()
+            .expect("git remote");
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect()
+    }
+
+    fn remote_get_url(repo: &str, name: &str) -> String {
+        let key = format!("remote.{name}.url");
+        let out = Command::new("git")
+            .args(["-C", repo, "config", "--get", &key])
+            .output()
+            .expect("git config");
+        assert!(
+            out.status.success(),
+            "missing remote url for {name}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    fn snapshot_remotes(repo: &str) -> Vec<(String, String)> {
+        remote_names_only(repo)
+            .into_iter()
+            .map(|n| (n.clone(), remote_get_url(repo, &n)))
+            .collect()
+    }
+
+    #[test]
+    fn pd_git_rename_remote_01_1_denied_approval_does_not_rename_remote() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        let err = w
+            .rename_remote(repo, "origin", "upstream", GitWriteApproval::denied())
+            .expect_err("denied rename must fail");
+        assert!(matches!(err, PortError::PermissionDenied(_)));
+        assert!(remote_names_only(repo).contains(&"origin".to_string()));
+        assert!(!remote_names_only(repo).contains(&"upstream".to_string()));
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn pd_git_rename_remote_01_2_approved_rename_keeps_url_without_fetch() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let origin_url = remote_get_url(repo, "origin");
+        assert_eq!(origin_url, bare.to_str().unwrap());
+        let w = StdGitWrite::new();
+
+        w.rename_remote(repo, "origin", "upstream", GitWriteApproval::granted())
+            .expect("approved rename");
+        let names = remote_names_only(repo);
+        assert!(!names.iter().any(|n| n == "origin"));
+        assert!(names.iter().any(|n| n == "upstream"));
+        assert_eq!(remote_get_url(repo, "upstream"), origin_url);
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    #[test]
+    fn pd_git_rename_remote_01_3_missing_duplicate_and_option_like_names_fail_honestly() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        w.add_remote(repo, "upstream", url, GitWriteApproval::granted())
+            .expect("seed upstream");
+        let before = snapshot_remotes(repo);
+
+        w.rename_remote(repo, "ghost", "other", GitWriteApproval::granted())
+            .expect_err("missing old name must fail");
+        assert_eq!(snapshot_remotes(repo), before);
+
+        let dup = w
+            .rename_remote(repo, "origin", "upstream", GitWriteApproval::granted())
+            .expect_err("duplicate new name must fail");
+        assert!(matches!(dup, PortError::Git(_)));
+        assert_eq!(snapshot_remotes(repo), before);
+
+        w.rename_remote(repo, "  ", "upstream", GitWriteApproval::granted())
+            .expect_err("empty old name must fail");
+        w.rename_remote(repo, "origin", "  ", GitWriteApproval::granted())
+            .expect_err("empty new name must fail");
+        w.rename_remote(repo, "-f", "upstream", GitWriteApproval::granted())
+            .expect_err("fetch flag old name is out of scope");
+        w.rename_remote(repo, "--mirror", "upstream", GitWriteApproval::granted())
+            .expect_err("mirror flag old name is out of scope");
+        w.rename_remote(repo, "origin", "origin", GitWriteApproval::granted())
+            .expect_err("unchanged name must fail");
+        assert_eq!(snapshot_remotes(repo), before);
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     #[test]
     fn std_write_add_and_remove_remote_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
