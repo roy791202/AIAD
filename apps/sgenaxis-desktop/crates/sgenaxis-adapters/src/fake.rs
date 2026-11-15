@@ -601,6 +601,8 @@ struct FakeGitWriteState {
     last_stage_all: HashMap<String, bool>,
     /// repo → last approved unstage-all recorded (true even on clean no-op).
     last_unstage_all: HashMap<String, bool>,
+    /// dir → last approved non-bare `git init` (`true` = non-bare, never clone).
+    last_init_repo: HashMap<String, bool>,
     /// repo → local branch → `(remote, branch)` tracking.
     upstreams: HashMap<String, HashMap<String, (String, String)>>,
     /// repo → current HEAD branch name (empty local uses this).
@@ -848,6 +850,12 @@ impl FakeGitWrite {
     pub fn last_unstage_all(&self, repo: &str) -> Option<bool> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_unstage_all.get(&Self::key(repo)).copied()
+    }
+
+    /// Whether an approved non-bare `git init` ran for `dir` (`true` = non-bare).
+    pub fn last_init_repo(&self, dir: &str) -> Option<bool> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_init_repo.get(&Self::key(dir)).copied()
     }
 
     /// Recorded upstream for `local` as `(remote, branch)`.
@@ -2204,6 +2212,36 @@ impl GitWritePort for FakeGitWrite {
         st.local_head.insert(key.clone(), remote_oid);
         st.last_pull_ff_only
             .insert(key, (name.to_string(), branch_record));
+        Ok(())
+    }
+
+    fn init_repo(&self, dir: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let path = dir.trim();
+        if path.is_empty() {
+            return Err(PortError::InvalidPath("empty git init directory".into()));
+        }
+        if crate::git_write::init_repo_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "bare/template/clone/option-like init paths are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(path);
+        if st.last_init_repo.contains_key(&key) {
+            return Err(PortError::AlreadyExists(format!(
+                "git repository already exists in {path}"
+            )));
+        }
+        // Non-bare local init only. Never clone, never remotes, never --bare.
+        st.last_init_repo.insert(key, true);
         Ok(())
     }
 }
