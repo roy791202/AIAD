@@ -883,6 +883,91 @@ fn gated_git_write_blocks_branch_rename_even_when_approved() {
 }
 
 #[test]
+fn pd_git_add_remote_01_1_denied_approval_does_not_add_remote() {
+    let w = FakeGitWrite::new();
+    let denied = w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/r.git",
+        GitWriteApproval::denied(),
+    );
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_add("/r").is_none());
+    assert!(w.configured_remotes("/r").is_empty());
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn pd_git_add_remote_01_3_duplicate_and_option_like_names_fail_honestly() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/origin.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed origin");
+
+    let dup = w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/other.git",
+        GitWriteApproval::granted(),
+    );
+    assert!(matches!(dup, Err(PortError::Git(ref m)) if m.contains("already exists")));
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "origin".to_string(),
+            "https://example.invalid/origin.git".to_string()
+        )]
+    );
+
+    assert!(w
+        .add_remote(
+            "/r",
+            "-f",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .add_remote(
+            "/r",
+            "--mirror",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .add_remote(
+            "/r",
+            "upstream",
+            "  ",
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .add_remote(
+            "/r",
+            "  ",
+            "https://example.invalid/r.git",
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .add_remote(
+            "/r",
+            "upstream",
+            "-u",
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert_eq!(w.configured_remotes("/r").len(), 1);
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
 fn fake_git_write_add_and_remove_remote_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.add_remote(
