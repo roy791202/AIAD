@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>M01 S3 reconcile 20261115</title>
+<style>
+body{max-width:1100px;margin:40px auto;font:16px/1.65 system-ui;color:#24384f}
+pre,code{white-space:pre-wrap;background:#eef2f7;padding:12px}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #c5d0de;padding:8px;vertical-align:top;text-align:left}
+th{background:#e6edf8}
+</style>
+<h1>M01-S3 對帳提案（獨立審查 FAIL 精確字句）</h1>
+<p><b>EXACT TEXT PROPOSAL · 非 Owner 採納 · 非 Skeleton · native/RED = NOT RUN</b></p>
+<p>作者：PD-P1-M01-S3-RECONCILE-01 planning author。不是獨立審查者 <code>/root/m01_s3_independent_review_20261115</code>。只寫本目錄。未改產品、測試、或密封包 <code>s3-exact-design/</code>、<code>s3-independent-review-20261115/</code>。</p>
+<p>讀取（唯讀）：獨立審查 <code>results.json</code> / <code>review.json</code>；必要時 <code>dto-contract.json</code>、<code>lifecycle-contract.json</code>、<code>decisions.json</code>。</p>
+<p>本卡結局：<b>READY_FOR_TDD</b>＝本對帳文件已交齊精確替換字句，可供另一個獨立代理審查本資料夾。不是產品 TDD Green，不是 Owner adoption。</p>
+
+<h2>1. 獨立審查 FAIL 與本提案對應</h2>
+<table>
+<tr><th>審查項</th><th>原裁決</th><th>本提案</th></tr>
+<tr><td>M01-S3-D5 / dto / S3-G5</td><td>FAIL：D5 稱 closed DTO，RQ10 仍把 mapping 留給 S3-G5</td><td>FAIL-1：改 RQ10，刪 G5 leftover；D5 提案句補一句指向 dto-contract</td></tr>
+<tr><td>binding_status vs RQ10</td><td>FAIL：dto 為 unchanged|bound|detached|committed_unbound；RQ10 為 unchanged/eligible/detached</td><td>FAIL-2：RQ10 改採 dto 四值；禁止 eligible</td></tr>
+<tr><td>RQ2 vs D3 OW1–OW10</td><td>OPEN/FAIL：D3 採納 OW1–OW10，RQ2 仍把 issuer/owner DTO 留給 S3-G1/G2</td><td>FAIL-3：RQ2 改為 OW1–OW10 即 issuer；刪 G1/G2 leftover</td></tr>
+<tr><td>S3-G4</td><td>FAIL：eligible vs bound/committed_unbound</td><td>隨 FAIL-2 關閉文件矛盾</td></tr>
+<tr><td>D1 / native / S3-G1 / OW9</td><td>OPEN</td><td><b>保持 OPEN</b>，需 Owner；本包不發明 native/RED PASS</td></tr>
+</table>
+
+<h2>2. FAIL-1：D5 closed DTO vs RQ10 remaining S3-G5</h2>
+<p>目標：<code>lifecycle-contract.json</code> → <code>RQ10.contract</code> 刪「Exact DTO/error mapping remains S3-G5 work。」並改為引用 dto-contract 為閉合 mapping。</p>
+<p>現行字句：</p>
+<pre>Proposed transport fields: requestId, operation, capturedRevision decimal string, outcome, replayed boolean, bindingStatus. outcome wraps exact adopted S2 result without discarding evidence; bindingStatus is unchanged, eligible or detached. Eligible is not itself proof a UI switch occurred. Exact DTO/error mapping remains S3-G5 work.</pre>
+<p>建議 <code>decisions.json</code> D5 提案句（可選附加，密封包尚未改）：</p>
+<pre>Adopt closed command/response/error contract in dto-contract.json, exhaustive S2 mapping/proof retention, captured revision string and committed_unbound/detached semantics. RQ10 must cite that same closed mapping and must not defer DTO/error mapping as remaining S3-G5 work.</pre>
+
+<h2>3. FAIL-2：binding_status 枚舉對齊</h2>
+<p>獲勝閉合集合＝<code>dto-contract.json</code> <code>responses.Save.binding_status</code>：<code>unchanged|bound|detached|committed_unbound</code>。不新增 <code>eligible</code>。</p>
+<ul>
+<li><b>unchanged</b>：不切換 current project（含預先提交失敗、Partial、RecoveryRequired）</li>
+<li><b>bound</b>：伺服器完成授權 settings bind；唯一表示 UI 已切換 current project</li>
+<li><b>detached</b>：owner 已非 current；S2 證據保留；不切換、不 rollback</li>
+<li><b>committed_unbound</b>：S2 已提交；settings bind 失敗；保留 proof；不得改寫成 unchanged failure</li>
+</ul>
+<p>RQ10 合併 FAIL-1+FAIL-2 後的完整建議字句（一次替換）：</p>
+<pre>Transport fields are the closed Save response in dto-contract.json: request_id UUID, operation save|finalize|adopt, captured_revision u64 decimal string, replayed boolean, outcome, binding_status, nullable projection. outcome wraps the exact adopted S2 result without discarding evidence. binding_status is the closed enum unchanged|bound|detached|committed_unbound and is the same field as dto-contract.json responses.Save.binding_status. Do not emit eligible. unchanged: no current-project switch, including pre-commit failure, Partial, and RecoveryRequired. bound: server completed the authorized settings bind for this captured owner, request, draft and revision; this is the only value that reports a UI current-project switch. detached: owner no longer current; S2 evidence retained; no current-project switch and no rollback. committed_unbound: S2 committed; settings bind failed; proof retained; do not rewrite as unchanged failure. Exact DTO and error mapping is dto-contract.json in this packet (requests, responses, errors, s2_mapping). It is not remaining S3-G5 work. S3-G5 leftover after this sentence is only Owner adoption of that closed mapping plus the already-specified permissions/UI-migration text; not a second mapping exercise. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS.</pre>
+
+<h2>4. FAIL-3：RQ2 leftover vs D3 OW1–OW10</h2>
+<p>目標：<code>RQ2.contract</code>。刪「Exact issuer and owner DTO remain separate S3-G1/G2 decisions。」</p>
+<p>現行字句：</p>
+<pre>Proposed key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save or finalize. Native selection must already be bound to that owner. Exact issuer and owner DTO remain separate S3-G1/G2 decisions.</pre>
+<p>建議字句：</p>
+<pre>Key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save, finalize, or adopt, matching dto-contract.json. Native selection must already be bound to that owner per OW3 and OW5. Issuer of owner and session is OW1 injected WebviewWindow plus OW2 server-issued runtime epoch, window instance nonce, and checked u64 generation; JSON caller fields never issue authority (RQ1, OW1). owner_id in dto-contract.json is the server-issued correlation UUID of that live owner; UI-supplied owner_id is matched against the live record and never mints issuer, storage, or revocation. Selection IDs are minted only by the authenticated native picker (OW3). This RQ2 text is the proposed identity contract aligned with OW1-OW10; it is not a leftover separate S3-G1/G2 decision. S3-G1 remains OPEN only because OW9 still marks exact native canonicalization, reparse policy, and failure-injection seam unresolved, and because Owner has not adopted D1/native-contract; that is not an issuer or owner-DTO gap. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS.</pre>
+
+<h2>5. 保持 OPEN（需 Owner）</h2>
+<table>
+<tr><th>項</th><th>原因</th></tr>
+<tr><td>M01-S3-D1 / OW9</td><td>lifecycle OW9 仍寫 native canonicalization/reparse/failure-injection 為 unresolved full-packet gate。本包不改 OW9、不改 native-contract。</td></tr>
+<tr><td>native</td><td>沒有實際 source/test seam；native NOT RUN。</td></tr>
+<tr><td>S3-G1</td><td>issuer/owner DTO leftover 可由 FAIL-3 關閉；G1 仍因 OW9 與未採納 D1 保持 OPEN。</td></tr>
+<tr><td>M01-S3-D3</td><td>文件矛盾可關；採納仍待 Owner。不標 PASS、不標 Skeleton。</td></tr>
+</table>
+
+<h2>6. 明確未宣稱</h2>
+<ul>
+<li>Owner adoption = NOT GRANTED</li>
+<li>Skeleton = NOT CREATED</li>
+<li>product tests / build / native / RED / GREEN = NOT RUN</li>
+<li>未改密封包位元組；建議字句僅存在本目錄，供後續獲授權的 correction 包複製</li>
+<li>未把獨立審查 PASS_BOUNDED 項改寫成產品 Green</li>
+</ul>
+
+<h2>7. 下一步</h2>
+<p>另一個獨立代理只審查 <code>s3-reconcile-20261115/</code>。若高階／Owner 核准，才可由 correction 作者把 <code>mapping.json</code> 的 <code>proposed_text</code> 寫進密封設計包。實作與 Skeleton 仍被 D1/OW9/G1 OPEN 擋住。</p>
+<p>機器可讀：<a href="mapping.json">mapping.json</a></p>
+</html>
