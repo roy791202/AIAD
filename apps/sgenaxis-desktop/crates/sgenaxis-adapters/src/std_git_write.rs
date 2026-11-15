@@ -59,6 +59,9 @@
 //!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
 //! - Pull (ff-only): `git pull --ff-only -- <remote> [<branch>]`. Never
 //!   `--rebase` / `--no-ff` / `--force` / `+refspec` / `--update-head-ok`.
+//! - Cherry-pick: `git cherry-pick -- <oid>`. Never `--ff` / `-n` /
+//!   `--no-commit` / `--continue` / `--skip` / `--abort` / `-x` / `--force`.
+//!   Never rebase. Never push. Missing oids and dirty overwrites fail honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -233,6 +236,23 @@ impl StdGitWrite {
         if crate::git_write::remote_url_out_of_scope(url) {
             return Err(PortError::Other(
                 "fetch/force/set-url/push remote writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_cherry_pick_oid(oid: &str) -> Result<(), PortError> {
+        if oid.trim().is_empty() {
+            return Err(PortError::Other("empty cherry-pick oid".into()));
+        }
+        if oid.contains('\n') || oid.contains('\0') {
+            return Err(PortError::Other(
+                "cherry-pick oid must be a single line".into(),
+            ));
+        }
+        if crate::git_write::cherry_pick_oid_out_of_scope(oid) {
+            return Err(PortError::Other(
+                "ff/no-commit/continue/rebase/push cherry-pick writes are out of scope".into(),
             ));
         }
         Ok(())
@@ -1058,6 +1078,23 @@ impl GitWritePort for StdGitWrite {
             args.push(b);
         }
         self.run(repo, &args)?;
+        Ok(())
+    }
+
+    fn cherry_pick(
+        &self,
+        repo: &str,
+        oid: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let source = oid.trim();
+        Self::require_cherry_pick_oid(source)?;
+        // One existing commit only: `git cherry-pick -- <oid>`.
+        // `--` stops option parse. Never `--ff` / `-n` / `--no-commit`.
+        // Never `--continue` / `--skip` / `--abort` (conflict_*).
+        // Never `-x` / `--force`. Never rebase. Never push.
+        self.run(repo, &["cherry-pick", "--", source])?;
         Ok(())
     }
 }
