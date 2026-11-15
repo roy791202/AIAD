@@ -30,6 +30,7 @@ pub mod git_stage_all;
 pub mod git_unstage_all;
 pub mod git_tag_push;
 pub mod git_switch;
+pub mod git_merge;
 pub mod guard_cmd;
 pub mod identity_preview;
 pub mod ipc;
@@ -52,6 +53,9 @@ pub use git_board_sync::{
 };
 pub use git_switch::{
     occupying_run_id, perform_git_switch, GitSwitchResult, ACTIVE_LEASE_BLOCKS_SWITCH,
+};
+pub use git_merge::{
+    perform_git_merge_ff_only, GitMergeFfOnlyResult, ACTIVE_LEASE_BLOCKS_MERGE,
 };
 pub use git_rename::{perform_git_rename_branch, GitRenameResult};
 pub use git_remote_rename::{perform_git_rename_remote, GitRemoteRenameResult};

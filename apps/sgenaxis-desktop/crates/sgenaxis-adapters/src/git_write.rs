@@ -55,6 +55,29 @@ pub(crate) fn branch_name_out_of_scope(value: &str) -> bool {
                 | "-t"
                 | "checkout"
                 | "switch"
+                | "--no-ff"
+                | "-x"
+                | "--squash"
+                | "--rebase"
+                | "--strategy"
+                | "-s"
+        )
+}
+
+/// Merge sources that would become flags, remotes, or a fetch.
+pub(crate) fn merge_branch_out_of_scope(value: &str) -> bool {
+    if branch_name_out_of_scope(value) {
+        return true;
+    }
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('+')
+        || lower.starts_with("refs/remotes/")
+        || lower.starts_with("remotes/")
+        || lower.contains("refs/remotes/")
+        || matches!(
+            lower.as_str(),
+            "pull" | "rebase" | "push" | "--no-ff" | "-x" | "--squash"
         )
 }
 
@@ -445,6 +468,15 @@ impl GitWritePort for GatedGitWrite {
         _repo: &str,
         _remote: &str,
         _branch: Option<&str>,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn merge_ff_only(
+        &self,
+        _repo: &str,
+        _branch: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

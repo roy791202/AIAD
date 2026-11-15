@@ -1428,6 +1428,116 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(root2);
     }
 
+    fn parent_count(repo: &str, rev: &str) -> usize {
+        let out = Command::new("git")
+            .args(["-C", repo, "rev-list", "--parents", "-n", "1", rev])
+            .output()
+            .expect("git rev-list --parents");
+        String::from_utf8_lossy(&out.stdout)
+            .split_whitespace()
+            .count()
+            .saturating_sub(1)
+    }
+
+    #[test]
+    fn std_write_merge_ff_only_moves_head_or_refuses_diverged_flags_and_missing() {
+        let root = unique_temp("merge-ff");
+        fs::create_dir_all(&root).unwrap();
+        git(&root, &["init", "-b", "main"]);
+        init_identity(&root);
+        fs::write(root.join("a.txt"), "v1\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "seed"]);
+        git(&root, &["branch", "--", "topic"]);
+        git(&root, &["checkout", "topic"]);
+        fs::write(root.join("a.txt"), "v2-topic\n").unwrap();
+        git(&root, &["add", "a.txt"]);
+        git(&root, &["commit", "-m", "topic tip"]);
+        let topic_tip = rev_parse(root.to_str().unwrap(), "HEAD");
+        git(&root, &["checkout", "main"]);
+        let repo = root.to_str().unwrap();
+        let head_before = rev_parse(repo, "HEAD");
+        assert_ne!(head_before, topic_tip);
+
+        let w = StdGitWrite::new();
+        w.merge_ff_only(repo, "topic", GitWriteApproval::denied())
+            .expect_err("PD-GIT-MERGE-FF-01-1 denied must not merge");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert!(
+            parent_count(repo, "HEAD") < 2,
+            "denied must not create a merge commit"
+        );
+
+        w.merge_ff_only(repo, "--no-ff", GitWriteApproval::granted())
+            .expect_err("PD-GIT-MERGE-FF-01-3 --no-ff out of scope");
+        w.merge_ff_only(repo, "-X", GitWriteApproval::granted())
+            .expect_err("PD-GIT-MERGE-FF-01-3 -X out of scope");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+
+        let missing = w
+            .merge_ff_only(repo, "ghost", GitWriteApproval::granted())
+            .expect_err("PD-GIT-MERGE-FF-01-3 missing name");
+        assert!(matches!(missing, PortError::Git(_) | PortError::Other(_)));
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+
+        w.merge_ff_only(repo, "topic", GitWriteApproval::granted())
+            .expect("PD-GIT-MERGE-FF-01-2 approved ff merge");
+        let head_after = rev_parse(repo, "HEAD");
+        assert_eq!(head_after, topic_tip);
+        assert!(
+            parent_count(repo, "HEAD") < 2,
+            "ff-only must not create a merge commit"
+        );
+        assert_eq!(
+            fs::read_to_string(root.join("a.txt")).unwrap(),
+            "v2-topic\n"
+        );
+
+        git(&root, &["checkout", "-b", "other"]);
+        fs::write(root.join("b.txt"), "other-only\n").unwrap();
+        git(&root, &["add", "b.txt"]);
+        git(&root, &["commit", "-m", "other unique"]);
+        git(&root, &["checkout", "main"]);
+        fs::write(root.join("c.txt"), "main-only\n").unwrap();
+        git(&root, &["add", "c.txt"]);
+        git(&root, &["commit", "-m", "main unique"]);
+        let diverged_head = rev_parse(repo, "HEAD");
+        let diverged = w
+            .merge_ff_only(repo, "other", GitWriteApproval::granted())
+            .expect_err("PD-GIT-MERGE-FF-01-3 diverged must refuse");
+        assert!(matches!(diverged, PortError::Git(_)));
+        assert_eq!(rev_parse(repo, "HEAD"), diverged_head);
+        assert!(
+            parent_count(repo, "HEAD") < 2,
+            "diverged refuse must not create a merge commit"
+        );
+
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo2 = work.to_str().unwrap();
+        let tracking_before = rev_parse(repo2, "refs/remotes/origin/main");
+        let head2 = rev_parse(repo2, "HEAD");
+        let remote_name = StdGitWrite::new()
+            .merge_ff_only(repo2, "origin/main", GitWriteApproval::granted())
+            .expect_err("remote-tracking name must not merge as fetch");
+        assert!(matches!(
+            remote_name,
+            PortError::Git(_) | PortError::Other(_)
+        ));
+        let msg = remote_name.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("remote-tracking") || msg.contains("out of scope"),
+            "must refuse remote-tracking without fetch: {remote_name}"
+        );
+        assert_eq!(rev_parse(repo2, "HEAD"), head2);
+        assert_eq!(
+            rev_parse(repo2, "refs/remotes/origin/main"),
+            tracking_before
+        );
+
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     fn ref_exists(repo: &str, rev: &str) -> bool {
         Command::new("git")
             .args(["-C", repo, "show-ref", "--verify", "--quiet", rev])

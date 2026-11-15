@@ -1198,6 +1198,63 @@ fn gated_git_write_blocks_fetch_even_when_approved() {
     assert!(matches!(prune, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
     let pull = w.pull_ff_only("/any", "origin", None, GitWriteApproval::granted());
     assert!(matches!(pull, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+    let merge = w.merge_ff_only("/any", "topic", GitWriteApproval::granted());
+    assert!(matches!(merge, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
+#[test]
+fn fake_git_write_merge_ff_only_denied_diverged_flags_and_ff_success() {
+    let w = FakeGitWrite::new();
+    w.create_branch("/r", "topic", GitWriteApproval::granted())
+        .expect("seed local topic");
+    let head_before = w.local_head("/r");
+
+    w.merge_ff_only("/r", "topic", GitWriteApproval::denied())
+        .expect_err("PD-GIT-MERGE-FF-01-1 denied must not merge");
+    assert!(w.last_merge_ff_only("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+    assert_eq!(w.push_count("/r"), 0);
+    assert!(w.last_fetch("/r").is_none());
+    assert!(w.last_pull_ff_only("/r").is_none());
+
+    w.merge_ff_only("/r", "--no-ff", GitWriteApproval::granted())
+        .expect_err("PD-GIT-MERGE-FF-01-3 --no-ff out of scope");
+    w.merge_ff_only("/r", "-X", GitWriteApproval::granted())
+        .expect_err("PD-GIT-MERGE-FF-01-3 -X out of scope");
+    assert!(w.last_merge_ff_only("/r").is_none());
+
+    let missing = w.merge_ff_only("/r", "ghost", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("not found"))
+    );
+
+    w.mark_remote_only("/r", "origin/main");
+    let remote_only = w.merge_ff_only("/r", "origin/main", GitWriteApproval::granted());
+    assert!(
+        matches!(remote_only, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("remote-tracking"))
+    );
+    assert!(w.last_fetch("/r").is_none());
+    assert!(w.last_merge_ff_only("/r").is_none());
+
+    w.mark_merge_diverged("/r");
+    let diverged = w
+        .merge_ff_only("/r", "topic", GitWriteApproval::granted())
+        .expect_err("PD-GIT-MERGE-FF-01-3 diverged");
+    assert!(matches!(diverged, PortError::Git(_)));
+    assert!(w.last_merge_ff_only("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+
+    let w2 = FakeGitWrite::new();
+    w2.create_branch("/r", "topic", GitWriteApproval::granted())
+        .expect("seed");
+    let before = w2.local_head("/r");
+    w2.merge_ff_only("/r", "topic", GitWriteApproval::granted())
+        .expect("PD-GIT-MERGE-FF-01-2 ff merge");
+    assert_eq!(w2.last_merge_ff_only("/r").as_deref(), Some("topic"));
+    assert_ne!(w2.local_head("/r"), before);
+    assert_eq!(w2.push_count("/r"), 0);
+    assert!(w2.last_fetch("/r").is_none());
+    assert!(w2.last_pull_ff_only("/r").is_none());
 }
 
 #[test]
