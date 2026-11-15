@@ -1,0 +1,222 @@
+{
+  "reviewer": "/root/m01_s3_independent_review_20261115",
+  "card": "PD-P1-M01-S3-INDEP-REVIEW-01",
+  "task_outcome": "BLOCKED",
+  "owner_adoption": "NOT GRANTED",
+  "product_tests": "NOT RUN",
+  "build": "NOT RUN",
+  "native": "NOT RUN",
+  "RED": "NOT RUN",
+  "items": [
+    {
+      "id": "M01-S3-D1",
+      "topic": "Native read-only port/adapter and canonicalization",
+      "verdict": "OPEN",
+      "against": ["S3-G1"],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D1",
+        "s3-exact-design/native-contract.json windows_adapter and exact_api_constraints",
+        "s3-exact-design/lifecycle-contract.json OW9"
+      ],
+      "finding": "native-contract.json proposes a closed Windows fixed-drive, reparse-reject, long-name, identity-revalidate, RAII handle policy. OW9 still says exact native canonicalization/reparse policy and failure-injection seam remain an unresolved full-packet gate. D1 cannot be treated as locked while OW9 leaves the same policy unresolved. Owner adoption not invented. Native execution NOT RUN."
+    },
+    {
+      "id": "M01-S3-D2",
+      "topic": "Envelope and dependency expansion",
+      "verdict": "PASS_BOUNDED",
+      "against": [],
+      "evidence": [
+        "s3-exact-design/envelope.json allowed_files (18 unique) and scope_delta (5)",
+        "s3-exact-design/decisions.json M01-S3-D2",
+        "s3-exact-design/native-contract.json dependency windows-sys=0.61.2"
+      ],
+      "finding": "Document lists exactly 18 unique product paths, names the 5-file expansion, pins windows-sys 0.61.2, and labels status PROPOSED_SCOPE_EXPANSION_REQUIRES_OWNER_ADOPTION. Bounded pass as a proposal inventory only. Not Owner adoption; no product files modified or built."
+    },
+    {
+      "id": "M01-S3-D3",
+      "topic": "Authority and lifecycle",
+      "verdict": "OPEN",
+      "against": ["S3-G1", "S3-G2"],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D3",
+        "s3-exact-design/lifecycle-contract.json OW1-OW10, transitions, clarifications",
+        "s3-exact-design/lifecycle-contract.json RQ2 leftover gap pointer"
+      ],
+      "finding": "OW1-OW10 plus transitions specify actual WebviewWindow caller, one main owner generation, native-minted selection, cancel/reload/close/root-switch, and WORK registry separation. RQ2 still says exact issuer and owner DTO remain separate S3-G1/G2 decisions. D3 adopt language and RQ2 deferral cannot both be true. Owner adoption not invented."
+    },
+    {
+      "id": "M01-S3-D4",
+      "topic": "Request dedupe",
+      "verdict": "PASS_BOUNDED",
+      "against": ["S3-G3"],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D4",
+        "s3-exact-design/lifecycle-contract.json RQ1-RQ9",
+        "s3-exact-design/dto-contract.json errors InFlight RequestIdConflict RequestCapacity"
+      ],
+      "finding": "Fingerprint, same-id same/different capture, in-flight, terminal retention, no across-restart exactly-once, 128/1024 caps, and named errors are specified as a proposal. RQ10 DTO leftover is scored under D5/G5, not as absence of G3 mechanics. Bounded document pass only; tests NOT RUN; Owner not granted."
+    },
+    {
+      "id": "M01-S3-D5",
+      "topic": "DTO and failures",
+      "verdict": "FAIL",
+      "against": ["S3-G4", "S3-G5"],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D5",
+        "s3-exact-design/dto-contract.json responses.Save.binding_status",
+        "s3-exact-design/lifecycle-contract.json RQ10"
+      ],
+      "finding": "D5 claims a closed command/response/error contract with committed_unbound/detached. dto-contract Save.binding_status is unchanged|bound|detached|committed_unbound. RQ10 bindingStatus is unchanged, eligible or detached and still says exact DTO/error mapping remains S3-G5 work. Closed-contract claim contradicts both the leftover G5 pointer and the eligible vs bound/committed_unbound vocabulary. FAIL of packet lock, not a product run."
+    },
+    {
+      "id": "M01-S3-D6",
+      "topic": "Six-step UI and three-entry migration",
+      "verdict": "PASS_BOUNDED",
+      "against": ["S3-G5"],
+      "evidence": [
+        "s3-exact-design/ui-schema.json steps basics..preview",
+        "s3-exact-design/permissions-and-migration.json legacy and ui_routes",
+        "s3-entry-review/module-spec.json routes host_new_project_directory, host_create_project_directory, host_create_project_with_preferences"
+      ],
+      "finding": "Six steps, validation/disabled/error/accessibility shared states, three legacy HOST commands kept fail-closed as WIZARD_REQUIRED, and UI file.new/menu/toolbar/keyboard routed to ProjectWizard.open are specified. Closes the UI-migration half of G5 as a proposal. Does not lock the DTO vocabulary FAIL. Planned UI cases remain NOT RUN."
+    },
+    {
+      "id": "M01-S3-D7",
+      "topic": "Finish-review authority boundary",
+      "verdict": "PASS_BOUNDED",
+      "against": [],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D7",
+        "s3-exact-design/ui-schema.json preview action",
+        "s3-entry-review planned S3-ENTRY-10"
+      ],
+      "finding": "Packet explicitly narrows finalize to Draft save plus missing decisions; generation_allowed false; no fabricated approvals or Defined promotion in this slice. Aligns with entry-review S3-ENTRY-10 intent as a proposal. Owner adoption not invented; RED NOT RUN."
+    },
+    {
+      "id": "M01-S3-D8",
+      "topic": "Test/acceptance and platform gates",
+      "verdict": "PASS_BOUNDED",
+      "against": [],
+      "evidence": [
+        "s3-exact-design/decisions.json M01-S3-D8",
+        "s3-exact-design/verification.json product_tests/build/native/independent_review NOT RUN",
+        "s3-entry-review/verification.json product_tests/build/native/RED NOT RUN"
+      ],
+      "finding": "D8 itself requires Windows11 and native alias NOT RUN as separate evidence gates and forbids inferring them from mocks. Reviewer did not run product/build/native/RED. Bounded pass of the gate statement, not a test PASS."
+    },
+    {
+      "id": "envelope",
+      "topic": "18-file envelope / dto-native-lifecycle packet surface",
+      "verdict": "PASS_BOUNDED",
+      "against": ["S3-G5"],
+      "evidence": [
+        "s3-exact-design/envelope.json",
+        "s3-entry-review/module-spec.json scope.candidate_product_envelope"
+      ],
+      "finding": "18 unique allowed_files, restrictions, protected S1/S2/IO, subtasks N/H/U/I. Entry-review still called the old candidate envelope unapproved; this packet replaces that candidate as a proposal with explicit Owner-adoption status. Not an adopted envelope."
+    },
+    {
+      "id": "dto",
+      "topic": "dto-contract.json vs G4/G5",
+      "verdict": "FAIL",
+      "against": ["S3-G4", "S3-G5"],
+      "evidence": [
+        "s3-exact-design/dto-contract.json requests (11 commands), errors, s2_mapping (13 variants)",
+        "s3-exact-design/lifecycle-contract.json RQ10"
+      ],
+      "finding": "Closed request shapes, exhaustive listed S2 tags, Partial/RecoveryRequired as error not success, and captured revision strings exist. FAIL because binding_status vocabulary is not the same closed set as RQ10, and RQ10 still assigns exact mapping to remaining S3-G5 work. Reviewer did not invent Owner adoption."
+    },
+    {
+      "id": "native",
+      "topic": "native-contract.json vs G1",
+      "verdict": "OPEN",
+      "against": ["S3-G1"],
+      "evidence": [
+        "s3-exact-design/native-contract.json port/operations/windows_adapter/test_seam",
+        "s3-exact-design/lifecycle-contract.json OW3 OW9"
+      ],
+      "finding": "WizardNativePort, opaque NativeSelection, display path inert, picker minting, and Windows API constraints specify issuer/storage/revocation as a proposal and reject raw path authority. Remains OPEN because OW9 still marks canonicalization/reparse as unresolved and test_seam states no actual source/test seam was created. Native NOT RUN."
+    },
+    {
+      "id": "lifecycle",
+      "topic": "lifecycle-contract.json vs G1-G4",
+      "verdict": "FAIL",
+      "against": ["S3-G1", "S3-G2", "S3-G3", "S3-G4"],
+      "evidence": [
+        "s3-exact-design/lifecycle-contract.json OW1-OW10 RQ1-RQ10 clarifications",
+        "s3-exact-design/decisions.json D3 D4 D5"
+      ],
+      "finding": "Substantive OW/RQ/transition text exists for caller, owner, fingerprint, late completion, and no-rollback. FAIL because the same file still points S3-G1/G2/G5 as remaining decisions (RQ2, RQ10) and OW9 as unresolved, which contradicts D3-D5 adopt-as-closed wording. Packet is not a single locked revision."
+    },
+    {
+      "id": "S3-G1",
+      "topic": "Native selection authority issuer/storage/revocation",
+      "verdict": "OPEN",
+      "entry_next": "Specify actual Tauri sender/window authentication, parent selection creation, session binding and cancellation/revocation lifetime; do not reuse raw path as authority.",
+      "evidence": [
+        "s3-entry-review/module-spec.json gaps S3-G1",
+        "s3-exact-design/lifecycle-contract.json OW1 OW3 OW5 RQ2",
+        "s3-exact-design/native-contract.json"
+      ],
+      "finding": "Proposal specifies injected WebviewWindow guard, native-picker-only opaque selection IDs, purpose binding, and cancel/reselect/reload revocation; display path is inert. Not closed: RQ2 still names issuer/owner DTO as remaining S3-G1/G2 decisions. Not Owner-adopted. Product/native NOT RUN."
+    },
+    {
+      "id": "S3-G2",
+      "topic": "Draft owner lifecycle",
+      "verdict": "PASS_BOUNDED",
+      "entry_next": "Define owner key and every transition, stale ownership outcomes, retained draft reopen and project switch guards; no hidden global owner.",
+      "evidence": [
+        "s3-entry-review/module-spec.json gaps S3-G2",
+        "s3-exact-design/lifecycle-contract.json OW2 OW4 OW6 OW7 transitions clarifications"
+      ],
+      "finding": "Owner key (runtime epoch + window instance nonce + checked u64 generation), transitions including late picker STALE_OWNER, cancel/destroy, bound-project change, reopen via fresh native+S2, OwnerBusy on second start, and no hidden global owner are specified. Bounded document closure of the G2 next-step as a proposal. RQ2 leftover owner-DTO phrase is recorded under G1/D3, not as missing transitions. Not adopted; RED NOT RUN."
+    },
+    {
+      "id": "S3-G3",
+      "topic": "request_id idempotency",
+      "verdict": "PASS_BOUNDED",
+      "entry_next": "Define request fingerprint, same-ID same/different payload, in-flight replay, terminal retention and restart semantics, bounded lifetime and exact errors.",
+      "evidence": [
+        "s3-entry-review/module-spec.json gaps S3-G3",
+        "s3-exact-design/lifecycle-contract.json RQ3-RQ9",
+        "s3-entry-review planned S3-ENTRY-04 S3-ENTRY-05 S3-ENTRY-06"
+      ],
+      "finding": "Typed immutable capture, REQUEST_ID_CONFLICT vs IN_FLIGHT vs replayed terminal, runtime-only no restart exactly-once, capacity errors, and Partial/RecoveryRequired as terminal stored outcomes are specified. Bounded document pass against G3 next-step. Implementation/RED NOT RUN; Owner not granted."
+    },
+    {
+      "id": "S3-G4",
+      "topic": "Late UI current-project binding",
+      "verdict": "FAIL",
+      "entry_next": "Define captured owner/request/revision correlation, committed-but-detached response and no rollback of committed bytes; stale completion must not switch project.",
+      "evidence": [
+        "s3-entry-review/module-spec.json gaps S3-G4",
+        "s3-exact-design/lifecycle-contract.json RQ7 RQ10 OW7 clarifications atomic binding",
+        "s3-exact-design/dto-contract.json responses.Save"
+      ],
+      "finding": "No-rollback, detached completion, server-side bind (UI must not call bindPickedProjectRoot for new wizard result), and committed_unbound on settings failure are proposed. FAIL because the response discriminator is not one closed enum: dto uses bound/committed_unbound; RQ10 uses eligible. G4 cannot be marked locked until that vocabulary is a single contract. Owner adoption not invented."
+    },
+    {
+      "id": "S3-G5",
+      "topic": "Complete S3 response/error/permission/caller/UI contract",
+      "verdict": "FAIL",
+      "entry_next": "Reconcile with adopted S2 typed outcomes including Partial/RecoveryRequired and commit evidence; define command registration/permissions and UI state projection before Skeleton.",
+      "evidence": [
+        "s3-entry-review/module-spec.json gaps S3-G5",
+        "s3-exact-design/dto-contract.json s2_mapping",
+        "s3-exact-design/permissions-and-migration.json",
+        "s3-exact-design/lifecycle-contract.json RQ10"
+      ],
+      "finding": "11 commands, permissions group on main only, S2 13-variant mapping, Partial/RecoveryRequired retained as errors, and six-step UI schema exist as proposal text. FAIL because RQ10 still assigns exact DTO/error mapping to remaining S3-G5 work while D5 claims the contract closed. Packet is not internally locked for Skeleton. Permissions/UI portions are otherwise specified; product/RED NOT RUN."
+    }
+  ],
+  "counts": {
+    "PASS_BOUNDED": 8,
+    "FAIL": 5,
+    "OPEN": 4
+  },
+  "evidence_paths": [
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-independent-review-20261115/index.html",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-independent-review-20261115/results.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-independent-review-20261115/review.json"
+  ]
+}
