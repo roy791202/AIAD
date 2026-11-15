@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M07 durable index options 20261115</title>
+<style>
+body{font:16px/1.55 system-ui;max-width:1080px;margin:32px auto;padding:20px;background:#111827;color:#e5e7eb}
+h1,h2{color:#93c5fd}section{background:#1f2937;padding:18px;margin:18px 0;border-radius:10px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,monospace;background:#0b1220;padding:12px}
+.badge{color:#fbbf24}a{color:#93c5fd}code{color:#fde68a}
+</style>
+<h1>M07 · Durable index 選項包（原 scope 文件）</h1>
+<p class="badge">PLANNING ONLY · Owner 未採納 · 產品 / native timer·capture·restart / build NOT RUN · 不可藍燈或 Done</p>
+<p>作者 <code>cursor-grok-dev-agent</code>（<code>AI_AGENT_ROLE=dev-agent</code>）。本包只整理 durable index 與 ordinal 拒絕規則，不把 Published 當 index 認證，不把本地 baseline 當 atomic replay/restart，不把 CapturedAttempt 當 ordinal 公式。</p>
+<p>保留封存：<a href="../provider-source-map-correction-20261104/index.html">provider-source-map-correction-20261104</a>。RS04 / RS05 / RS06 只引用、不重開。</p>
+<section>
+<h2>缺口（現況 ≠ 規格）</h2>
+<ul>
+<li>可信 HOST <code>Published</code> 事件 ≠ durable RecoveryIndex 認證（引用 RS03/RS05）。</li>
+<li>本地 recovery baseline ≠ atomic replay/restart（RA-L2 / PH-G4）。</li>
+<li><code>CapturedAttempt</code> 沒有 ordinal / operation-id 公式（RA-L1 / MP1）。</li>
+<li>RA-L1～3、PH-G2～4、MP1～4 <code>selected=null</code>。</li>
+<li>Native timer / capture / restart 仍為 NOT RUN；偽 PASS 必須拒絕。</li>
+</ul>
+</section>
+<section>
+<h2>候選選項（皆未選定）</h2>
+<pre>{
+  "IDX-O1": "獨立 RecoveryIndex issuer/CAS/receipt；Published 仍是之後的可信 HOST 事件",
+  "IDX-O2": "改版 Complete，把 durable index 做成顯式區分欄；未做、未選",
+  "RA-C-O1": "承認的 u64 ordinal 公式（含 illustrative /0）",
+  "RA-C-O2": "固定字串 0 的 schema 改版"
+}</pre>
+</section>
+<section>
+<h2>BDD 拒絕</h2>
+<table>
+<tr><td>M07-IDX-01</td><td>空 ordinal → REJECT_EMPTY_ORDINAL</td></tr>
+<tr><td>M07-IDX-02</td><td>越界／非十進位 u64 → REJECT_OUT_OF_RANGE_ORDINAL</td></tr>
+<tr><td>M07-IDX-03</td><td>把 Published 當 durable index → REJECT_PUBLISHED_AS_DURABLE_INDEX</td></tr>
+<tr><td>M07-IDX-04</td><td>本地 baseline 當 atomic replay → REJECT_LOCAL_BASELINE_AS_ATOMIC_REPLAY</td></tr>
+<tr><td>M07-IDX-05</td><td>CapturedAttempt ordinal 公式 → REJECT_CAPTURED_ATTEMPT_ORDINAL_FORMULA</td></tr>
+<tr><td>M07-IDX-06</td><td>偽 native restart PASS → REJECT_FALSE_NATIVE_RESTART_PASS</td></tr>
+<tr><td>M07-IDX-07</td><td>RA/PH/MP 維持 null</td></tr>
+<tr><td>M07-IDX-08</td><td>只引用封閉 RS04/RS05/RS06</td></tr>
+</table>
+<p>文件 oracle：<code>python3 steps.py</code>。獨立審查、產品、native、build 仍 NOT RUN。</p>
+</section>
+<section>
+<h2>封存引用</h2>
+<p>RS04 115–145 經過門檻（供應 elapsed，非 OS timer）。RS05 157–174 Published 只推進 supplied fingerprint。RS06 212–216 只做字串語法。校正包 hashes：module-spec <code>3379a34017cfa55d199194961485251a7ff579cd7883ed0ab254fb23260951a4</code>；source-spans <code>c5d622856063f75af66fc87336ca21b65ae1f40a3a8839efcb576b857224f74d</code>。</p>
+</section>
+</html>
