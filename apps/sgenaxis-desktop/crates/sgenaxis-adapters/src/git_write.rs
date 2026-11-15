@@ -156,6 +156,45 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
         })
 }
 
+/// OIDs that would become flags or widen cherry-pick beyond `git cherry-pick -- <oid>`.
+pub fn cherry_pick_oid_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    t.starts_with('-')
+        || t.starts_with('+')
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains(' ')
+        || t.contains('\\')
+        || t.contains('~')
+        || t.contains('^')
+        || t.contains(':')
+        || t.contains('?')
+        || t.contains('*')
+        || t.contains('[')
+        || lower.contains("..")
+        || lower.contains("@{")
+        || matches!(
+            lower.as_str(),
+            "-n" | "--no-commit"
+                | "--ff"
+                | "--ff-only"
+                | "--continue"
+                | "--skip"
+                | "--abort"
+                | "-x"
+                | "-m"
+                | "--mainline"
+                | "-f"
+                | "--force"
+                | "--allow-empty"
+                | "rebase"
+                | "--rebase"
+                | "push"
+                | "--push"
+        )
+}
+
 /// Paths that would become flags or widen `git add` beyond one conflicted file.
 pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
@@ -445,6 +484,15 @@ impl GitWritePort for GatedGitWrite {
         _repo: &str,
         _remote: &str,
         _branch: Option<&str>,
+        _approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn cherry_pick(
+        &self,
+        _repo: &str,
+        _oid: &str,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))

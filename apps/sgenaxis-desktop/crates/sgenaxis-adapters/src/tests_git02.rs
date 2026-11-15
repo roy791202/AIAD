@@ -2188,4 +2188,123 @@ mod std_write_temp {
         let _ = fs::remove_dir_all(work.parent().unwrap());
         let _ = fs::remove_dir_all(&conflict);
     }
+
+    // PD-GIT-CHERRY-PICK-01-1/2/3: denied no mutation; approved `git cherry-pick -- oid`
+    // creates a commit (no rebase/push/--ff); missing/dirty/-n/--ff fail honestly.
+    #[test]
+    fn std_write_cherry_pick_applies_commit_or_refuses_missing_dirty_and_flags() {
+        let root = unique_temp("cherry");
+        fs::create_dir_all(&root).unwrap();
+        let work = root.join("work");
+        fs::create_dir_all(&work).unwrap();
+        git(&work, &["init", "-b", "main"]);
+        init_identity(&work);
+        fs::write(work.join("a.txt"), "base\n").unwrap();
+        git(&work, &["add", "a.txt"]);
+        git(&work, &["commit", "-m", "seed"]);
+        git(&work, &["checkout", "-b", "topic"]);
+        fs::write(work.join("b.txt"), "picked\n").unwrap();
+        git(&work, &["add", "b.txt"]);
+        git(&work, &["commit", "-m", "feat: picked"]);
+        let source = rev_parse(work.to_str().unwrap(), "HEAD");
+        git(&work, &["checkout", "main"]);
+        fs::write(work.join("c.txt"), "main-only\n").unwrap();
+        git(&work, &["add", "c.txt"]);
+        git(&work, &["commit", "-m", "main ahead"]);
+        let repo = work.to_str().unwrap();
+        let head_before = rev_parse(repo, "HEAD");
+        assert!(!work.join("b.txt").exists());
+
+        let w = StdGitWrite::new();
+        w.cherry_pick(repo, &source, GitWriteApproval::denied())
+            .expect_err("denied cherry-pick must not mutate");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+        assert!(!work.join("b.txt").exists());
+        assert!(!work.join(".git").join("rebase-merge").exists());
+        assert!(!work.join(".git").join("CHERRY_PICK_HEAD").exists());
+
+        w.cherry_pick(repo, "-n", GitWriteApproval::granted())
+            .expect_err("-n is out of scope");
+        w.cherry_pick(repo, "--ff", GitWriteApproval::granted())
+            .expect_err("--ff is out of scope");
+        w.cherry_pick(repo, "--continue", GitWriteApproval::granted())
+            .expect_err("continue is conflict_*");
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+
+        let missing = w
+            .cherry_pick(
+                repo,
+                "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("missing oid");
+        assert!(matches!(missing, PortError::Git(_)));
+        assert_eq!(rev_parse(repo, "HEAD"), head_before);
+
+        w.cherry_pick(repo, &source, GitWriteApproval::granted())
+            .expect("approved cherry-pick");
+        let head_after = rev_parse(repo, "HEAD");
+        assert_ne!(head_after, head_before);
+        assert_ne!(
+            head_after, source,
+            "non-descendant cherry-pick must create a new commit (no --ff shortcut)"
+        );
+        assert_eq!(fs::read_to_string(work.join("b.txt")).unwrap(), "picked\n");
+        assert_eq!(
+            fs::read_to_string(work.join("c.txt")).unwrap(),
+            "main-only\n"
+        );
+        let subject = Command::new("git")
+            .args(["-C", repo, "log", "-1", "--pretty=%s"])
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&subject.stdout).trim(),
+            "feat: picked"
+        );
+        assert!(!work.join(".git").join("rebase-merge").exists());
+        assert!(!work.join(".git").join("rebase-apply").exists());
+        assert!(!work.join(".git").join("CHERRY_PICK_HEAD").exists());
+        let parents = Command::new("git")
+            .args(["-C", repo, "rev-list", "--parents", "-n", "1", "HEAD"])
+            .output()
+            .unwrap();
+        let parent_line = String::from_utf8_lossy(&parents.stdout);
+        assert_eq!(
+            parent_line.split_whitespace().count(),
+            2,
+            "cherry-pick must create a single-parent commit, not a merge: {parent_line}"
+        );
+
+        let dirty_root = unique_temp("cherry-dirty");
+        fs::create_dir_all(&dirty_root).unwrap();
+        let dirty_work = dirty_root.join("work");
+        fs::create_dir_all(&dirty_work).unwrap();
+        git(&dirty_work, &["init", "-b", "main"]);
+        init_identity(&dirty_work);
+        fs::write(dirty_work.join("a.txt"), "base\n").unwrap();
+        git(&dirty_work, &["add", "a.txt"]);
+        git(&dirty_work, &["commit", "-m", "seed"]);
+        git(&dirty_work, &["checkout", "-b", "topic"]);
+        fs::write(dirty_work.join("a.txt"), "picked\n").unwrap();
+        git(&dirty_work, &["add", "a.txt"]);
+        git(&dirty_work, &["commit", "-m", "feat: overlap"]);
+        let dirty_source = rev_parse(dirty_work.to_str().unwrap(), "HEAD");
+        git(&dirty_work, &["checkout", "main"]);
+        fs::write(dirty_work.join("a.txt"), "dirty local\n").unwrap();
+        let dirty_repo = dirty_work.to_str().unwrap();
+        let dirty_head = rev_parse(dirty_repo, "HEAD");
+        let dirty_err = StdGitWrite::new()
+            .cherry_pick(dirty_repo, &dirty_source, GitWriteApproval::granted())
+            .expect_err("dirty overwrite must fail honestly");
+        assert!(matches!(dirty_err, PortError::Git(_)));
+        assert_eq!(rev_parse(dirty_repo, "HEAD"), dirty_head);
+        assert_eq!(
+            fs::read_to_string(dirty_work.join("a.txt")).unwrap(),
+            "dirty local\n"
+        );
+
+        let _ = fs::remove_dir_all(&root);
+        let _ = fs::remove_dir_all(&dirty_root);
+    }
 }

@@ -49,8 +49,8 @@ pub use compose::{boxed_deploy_std, std_deploy};
 pub use fake::{FakeDeploy, FakeFileSystem, FakeGit, FakeGitWrite, FakePath, FakeProcess};
 pub use git_summary::{summarize_worktree, GitWorkbenchSummary};
 pub use git_write::{
-    git_error_redacted, redact_credentials, GatedGitWrite, GIT_WRITE_GATED_MSG,
-    GIT_WRITE_NOT_APPROVED_MSG,
+    cherry_pick_oid_out_of_scope, git_error_redacted, redact_credentials, GatedGitWrite,
+    GIT_WRITE_GATED_MSG, GIT_WRITE_NOT_APPROVED_MSG,
 };
 
 #[cfg(feature = "std-adapters")]
