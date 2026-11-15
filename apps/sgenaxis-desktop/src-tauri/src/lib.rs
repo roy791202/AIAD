@@ -154,6 +154,7 @@ pub fn run() {
             commands::git_write_fetch,
             commands::git_write_fetch_prune,
             commands::git_write_pull_ff_only,
+            commands::git_write_merge_ff_only,
             commands::deploy_status,
             commands::deploy_check,
             commands::list_artifacts,
@@ -231,6 +232,7 @@ mod host_ipc_integration {
             "git_write_fetch",
             "git_write_fetch_prune",
             "git_write_pull_ff_only",
+            "git_write_merge_ff_only",
             "deploy_status",
             "deploy_check",
             "list_artifacts",
@@ -269,6 +271,7 @@ mod host_ipc_integration {
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
+        assert!(!is_allowed("git_merge"));
         assert!(!is_allowed("git_conflict_save"));
         assert!(!is_allowed("git_rebase_skip"));
         assert!(!is_allowed("git_reset_hard"));

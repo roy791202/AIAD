@@ -59,6 +59,9 @@
 //!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
 //! - Pull (ff-only): `git pull --ff-only -- <remote> [<branch>]`. Never
 //!   `--rebase` / `--no-ff` / `--force` / `+refspec` / `--update-head-ok`.
+//! - Merge (ff-only): `git merge --ff-only -- <local-branch>`. Never `--no-ff`
+//!   / `-X` / `--squash` / pull / rebase / push. Local branches only; never
+//!   fetch a remote-tracking name. Diverged / missing names fail honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -206,6 +209,43 @@ impl StdGitWrite {
             ));
         }
         Ok(())
+    }
+
+    fn require_merge_source(name: &str) -> Result<(), PortError> {
+        Self::require_branch_name(name)?;
+        if crate::git_write::merge_branch_out_of_scope(name) {
+            return Err(PortError::Other(
+                "no-ff/strategy/remote-tracking merge writes are out of scope".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn reject_remote_tracking_source(&self, repo: &str, branch: &str) -> Result<(), PortError> {
+        let local_ref = format!("refs/heads/{branch}");
+        if self
+            .run(repo, &["show-ref", "--verify", "--quiet", &local_ref])
+            .is_ok()
+        {
+            return Ok(());
+        }
+        let tracking = format!("refs/remotes/{branch}");
+        let tracking_exists = self
+            .run(repo, &["show-ref", "--verify", "--quiet", &tracking])
+            .is_ok();
+        let remote_prefixed = branch.split_once('/').is_some_and(|(remote, rest)| {
+            !rest.is_empty()
+                && self
+                    .run(repo, &["remote"])
+                    .map(|listed| listed.lines().any(|line| line.trim() == remote))
+                    .unwrap_or(false)
+        });
+        if tracking_exists || remote_prefixed {
+            return Err(PortError::Git(format!(
+                "refusing remote-tracking name '{branch}' (local branches only; no fetch)"
+            )));
+        }
+        Err(PortError::Git(format!("branch '{branch}' not found")))
     }
 
     fn require_remote_name(name: &str) -> Result<(), PortError> {
@@ -1058,6 +1098,22 @@ impl GitWritePort for StdGitWrite {
             args.push(b);
         }
         self.run(repo, &args)?;
+        Ok(())
+    }
+
+    fn merge_ff_only(
+        &self,
+        repo: &str,
+        branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let name = branch.trim();
+        Self::require_merge_source(name)?;
+        self.reject_remote_tracking_source(repo, name)?;
+        // Fast-forward only: `git merge --ff-only -- <local-branch>`.
+        // Never `--no-ff` / `-X` / `--squash` / pull / rebase / push.
+        self.run(repo, &["merge", "--ff-only", "--", name])?;
         Ok(())
     }
 }
