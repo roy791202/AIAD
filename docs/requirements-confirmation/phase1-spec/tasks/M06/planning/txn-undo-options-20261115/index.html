@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>M06 transaction / Undo options 20261115</title>
+<style>
+body{font:16px/1.6 system-ui;max-width:1100px;margin:32px auto;padding:20px;background:#111827;color:#e5e7eb}
+h1,h2{color:#93c5fd}section{background:#1f2937;padding:20px;margin:20px 0;border-radius:10px}
+.badge{color:#fcd34d}code,pre{font:14px/1.5 monospace}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0f172a;padding:12px;border-radius:8px}
+table{border-collapse:collapse;width:100%}td,th{border:1px solid #475569;padding:8px;vertical-align:top}th{background:#334155}
+a{color:#93c5fd}
+</style>
+<h1>M06 · 交易／Undo 選項（原 scope 文件包）</h1>
+<p class="badge">PLANNING ONLY · Owner 未採納 · Yellow 保留 · 產品／native／build NOT RUN · 作者文件不等於驗收</p>
+<p>身分：<code>dev-agent</code>（AI_AGENT_ROLE=dev-agent）。工單 <code>PD-P1-M06-PREP-01</code>。本包只補下一個原範圍文件：交易與 Undo 選項。不改產品程式、不 Done、不藍燈、不代 Owner 採納。</p>
+<p>保留：<a href="../provider-source-map-20261104/index.html"><code>docs/requirements-confirmation/phase1-spec/tasks/M06/planning/provider-source-map-20261104/</code></a>（module-spec sha256 <code>7ceb9ae147fcf53ae109a81b28f9e8769d8d504bc8ca2fd942feca9184e53bd7</code>）。</p>
+<section>
+<h2>缺口（不得把 local 當 authenticated）</h2>
+<p>local plan / asset union / commit / Undo / digest guard <strong>不等於</strong> authenticated issuer / Held / root CAS / 跨模組 rollback / ESS reference closure。</p>
+<table>
+<tr><th>ID</th><th>local 事實</th><th>仍缺</th><th>selected</th></tr>
+<tr><td>MP1</td><td>MutationPlan + 四欄 CommitProjection 只是 session 一致性</td><td>M04 issuer／proof 與 M05 same-CAS inclusion</td><td>null</td></tr>
+<tr><td>MP2</td><td>asset-version union 與 local Undo</td><td>三 root 註冊／epoch／fence、Undo-purpose Held</td><td>null</td></tr>
+<tr><td>MP3</td><td>local commit／undo</td><td>root-transfer 失敗後的跨模組完整 rollback</td><td>null</td></tr>
+<tr><td>MP4</td><td>from_parts + digest guard</td><td>typed ESS projector 與完整引用改寫</td><td>null</td></tr>
+</table>
+<p>MH1～MH6 全部 <code>PROPOSED_PENDING_OWNER</code>。</p>
+</section>
+<section>
+<h2>BDD-19 權威義務（不得縮小）</h2>
+<pre>@BDD-19 @M06 @REQ-11
+  規則: 合併失敗回復
+    場景: 合併失敗回復
+      假如 文件及素材已有完整前狀態
+      當 合併在任一提交階段失敗
+      那麼 回到合併前完整狀態、來源不變且不增加Undo</pre>
+<p>phase1.feature sha256 <code>71f031fe4739204ea2094ded8a747b221e73fbfe60b04ac4782f4fcad1614e3f</code>。本包不修改該檔。先前提案把舊措辭稱為過時，<strong>不是</strong>批准縮小。</p>
+</section>
+<section>
+<h2>選項（皆未選定）</h2>
+<table>
+<tr><th>ID</th><th>語意</th><th>BEHAVIOR_CHANGE</th><th>selected</th></tr>
+<tr><td>OPT-A-FULL-RESTORE</td><td>維持 BDD-19：任一提交階段失敗完整恢復、來源不變、不增加 Undo</td><td>否</td><td>null</td></tr>
+<tr><td>OPT-B-DEFERRED-RETENTION</td><td>提交後 MergeAppliedRetentionDeferred：新 revision + 保留 pinned 版本，禁止偽 rollback 成功</td><td>explicit BEHAVIOR_CHANGE pending</td><td>null</td></tr>
+</table>
+<p>不得把 deferred retention 當成已採納。任何改動必須是明確的 <code>BEHAVIOR_CHANGE</code> 待決，並重確認 BDD／Skeleton／RED。</p>
+</section>
+<section>
+<h2>BDD M06-TXN-*</h2>
+<table>
+<tr><th>ID</th><th>Then</th></tr>
+<tr><td>M06-TXN-01</td><td>拒絕把 local plan 當成 authenticated issuer</td></tr>
+<tr><td>M06-TXN-02</td><td>拒絕把 asset union 當成 Held／root CAS</td></tr>
+<tr><td>M06-TXN-03</td><td>拒絕把 local Undo 當成跨模組 rollback</td></tr>
+<tr><td>M06-TXN-04</td><td>拒絕把 digest guard 當成 ESS projector</td></tr>
+<tr><td>M06-TXN-05</td><td>BDD-19 全文保持權威</td></tr>
+<tr><td>M06-TXN-06</td><td>拒絕 false adoption of deferred retention</td></tr>
+<tr><td>M06-TXN-07</td><td>MH1～6 pending</td></tr>
+<tr><td>M06-TXN-08</td><td>MP1～4 selected null</td></tr>
+<tr><td>M06-TXN-09</td><td>保留 provider-source-map-20261104</td></tr>
+<tr><td>M06-TXN-10</td><td>product／native／build NOT RUN</td></tr>
+</table>
+<p>步驟綁定見 <code>steps.py</code>（皆 NotImplementedError／PENDING）。fixture 見 <code>fixtures.json</code>。待決見 <code>pending.json</code>。結構化候選見 <code>candidate.json</code>。</p>
+</section>
+<section>
+<h2>命令與未跑層</h2>
+<pre>產品測試／native／build／valid RED：NOT RUN（本卡禁止虛構正式產品命令）
+文件檢查（獨立審查執行，本作者不宣稱 PASS）：
+  比對 provider-source-map-20261104 hashes
+  比對 phase1.feature @BDD-19 原文
+  否定探針：OPT-B selected/adopted、BDD-19 stale 改寫、MH/MP 非 pending/null、假 PASS</pre>
+</section>
+</html>
