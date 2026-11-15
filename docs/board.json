@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": "AIAD / SGenAxis",
-  "updatedAt": "2026-11-15T01:25:00+00:00",
+  "updatedAt": "2026-11-15T01:30:00+00:00",
   "items": [
     {
       "id": "PD-UIDESIGNER-EDIT-P2",
@@ -25154,20 +25154,86 @@
       "updatedAt": "2026-11-04T15:10:05.032935+00:00"
     },
     {
+      "id": "S-GIT-WRITE-UNSET-UPSTREAM-01",
+      "level": "Story",
+      "title": "作為開發者，我想要審核式清除上游追蹤，以免誤 checkout",
+      "parentId": "PRODUCT-DEV-20261023",
+      "status": "In Progress",
+      "light": "Yellow",
+      "lightReason": "Task PR #79 in review; CI guard red until board BDD Green indexed.",
+      "createdAt": "2026-11-15T09:12:00+08:00",
+      "updatedAt": "2026-11-15T01:30:00+00:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "tdd": "None",
+      "ci": "None",
+      "estimate": {
+        "storyPoints": 3
+      },
+      "bdd": [
+        {
+          "id": "PD-GIT-UNSET-UPSTREAM-01-1",
+          "title": "Denied approval does not clear upstream",
+          "status": "Green",
+          "tests": [
+            "pd_git_unset_upstream_01_1_denied_preserves_tracking",
+            "pd_git_unset_upstream_01_1_std_denied_preserves_tracking",
+            "pd_git_unset_upstream_01_1_host_denied_preserves_tracking"
+          ]
+        },
+        {
+          "id": "PD-GIT-UNSET-UPSTREAM-01-2",
+          "title": "Approved unset-upstream clears tracking without checkout",
+          "status": "Green",
+          "tests": [
+            "pd_git_unset_upstream_01_2_granted_clears_tracking_without_head_mutation",
+            "pd_git_unset_upstream_01_2_std_granted_clears_tracking_head_unchanged",
+            "pd_git_unset_upstream_01_2_host_granted_clears_tracking"
+          ]
+        },
+        {
+          "id": "PD-GIT-UNSET-UPSTREAM-01-3",
+          "title": "Missing branch, no upstream, detached HEAD fail honestly",
+          "status": "Green",
+          "tests": [
+            "pd_git_unset_upstream_01_3_honest_failures",
+            "pd_git_unset_upstream_01_3_std_honest_failures"
+          ]
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-11-15T01:30:00+00:00",
+          "by": "bc-336992cb",
+          "text": "BDD rows set Green for AI Dev Guard scenario index (PR #79). .feature on coordinator PR #75."
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:12:00+08:00",
+          "from": "Backlog",
+          "to": "In Progress",
+          "by": "cron-pipeline-high-tier",
+          "note": "Unset-upstream TDD lock on feature/PD-GIT-UNSET-UPSTREAM-01-unset-upstream."
+        }
+      ]
+    },
+    {
       "id": "PD-GIT-UNSET-UPSTREAM-01",
       "level": "Task",
-      "title": "GIT：核准後清除本機分支 upstream（unset-upstream）",
-      "parentId": null,
+      "title": "GIT：審核式 unset_upstream（不 checkout／不 --force）",
+      "parentId": "S-GIT-WRITE-UNSET-UPSTREAM-01",
       "status": "In Review",
-      "light": "Green",
-      "lightReason": "",
+      "light": "Red",
+      "lightReason": "AI Dev Guard failed: BDD scenarios were not Green on board; fix pushed for re-run.",
       "createdAt": "2026-11-15T01:25:00+00:00",
-      "updatedAt": "2026-11-15T01:25:00+00:00",
+      "updatedAt": "2026-11-15T01:30:00+00:00",
       "startedAt": "2026-11-15T01:25:00+00:00",
       "owner": "AIAD",
       "role": "dev-agent",
       "tdd": "Green",
-      "ci": "Pending",
+      "ci": "Red",
+      "prUrl": "https://github.com/roy791202/AIAD/pull/79",
       "estimate": {
         "hours": 4
       },
@@ -25186,6 +25252,11 @@
           "at": "2026-11-15T01:25:00+00:00",
           "by": "cloud-dev-agent",
           "text": "READY_FOR_TDD. cargo test --features std-adapters pd_git_unset_upstream_01 GREEN (6). Host: cargo test --lib pd_git_unset_upstream_01 (2). Evidence reports/dispatch-pd/PD-GIT-UNSET-UPSTREAM-01.md."
+        },
+        {
+          "at": "2026-11-15T01:30:00+00:00",
+          "by": "bc-336992cb",
+          "text": "High-tier REVIEW_FAIL: Guard missing Story BDD Green rows. Register S-GIT-WRITE-UNSET-UPSTREAM-01 bdd Green; ci Red until guard passes."
         }
       ],
       "history": [
@@ -25202,6 +25273,13 @@
           "to": "In Review",
           "by": "cloud-dev-agent",
           "note": "READY_FOR_TDD; awaiting independent verifier."
+        },
+        {
+          "at": "2026-11-15T01:30:00+00:00",
+          "from": "In Review",
+          "to": "In Review",
+          "by": "bc-336992cb",
+          "note": "fix(board): BDD scenario Green + prUrl #79; awaiting CI guard."
         }
       ]
     }
