@@ -1696,3 +1696,96 @@ fn std_git_porcelain_parser_via_module_tests() {
     let err = git.status("").expect_err("empty path");
     assert!(matches!(err, PortError::InvalidPath(_)));
 }
+
+#[test]
+fn pd_git_repo_init_01_1_denied_leaves_no_git() {
+    fake_git_write_init_repo_denied_leaves_no_git();
+}
+
+#[test]
+fn fake_git_write_init_repo_denied_leaves_no_git() {
+    let w = FakeGitWrite::new();
+    let denied = w.init_repo("/empty", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_init_repo("/empty").is_none());
+    assert!(w.configured_remotes("/empty").is_empty());
+    assert_eq!(w.push_count("/empty"), 0);
+}
+
+#[test]
+fn pd_git_repo_init_01_2_approved_git_init_creates_non_bare_repo() {
+    fake_git_write_init_repo_records_non_bare_when_approved();
+}
+
+#[test]
+fn fake_git_write_init_repo_records_non_bare_when_approved() {
+    let w = FakeGitWrite::new();
+    w.init_repo("/empty", GitWriteApproval::granted())
+        .expect("approved git init -- <dir>");
+    assert_eq!(
+        w.last_init_repo("/empty"),
+        Some(true),
+        "approved init must record a non-bare repo"
+    );
+    assert!(
+        w.configured_remotes("/empty").is_empty(),
+        "init must never add a remote"
+    );
+    assert_eq!(w.push_count("/empty"), 0);
+    assert_eq!(w.local_commit_count("/empty"), 0);
+}
+
+#[test]
+fn pd_git_repo_init_01_3_existing_bare_template_option_paths_fail_honestly() {
+    fake_git_write_init_repo_rejects_existing_bare_template_and_urls();
+    gated_git_write_blocks_init_repo_even_when_approved();
+}
+
+#[test]
+fn fake_git_write_init_repo_rejects_existing_bare_template_and_urls() {
+    let w = FakeGitWrite::new();
+    w.init_repo("/empty", GitWriteApproval::granted())
+        .expect("first approved init");
+    let existing = w.init_repo("/empty", GitWriteApproval::granted());
+    assert!(
+        matches!(existing, Err(PortError::AlreadyExists(_)))
+            || matches!(existing, Err(PortError::Git(_)))
+            || matches!(existing, Err(PortError::Other(_))),
+        "existing repo must fail honestly, got {existing:?}"
+    );
+    assert_eq!(w.last_init_repo("/empty"), Some(true));
+    assert!(w.configured_remotes("/empty").is_empty());
+
+    for path in [
+        "--bare",
+        "--template",
+        "--template=/tmp/evil",
+        "-C",
+        "--separate-git-dir=/tmp/out",
+        "https://example.com/org/repo.git",
+        "git@example.com:org/repo.git",
+    ] {
+        let err = w
+            .init_repo(path, GitWriteApproval::granted())
+            .expect_err(path);
+        assert!(
+            matches!(
+                err,
+                PortError::Other(_) | PortError::InvalidPath(_) | PortError::Git(_)
+            ),
+            "{path} must fail honestly, got {err:?}"
+        );
+        assert!(
+            w.last_init_repo(path).is_none(),
+            "rejected path must not record init: {path}"
+        );
+        assert!(w.configured_remotes(path).is_empty());
+    }
+}
+
+#[test]
+fn gated_git_write_blocks_init_repo_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.init_repo("/empty", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}

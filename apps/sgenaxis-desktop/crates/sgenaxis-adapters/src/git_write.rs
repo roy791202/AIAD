@@ -175,6 +175,35 @@ pub(crate) fn conflict_path_out_of_scope(value: &str) -> bool {
         )
 }
 
+/// Paths that would become git-init flags, clone URLs, or write `.git` outside `dir`.
+pub(crate) fn init_repo_path_out_of_scope(value: &str) -> bool {
+    let t = value.trim();
+    let lower = t.to_ascii_lowercase();
+    if t.is_empty()
+        || t.contains('\0')
+        || t.contains('\n')
+        || t.contains('\r')
+        || lower.contains("://")
+        || lower.contains("git@")
+    {
+        return true;
+    }
+    t.split(['/', '\\']).any(|part| {
+        let p = part.trim();
+        if p.is_empty() {
+            return false;
+        }
+        let pl = p.to_ascii_lowercase();
+        p.starts_with('-')
+            || pl == "clone"
+            || pl.starts_with("--bare")
+            || pl.starts_with("--template")
+            || pl.starts_with("--separate-git-dir")
+            || pl.starts_with("--git-dir")
+            || pl.starts_with("--work-tree")
+    })
+}
+
 pub(crate) fn conflict_markers_present(text: &str) -> bool {
     text.lines().any(|line| {
         line.starts_with("<<<<<<<") || line.starts_with(">>>>>>>") || line.starts_with("=======")
@@ -447,6 +476,10 @@ impl GitWritePort for GatedGitWrite {
         _branch: Option<&str>,
         _approval: GitWriteApproval,
     ) -> Result<(), PortError> {
+        Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
+    }
+
+    fn init_repo(&self, _dir: &str, _approval: GitWriteApproval) -> Result<(), PortError> {
         Err(PortError::PermissionDenied(GIT_WRITE_GATED_MSG.into()))
     }
 }

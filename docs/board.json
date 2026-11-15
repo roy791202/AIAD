@@ -1,7 +1,7 @@
 {
   "version": 1,
   "project": "AIAD / SGenAxis",
-  "updatedAt": "2026-11-04T15:10:05.032935+00:00",
+  "updatedAt": "2026-11-15T10:45:00+08:00",
   "items": [
     {
       "id": "PD-UIDESIGNER-EDIT-P2",
@@ -25152,6 +25152,121 @@
       "tdd": "Green",
       "title": "Repair PR1 CI paths, fixtures and fail-closed test guard",
       "updatedAt": "2026-11-04T15:10:05.032935+00:00"
+    },
+    {
+      "id": "PD-GIT-REPO-INIT-01",
+      "level": "Task",
+      "title": "Gated git init in a chosen empty directory (non-bare, no clone)",
+      "status": "In Review",
+      "light": "Green",
+      "createdAt": "2026-11-15T10:13:00+08:00",
+      "updatedAt": "2026-11-15T10:45:00+08:00",
+      "startedAt": "2026-11-15T10:13:00+08:00",
+      "owner": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+      "role": "dev-agent",
+      "tdd": "Green",
+      "ci": "Pending",
+      "estimate": {
+        "hours": 3
+      },
+      "scenarioIds": [
+        "PD-GIT-REPO-INIT-01-1",
+        "PD-GIT-REPO-INIT-01-2",
+        "PD-GIT-REPO-INIT-01-3"
+      ],
+      "bdd": [
+        {
+          "id": "PD-GIT-REPO-INIT-01-1",
+          "title": "Denied approval leaves no .git",
+          "given": "Empty chosen directory; approval denied",
+          "when": "init_repo",
+          "then": "PermissionDenied; no .git; no remote; no clone",
+          "tests": [
+            "pd_git_repo_init_01_1_denied_leaves_no_git",
+            "fake_git_write_init_repo_denied_leaves_no_git",
+            "std_write_init_repo_denied_leaves_no_git"
+          ],
+          "status": "Green"
+        },
+        {
+          "id": "PD-GIT-REPO-INIT-01-2",
+          "title": "Approved git init creates a non-bare local repository",
+          "given": "Empty chosen directory; approval granted",
+          "when": "init_repo",
+          "then": "Non-bare .git inside dir; no remote; no clone",
+          "tests": [
+            "pd_git_repo_init_01_2_approved_git_init_creates_non_bare_repo",
+            "fake_git_write_init_repo_records_non_bare_when_approved",
+            "std_write_init_repo_creates_non_bare_without_remote_or_clone"
+          ],
+          "status": "Green"
+        },
+        {
+          "id": "PD-GIT-REPO-INIT-01-3",
+          "title": "Existing repo, --bare, --template, and option-like paths fail honestly",
+          "given": "Existing repo or --bare/--template/option-like/clone URL path",
+          "when": "init_repo with approval",
+          "then": "Honest failure; no clone; existing repo unchanged",
+          "tests": [
+            "pd_git_repo_init_01_3_existing_bare_template_option_paths_fail_honestly",
+            "fake_git_write_init_repo_rejects_existing_bare_template_and_urls",
+            "std_write_init_repo_rejects_existing_bare_template_and_urls",
+            "gated_git_write_blocks_init_repo_even_when_approved"
+          ],
+          "status": "Green"
+        }
+      ],
+      "acceptance": [
+        "Denied init_repo leaves no .git",
+        "Approved git init -- <dir> creates a non-bare repo inside the chosen directory",
+        "Never git clone, never --bare, never untrusted --template, never add remote, never fetch",
+        "Existing repo and option-like paths fail honestly"
+      ],
+      "notes": [
+        {
+          "at": "2026-11-15T10:13:00+08:00",
+          "by": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+          "text": "Claimed by cursor-cloud-dev-PD-GIT-REPO-INIT-01. Branch feature/PD-GIT-REPO-INIT-01-git-init. Recreating missing BDD from scenarios; TDD Red then Green for GitWritePort.init_repo."
+        },
+        {
+          "at": "2026-11-15T10:18:00+08:00",
+          "by": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+          "text": "TDD Red: init_repo tests fail because approved git init is still a stub (no .git / no last_init_repo; existing/--bare/--template/URL not rejected). Denied paths already refuse. Evidence reports/dispatch-pd/PD-GIT-REPO-INIT-01-RED.txt."
+        },
+        {
+          "at": "2026-11-15T10:40:00+08:00",
+          "by": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+          "text": "READY_FOR_TDD. TDD Green for PD-GIT-REPO-INIT-01-1/2/3. Evidence reports/dispatch-pd/PD-GIT-REPO-INIT-01.md. Independent verifier required; this agent did not set Done/blue."
+        },
+        {
+          "at": "2026-11-15T10:45:00+08:00",
+          "by": "independent-tdd-PD-GIT-REPO-INIT-01",
+          "text": "Independent TDD_PASS for adapter+host init_repo (PD-GIT-REPO-INIT-01-1/2/3). Implementer self-marked tdd Green was invalid until this PASS; Green kept. src-tauri git_write_repo_init NOT RUN (Cargo 1.83 edition2024). Evidence reports/dispatch-pd/PD-GIT-REPO-INIT-01-TDD-REVIEW.md. Did not set Done/blue."
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:13:00+08:00",
+          "from": "Backlog",
+          "to": "In Progress",
+          "by": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+          "note": "Start gated git init (non-bare, no clone) TDD."
+        },
+        {
+          "at": "2026-11-15T10:40:00+08:00",
+          "from": "In Progress",
+          "to": "In Review",
+          "by": "cursor-cloud-dev-PD-GIT-REPO-INIT-01",
+          "note": "Implementation complete; TDD Green; handed to independent verifier."
+        },
+        {
+          "at": "2026-11-15T10:45:00+08:00",
+          "from": "In Review",
+          "to": "In Review",
+          "by": "independent-tdd-PD-GIT-REPO-INIT-01",
+          "note": "Independent TDD_PASS; tdd Green kept after verifier re-run. src-tauri NOT RUN. Not Done/blue."
+        }
+      ]
     }
   ],
   "migration": {
