@@ -104,6 +104,8 @@ pub enum AllowedIpcCommand {
     GitWriteFetchPrune,
     /// Approval-gated `git pull --ff-only -- remote [branch]` via GitWritePort (never rebase/no-ff/force).
     GitWritePullFfOnly,
+    /// Approval-gated `git merge --ff-only -- local-branch` via GitWritePort (never --no-ff/-X/pull/rebase/push).
+    GitWriteMergeFfOnly,
     /// PD-ELU-GIT-ARCH-01 A1: preview the already-staged Index without mutation.
     GitIndexCommitPreview,
     /// PD-ELU-GIT-ARCH-01 A1: confirm one HOST preview generation and commit only its Index.
@@ -201,6 +203,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteFetch => "git_write_fetch",
             AllowedIpcCommand::GitWriteFetchPrune => "git_write_fetch_prune",
             AllowedIpcCommand::GitWritePullFfOnly => "git_write_pull_ff_only",
+            AllowedIpcCommand::GitWriteMergeFfOnly => "git_write_merge_ff_only",
             AllowedIpcCommand::GitIndexCommitPreview => "git_index_commit_preview",
             AllowedIpcCommand::GitIndexCommitConfirm => "git_index_commit_confirm",
             AllowedIpcCommand::DeployStatus => "deploy_status",
@@ -276,6 +279,7 @@ impl AllowedIpcCommand {
             AllowedIpcCommand::GitWriteFetch,
             AllowedIpcCommand::GitWriteFetchPrune,
             AllowedIpcCommand::GitWritePullFfOnly,
+            AllowedIpcCommand::GitWriteMergeFfOnly,
             AllowedIpcCommand::GitIndexCommitPreview,
             AllowedIpcCommand::GitIndexCommitConfirm,
             AllowedIpcCommand::DeployStatus,
@@ -412,6 +416,7 @@ mod tests {
         assert!(is_allowed("git_write_fetch"));
         assert!(is_allowed("git_write_fetch_prune"));
         assert!(is_allowed("git_write_pull_ff_only"));
+        assert!(is_allowed("git_write_merge_ff_only"));
         assert!(!is_allowed("git_stash"));
         assert!(!is_allowed("git_stash_drop"));
         assert!(!is_allowed("git_stash_clear"));
@@ -440,6 +445,8 @@ mod tests {
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
+        assert!(!is_allowed("git_merge"));
+        assert!(!is_allowed("git_merge_ff_only"));
         assert!(!is_allowed("git_conflict_save"));
         assert!(!is_allowed("git_merge_continue"));
         assert!(!is_allowed("git_rebase_skip"));
@@ -628,6 +635,10 @@ mod tests {
             authorize("git_write_pull_ff_only").unwrap(),
             AllowedIpcCommand::GitWritePullFfOnly
         );
+        assert_eq!(
+            authorize("git_write_merge_ff_only").unwrap(),
+            AllowedIpcCommand::GitWriteMergeFfOnly
+        );
         assert!(authorize("git_stash_drop").is_err());
         assert!(authorize("git_stash_push").is_err());
         assert!(authorize("git_stash_clear").is_err());
@@ -653,6 +664,8 @@ mod tests {
         assert!(authorize("git_fetch").is_err());
         assert!(authorize("git_fetch_prune").is_err());
         assert!(authorize("git_pull").is_err());
+        assert!(authorize("git_merge").is_err());
+        assert!(authorize("git_merge_ff_only").is_err());
         assert!(authorize("git_conflict_save").is_err());
         assert!(authorize("git_rebase_skip").is_err());
         assert!(authorize("git_reset_hard").is_err());
