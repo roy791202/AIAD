@@ -611,6 +611,12 @@ struct FakeGitWriteState {
     last_fetch_prune: HashMap<String, String>,
     /// repo → last approved ff-only pull `(remote, optional branch)`.
     last_pull_ff_only: HashMap<String, (String, Option<String>)>,
+    /// repo → last approved cherry-pick source oid.
+    last_cherry_pick: HashMap<String, String>,
+    /// repo → reachable source oids `(oid → subject)` for cherry-pick.
+    reachable_oids: HashMap<String, HashMap<String, String>>,
+    /// repo → dirty worktree would be overwritten by cherry-pick.
+    cherry_pick_dirty_overwrite: HashMap<String, bool>,
     /// repo → local has commits not reachable by ff-only pull.
     pull_local_ahead: HashMap<String, bool>,
     /// repo → dirty worktree would be overwritten by pull.
@@ -881,6 +887,36 @@ impl FakeGitWrite {
     pub fn last_pull_ff_only(&self, repo: &str) -> Option<(String, Option<String>)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_pull_ff_only.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved cherry-pick source oid for `repo`, if any.
+    pub fn last_cherry_pick(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_cherry_pick.get(&Self::key(repo)).cloned()
+    }
+
+    /// Seed a reachable local commit oid (tests for cherry-pick).
+    pub fn seed_reachable_oid(
+        &self,
+        repo: &str,
+        oid: impl Into<String>,
+        subject: impl Into<String>,
+    ) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        st.reachable_oids
+            .entry(key)
+            .or_default()
+            .insert(oid.into(), subject.into());
+    }
+
+    /// Mark `repo` as having dirty overwrites that block cherry-pick.
+    pub fn mark_cherry_pick_dirty_overwrite(&self, repo: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.cherry_pick_dirty_overwrite.insert(Self::key(repo), true);
     }
 
     /// Mark `repo` as diverged for pull (local commits block ff-only).
@@ -2204,6 +2240,63 @@ impl GitWritePort for FakeGitWrite {
         st.local_head.insert(key.clone(), remote_oid);
         st.last_pull_ff_only
             .insert(key, (name.to_string(), branch_record));
+        Ok(())
+    }
+
+    fn cherry_pick(
+        &self,
+        repo: &str,
+        oid: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let source = oid.trim();
+        if source.is_empty() {
+            return Err(PortError::Other("empty cherry-pick oid".into()));
+        }
+        if crate::git_write::cherry_pick_oid_out_of_scope(source) {
+            return Err(PortError::Other(
+                "ff/no-commit/continue/rebase/push cherry-pick writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        if st
+            .cherry_pick_dirty_overwrite
+            .get(&key)
+            .copied()
+            .unwrap_or(false)
+        {
+            return Err(PortError::Git(
+                "Your local changes to the following files would be overwritten by merge".into(),
+            ));
+        }
+        let subject = st
+            .reachable_oids
+            .get(&key)
+            .and_then(|m| m.get(source))
+            .cloned();
+        let Some(subject) = subject else {
+            return Err(PortError::Git(format!("bad revision '{source}'")));
+        };
+        st.next_hash = st.next_hash.saturating_add(1);
+        let hash = format!("{:012x}", st.next_hash);
+        st.commits
+            .entry(key.clone())
+            .or_default()
+            .push((subject, hash.clone()));
+        st.local_head.insert(key.clone(), hash);
+        st.last_cherry_pick.insert(key, source.to_string());
         Ok(())
     }
 }

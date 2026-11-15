@@ -276,6 +276,12 @@ pub trait GitPort: Send + Sync {
 ///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
 ///   branches and dirty overwrites fail honestly; local commits and files stay
 ///   intact. Unknown remotes fail honestly.
+/// - Cherry-pick requires approval (no skip default). Applies one existing
+///   commit: `git cherry-pick -- <oid>`. Never `--ff` / `-n` / `--no-commit`.
+///   Never `--continue` / `--skip` / `--abort` (those are `conflict_*`).
+///   Never `-x` / `--force` / `-f`. Never rebase. Never push. Missing oids,
+///   dirty overwrites, and option-like names fail honestly. HEAD and the
+///   worktree stay unchanged on failure.
 /// - Stage-all requires approval (no skip default). Distinct from conflict
 ///   save and from commit: `git add -- .` from the repo root only. Never
 ///   `git add -A` as a bulk conflict resolve. Never commit / push /
@@ -599,6 +605,18 @@ pub trait GitWritePort: Send + Sync {
         repo: &str,
         remote: &str,
         branch: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Cherry-pick one existing commit onto HEAD. Requires approval.
+    /// `git cherry-pick -- <oid>`. Never `--ff` / `-n` / `--no-commit`.
+    /// Never `--continue` / `--skip` / `--abort`. Never `-x` / `--force`.
+    /// Never rebase. Never push. Missing oids, dirty overwrites, and
+    /// option-like names fail honestly.
+    fn cherry_pick(
+        &self,
+        repo: &str,
+        oid: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

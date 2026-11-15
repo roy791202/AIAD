@@ -30,6 +30,7 @@ pub mod git_stage_all;
 pub mod git_unstage_all;
 pub mod git_tag_push;
 pub mod git_switch;
+pub mod git_cherry_pick;
 pub mod guard_cmd;
 pub mod identity_preview;
 pub mod ipc;
@@ -60,6 +61,9 @@ pub use git_unset_upstream::{perform_git_unset_upstream, GitUnsetUpstreamResult}
 pub use git_stage_all::{perform_git_stage_all, GitStageAllResult};
 pub use git_unstage_all::{perform_git_unstage_all, GitUnstageAllResult};
 pub use git_tag_push::{perform_git_push_tag, GitTagPushResult};
+pub use git_cherry_pick::{
+    perform_git_cherry_pick, GitCherryPickResult, ACTIVE_LEASE_BLOCKS_CHERRY_PICK,
+};
 pub use composition::{CompositionRoot, APP_NAME};
 pub use deploy::{
     check_view, default_workspace_root, find_workspace_root, focus_platform, list_artifact_views,

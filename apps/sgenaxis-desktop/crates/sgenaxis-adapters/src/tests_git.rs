@@ -1200,6 +1200,80 @@ fn gated_git_write_blocks_fetch_even_when_approved() {
     assert!(matches!(pull, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
+// PD-GIT-CHERRY-PICK-01-1/2/3: denied no mutation; approved applies one commit
+// without rebase/push/--ff; missing oid, dirty overwrite, option-like names fail.
+#[test]
+fn fake_git_write_cherry_pick_denied_approved_and_honest_failures() {
+    let w = FakeGitWrite::new();
+    w.seed_reachable_oid("/r", "abc1234", "feat: picked");
+    let head_before = w.local_head("/r");
+    let commits_before = w.local_commit_count("/r");
+
+    // PD-GIT-CHERRY-PICK-01-1
+    w.cherry_pick("/r", "abc1234", GitWriteApproval::denied())
+        .expect_err("denied cherry-pick");
+    assert!(w.last_cherry_pick("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+    assert_eq!(w.local_commit_count("/r"), commits_before);
+    assert_eq!(w.push_count("/r"), 0);
+
+    w.cherry_pick("/r", "-n", GitWriteApproval::granted())
+        .expect_err("-n oid");
+    w.cherry_pick("/r", "--ff", GitWriteApproval::granted())
+        .expect_err("--ff oid");
+    w.cherry_pick("/r", "--continue", GitWriteApproval::granted())
+        .expect_err("continue oid");
+    w.cherry_pick("/r", "--skip", GitWriteApproval::granted())
+        .expect_err("skip oid");
+    w.cherry_pick("/r", "--abort", GitWriteApproval::granted())
+        .expect_err("abort oid");
+    w.cherry_pick("/r", "--no-commit", GitWriteApproval::granted())
+        .expect_err("no-commit oid");
+    assert!(w.last_cherry_pick("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+
+    let missing = w.cherry_pick("/r", "deadbeef", GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("bad revision"))
+    );
+    assert!(w.last_cherry_pick("/r").is_none());
+    assert_eq!(w.local_head("/r"), head_before);
+
+    let dirty = FakeGitWrite::new();
+    dirty.seed_reachable_oid("/r", "abc1234", "feat: picked");
+    let dirty_head = dirty.local_head("/r");
+    dirty.mark_cherry_pick_dirty_overwrite("/r");
+    let overwritten = dirty
+        .cherry_pick("/r", "abc1234", GitWriteApproval::granted())
+        .expect_err("dirty overwrite");
+    assert!(matches!(overwritten, PortError::Git(_)));
+    assert!(overwritten
+        .to_string()
+        .to_ascii_lowercase()
+        .contains("overwritten"));
+    assert!(dirty.last_cherry_pick("/r").is_none());
+    assert_eq!(dirty.local_head("/r"), dirty_head);
+    assert_eq!(dirty.local_commit_count("/r"), 0);
+
+    // PD-GIT-CHERRY-PICK-01-2
+    w.cherry_pick("/r", "abc1234", GitWriteApproval::granted())
+        .expect("approved cherry-pick");
+    assert_eq!(w.last_cherry_pick("/r").as_deref(), Some("abc1234"));
+    assert_eq!(w.local_commit_count("/r"), commits_before + 1);
+    assert_eq!(w.last_commit_message("/r").as_deref(), Some("feat: picked"));
+    assert_ne!(w.local_head("/r"), head_before);
+    assert_eq!(w.push_count("/r"), 0);
+    assert!(w.last_pull_ff_only("/r").is_none());
+    assert!(w.switched_branch("/r").is_none());
+}
+
+#[test]
+fn gated_git_write_blocks_cherry_pick_even_when_approved() {
+    let w = GatedGitWrite::new();
+    let err = w.cherry_pick("/any", "abc1234", GitWriteApproval::granted());
+    assert!(matches!(err, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
+}
+
 #[test]
 fn fake_git_write_pull_ff_only_denied_diverged_dirty_and_ff_success() {
     let w = FakeGitWrite::new();
