@@ -977,6 +977,89 @@ fn gated_git_write_blocks_remote_even_when_approved() {
     assert!(matches!(rm, Err(PortError::PermissionDenied(ref m)) if m == GIT_WRITE_GATED_MSG));
 }
 
+// PD-GIT-REMOVE-REMOTE-01-1: denied approval does not remove a remote.
+#[test]
+fn pd_git_remove_remote_01_1_denied_approval_does_not_remove_remote() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/u.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed upstream");
+    let err = w.remove_remote("/r", "upstream", GitWriteApproval::denied());
+    assert!(matches!(err, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_remove("/r").is_none());
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "upstream".to_string(),
+            "https://example.invalid/u.git".to_string()
+        )]
+    );
+    assert_eq!(w.push_count("/r"), 0);
+    assert!(w.last_fetch("/r").is_none());
+    assert!(w.last_fetch_prune("/r").is_none());
+}
+
+// PD-GIT-REMOVE-REMOTE-01-2: approved remove deletes only that remote.
+#[test]
+fn pd_git_remove_remote_01_2_approved_remove_deletes_only_that_remote() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/o.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed origin");
+    w.add_remote(
+        "/r",
+        "upstream",
+        "https://example.invalid/u.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed upstream");
+    w.remove_remote("/r", "upstream", GitWriteApproval::granted())
+        .expect("remove upstream");
+    assert_eq!(w.last_remote_remove("/r").as_deref(), Some("upstream"));
+    let remotes = w.configured_remotes("/r");
+    assert_eq!(remotes.len(), 1);
+    assert_eq!(remotes[0].0, "origin");
+    assert_eq!(w.push_count("/r"), 0);
+    assert!(w.last_fetch("/r").is_none());
+    assert!(w.last_fetch_prune("/r").is_none());
+}
+
+// PD-GIT-REMOVE-REMOTE-01-3: missing and option-like names fail honestly.
+#[test]
+fn pd_git_remove_remote_01_3_missing_and_option_like_names_fail_honestly() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/o.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed origin");
+    let before = w.configured_remotes("/r");
+
+    let missing = w.remove_remote("/r", "ghost", GitWriteApproval::granted());
+    assert!(matches!(
+        missing,
+        Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote")
+    ));
+    assert!(w.last_remote_remove("/r").is_none());
+
+    let flag = w.remove_remote("/r", "--prune", GitWriteApproval::granted());
+    assert!(matches!(flag, Err(PortError::Other(_))));
+    assert!(w.last_remote_remove("/r").is_none());
+
+    assert_eq!(w.configured_remotes("/r"), before);
+    assert_eq!(w.push_count("/r"), 0);
+}
+
 #[test]
 fn fake_git_write_set_remote_url_records_when_approved() {
     let w = FakeGitWrite::new();
