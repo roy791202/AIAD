@@ -276,6 +276,12 @@ pub trait GitPort: Send + Sync {
 ///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
 ///   branches and dirty overwrites fail honestly; local commits and files stay
 ///   intact. Unknown remotes fail honestly.
+/// - Repo init requires approval (no skip default). Local only:
+///   `git init -- <dir>` inside the chosen empty directory. Never `--bare`.
+///   Never `--template` / untrusted templates. Never `git clone`. Never add a
+///   remote. Never fetch. Path must stay inside the chosen directory (never
+///   `--separate-git-dir`). Existing repos, option-like paths, and clone URLs
+///   fail honestly. Denied approval leaves no `.git`.
 /// - Stage-all requires approval (no skip default). Distinct from conflict
 ///   save and from commit: `git add -- .` from the repo root only. Never
 ///   `git add -A` as a bulk conflict resolve. Never commit / push /
@@ -601,4 +607,10 @@ pub trait GitWritePort: Send + Sync {
         branch: Option<&str>,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
+
+    /// Create a non-bare repository in an empty directory. Requires approval.
+    /// `git init -- <dir>`. Never `--bare` / `--template` / `--separate-git-dir`.
+    /// Never `git clone`. Never add a remote. Never fetch.
+    /// Existing repos, option-like paths, and clone URLs fail honestly.
+    fn init_repo(&self, dir: &str, approval: GitWriteApproval) -> Result<(), PortError>;
 }

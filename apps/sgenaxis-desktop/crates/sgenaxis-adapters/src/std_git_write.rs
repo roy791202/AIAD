@@ -59,6 +59,9 @@
 //!   `--push` / `--mirror`. Never pull / merge / rebase. HEAD unchanged.
 //! - Pull (ff-only): `git pull --ff-only -- <remote> [<branch>]`. Never
 //!   `--rebase` / `--no-ff` / `--force` / `+refspec` / `--update-head-ok`.
+//! - Repo init: `git init -- <dir>` in a chosen empty directory. Never
+//!   `--bare` / `--template` / `--separate-git-dir`. Never `git clone`.
+//!   Never add a remote. Never fetch. Existing repos fail honestly.
 //! - Conflict save: `git add -- <path>` after markers are gone. Never `-A` / `.`.
 //!   Continue: `git rebase|merge|cherry-pick|revert --continue` for detected
 //!   state. Never `--skip`. Never `-X theirs/ours`.
@@ -1059,5 +1062,98 @@ impl GitWritePort for StdGitWrite {
         }
         self.run(repo, &args)?;
         Ok(())
+    }
+
+    fn init_repo(&self, dir: &str, approval: GitWriteApproval) -> Result<(), PortError> {
+        Self::require_approval(approval)?;
+        let path = Self::require_init_dir(dir)?;
+        if Self::looks_like_existing_repo(Path::new(path)) {
+            return Err(PortError::AlreadyExists(format!(
+                "git repository already exists in {path}"
+            )));
+        }
+        // Local non-bare only: `git init -- <dir>`. Never --bare / --template /
+        // --separate-git-dir / clone / remote add / fetch.
+        self.spawn_init(path)?;
+        self.assert_non_bare_contained(path)?;
+        Ok(())
+    }
+}
+
+impl StdGitWrite {
+    fn require_init_dir(dir: &str) -> Result<&str, PortError> {
+        let path = dir.trim();
+        if path.is_empty() {
+            return Err(PortError::InvalidPath("empty git init directory".into()));
+        }
+        if crate::git_write::init_repo_path_out_of_scope(path) {
+            return Err(PortError::Other(
+                "bare/template/clone/option-like init paths are out of scope".into(),
+            ));
+        }
+        if !Path::new(path).is_dir() {
+            return Err(PortError::InvalidPath(format!(
+                "init directory does not exist: {path}"
+            )));
+        }
+        Ok(path)
+    }
+
+    fn looks_like_existing_repo(root: &Path) -> bool {
+        root.join(".git").exists()
+            || (root.join("HEAD").is_file()
+                && root.join("objects").is_dir()
+                && root.join("refs").is_dir())
+    }
+
+    fn spawn_init(&self, dir: &str) -> Result<(), PortError> {
+        let output = Command::new(&self.program)
+            .args(["init", "--", dir])
+            .output()
+            .map_err(|e| git_error_redacted(&format!("{} spawn", self.program), &e.to_string()))?;
+        if output.status.success() {
+            return Ok(());
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let code = output.status.code().unwrap_or(-1);
+        Err(git_error_redacted(
+            &format!("git [\"init\", \"--\"] exit {code}"),
+            &stderr,
+        ))
+    }
+
+    fn assert_non_bare_contained(&self, dir: &str) -> Result<(), PortError> {
+        if !Path::new(dir).join(".git").is_dir() {
+            return Err(PortError::Git(
+                "git init did not create a local .git directory".into(),
+            ));
+        }
+        let bare = self.run(dir, &["rev-parse", "--is-bare-repository"])?;
+        if bare.trim() != "false" {
+            return Err(PortError::Git("bare repositories are out of scope".into()));
+        }
+        if !self.run(dir, &["remote"])?.trim().is_empty() {
+            return Err(PortError::Git("init must not configure remotes".into()));
+        }
+        Self::require_git_dir_inside(dir, &self.run(dir, &["rev-parse", "--absolute-git-dir"])?)
+    }
+
+    fn require_git_dir_inside(dir: &str, git_dir: &str) -> Result<(), PortError> {
+        let trimmed = git_dir.trim();
+        match (fs::canonicalize(dir), fs::canonicalize(trimmed)) {
+            (Ok(root), Ok(gd)) => {
+                if gd.starts_with(&root) {
+                    Ok(())
+                } else {
+                    Err(PortError::Git(
+                        "git dir escaped the chosen directory".into(),
+                    ))
+                }
+            }
+            _ if trimmed.starts_with(dir) => Ok(()),
+            _ => Err(PortError::Git(
+                "git dir escaped the chosen directory".into(),
+            )),
+        }
     }
 }
