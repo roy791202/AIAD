@@ -1117,6 +1117,71 @@ mod std_write_temp {
         String::from_utf8_lossy(&out.stdout).to_string()
     }
 
+    // PD-GIT-REMOVE-REMOTE-01-1: denied approval does not remove a remote.
+    #[test]
+    fn pd_git_remove_remote_01_1_std_denied_approval_does_not_remove_remote() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.add_remote(repo, "upstream", url, GitWriteApproval::granted()).expect("seed");
+        w.remove_remote(repo, "upstream", GitWriteApproval::denied())
+            .expect_err("denied remove must not mutate");
+        assert!(
+            remote_list(repo).contains("upstream"),
+            "upstream must remain: {}",
+            remote_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    // PD-GIT-REMOVE-REMOTE-01-2: approved remove deletes only that remote.
+    #[test]
+    fn pd_git_remove_remote_01_2_std_approved_remove_deletes_only_that_remote() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let url = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.add_remote(repo, "upstream", url, GitWriteApproval::granted()).expect("seed");
+        w.remove_remote(repo, "upstream", GitWriteApproval::granted())
+            .expect("approved remove");
+        let listed = remote_list(repo);
+        assert!(
+            !listed.contains("upstream"),
+            "upstream must be gone: {listed}"
+        );
+        assert!(listed.contains("origin"), "origin must remain: {listed}");
+        assert!(
+            !work.join(".git").join("FETCH_HEAD").exists(),
+            "remove must not fetch as a side effect"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    // PD-GIT-REMOVE-REMOTE-01-3: missing and option-like names fail honestly.
+    #[test]
+    fn pd_git_remove_remote_01_3_std_missing_and_option_like_names_fail_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.remove_remote(repo, "ghost", GitWriteApproval::granted())
+            .expect_err("missing remote must fail");
+        w.remove_remote(repo, "--prune", GitWriteApproval::granted())
+            .expect_err("option-like name must fail");
+        assert!(
+            remote_list(repo).contains("origin"),
+            "origin must remain: {}",
+            remote_list(repo)
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     #[test]
     fn std_write_add_and_remove_remote_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
