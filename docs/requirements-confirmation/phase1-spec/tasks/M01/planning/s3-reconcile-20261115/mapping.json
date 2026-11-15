@@ -1,0 +1,114 @@
+{
+  "kind": "DOCUMENT_RECONCILE_PROPOSAL_NOT_ADOPTION",
+  "card": "PD-P1-M01-S3-RECONCILE-01",
+  "author": "PD-P1-M01-S3-RECONCILE-01 planning author",
+  "not_the_independent_reviewer": "/root/m01_s3_independent_review_20261115",
+  "generated_at": "2026-11-15T03:13:00+00:00",
+  "read_only_inputs": [
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-independent-review-20261115/results.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-independent-review-20261115/review.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/dto-contract.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json",
+    "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/decisions.json"
+  ],
+  "sealed_untouched": [
+    "s3-exact-design/**",
+    "s3-independent-review-20261115/**",
+    "apps/",
+    "tests/",
+    "docs/board.json"
+  ],
+  "owner_adoption": "NOT GRANTED; not invented by this author",
+  "skeleton": "NOT CREATED; not claimed",
+  "product_tests": "NOT RUN",
+  "build": "NOT RUN",
+  "native": "NOT RUN",
+  "RED": "NOT RUN",
+  "GREEN": "NOT RUN",
+  "task_outcome": "READY_FOR_TDD",
+  "task_outcome_meaning": "This reconcile proposal is complete as exact replacement text for independent-review FAILs. It is ready for a distinct independent document review of this folder only. It is not Owner adoption, not Skeleton, and not a native/RED PASS. Implementation remains blocked on remaining OPEN Owner items.",
+  "review_fail_items_addressed": [
+    "M01-S3-D5",
+    "dto",
+    "lifecycle (RQ2/RQ10 leftovers only)",
+    "S3-G4",
+    "S3-G5 (DTO/error leftover pointer only)"
+  ],
+  "fail_closures": [
+    {
+      "id": "FAIL-1-D5-CLOSED-VS-RQ10-G5",
+      "review_finding": "D5 claims a closed command/response/error contract. RQ10 still says exact DTO/error mapping remains S3-G5 work.",
+      "closes_review_items": ["M01-S3-D5", "dto", "S3-G5"],
+      "target_file": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json",
+      "target_pointer": "request_rules[id=RQ10].contract",
+      "current_text": "Proposed transport fields: requestId, operation, capturedRevision decimal string, outcome, replayed boolean, bindingStatus. outcome wraps exact adopted S2 result without discarding evidence; bindingStatus is unchanged, eligible or detached. Eligible is not itself proof a UI switch occurred. Exact DTO/error mapping remains S3-G5 work.",
+      "proposed_text": "Transport fields are the closed Save response in dto-contract.json: request_id UUID, operation save|finalize|adopt, captured_revision u64 decimal string, replayed boolean, outcome, binding_status, nullable projection. outcome wraps the exact adopted S2 result without discarding evidence. Exact DTO and error mapping is dto-contract.json in this packet (requests, responses, errors, s2_mapping). It is not remaining S3-G5 work. S3-G5 leftover after this sentence is only Owner adoption of that closed mapping plus the already-specified permissions/UI-migration text; not a second mapping exercise. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS.",
+      "also_propose_decisions_D5_append": {
+        "target_file": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/decisions.json",
+        "target_pointer": "decisions[id=M01-S3-D5].proposal",
+        "current_text": "Adopt closed command/response/error contract, exhaustive S2 mapping/proof retention, captured revision string and committed_unbound/detached semantics.",
+        "proposed_text": "Adopt closed command/response/error contract in dto-contract.json, exhaustive S2 mapping/proof retention, captured revision string and committed_unbound/detached semantics. RQ10 must cite that same closed mapping and must not defer DTO/error mapping as remaining S3-G5 work."
+      }
+    },
+    {
+      "id": "FAIL-2-BINDING-STATUS-ENUM",
+      "review_finding": "dto-contract Save.binding_status is unchanged|bound|detached|committed_unbound. RQ10 bindingStatus is unchanged, eligible or detached.",
+      "closes_review_items": ["M01-S3-D5", "dto", "S3-G4"],
+      "target_file": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json",
+      "target_pointer": "request_rules[id=RQ10].contract (enum clause; combine with FAIL-1 replacement as one string)",
+      "current_enum": "unchanged, eligible or detached",
+      "proposed_enum": "unchanged|bound|detached|committed_unbound",
+      "proposed_text_enum_clause": "binding_status is the closed enum unchanged|bound|detached|committed_unbound and is the same field as dto-contract.json responses.Save.binding_status. Do not emit eligible. unchanged: no current-project switch, including pre-commit failure, Partial, and RecoveryRequired. bound: server completed the authorized settings bind for this captured owner, request, draft and revision; this is the only value that reports a UI current-project switch. detached: owner no longer current; S2 evidence retained; no current-project switch and no rollback. committed_unbound: S2 committed; settings bind failed; proof retained; do not rewrite as unchanged failure. Combined RQ10.contract after FAIL-1 and FAIL-2: Transport fields are the closed Save response in dto-contract.json: request_id UUID, operation save|finalize|adopt, captured_revision u64 decimal string, replayed boolean, outcome, binding_status, nullable projection. outcome wraps the exact adopted S2 result without discarding evidence. binding_status is the closed enum unchanged|bound|detached|committed_unbound and is the same field as dto-contract.json responses.Save.binding_status. Do not emit eligible. unchanged: no current-project switch, including pre-commit failure, Partial, and RecoveryRequired. bound: server completed the authorized settings bind for this captured owner, request, draft and revision; this is the only value that reports a UI current-project switch. detached: owner no longer current; S2 evidence retained; no current-project switch and no rollback. committed_unbound: S2 committed; settings bind failed; proof retained; do not rewrite as unchanged failure. Exact DTO and error mapping is dto-contract.json in this packet (requests, responses, errors, s2_mapping). It is not remaining S3-G5 work. S3-G5 leftover after this sentence is only Owner adoption of that closed mapping plus the already-specified permissions/UI-migration text; not a second mapping exercise. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS.",
+      "dto_contract_change": "NONE. dto-contract.json enum unchanged|bound|detached|committed_unbound is the winning closed set. Do not add eligible."
+    },
+    {
+      "id": "FAIL-3-RQ2-VS-D3-OW1-OW10",
+      "review_finding": "D3 says adopt OW1-OW10. RQ2 still says exact issuer and owner DTO remain separate S3-G1/G2 decisions.",
+      "closes_review_items": ["M01-S3-D3 contradiction", "lifecycle RQ2 leftover", "S3-G1 leftover-as-DTO only"],
+      "does_not_close": ["S3-G1 remaining OPEN for OW9/native/Owner", "M01-S3-D1", "native"],
+      "target_file": "docs/requirements-confirmation/phase1-spec/tasks/M01/planning/s3-exact-design/lifecycle-contract.json",
+      "target_pointer": "request_rules[id=RQ2].contract",
+      "current_text": "Proposed key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save or finalize. Native selection must already be bound to that owner. Exact issuer and owner DTO remain separate S3-G1/G2 decisions.",
+      "proposed_text": "Key is runtime-epoch + trusted owner session + draft-id + operation + request-id. Operation is save, finalize, or adopt, matching dto-contract.json. Native selection must already be bound to that owner per OW3 and OW5. Issuer of owner and session is OW1 injected WebviewWindow plus OW2 server-issued runtime epoch, window instance nonce, and checked u64 generation; JSON caller fields never issue authority (RQ1, OW1). owner_id in dto-contract.json is the server-issued correlation UUID of that live owner; UI-supplied owner_id is matched against the live record and never mints issuer, storage, or revocation. Selection IDs are minted only by the authenticated native picker (OW3). This RQ2 text is the proposed identity contract aligned with OW1-OW10; it is not a leftover separate S3-G1/G2 decision. S3-G1 remains OPEN only because OW9 still marks exact native canonicalization, reparse policy, and failure-injection seam unresolved, and because Owner has not adopted D1/native-contract; that is not an issuer or owner-DTO gap. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS."
+    }
+  ],
+  "combined_rq10_proposed_text": "Transport fields are the closed Save response in dto-contract.json: request_id UUID, operation save|finalize|adopt, captured_revision u64 decimal string, replayed boolean, outcome, binding_status, nullable projection. outcome wraps the exact adopted S2 result without discarding evidence. binding_status is the closed enum unchanged|bound|detached|committed_unbound and is the same field as dto-contract.json responses.Save.binding_status. Do not emit eligible. unchanged: no current-project switch, including pre-commit failure, Partial, and RecoveryRequired. bound: server completed the authorized settings bind for this captured owner, request, draft and revision; this is the only value that reports a UI current-project switch. detached: owner no longer current; S2 evidence retained; no current-project switch and no rollback. committed_unbound: S2 committed; settings bind failed; proof retained; do not rewrite as unchanged failure. Exact DTO and error mapping is dto-contract.json in this packet (requests, responses, errors, s2_mapping). It is not remaining S3-G5 work. S3-G5 leftover after this sentence is only Owner adoption of that closed mapping plus the already-specified permissions/UI-migration text; not a second mapping exercise. This sentence does not grant Owner adoption, Skeleton, native PASS, or RED PASS.",
+  "open_kept_need_owner": [
+    {
+      "id": "M01-S3-D1",
+      "review_verdict": "OPEN",
+      "reason": "OW9 still says exact native canonicalization/reparse policy and failure-injection seam remain an unresolved full-packet gate. This reconcile does not rewrite OW9 or native-contract.json. Owner must confirm D1/OW9 together. Native NOT RUN."
+    },
+    {
+      "id": "native",
+      "review_verdict": "OPEN",
+      "reason": "test_seam states no actual source/test seam was created. Native execution NOT RUN. Not closed by DTO text."
+    },
+    {
+      "id": "S3-G1",
+      "review_verdict": "OPEN",
+      "reason": "After proposed RQ2 text, issuer/owner DTO is no longer a leftover G1 decision. G1 stays OPEN for OW9 unresolved native proof and missing Owner adoption of native-contract. Product/native NOT RUN."
+    },
+    {
+      "id": "OW9",
+      "review_verdict": "OPEN",
+      "reason": "Unresolved full-packet native gate. Owner required. Not a FAIL-1/2/3 text clash."
+    },
+    {
+      "id": "M01-S3-D3",
+      "review_verdict": "OPEN_UNTIL_OWNER",
+      "reason": "Proposed RQ2 text removes the D3 vs RQ2 contradiction. D3 remains unadopted until Owner confirmation of OW1-OW10. Not claimed PASS. Not Skeleton."
+    }
+  ],
+  "pass_bounded_untouched": [
+    "M01-S3-D2",
+    "M01-S3-D4",
+    "M01-S3-D6",
+    "M01-S3-D7",
+    "M01-S3-D8",
+    "envelope",
+    "S3-G2",
+    "S3-G3"
+  ],
+  "next": "Distinct independent reviewer of this s3-reconcile-20261115 folder only. A later correction packet, if Owner or high-tier authorizes, may copy the proposed_text strings into lifecycle-contract.json and decisions.json. This author did not rewrite sealed packets."
+}
