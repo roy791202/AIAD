@@ -1,0 +1,459 @@
+[
+  {
+    "id": "reviewer_distinct_from_authors",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "reviewer": "/root/m06_m07_independent_tdd_verifier",
+      "authors": [
+        "/root/yellow_m06_provider",
+        "/root/yellow_m07_provider"
+      ]
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "packets_unmodified_this_run",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "review writes only under m06-m07-independent-tdd-20261115",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "m06_author_seal_matches_current_bytes",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "FAIL",
+    "passed": false,
+    "detail": {
+      "mismatches": 6
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "m07_original_seal_matches_current_bytes",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "FAIL",
+    "passed": false,
+    "detail": {
+      "mismatches": 6
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "m07_correction_seal_matches_current_bytes",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "FAIL",
+    "passed": false,
+    "detail": {
+      "mismatches": 7
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "original_preservation_claim_holds_on_live_original_packet",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "FAIL",
+    "passed": false,
+    "detail": {
+      "claimed": true,
+      "live_original_matches_own_seal": false
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "authority_inventory_still_796_keys",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "count": 796
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "reject_current_live_tree_as_zero_authority_drift",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "live_drift": 552,
+      "author_recorded_drift": [],
+      "note": "historical 796 snapshot is not a live product hash lock"
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "closed_RS04_stays_corrected_range",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "recorded": [
+        115,
+        145
+      ],
+      "required": [
+        115,
+        145
+      ],
+      "live": {
+        "in_range": true,
+        "text": "        RecoveryEventKind::Check {\n            now_ms,\n            current_fingerprint,\n            mutation_in_progress,\n        } => {\n            let elapsed = now_ms\n                .checked_sub(state.last_check_ms)\n                .ok_or(RecoveryPolicyError::TimeRegressed)?;\n            if elapsed < 60000 {\n                RecoveryAction::NotDue\n            } else if state.inflight.is_some() || state.capture_requested {\n                next.last_check_ms = *now_ms;\n                RecoveryAction::WaitInFlight\n            } else if *mutation_in_progress {\n                RecoveryAction::DeferMutation\n            } else {\n                let current = current_fingerprint.as_ref().ok_or_else(|| {\n                    invalid(\n                        \"current_fingerprint\",\n                        \"stable content fingerprint is required\",\n                    )\n                })?;\n                next.last_check_ms = *now_ms;\n                if state.successful_fingerprint.as_ref() == Some(current) {\n                    RecoveryAction::SkipUnchanged\n                } else {\n                    next.capture_requested = true;\n                    RecoveryAction::RequestCapture\n                }\n            }\n        }",
+        "text_match": true,
+        "hash_match": true,
+        "live_sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+        "empty": false,
+        "line_count": 216
+      }
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "closed_RS05_stays_corrected_range",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "recorded": [
+        157,
+        174
+      ],
+      "required": [
+        157,
+        174
+      ],
+      "live": {
+        "in_range": true,
+        "text": "        RecoveryEventKind::Complete {\n            attempt_id,\n            outcome,\n        } => {\n            let capture = state\n                .inflight\n                .as_ref()\n                .filter(|c| &c.attempt_id == attempt_id)\n                .ok_or(RecoveryPolicyError::StaleAttempt)?;\n            next.inflight = None;\n            match outcome {\n                CompletionOutcome::Published => {\n                    next.successful_fingerprint = Some(capture.captured_fingerprint.clone());\n                    RecoveryAction::BaselineAdvanced\n                }\n                CompletionOutcome::Failed => RecoveryAction::RetryPending,\n            }\n        }",
+        "text_match": true,
+        "hash_match": true,
+        "live_sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+        "empty": false,
+        "line_count": 216
+      }
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "closed_RS06_stays_corrected_range",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "recorded": [
+        212,
+        216
+      ],
+      "required": [
+        212,
+        216
+      ],
+      "live": {
+        "in_range": true,
+        "text": "fn validate_capture(capture: &CapturedAttempt) -> Result<(), RecoveryPolicyError> {\n    validate_id(\"attempt_id\", &capture.attempt_id)?;\n    validate_fingerprint(\"captured_fingerprint\", &capture.captured_fingerprint)?;\n    validate_fingerprint(\"asset_manifest_digest\", &capture.asset_manifest_digest)\n}",
+        "text_match": true,
+        "hash_match": true,
+        "live_sha256": "7edb369163bfe111eee37cb8b0f9f5f18477bde1e30b69002f815aba9a343fa3",
+        "empty": false,
+        "line_count": 216
+      }
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_original_RS04_as_elapsed_threshold_evidence",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "start": 125,
+      "end": 158
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_original_RS05_as_Published_arm_evidence",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "snippet_has_Failed_only": true
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_original_RS06_empty_out_of_range",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "start": 236,
+      "end": 240
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_correction_RS04_contains_elapsed_and_RequestCapture",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_correction_RS05_contains_Published_baseline_advance",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_correction_RS06_is_validate_capture_syntax_only",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_reopen_old_RS04_bounds_through_correction_validator",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "old RS04 bounds must stay rejected",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_reopen_old_RS05_bounds_through_correction_validator",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "old RS05 bounds must stay rejected",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_reopen_old_RS06_empty_through_correction_validator",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "old empty RS06 must stay rejected",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_truncated_RS04_without_elapsed",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "truncated RS04 missing elapsed must fail",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_RS05_Failed_tail_without_Published",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "Failed-only tail is not Published-arm evidence",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "BDD19_full_restoration_remains_authoritative",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "Original full restoration requirement remains authoritative pending explicit decision. Proposal description calling prior wording stale is not approval to narrow it; deferred postcommit retention requires explicit BEHAVIOR_CHANGE/replan and reconfirmed BDD. No choice made.",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_MH5_stale_wording_as_deferred_retention_adoption",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "id": "MH5",
+      "owner": "M06+requirements Owner",
+      "status": "PROPOSED_PENDING_OWNER",
+      "gap": "Legacy Task F09 wording all failures unchanged/one Undo predates explicit postcommit deferred phases. This is stale planning wording, not a newly approved contract conflict.",
+      "proposal": "Confirm precommit known-not-attempted unchanged versus verified commit+root failure actual new revision; distinguish uncertain commit with no unchanged claim. Reconcile task wording only after Owner decision."
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M06_MH1_to_MH6_all_pending_unselected",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": [
+      "MH1",
+      "MH2",
+      "MH3",
+      "MH4",
+      "MH5",
+      "MH6"
+    ],
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M06_MP1_to_MP4_selected_null",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M07_bridges_selected_null_and_product_pass_false",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_reject_silent_BDD19_narrowing_document",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "mutated copy must not be treatable as original authority",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_live_commit_body_has_no_retention_call",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_live_undo_is_not_distributed_rollback_provider",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M06_recorded_line_text_still_matches_live_ranges",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "hash_match_all": false,
+      "live_document_edit": "b04fd60d44ae4119ebffbe31f6284edb017ca7b1f6b5ebedccce205b68a4aea3",
+      "recorded": "b835b74fc4022c9097ddb547959f66194bf7b5ece8e277f44ea542519bd835b0"
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_document_edit_recorded_sha256_drifted",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "drifted_correction_ids": [
+        "DE01",
+        "DE02",
+        "DE03"
+      ],
+      "note": "line text still matched at recorded ranges; file hash is not the sealed mapping hash"
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "recovery_state_and_file_commit_hashes_stable",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": null,
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "NEW_IO01_pub_target_anchor_is_substring_of_target_path",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "weak_anchor": "pub target matches target_path by prefix; meaning still single-file receipt"
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M06_bounded_search_rerun_exit_zero",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "exit": 0,
+      "stdout_lines": 6
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "M07_host_src_literal_search_still_empty",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": {
+      "exit": 1,
+      "limit": "HOST/src literals only; not global absence"
+    },
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "never_product_native_pass",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "cargo test / native UI / valid RED / build NOT RUN",
+    "product_native": "NOT_RUN"
+  },
+  {
+    "id": "never_board_done_or_blue",
+    "layer": "NEW_INDEPENDENT_DOCUMENT_PROBE",
+    "expected": "PASS",
+    "result": "PASS",
+    "passed": true,
+    "detail": "this verifier did not set Done/blue",
+    "product_native": "NOT_RUN"
+  }
+]
