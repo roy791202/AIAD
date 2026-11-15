@@ -276,6 +276,11 @@ pub trait GitPort: Send + Sync {
 ///   `--force` / `+refspec` / `--update-head-ok`. Never merge commits. Diverged
 ///   branches and dirty overwrites fail honestly; local commits and files stay
 ///   intact. Unknown remotes fail honestly.
+/// - Merge (ff-only) requires approval (no skip default). Distinct from pull:
+///   `git merge --ff-only -- <local-branch>`. Local branches only. Never
+///   `--no-ff` / `-X theirs/ours` / `--squash` / pull / rebase / push / force.
+///   Never merge a remote-tracking name as a remote fetch. Diverged histories,
+///   missing names, and option-like names fail honestly. No merge commit.
 /// - Stage-all requires approval (no skip default). Distinct from conflict
 ///   save and from commit: `git add -- .` from the repo root only. Never
 ///   `git add -A` as a bulk conflict resolve. Never commit / push /
@@ -599,6 +604,17 @@ pub trait GitWritePort: Send + Sync {
         repo: &str,
         remote: &str,
         branch: Option<&str>,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError>;
+
+    /// Fast-forward merge of a local branch only. Requires approval.
+    /// `git merge --ff-only -- <local-branch>`. Never `--no-ff` / `-X` /
+    /// `--squash` / pull / rebase / push / `--force`. Never fetch a
+    /// remote-tracking name. Diverged histories and missing names fail honestly.
+    fn merge_ff_only(
+        &self,
+        repo: &str,
+        branch: &str,
         approval: GitWriteApproval,
     ) -> Result<(), PortError>;
 }

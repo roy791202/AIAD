@@ -611,6 +611,10 @@ struct FakeGitWriteState {
     last_fetch_prune: HashMap<String, String>,
     /// repo → last approved ff-only pull `(remote, optional branch)`.
     last_pull_ff_only: HashMap<String, (String, Option<String>)>,
+    /// repo → last approved ff-only merge local branch.
+    last_merge_ff_only: HashMap<String, String>,
+    /// repo → local histories diverged (ff-only merge must fail).
+    merge_diverged: HashMap<String, bool>,
     /// repo → local has commits not reachable by ff-only pull.
     pull_local_ahead: HashMap<String, bool>,
     /// repo → dirty worktree would be overwritten by pull.
@@ -881,6 +885,18 @@ impl FakeGitWrite {
     pub fn last_pull_ff_only(&self, repo: &str) -> Option<(String, Option<String>)> {
         let st = self.inner.lock().expect("fake git write lock");
         st.last_pull_ff_only.get(&Self::key(repo)).cloned()
+    }
+
+    /// Last approved ff-only merge local branch for `repo`, if any.
+    pub fn last_merge_ff_only(&self, repo: &str) -> Option<String> {
+        let st = self.inner.lock().expect("fake git write lock");
+        st.last_merge_ff_only.get(&Self::key(repo)).cloned()
+    }
+
+    /// Mark `repo` as diverged so ff-only merge fails honestly.
+    pub fn mark_merge_diverged(&self, repo: &str) {
+        let mut st = self.inner.lock().expect("fake git write lock");
+        st.merge_diverged.insert(Self::key(repo), true);
     }
 
     /// Mark `repo` as diverged for pull (local commits block ff-only).
@@ -2204,6 +2220,72 @@ impl GitWritePort for FakeGitWrite {
         st.local_head.insert(key.clone(), remote_oid);
         st.last_pull_ff_only
             .insert(key, (name.to_string(), branch_record));
+        Ok(())
+    }
+
+    fn merge_ff_only(
+        &self,
+        repo: &str,
+        branch: &str,
+        approval: GitWriteApproval,
+    ) -> Result<(), PortError> {
+        if !approval.is_granted() {
+            return Err(PortError::PermissionDenied(
+                GIT_WRITE_NOT_APPROVED_MSG.into(),
+            ));
+        }
+        let name = branch.trim();
+        if name.is_empty() {
+            return Err(PortError::Other("empty branch name".into()));
+        }
+        if crate::git_write::merge_branch_out_of_scope(name) {
+            return Err(PortError::Other(
+                "no-ff/strategy/remote-tracking merge writes are out of scope".into(),
+            ));
+        }
+        let mut st = self
+            .inner
+            .lock()
+            .map_err(|e| PortError::Other(e.to_string()))?;
+        let key = Self::key(repo);
+        st.local_head
+            .entry(key.clone())
+            .or_insert_with(|| "local-head".into());
+        let remote_only = st
+            .remote_only_branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == name))
+            .unwrap_or(false);
+        let remote_prefixed = name.split_once('/').is_some_and(|(remote, rest)| {
+            !rest.is_empty()
+                && st
+                    .remotes
+                    .get(&key)
+                    .map(|rs| rs.iter().any(|(n, _)| n == remote))
+                    .unwrap_or(false)
+        });
+        let local_exists = st
+            .branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == name))
+            .unwrap_or(false);
+        if remote_only || (remote_prefixed && !local_exists) {
+            return Err(PortError::Git(format!(
+                "refusing remote-tracking name '{name}' (local branches only; no fetch)"
+            )));
+        }
+        if !local_exists {
+            return Err(PortError::Git(format!("branch '{name}' not found")));
+        }
+        if st.merge_diverged.get(&key).copied().unwrap_or(false) {
+            return Err(PortError::Git(
+                "Not possible to fast-forward, aborting".into(),
+            ));
+        }
+        st.next_hash = st.next_hash.saturating_add(1);
+        let oid = format!("{:012x}", st.next_hash);
+        st.local_head.insert(key.clone(), oid);
+        st.last_merge_ff_only.insert(key, name.to_string());
         Ok(())
     }
 }

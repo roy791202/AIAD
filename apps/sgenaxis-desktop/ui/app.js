@@ -2565,6 +2565,8 @@
           ? "審核 Fetch prune"
           : op === "pull-ff-only"
           ? "審核 Pull (ff-only)"
+          : op === "merge-ff-only"
+          ? "審核 Merge (ff-only)"
           : op === "conflict-save"
           ? "審核 Conflict Save"
           : op === "conflict-continue"
@@ -2647,6 +2649,8 @@
           ? "核准後經 git_write_fetch_prune → GitWritePort；執行 git fetch --prune -- remote，只刪過期的遠端追蹤 refs。不加 --prune-tags／--force／+refspec／--update-head-ok／--add／--delete／--push／--mirror，不 pull／merge／rebase。HEAD 與工作區不變。拒絕則無突變。"
           : op === "pull-ff-only"
           ? "核准後經 git_write_pull_ff_only → GitWritePort；執行 git pull --ff-only -- remote [branch]，只允許快轉。不加 --rebase／--no-ff／--force／+refspec。分歧或髒覆寫會誠實失敗並保留本機。拒絕則無突變。"
+          : op === "merge-ff-only"
+          ? "核准後經 git_write_merge_ff_only → GitWritePort；執行 git merge --ff-only -- local-branch，只允許快轉本機分支。不加 --no-ff／-X theirs／ours／--squash，不 pull／rebase／push。遠端追蹤名稱不 fetch。活動租約拒絕。拒絕則無突變。"
           : op === "conflict-save"
           ? "核准後經 git_write_conflict_save → GitWritePort；寫入 " +
             (payload.path || "") +
@@ -2702,7 +2706,8 @@
         op !== "branch-create" &&
         op !== "branch-rename" &&
         op !== "set-upstream" &&
-        op !== "unset-upstream";
+        op !== "unset-upstream" &&
+        op !== "merge-ff-only";
     if (remoteNameWrap)
       remoteNameWrap.hidden =
         op !== "remote-add" && op !== "remote-set-url" && op !== "remote-rename";
@@ -2732,7 +2737,8 @@
       op === "branch-create" ||
       op === "branch-rename" ||
       op === "set-upstream" ||
-      op === "unset-upstream"
+      op === "unset-upstream" ||
+      op === "merge-ff-only"
     ) {
       const branch = document.getElementById("git-approve-branch");
       if (branch) {
@@ -2741,6 +2747,8 @@
           span.textContent =
             op === "branch-rename"
               ? "新本機分支名稱"
+              : op === "merge-ff-only"
+              ? "合併來源（本機分支）"
               : op === "set-upstream" || op === "unset-upstream"
               ? "本機分支（空白＝目前分支）"
               : "本機分支名稱";
@@ -3579,6 +3587,52 @@
           toast("Pull 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
+      } else if (op === "merge-ff-only") {
+        const branchEl = document.getElementById("git-approve-branch");
+        const branch =
+          branchEl && branchEl.value && branchEl.value.trim()
+            ? branchEl.value.trim()
+            : pendingGitWrite.branch || pendingGitWrite.name || "";
+        if (!branch) {
+          hideGitApprove();
+          setGitStatusLine("未指定本機分支，未合併", true);
+          return;
+        }
+        if (
+          branch.charAt(0) === "+" ||
+          branch.indexOf("--no-ff") === 0 ||
+          branch.indexOf("-X") === 0 ||
+          branch.indexOf("refs/remotes/") === 0
+        ) {
+          setGitStatusLine("no-ff／-X／遠端追蹤合併不在範圍內", true);
+          toast("禁止 --no-ff／-X／遠端追蹤合併");
+          return;
+        }
+        const dto = await invoke("git_write_merge_ff_only", {
+          args: {
+            repo: repo,
+            branch: branch,
+            approved: true,
+          },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已 merge (ff-only) " + branch + "（經 GitWritePort；無 merge commit）",
+            false
+          );
+          toast("Merge 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "merge 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（HEAD 依 Git 真實結果保留）",
+            true
+          );
+          toast("Merge 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
       } else if (op === "conflict-save") {
         const path = pendingGitWrite.path;
         if (!path) {
@@ -4260,6 +4314,9 @@
           showGitApprove("fetch-prune", {
             remote: remote || (picker && picker.value) || "origin",
           });
+        },
+        branchMerge: function (branch) {
+          showGitApprove("merge-ff-only", { branch: branch, name: branch });
         },
         remotePull: function (remote, branch) {
           const picker = document.getElementById("git-ux-remote-picker");

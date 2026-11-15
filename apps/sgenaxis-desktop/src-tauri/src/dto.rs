@@ -769,6 +769,16 @@ pub struct GitWritePullFfOnlyArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git merge --ff-only -- local-branch`. Never --no-ff/-X/pull/rebase/push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteMergeFfOnlyArgs {
+    pub repo: Option<String>,
+    /// Local branch name. Never flags (`--no-ff`, `-X`, `--squash`) and never a remote-tracking name.
+    pub branch: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated conflict save (`git add -- path` after the UI/host wrote the file).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWriteConflictSaveArgs {
