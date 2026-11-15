@@ -2499,6 +2499,7 @@
       url: payload.url,
       path: payload.path,
       contents: payload.contents,
+      oid: payload.oid,
     };
     const box = document.getElementById("git-approve");
     const title = document.getElementById("git-approve-title");
@@ -2573,6 +2574,8 @@
           ? "審核 Conflict Abort"
           : op === "conflict-skip"
           ? "審核 Conflict Skip"
+          : op === "cherry-pick"
+          ? "審核 Cherry-pick"
           : "審核 Commit";
     }
     if (lede) {
@@ -2657,6 +2660,10 @@
           ? "核准後經 git_write_conflict_abort → GitWritePort；依偵測狀態執行 --abort。不做 reset --hard。拒絕則無突變。"
           : op === "conflict-skip"
           ? "核准後經 git_write_conflict_skip → GitWritePort；僅在 Git 允許時執行 rebase／cherry-pick --skip。Merge 等無法 skip 的狀態會誠實失敗，不會改跑 continue／abort。拒絕則無突變。"
+          : op === "cherry-pick"
+          ? "核准後經 git_write_cherry_pick → GitWritePort；執行 git cherry-pick -- " +
+            (payload.oid || "") +
+            "。不加 --ff／-n／--continue／--skip／--abort，不 rebase、不 push。缺 OID、髒覆寫與選項型名稱誠實失敗。活動租約禁止 cherry-pick。拒絕則無突變。"
           : "核准後經 git_write_commit → GitWritePort；拒絕則無突變。";
     }
     if (msgWrap) {
@@ -3666,6 +3673,40 @@
           toast("Conflict skip 失敗（未假裝成功）");
           await cmdGitRefresh();
         }
+      } else if (op === "cherry-pick") {
+        const oid = (pendingGitWrite && pendingGitWrite.oid) || "";
+        if (
+          !oid.trim() ||
+          oid.charAt(0) === "-" ||
+          oid === "--ff" ||
+          oid === "-n" ||
+          oid.indexOf("--") === 0
+        ) {
+          setGitStatusLine("cherry-pick OID 無效或為選項型名稱", true);
+          toast("禁止 --ff／-n／option-like cherry-pick");
+          return;
+        }
+        const dto = await invoke("git_write_cherry_pick", {
+          args: { repo: repo, oid: oid, approved: true },
+        });
+        hideGitApprove();
+        if (dto && dto.ok) {
+          setGitStatusLine(
+            "已 cherry-pick " + oid + "（經 GitWritePort；git cherry-pick -- oid）",
+            false
+          );
+          toast("Cherry-pick 完成");
+          await cmdGitRefresh();
+        } else {
+          setGitStatusLine(
+            "cherry-pick 失敗：" +
+              ((dto && dto.message) || "unknown") +
+              "（HEAD 與工作區依 Git 真實結果保留；未 rebase／push）",
+            true
+          );
+          toast("Cherry-pick 失敗（未假裝成功）");
+          await cmdGitRefresh();
+        }
       } else {
         hideGitApprove();
       }
@@ -4286,6 +4327,9 @@
         },
         conflictSkip: function () {
           showGitApprove("conflict-skip", {});
+        },
+        cherryPick: function (oid) {
+          showGitApprove("cherry-pick", { oid: oid || "" });
         },
         fetchDiff: async function (pathspec) {
           const d = await invoke("git_workbench_diff", {

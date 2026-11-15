@@ -755,6 +755,16 @@ pub struct GitWriteFetchPruneArgs {
     pub approved: bool,
 }
 
+/// Args for approval-gated `git cherry-pick -- oid`. Never --ff/-n/continue/rebase/push.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct GitWriteCherryPickArgs {
+    pub repo: Option<String>,
+    /// Source commit OID. Never flags (`-n`, `--ff`, `--continue`, `--skip`, `--abort`).
+    pub oid: String,
+    /// Must be `true` after UI confirm; `false` → no mutation.
+    pub approved: bool,
+}
+
 /// Args for approval-gated `git pull --ff-only -- remote [branch]`. Never rebase/no-ff/force.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitWritePullFfOnlyArgs {
