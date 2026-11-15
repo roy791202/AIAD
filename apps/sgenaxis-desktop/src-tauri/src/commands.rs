@@ -35,15 +35,14 @@ use sgenaxis_exec::{
 };
 use sgenaxis_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
-    load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
-    perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
-    perform_git_unstage_all,
-    perform_git_unset_upstream, save_design_file, save_scene_text, CompositionRoot,
-    DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
-    GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitStageAllResult,
-    GitSwitchResult, GitTagPushResult, GitUnstageAllResult, GitUnsetUpstreamResult,
-    GuardDecisionView, GuardPacketDto,
-    HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
+    load_scene_text, perform_git_cherry_pick, perform_git_push_tag, perform_git_rename_branch,
+    perform_git_rename_remote, perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
+    perform_git_unset_upstream, perform_git_unstage_all, save_design_file, save_scene_text,
+    CompositionRoot, DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
+    GitCherryPickResult, GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult,
+    GitStageAllResult, GitSwitchResult, GitTagPushResult, GitUnsetUpstreamResult,
+    GitUnstageAllResult, GuardDecisionView, GuardPacketDto, HostSettings, LifecyclePhase,
+    DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
 use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
@@ -55,17 +54,17 @@ use crate::dto::{
     EvidenceSummaryDto, GetEvidenceSummaryArgs, GitBranchDto, GitCommitDto, GitConflictDto,
     GitConflictFileDto, GitDiffDto, GitEntryDto, GitRemoteDto, GitSettingsDto, GitStashDto,
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
-    GitWriteBranchRenameArgs, GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs,
-    GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
-    GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
-    GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
-    GitWriteStageAllArgs, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
-    GitWriteUnstageAllArgs,
-    GitWriteTagArgs, GitWriteTagDeleteArgs, GitWriteTagPushArgs, GitWriteUnsetUpstreamArgs,
-    ListenProjectionDto, LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs,
-    PollResult, ProviderDto, SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto,
-    SpecReviseArgs, SpecRevisionDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs,
-    StartRunResult, UpsertTaskArgs, WorkItemGateArgs,
+    GitWriteBranchRenameArgs, GitWriteCherryPickArgs, GitWriteCommitArgs, GitWriteConflictOpArgs,
+    GitWriteConflictSaveArgs, GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs,
+    GitWriteIgnoreArgs, GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs,
+    GitWriteRemoteRemoveArgs, GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs,
+    GitWriteResultDto, GitWriteSetUpstreamArgs, GitWriteStageAllArgs, GitWriteStashArgs,
+    GitWriteStashPushArgs, GitWriteSwitchArgs, GitWriteTagArgs, GitWriteTagDeleteArgs,
+    GitWriteTagPushArgs, GitWriteUnsetUpstreamArgs, GitWriteUnstageAllArgs, ListenProjectionDto,
+    LoadLocalBoardArgs, LoadLocalBoardResult, OwnerClassifyGuardTaskArgs, PollResult, ProviderDto,
+    SetZoneArgs, SpecApproveArgs, SpecGetRevisionArgs, SpecProjectionDto, SpecReviseArgs,
+    SpecRevisionDto, SpecTrySetContractArgs, StartImplementationArgs, StartRunArgs, StartRunResult,
+    UpsertTaskArgs, WorkItemGateArgs,
 };
 use crate::git_index_commit::{
     IndexCommitErrorDto, IndexCommitOutcomeDto, IndexCommitPreviewDto, IndexCommitRequestDto,
@@ -448,6 +447,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
+        "git_write_cherry_pick",
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
@@ -3629,6 +3629,63 @@ pub fn git_write_pull_ff_only(
     )
 }
 
+fn git_cherry_pick_result_dto(r: GitCherryPickResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn perform_git_write_cherry_pick(
+    write: &dyn GitWritePort,
+    repo: &str,
+    oid: &str,
+    approved: bool,
+    occupying_run: Option<&str>,
+) -> Result<GitWriteResultDto, String> {
+    Ok(git_cherry_pick_result_dto(perform_git_cherry_pick(
+        write,
+        repo,
+        oid,
+        approved,
+        occupying_run,
+    )?))
+}
+
+/// Approval-gated `git cherry-pick -- oid`. Occupying Run/lease refuses before GitWritePort.
+/// Never `--ff` / `-n` / `--continue` / rebase / push.
+#[tauri::command]
+pub fn git_write_cherry_pick(
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: GitWriteCherryPickArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_cherry_pick").map_err(|e| e.to_string())?;
+    let occupying = {
+        let dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+        dispatch.occupying_run_for_git_switch()
+    };
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "cherry-pick".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_cherry_pick(
+        root.git_write(),
+        &repo,
+        &args.oid,
+        args.approved,
+        occupying.as_deref(),
+    )
+}
+
 fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -6137,6 +6194,51 @@ mod git_ui_tests {
             .message
             .to_ascii_lowercase()
             .contains("no such remote"));
+    }
+
+    #[test]
+    fn git_write_cherry_pick_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_cherry_pick"));
+        assert!(!is_allowed("git_cherry_pick"));
+
+        let w = FakeGitWrite::new();
+        w.seed_reachable_oid("/r", "abc1234", "feat: picked");
+        let head_before = w.local_head("/r");
+
+        let denied = perform_git_write_cherry_pick(&w, "/r", "abc1234", false, None).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_cherry_pick("/r").is_none());
+        assert_eq!(w.local_head("/r"), head_before);
+
+        let ff = perform_git_write_cherry_pick(&w, "/r", "--ff", true, None).unwrap_err();
+        assert!(ff.contains("out of scope"));
+        let nflag = perform_git_write_cherry_pick(&w, "/r", "-n", true, None).unwrap_err();
+        assert!(nflag.contains("out of scope"));
+        assert!(w.last_cherry_pick("/r").is_none());
+
+        let occupied =
+            perform_git_write_cherry_pick(&w, "/r", "abc1234", true, Some("run-42")).unwrap();
+        assert!(!occupied.ok);
+        assert!(occupied.local_preserved);
+        assert!(occupied.message.contains("活動租約禁止 cherry-pick"));
+        assert!(occupied.message.contains("run-42"));
+        assert!(w.last_cherry_pick("/r").is_none());
+
+        let missing = perform_git_write_cherry_pick(&w, "/r", "deadbeef", true, None).unwrap();
+        assert!(!missing.ok);
+        assert!(missing
+            .message
+            .to_ascii_lowercase()
+            .contains("bad revision"));
+
+        let ok = perform_git_write_cherry_pick(&w, "/r", "abc1234", true, None).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "cherry-pick");
+        assert_eq!(w.last_cherry_pick("/r").as_deref(), Some("abc1234"));
+        assert_eq!(w.push_count("/r"), 0);
+        assert!(w.last_pull_ff_only("/r").is_none());
     }
 
     #[test]
