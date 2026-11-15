@@ -134,6 +134,24 @@ mod std_write_temp {
         std::env::temp_dir().join(format!("sgenaxis-pd-git-02-{label}-{nanos}-{n}"))
     }
 
+    /// `StdGitWrite::require_remote_url` rejects `\`; Windows temp bare paths need `file:///`.
+    fn local_bare_repo_file_url(path: &Path) -> String {
+        let abs = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let mut normalized = abs.to_string_lossy().replace('\\', "/");
+        if let Some(stripped) = normalized.strip_prefix("//?/") {
+            normalized = stripped.to_string();
+        }
+        if normalized
+            .as_bytes()
+            .get(1)
+            .is_some_and(|b| *b == b':' && normalized.as_bytes()[0].is_ascii_alphabetic())
+        {
+            format!("file:///{normalized}")
+        } else {
+            format!("file://{normalized}")
+        }
+    }
+
     fn git(cwd: &Path, args: &[&str]) {
         let out = Command::new("git")
             .args(args)
@@ -1191,6 +1209,98 @@ mod std_write_temp {
     }
 
     #[test]
+    fn pd_git_set_remote_url_01_1_denied_approval_does_not_change_url() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-denied-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = local_bare_repo_file_url(&next);
+
+        w.set_remote_url(repo, "origin", &new_url, GitWriteApproval::denied())
+            .expect_err("denied set-url must not mutate");
+        assert!(remote_list(repo).contains(old));
+        assert!(!remote_list(repo).contains(&new_url));
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
+    fn pd_git_set_remote_url_01_2_approved_set_url_updates_without_fetch_side_effects() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-approved-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = local_bare_repo_file_url(&next);
+        assert!(remote_list(repo).contains(old));
+
+        w.set_remote_url(repo, "origin", &new_url, GitWriteApproval::granted())
+            .expect("approved set-url");
+        let listed = remote_list(repo);
+        assert!(listed.contains("origin"), "remote missing: {listed}");
+        assert!(listed.contains(&new_url), "new url missing: {listed}");
+        assert!(!listed.contains(old), "old url still listed: {listed}");
+        assert!(
+            !work.join(".git").join("FETCH_HEAD").exists(),
+            "set-url must not fetch as a side effect"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
+    fn pd_git_set_remote_url_01_3_ghost_and_option_like_inputs_fail_honestly() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-invalid-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = local_bare_repo_file_url(&next);
+        let before = remote_list(repo);
+        assert!(before.contains(old));
+
+        w.set_remote_url(repo, "  ", &new_url, GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.set_remote_url(repo, "origin", "  ", GitWriteApproval::granted())
+            .expect_err("empty url must fail");
+        w.set_remote_url(repo, "-f", &new_url, GitWriteApproval::granted())
+            .expect_err("fetch flag name is out of scope");
+        w.set_remote_url(repo, "--mirror", &new_url, GitWriteApproval::granted())
+            .expect_err("mirror flag name is out of scope");
+        w.set_remote_url(repo, "--push", &new_url, GitWriteApproval::granted())
+            .expect_err("push-url flag name is out of scope");
+        w.set_remote_url(repo, "origin", "-u", GitWriteApproval::granted())
+            .expect_err("flag-like url is out of scope");
+        w.set_remote_url(
+            repo,
+            "origin",
+            &format!("{new_url};echo"),
+            GitWriteApproval::granted(),
+        )
+        .expect_err("shell metacharacters in url are out of scope");
+        assert_eq!(remote_list(repo), before);
+
+        let missing = w
+            .set_remote_url(repo, "ghost", &new_url, GitWriteApproval::granted())
+            .expect_err("unknown remote must fail honestly");
+        assert!(matches!(missing, PortError::Git(_)));
+        assert_eq!(remote_list(repo), before);
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
     fn std_write_set_remote_url_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
@@ -1199,22 +1309,22 @@ mod std_write_temp {
         let next = unique_temp("set-url-bare");
         fs::create_dir_all(&next).unwrap();
         git(&next, &["init", "--bare"]);
-        let new_url = next.to_str().unwrap();
+        let new_url = local_bare_repo_file_url(&next);
 
-        w.set_remote_url(repo, "origin", new_url, GitWriteApproval::denied())
+        w.set_remote_url(repo, "origin", &new_url, GitWriteApproval::denied())
             .expect_err("denied set-url must not mutate");
         assert!(remote_list(repo).contains(old));
         assert!(!work.join(".git").join("FETCH_HEAD").exists());
 
-        w.set_remote_url(repo, "  ", new_url, GitWriteApproval::granted())
+        w.set_remote_url(repo, "  ", &new_url, GitWriteApproval::granted())
             .expect_err("empty name must fail");
         w.set_remote_url(repo, "origin", "  ", GitWriteApproval::granted())
             .expect_err("empty url must fail");
-        w.set_remote_url(repo, "-f", new_url, GitWriteApproval::granted())
+        w.set_remote_url(repo, "-f", &new_url, GitWriteApproval::granted())
             .expect_err("fetch flag name is out of scope");
-        w.set_remote_url(repo, "--mirror", new_url, GitWriteApproval::granted())
+        w.set_remote_url(repo, "--mirror", &new_url, GitWriteApproval::granted())
             .expect_err("mirror flag name is out of scope");
-        w.set_remote_url(repo, "--push", new_url, GitWriteApproval::granted())
+        w.set_remote_url(repo, "--push", &new_url, GitWriteApproval::granted())
             .expect_err("push-url flag name is out of scope");
         w.set_remote_url(repo, "origin", "-u", GitWriteApproval::granted())
             .expect_err("flag-like url is out of scope");
@@ -1228,7 +1338,7 @@ mod std_write_temp {
         assert!(remote_list(repo).contains(old));
 
         let missing = w
-            .set_remote_url(repo, "ghost", new_url, GitWriteApproval::granted())
+            .set_remote_url(repo, "ghost", &new_url, GitWriteApproval::granted())
             .expect_err("unknown remote must fail honestly");
         assert!(matches!(missing, PortError::Git(_)));
         let msg = missing.to_string().to_ascii_lowercase();
@@ -1237,11 +1347,11 @@ mod std_write_temp {
             "missing remote must fail honestly: {missing}"
         );
 
-        w.set_remote_url(repo, "origin", new_url, GitWriteApproval::granted())
+        w.set_remote_url(repo, "origin", &new_url, GitWriteApproval::granted())
             .expect("approved set-url");
         let listed = remote_list(repo);
         assert!(listed.contains("origin"), "remote missing: {listed}");
-        assert!(listed.contains(new_url), "new url missing: {listed}");
+        assert!(listed.contains(&new_url), "new url missing: {listed}");
         assert!(!listed.contains(old), "old url still listed: {listed}");
         assert!(
             !work.join(".git").join("FETCH_HEAD").exists(),

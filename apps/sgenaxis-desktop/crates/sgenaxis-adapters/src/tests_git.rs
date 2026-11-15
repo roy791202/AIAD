@@ -978,6 +978,116 @@ fn gated_git_write_blocks_remote_even_when_approved() {
 }
 
 #[test]
+fn pd_git_set_remote_url_01_1_denied_approval_does_not_change_url() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/old.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    let denied = w.set_remote_url(
+        "/r",
+        "origin",
+        "https://example.invalid/new.git",
+        GitWriteApproval::denied(),
+    );
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_remote_set_url("/r").is_none());
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![(
+            "origin".to_string(),
+            "https://example.invalid/old.git".to_string()
+        )]
+    );
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn pd_git_set_remote_url_01_2_approved_set_url_updates_without_fetch_side_effects() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/old.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    let new_url = "https://example.invalid/new.git";
+    w.set_remote_url(
+        "/r",
+        "origin",
+        new_url,
+        GitWriteApproval::granted(),
+    )
+    .expect("approved set-url");
+    assert_eq!(
+        w.last_remote_set_url("/r"),
+        Some(("origin".to_string(), new_url.to_string()))
+    );
+    assert_eq!(
+        w.configured_remotes("/r"),
+        vec![("origin".to_string(), new_url.to_string())]
+    );
+    assert!(w.remote_tracking_refs("/r").is_empty());
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
+fn pd_git_set_remote_url_01_3_ghost_and_option_like_inputs_fail_honestly() {
+    let w = FakeGitWrite::new();
+    w.add_remote(
+        "/r",
+        "origin",
+        "https://example.invalid/old.git",
+        GitWriteApproval::granted(),
+    )
+    .expect("seed remote");
+    let new_url = "https://example.invalid/new.git";
+
+    assert!(w
+        .set_remote_url("/r", "  ", new_url, GitWriteApproval::granted())
+        .is_err());
+    assert!(w
+        .set_remote_url("/r", "origin", "  ", GitWriteApproval::granted())
+        .is_err());
+    assert!(w
+        .set_remote_url("/r", "-f", new_url, GitWriteApproval::granted())
+        .is_err());
+    assert!(w
+        .set_remote_url(
+            "/r",
+            "--mirror",
+            new_url,
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .set_remote_url(
+            "/r",
+            "--push",
+            new_url,
+            GitWriteApproval::granted(),
+        )
+        .is_err());
+    assert!(w
+        .set_remote_url("/r", "origin", "-u", GitWriteApproval::granted())
+        .is_err());
+    let missing = w.set_remote_url("/r", "ghost", new_url, GitWriteApproval::granted());
+    assert!(
+        matches!(missing, Err(PortError::Git(ref m)) if m.to_ascii_lowercase().contains("no such remote"))
+    );
+    assert_eq!(
+        w.configured_remotes("/r")[0].1,
+        "https://example.invalid/old.git"
+    );
+    assert!(w.last_remote_set_url("/r").is_none());
+    assert_eq!(w.push_count("/r"), 0);
+}
+
+#[test]
 fn fake_git_write_set_remote_url_records_when_approved() {
     let w = FakeGitWrite::new();
     w.add_remote(
