@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn approved_unset_upstream_succeeds() {
+    fn pd_git_unset_upstream_01_2_host_granted_clears_tracking() {
         let w = FakeGitWrite::new();
         seed(&w);
         let ok = perform_git_unset_upstream(&w, "/r", "", true);
@@ -83,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn unapproved_refuses_without_mutation() {
+    fn pd_git_unset_upstream_01_1_host_denied_preserves_tracking() {
         let w = FakeGitWrite::new();
         seed(&w);
 
