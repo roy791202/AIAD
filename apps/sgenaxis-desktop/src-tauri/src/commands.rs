@@ -38,10 +38,12 @@ use sgenaxis_host::{
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
     perform_git_set_upstream, perform_git_stage_all, perform_git_switch,
     perform_git_unstage_all,
-    perform_git_unset_upstream, save_design_file, save_scene_text, CompositionRoot,
+    perform_git_merge_ff_only, perform_git_unset_upstream, save_design_file, save_scene_text,
+    CompositionRoot,
     DeployArtifactView, DeployCheckView, DeployStatusView, DesignDoc, DesignNode,
     GitRemoteRenameResult, GitRenameResult, GitSetUpstreamResult, GitStageAllResult,
-    GitSwitchResult, GitTagPushResult, GitUnstageAllResult, GitUnsetUpstreamResult,
+    GitMergeFfOnlyResult, GitSwitchResult, GitTagPushResult, GitUnstageAllResult,
+    GitUnsetUpstreamResult,
     GuardDecisionView, GuardPacketDto,
     HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
@@ -57,7 +59,8 @@ use crate::dto::{
     GitTagDto, GitWorkbenchDto, GitWriteBranchCreateArgs, GitWriteBranchDeleteArgs,
     GitWriteBranchRenameArgs, GitWriteCommitArgs, GitWriteConflictOpArgs, GitWriteConflictSaveArgs,
     GitWriteFetchArgs, GitWriteFetchPruneArgs, GitWriteIdentityArgs, GitWriteIgnoreArgs,
-    GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs, GitWriteRemoteRemoveArgs,
+    GitWriteMergeFfOnlyArgs, GitWritePullFfOnlyArgs, GitWritePushArgs, GitWriteRemoteAddArgs,
+    GitWriteRemoteRemoveArgs,
     GitWriteRemoteRenameArgs, GitWriteRemoteSetUrlArgs, GitWriteResultDto, GitWriteSetUpstreamArgs,
     GitWriteStageAllArgs, GitWriteStashArgs, GitWriteStashPushArgs, GitWriteSwitchArgs,
     GitWriteUnstageAllArgs,
@@ -448,6 +451,7 @@ pub fn list_commands() -> Vec<CommandDescriptor> {
         "git_write_fetch",
         "git_write_fetch_prune",
         "git_write_pull_ff_only",
+        "git_write_merge_ff_only",
         "git_write_conflict_save",
         "git_write_conflict_continue",
         "git_write_conflict_abort",
@@ -3629,6 +3633,79 @@ pub fn git_write_pull_ff_only(
     )
 }
 
+fn git_merge_result_dto(r: GitMergeFfOnlyResult) -> GitWriteResultDto {
+    GitWriteResultDto {
+        ok: r.ok,
+        op: r.op,
+        message: r.message,
+        local_preserved: r.local_preserved,
+    }
+}
+
+fn reject_merge_source_scope(name: &str) -> Result<(), String> {
+    reject_branch_scope(name)?;
+    let t = name.trim();
+    let lower = t.to_ascii_lowercase();
+    if t.starts_with('+')
+        || lower.starts_with("refs/remotes/")
+        || lower.starts_with("remotes/")
+        || lower.contains("refs/remotes/")
+        || matches!(lower.as_str(), "pull" | "rebase" | "push")
+    {
+        return Err("no-ff/strategy/remote-tracking merge writes are out of scope".into());
+    }
+    Ok(())
+}
+
+/// Soft-gated ff-only merge: empty / unapproved / occupying Run never mutates.
+fn perform_git_write_merge_ff_only(
+    write: &dyn GitWritePort,
+    repo: &str,
+    branch: &str,
+    approved: bool,
+    occupying_run: Option<&str>,
+) -> Result<GitWriteResultDto, String> {
+    reject_merge_source_scope(branch)?;
+    Ok(git_merge_result_dto(perform_git_merge_ff_only(
+        write,
+        repo,
+        branch,
+        approved,
+        occupying_run,
+    )))
+}
+
+/// Approval-gated `git merge --ff-only -- local-branch`. Never --no-ff / -X / pull / rebase / push.
+#[tauri::command]
+pub fn git_write_merge_ff_only(
+    app: State<'_, AppState>,
+    state: State<'_, HostState>,
+    args: GitWriteMergeFfOnlyArgs,
+) -> Result<GitWriteResultDto, String> {
+    authorize("git_write_merge_ff_only").map_err(|e| e.to_string())?;
+    let occupying = {
+        let dispatch = app.host.lock().map_err(|_| poison_dispatch())?;
+        dispatch.occupying_run_for_git_switch()
+    };
+    let root = state.inner.lock().map_err(|_| poison_host())?;
+    let repo = resolve_repo(args.repo, root.host_settings())?;
+    if !root.git_writes_enabled() {
+        return Ok(GitWriteResultDto {
+            ok: false,
+            op: "merge-ff-only".into(),
+            message: "git writes disabled (gated adapter)".into(),
+            local_preserved: true,
+        });
+    }
+    perform_git_write_merge_ff_only(
+        root.git_write(),
+        &repo,
+        &args.branch,
+        args.approved,
+        occupying.as_deref(),
+    )
+}
+
 fn conflict_path_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
@@ -6137,6 +6214,63 @@ mod git_ui_tests {
             .message
             .to_ascii_lowercase()
             .contains("no such remote"));
+    }
+
+    #[test]
+    fn git_write_merge_ff_only_gated_and_allowlisted() {
+        use sgenaxis_host::is_allowed;
+        assert!(is_allowed("git_write_merge_ff_only"));
+        assert!(!is_allowed("git_merge"));
+        assert!(!is_allowed("git_merge_ff_only"));
+
+        let w = FakeGitWrite::new();
+        w.create_branch("/r", "topic", GitWriteApproval::granted())
+            .unwrap();
+        let head_before = w.local_head("/r");
+
+        let denied = perform_git_write_merge_ff_only(&w, "/r", "topic", false, None).unwrap();
+        assert!(!denied.ok);
+        assert!(denied.local_preserved);
+        assert!(w.last_merge_ff_only("/r").is_none());
+        assert_eq!(w.local_head("/r"), head_before);
+
+        let noff = perform_git_write_merge_ff_only(&w, "/r", "--no-ff", true, None).unwrap_err();
+        assert!(noff.contains("out of scope"));
+        let strategy = perform_git_write_merge_ff_only(&w, "/r", "-X", true, None).unwrap_err();
+        assert!(strategy.contains("out of scope"));
+        assert!(w.last_merge_ff_only("/r").is_none());
+
+        let blocked =
+            perform_git_write_merge_ff_only(&w, "/r", "topic", true, Some("run-42")).unwrap();
+        assert!(!blocked.ok);
+        assert!(blocked.message.contains("活動租約禁止合併"));
+        assert!(blocked.message.contains("run-42"));
+        assert!(w.last_merge_ff_only("/r").is_none());
+
+        w.mark_merge_diverged("/r");
+        let diverged = perform_git_write_merge_ff_only(&w, "/r", "topic", true, None).unwrap();
+        assert!(!diverged.ok);
+        assert!(diverged
+            .message
+            .to_ascii_lowercase()
+            .contains("fast-forward"));
+        assert_eq!(w.local_head("/r"), head_before);
+
+        let w2 = FakeGitWrite::new();
+        w2.create_branch("/r", "topic", GitWriteApproval::granted())
+            .unwrap();
+        let before = w2.local_head("/r");
+        let ok = perform_git_write_merge_ff_only(&w2, "/r", "topic", true, None).unwrap();
+        assert!(ok.ok);
+        assert_eq!(ok.op, "merge-ff-only");
+        assert_eq!(w2.last_merge_ff_only("/r").as_deref(), Some("topic"));
+        assert_ne!(w2.local_head("/r"), before);
+        assert!(w2.last_fetch("/r").is_none());
+        assert!(w2.last_pull_ff_only("/r").is_none());
+
+        let missing = perform_git_write_merge_ff_only(&w2, "/r", "ghost", true, None).unwrap();
+        assert!(!missing.ok);
+        assert!(missing.message.to_ascii_lowercase().contains("not found"));
     }
 
     #[test]
