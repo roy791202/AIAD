@@ -1,0 +1,423 @@
+<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><title>M04 receipt ACK bridge 20261115</title><style>body{max-width:1100px;margin:32px auto;font:16px system-ui;color:#172331}pre{white-space:pre-wrap;background:#f4f6f8;padding:16px}h1,h2{color:#254e76}</style><h1>M04 收據 / root-transfer / semantic ACK 精確對照</h1><p>PROPOSED_DOCUMENT_PACKET_ONLY · parent PD-P1-M04-PREP-01 Yellow · 不採納 G1–G4 · 不改 BDD-19 · 不改既有 packets · 產品/native/build/valid RED = NOT RUN · Valid RED = N/A</p><p>HOST <code>FileSystemPort.write_atomic</code> 回傳 path 不是 semantic ACK，也不是 authenticated Held/root-transfer。M05 retention policy 不是刪除授權。</p><h2>Candidate</h2><pre>{
+  &quot;id&quot;: &quot;M04-RECEIPT-ACK-BRIDGE-20261115&quot;,
+  &quot;parent&quot;: &quot;PD-P1-M04-PREP-01&quot;,
+  &quot;author&quot;: &quot;cursor-dev-agent/grok-4.6&quot;,
+  &quot;role&quot;: &quot;dev-agent&quot;,
+  &quot;generated_at&quot;: &quot;2026-11-15T12:10:00+08:00&quot;,
+  &quot;status&quot;: &quot;PROPOSED_DOCUMENT_PACKET_ONLY&quot;,
+  &quot;approval&quot;: null,
+  &quot;selected&quot;: null,
+  &quot;module_complete&quot;: false,
+  &quot;valid_red&quot;: &quot;N/A&quot;,
+  &quot;tdd&quot;: &quot;None&quot;,
+  &quot;intent&quot;: &quot;Close the remaining original-scope document gap: exact receipt / root-transfer / ACK provider mapping. Do not adopt Owner decisions. Do not weaken BDD-19 or rewrite existing packets.&quot;,
+  &quot;preserved_packets&quot;: [
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M04/planning/provider-source-map-20261104/&quot;,
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-retention-observation-proposal/&quot;,
+    &quot;docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-response-handoff/&quot;
+  ],
+  &quot;non_equivalence&quot;: [
+    &quot;HOST FileSystemPort.write_atomic returning a path is not a semantic ACK and is not authenticated Held or root-transfer.&quot;,
+    &quot;Four-field CommitReceipt is single-file bytes proof only; committed_digest is not document semantic digest.&quot;,
+    &quot;M05-S1 retention policy EligibleForCleanup is not delete authorization and not root-transfer.&quot;
+  ],
+  &quot;field_bridge_gaps&quot;: [
+    {
+      &quot;id&quot;: &quot;BRIDGE-1&quot;,
+      &quot;boundary&quot;: &quot;file bytes → document ACK&quot;,
+      &quot;present&quot;: &quot;CommitReceipt four fields; semantic ACK revision+digest; HOST write_atomic path&quot;,
+      &quot;missing&quot;: &quot;Source-bound conversion proving exact captured tuple; no path or receipt digest substitution&quot;,
+      &quot;provider&quot;: &quot;M04 codec/projector+IO result mapper&quot;,
+      &quot;choice&quot;: &quot;G1/G3/G4&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;BRIDGE-2&quot;,
+      &quot;boundary&quot;: &quot;M05 retention → save root transfer&quot;,
+      &quot;present&quot;: &quot;Pure owner-supplied RootSnapshot evaluation&quot;,
+      &quot;missing&quot;: &quot;Authenticated issuer receipt/current fence/full tuple and durable root-transfer provider evidence&quot;,
+      &quot;provider&quot;: &quot;M05 issuer/root owner with M04 caller&quot;,
+      &quot;choice&quot;: &quot;G2/G4&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;BRIDGE-3&quot;,
+      &quot;boundary&quot;: &quot;save → captured formal ACK&quot;,
+      &quot;present&quot;: &quot;Pure DocumentSession method with monotonic baseline checks&quot;,
+      &quot;missing&quot;: &quot;Admitted native orchestration receipt→current delivery→root success→ACK proof&quot;,
+      &quot;provider&quot;: &quot;M04 owner + M03 delivery + M05 root provider&quot;,
+      &quot;choice&quot;: &quot;G4&quot;,
+      &quot;selected&quot;: null
+    }
+  ],
+  &quot;owner_gates&quot;: [
+    {
+      &quot;id&quot;: &quot;G1&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;G2&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;G3&quot;,
+      &quot;selected&quot;: null
+    },
+    {
+      &quot;id&quot;: &quot;G4&quot;,
+      &quot;selected&quot;: null
+    }
+  ],
+  &quot;bdd&quot;: [
+    &quot;M04-ACK-1&quot;,
+    &quot;M04-ACK-2&quot;,
+    &quot;M04-ACK-3&quot;,
+    &quot;M04-ACK-4&quot;,
+    &quot;M04-ACK-5&quot;,
+    &quot;M04-ACK-6&quot;,
+    &quot;M04-ACK-7&quot;,
+    &quot;M04-ACK-8&quot;
+  ],
+  &quot;bdd19&quot;: &quot;Original complete restoration remains unchanged; deferred retention is not adopted here.&quot;,
+  &quot;architecture&quot;: {
+    &quot;hexagonal&quot;: &quot;UI → M03 facade → M04 DocumentOwner → existing FileCommitPort / candidate M05 issuer; adapters implement ports&quot;,
+    &quot;forbidden&quot;: [
+      &quot;Owner decision adoption&quot;,
+      &quot;product source or test edits&quot;,
+      &quot;Port/registry/journal implementation&quot;,
+      &quot;treating path receipt as ACK&quot;,
+      &quot;treating M05 policy as delete authorization&quot;,
+      &quot;weakening BDD-19&quot;
+    ]
+  },
+  &quot;limits&quot;: [
+    &quot;Document classification only; not authenticity, native Held preservation or atomicity proof&quot;,
+    &quot;Does not rerun historical save/retention observation PASS&quot;,
+    &quot;Does not re-assert 796 authority zero-drift on this tree&quot;,
+    &quot;Independent review PENDING&quot;,
+    &quot;product/native/build/regression/valid RED NOT RUN&quot;
+  ],
+  &quot;next_ready_action&quot;: &quot;Independent bounded document review of this packet. Parent stays Yellow until remaining original-scope gaps and Owner G1-G4 are resolved.&quot;
+}</pre><h2>Non-equivalence</h2><pre>[
+  &quot;HOST FileSystemPort.write_atomic returning a path is not a semantic ACK and is not authenticated Held or root-transfer.&quot;,
+  &quot;Four-field CommitReceipt is single-file bytes proof only; committed_digest is not document semantic digest.&quot;,
+  &quot;M05-S1 retention policy EligibleForCleanup is not delete authorization and not root-transfer.&quot;
+]</pre><h2>Bridge gaps (selected=null)</h2><pre>[
+  {
+    &quot;id&quot;: &quot;BRIDGE-1&quot;,
+    &quot;boundary&quot;: &quot;file bytes → document ACK&quot;,
+    &quot;present&quot;: &quot;CommitReceipt four fields; semantic ACK revision+digest; HOST write_atomic path&quot;,
+    &quot;missing&quot;: &quot;Source-bound conversion proving exact captured tuple; no path or receipt digest substitution&quot;,
+    &quot;provider&quot;: &quot;M04 codec/projector+IO result mapper&quot;,
+    &quot;choice&quot;: &quot;G1/G3/G4&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;BRIDGE-2&quot;,
+    &quot;boundary&quot;: &quot;M05 retention → save root transfer&quot;,
+    &quot;present&quot;: &quot;Pure owner-supplied RootSnapshot evaluation&quot;,
+    &quot;missing&quot;: &quot;Authenticated issuer receipt/current fence/full tuple and durable root-transfer provider evidence&quot;,
+    &quot;provider&quot;: &quot;M05 issuer/root owner with M04 caller&quot;,
+    &quot;choice&quot;: &quot;G2/G4&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;BRIDGE-3&quot;,
+    &quot;boundary&quot;: &quot;save → captured formal ACK&quot;,
+    &quot;present&quot;: &quot;Pure DocumentSession method with monotonic baseline checks&quot;,
+    &quot;missing&quot;: &quot;Admitted native orchestration receipt→current delivery→root success→ACK proof&quot;,
+    &quot;provider&quot;: &quot;M04 owner + M03 delivery + M05 root provider&quot;,
+    &quot;choice&quot;: &quot;G4&quot;,
+    &quot;selected&quot;: null
+  }
+]</pre><h2>Owner gates</h2><pre>[
+  {
+    &quot;id&quot;: &quot;G1&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G2&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G3&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G4&quot;,
+    &quot;selected&quot;: null
+  }
+]</pre><h2>Pending questions</h2><pre>[
+  {
+    &quot;id&quot;: &quot;G1&quot;,
+    &quot;owner&quot;: &quot;M04+M03&quot;,
+    &quot;question&quot;: &quot;Adopt exact request capture identity and closed response encoding, without substituting receipt digest for semantic digest?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G2&quot;,
+    &quot;owner&quot;: &quot;M04+M05&quot;,
+    &quot;question&quot;: &quot;Adopt issuer-bound Held/root-transfer envelope with current fence and full captured tuple?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G3&quot;,
+    &quot;owner&quot;: &quot;M04+M01+IO&quot;,
+    &quot;question&quot;: &quot;Adopt canonical target identity and requested/raw receipt mapping, including write_atomic path versus FileCommitPort receipt?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;G4&quot;,
+    &quot;owner&quot;: &quot;M04+S1&quot;,
+    &quot;question&quot;: &quot;Confirm captured ACK, replay rejection and newer-baseline rejection mapping before Skeleton/valid RED?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;BRIDGE-1&quot;,
+    &quot;boundary&quot;: &quot;file bytes → document ACK&quot;,
+    &quot;provider&quot;: &quot;M04 codec/projector+IO result mapper&quot;,
+    &quot;question&quot;: &quot;Which source-bound conversion proves the exact captured tuple without receipt-to-semantic substitution?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;BRIDGE-2&quot;,
+    &quot;boundary&quot;: &quot;M05 retention → save root transfer&quot;,
+    &quot;provider&quot;: &quot;M05 issuer/root owner with M04 caller&quot;,
+    &quot;question&quot;: &quot;Which authenticated issuer receipt/current fence/full tuple is the durable root-transfer provider evidence?&quot;,
+    &quot;selected&quot;: null
+  },
+  {
+    &quot;id&quot;: &quot;BRIDGE-3&quot;,
+    &quot;boundary&quot;: &quot;save → captured formal ACK&quot;,
+    &quot;provider&quot;: &quot;M04 owner + M03 delivery + M05 root provider&quot;,
+    &quot;question&quot;: &quot;Which admitted native orchestration proves receipt → current delivery → root success → ACK?&quot;,
+    &quot;selected&quot;: null
+  }
+]</pre><h2>Fixtures</h2><pre>[
+  {
+    &quot;id&quot;: &quot;M04-ACK-1&quot;,
+    &quot;kind&quot;: &quot;negative&quot;,
+    &quot;claim&quot;: &quot;semantic_ACK&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: &quot;/tmp/scene.sgs&quot;,
+      &quot;commit_receipt_four_fields&quot;: false,
+      &quot;issuer&quot;: null,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_PATH_IS_NOT_ACK&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-2&quot;,
+    &quot;kind&quot;: &quot;negative&quot;,
+    &quot;claim&quot;: &quot;semantic_ACK&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: true,
+      &quot;issuer&quot;: null,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_RECEIPT_IS_NOT_ACK&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-3&quot;,
+    &quot;kind&quot;: &quot;failure&quot;,
+    &quot;claim&quot;: &quot;Held&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: true,
+      &quot;issuer&quot;: null,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_MISSING_ISSUER&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-4&quot;,
+    &quot;kind&quot;: &quot;negative&quot;,
+    &quot;claim&quot;: &quot;semantic_ACK&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: true,
+      &quot;issuer&quot;: &quot;M05&quot;,
+      &quot;replay&quot;: true,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 10,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_REPLAY&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-5&quot;,
+    &quot;kind&quot;: &quot;boundary&quot;,
+    &quot;claim&quot;: &quot;semantic_ACK&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: true,
+      &quot;issuer&quot;: &quot;M05&quot;,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 11,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_NEWER_REVISION&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-6&quot;,
+    &quot;kind&quot;: &quot;negative_false_approval&quot;,
+    &quot;claim&quot;: &quot;semantic_ACK&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: &quot;/tmp/scene.sgs&quot;,
+      &quot;commit_receipt_four_fields&quot;: true,
+      &quot;issuer&quot;: &quot;M05&quot;,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: true,
+      &quot;selected_g_non_null&quot;: true,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: false
+    },
+    &quot;expected&quot;: &quot;REJECT_FALSE_ADOPTION&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-7&quot;,
+    &quot;kind&quot;: &quot;negative&quot;,
+    &quot;claim&quot;: &quot;delete_authorization&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: false,
+      &quot;issuer&quot;: null,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: true,
+      &quot;m05_eligible_for_cleanup&quot;: true,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;REJECT_RETENTION_IS_NOT_DELETE_AUTH&quot;
+  },
+  {
+    &quot;id&quot;: &quot;M04-ACK-8&quot;,
+    &quot;kind&quot;: &quot;success&quot;,
+    &quot;claim&quot;: &quot;provider_mapping_document&quot;,
+    &quot;evidence&quot;: {
+      &quot;host_write_atomic_path&quot;: null,
+      &quot;commit_receipt_four_fields&quot;: false,
+      &quot;issuer&quot;: null,
+      &quot;replay&quot;: false,
+      &quot;captured_revision&quot;: 10,
+      &quot;formal_revision&quot;: 9,
+      &quot;claims_owner_adoption&quot;: false,
+      &quot;selected_g_non_null&quot;: false,
+      &quot;m05_as_delete_auth&quot;: false,
+      &quot;m05_eligible_for_cleanup&quot;: false,
+      &quot;bridges_pending&quot;: true
+    },
+    &quot;expected&quot;: &quot;PASS_DOCUMENT_MAPPING_ONLY&quot;
+  }
+]</pre><h2>BDD</h2><pre>Feature: Exact receipt, root-transfer and semantic ACK provider mapping
+  Background:
+    Given PD-P1-M04-PREP-01 remains Yellow with save/retention observation already PASS as documents
+    And existing packets provider-source-map-20261104, save-retention-observation-proposal and save-response-handoff stay unmodified
+    And Owner G1 through G4 plus three bridge options remain unselected
+    And original BDD-19 complete restoration at any commit failure is not reinterpreted
+
+  Rule: A filesystem path or four-field file receipt is not a semantic ACK
+    Scenario: M04-ACK-1 Path from FileSystemPort.write_atomic is not ACK
+      Given HOST scene save helper returns a path from FileSystemPort.write_atomic
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_PATH_IS_NOT_ACK
+      And no semantic ACK, authenticated Held or root-transfer is recorded
+
+    Scenario: M04-ACK-2 Four-field CommitReceipt is not ACK
+      Given a CommitReceipt with only target_path, previous_digest, committed_digest and transaction_id
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_RECEIPT_IS_NOT_ACK
+      And raw committed_digest is not treated as document semantic digest
+
+  Rule: Missing issuer or replay cannot mint Held, root-transfer or ACK
+    Scenario: M04-ACK-3 Missing issuer cannot prove Held or root-transfer
+      Given captured file evidence without an authenticated M05 issuer receipt
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_MISSING_ISSUER
+      And Held and root-transfer remain unproven
+
+    Scenario: M04-ACK-4 Replay of a prior receipt or ACK is rejected
+      Given a previously consumed receipt or ACK tuple is presented again
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_REPLAY
+      And formal baseline is not rewritten from the replay
+
+  Rule: Newer formal revision and false adoption stay rejected
+    Scenario: M04-ACK-5 Stale captured ACK cannot replace a newer formal revision
+      Given captured revision 10 and an existing formal baseline at revision 11
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_NEWER_REVISION
+      And the newer formal baseline remains the observed document fact
+
+    Scenario: M04-ACK-6 False adoption or false ACK claim is rejected
+      Given a candidate that marks G1 through G4 selected or claims path receipt as adopted ACK
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_FALSE_ADOPTION
+      And Owner decisions remain null
+
+  Rule: M05 retention policy is not delete authorization or root-transfer
+    Scenario: M04-ACK-7 EligibleForCleanup is not delete authorization
+      Given M05-S1 returns EligibleForCleanup identity only
+      When the document mapping is evaluated
+      Then the observed outcome is REJECT_RETENTION_IS_NOT_DELETE_AUTH
+      And no cleanup lease or root-transfer is inferred
+
+    Scenario: M04-ACK-8 Mapping lists providers without claiming ACK success
+      Given the three field-bridge gaps with selected null
+      When the document mapping is evaluated
+      Then the observed outcome is PASS_DOCUMENT_MAPPING_ONLY
+      And no product, native, build or valid RED run is claimed
+</pre><h2>Limits</h2><pre>[
+  &quot;Document classification only; not authenticity, native Held preservation or atomicity proof&quot;,
+  &quot;Does not rerun historical save/retention observation PASS&quot;,
+  &quot;Does not re-assert 796 authority zero-drift on this tree&quot;,
+  &quot;Independent review PENDING&quot;,
+  &quot;product/native/build/regression/valid RED NOT RUN&quot;,
+  &quot;independent review&quot;,
+  &quot;product tests&quot;,
+  &quot;native UI/IPC&quot;,
+  &quot;build&quot;,
+  &quot;package&quot;,
+  &quot;install&quot;,
+  &quot;valid RED&quot;,
+  &quot;GREEN&quot;,
+  &quot;regression&quot;,
+  &quot;historical 796 authority re-verification as zero-drift&quot;
+]</pre><p id="M04-ACK-1">M04-ACK-1</p><p id="M04-ACK-2">M04-ACK-2</p><p id="M04-ACK-3">M04-ACK-3</p><p id="M04-ACK-4">M04-ACK-4</p><p id="M04-ACK-5">M04-ACK-5</p><p id="M04-ACK-6">M04-ACK-6</p><p id="M04-ACK-7">M04-ACK-7</p><p id="M04-ACK-8">M04-ACK-8</p><script type="application/json" id="candidate">{"id": "M04-RECEIPT-ACK-BRIDGE-20261115", "parent": "PD-P1-M04-PREP-01", "author": "cursor-dev-agent/grok-4.6", "role": "dev-agent", "generated_at": "2026-11-15T12:10:00+08:00", "status": "PROPOSED_DOCUMENT_PACKET_ONLY", "approval": null, "selected": null, "module_complete": false, "valid_red": "N/A", "tdd": "None", "intent": "Close the remaining original-scope document gap: exact receipt / root-transfer / ACK provider mapping. Do not adopt Owner decisions. Do not weaken BDD-19 or rewrite existing packets.", "preserved_packets": ["docs/requirements-confirmation/phase1-spec/tasks/M04/planning/provider-source-map-20261104/", "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-retention-observation-proposal/", "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-response-handoff/"], "non_equivalence": ["HOST FileSystemPort.write_atomic returning a path is not a semantic ACK and is not authenticated Held or root-transfer.", "Four-field CommitReceipt is single-file bytes proof only; committed_digest is not document semantic digest.", "M05-S1 retention policy EligibleForCleanup is not delete authorization and not root-transfer."], "field_bridge_gaps": [{"id": "BRIDGE-1", "boundary": "file bytes → document ACK", "present": "CommitReceipt four fields; semantic ACK revision+digest; HOST write_atomic path", "missing": "Source-bound conversion proving exact captured tuple; no path or receipt digest substitution", "provider": "M04 codec/projector+IO result mapper", "choice": "G1/G3/G4", "selected": null}, {"id": "BRIDGE-2", "boundary": "M05 retention → save root transfer", "present": "Pure owner-supplied RootSnapshot evaluation", "missing": "Authenticated issuer receipt/current fence/full tuple and durable root-transfer provider evidence", "provider": "M05 issuer/root owner with M04 caller", "choice": "G2/G4", "selected": null}, {"id": "BRIDGE-3", "boundary": "save → captured formal ACK", "present": "Pure DocumentSession method with monotonic baseline checks", "missing": "Admitted native orchestration receipt→current delivery→root success→ACK proof", "provider": "M04 owner + M03 delivery + M05 root provider", "choice": "G4", "selected": null}], "owner_gates": [{"id": "G1", "selected": null}, {"id": "G2", "selected": null}, {"id": "G3", "selected": null}, {"id": "G4", "selected": null}], "bdd": ["M04-ACK-1", "M04-ACK-2", "M04-ACK-3", "M04-ACK-4", "M04-ACK-5", "M04-ACK-6", "M04-ACK-7", "M04-ACK-8"], "bdd19": "Original complete restoration remains unchanged; deferred retention is not adopted here.", "architecture": {"hexagonal": "UI → M03 facade → M04 DocumentOwner → existing FileCommitPort / candidate M05 issuer; adapters implement ports", "forbidden": ["Owner decision adoption", "product source or test edits", "Port/registry/journal implementation", "treating path receipt as ACK", "treating M05 policy as delete authorization", "weakening BDD-19"]}, "limits": ["Document classification only; not authenticity, native Held preservation or atomicity proof", "Does not rerun historical save/retention observation PASS", "Does not re-assert 796 authority zero-drift on this tree", "Independent review PENDING", "product/native/build/regression/valid RED NOT RUN"], "next_ready_action": "Independent bounded document review of this packet. Parent stays Yellow until remaining original-scope gaps and Owner G1-G4 are resolved."}</script>

@@ -1,0 +1,89 @@
+{
+  "id": "M04-RECEIPT-ACK-BRIDGE-20261115",
+  "parent": "PD-P1-M04-PREP-01",
+  "author": "cursor-dev-agent/grok-4.6",
+  "role": "dev-agent",
+  "generated_at": "2026-11-15T12:10:00+08:00",
+  "status": "PROPOSED_DOCUMENT_PACKET_ONLY",
+  "approval": null,
+  "selected": null,
+  "module_complete": false,
+  "valid_red": "N/A",
+  "tdd": "None",
+  "intent": "Close the remaining original-scope document gap: exact receipt / root-transfer / ACK provider mapping. Do not adopt Owner decisions. Do not weaken BDD-19 or rewrite existing packets.",
+  "preserved_packets": [
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/provider-source-map-20261104/",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-retention-observation-proposal/",
+    "docs/requirements-confirmation/phase1-spec/tasks/M04/planning/save-response-handoff/"
+  ],
+  "non_equivalence": [
+    "HOST FileSystemPort.write_atomic returning a path is not a semantic ACK and is not authenticated Held or root-transfer.",
+    "Four-field CommitReceipt is single-file bytes proof only; committed_digest is not document semantic digest.",
+    "M05-S1 retention policy EligibleForCleanup is not delete authorization and not root-transfer."
+  ],
+  "field_bridge_gaps": [
+    {
+      "id": "BRIDGE-1",
+      "boundary": "file bytes → document ACK",
+      "present": "CommitReceipt four fields; semantic ACK revision+digest; HOST write_atomic path",
+      "missing": "Source-bound conversion proving exact captured tuple; no path or receipt digest substitution",
+      "provider": "M04 codec/projector+IO result mapper",
+      "choice": "G1/G3/G4",
+      "selected": null
+    },
+    {
+      "id": "BRIDGE-2",
+      "boundary": "M05 retention → save root transfer",
+      "present": "Pure owner-supplied RootSnapshot evaluation",
+      "missing": "Authenticated issuer receipt/current fence/full tuple and durable root-transfer provider evidence",
+      "provider": "M05 issuer/root owner with M04 caller",
+      "choice": "G2/G4",
+      "selected": null
+    },
+    {
+      "id": "BRIDGE-3",
+      "boundary": "save → captured formal ACK",
+      "present": "Pure DocumentSession method with monotonic baseline checks",
+      "missing": "Admitted native orchestration receipt→current delivery→root success→ACK proof",
+      "provider": "M04 owner + M03 delivery + M05 root provider",
+      "choice": "G4",
+      "selected": null
+    }
+  ],
+  "owner_gates": [
+    {"id": "G1", "selected": null},
+    {"id": "G2", "selected": null},
+    {"id": "G3", "selected": null},
+    {"id": "G4", "selected": null}
+  ],
+  "bdd": [
+    "M04-ACK-1",
+    "M04-ACK-2",
+    "M04-ACK-3",
+    "M04-ACK-4",
+    "M04-ACK-5",
+    "M04-ACK-6",
+    "M04-ACK-7",
+    "M04-ACK-8"
+  ],
+  "bdd19": "Original complete restoration remains unchanged; deferred retention is not adopted here.",
+  "architecture": {
+    "hexagonal": "UI → M03 facade → M04 DocumentOwner → existing FileCommitPort / candidate M05 issuer; adapters implement ports",
+    "forbidden": [
+      "Owner decision adoption",
+      "product source or test edits",
+      "Port/registry/journal implementation",
+      "treating path receipt as ACK",
+      "treating M05 policy as delete authorization",
+      "weakening BDD-19"
+    ]
+  },
+  "limits": [
+    "Document classification only; not authenticity, native Held preservation or atomicity proof",
+    "Does not rerun historical save/retention observation PASS",
+    "Does not re-assert 796 authority zero-drift on this tree",
+    "Independent review PENDING",
+    "product/native/build/regression/valid RED NOT RUN"
+  ],
+  "next_ready_action": "Independent bounded document review of this packet. Parent stays Yellow until remaining original-scope gaps and Owner G1-G4 are resolved."
+}
