@@ -2,89 +2,89 @@
 
 | Field | Value |
 |-------|--------|
-| **Verdict** | **CHANGES_REQUIRED** |
+| **Verdict** | **PASS** |
 | **Subject PR** | https://github.com/roy791202/AIAD/pull/76 |
 | **Branch** | `feature/PD-GIT-SET-REMOTE-URL-01-set-url` |
-| **Head SHA (reviewed)** | `f411e5729ef13a68dbf9d9abe41fcede462edf38` (PR later at `5d4524e52`; same test delta) |
+| **Head SHA (re-review)** | `cbbea62ac1e049f239bd3a16351d275fe29bf55e` |
+| **Fix commit** | `cbbea62` — `test(git): use file URLs for set_remote_url Windows fixtures` |
 | **Developer agent** | `cloud-dev-agent-composer-PD-GIT-SET-REMOTE-URL-01` (≠ `bc-e102cbed`) |
 | **Reviewer agent** | Independent high-tier cloud agent (Composer), role `high-tier` |
-| **Reviewed at** | 2026-11-15T09:20:00+08:00 |
+| **Reviewed at** | 2026-11-15T09:25:00+08:00 |
 
 ## Scope
 
-High-tier review per `ai-dev-pr-acceptance` §B for task **PD-GIT-SET-REMOTE-URL-01** / story **S-GIT-WRITE-SET-REMOTE-URL-01**. No product adapter or assertion changes in this review artifact. **Did not** set Done / blue on the board.
+High-tier review per `ai-dev-pr-acceptance` §B for task **PD-GIT-SET-REMOTE-URL-01** / story **S-GIT-WRITE-SET-REMOTE-URL-01**. This artifact is docs-only. **Did not** set Done / blue on the board.
 
-## Dispatch checklist (requested)
+## Re-review (round 2)
+
+Prior round (**`f411e572`**) was **CHANGES_REQUIRED**: Windows `rust-windows` rejected native bare paths under `remote_url_out_of_scope` (`\`).
+
+**`cbbea62` response:**
+
+- Adds test-only helper `local_bare_repo_file_url` in `tests_git02.rs` (`file:///` + forward slashes; strips `//?/` when present).
+- Applies helper to `pd_git_set_remote_url_01_{1,2,3}` and `std_write_set_remote_url_without_fetch_when_approved` Std fixtures.
+- **No changes** to `std_git_write.rs`, `fake.rs`, or `git_write.rs` — adapter URL validation **not** relaxed.
+
+## Dispatch checklist
 
 | Check | Result | Evidence |
 |-------|--------|----------|
-| Architecture: `set_remote_url` must not fetch or use `--push` / `--mirror` / `--add` / `--delete` on this path | **PASS** | PR does not modify adapters; existing `StdGitWrite::set_remote_url` invokes `git remote set-url -- <name> <url>` only (`std_git_write.rs` L773–789). Tests assert no `FETCH_HEAD`, `push_count == 0`, empty tracking refs (Fake). |
-| Allowed files only | **PASS** | Diff vs `main`: `tests_git.rs`, `tests_git02.rs`, `docs/board.json`, `reports/dispatch-pd/PD-GIT-SET-REMOTE-URL-01{,-red,-test-output}.md` — within task allow-list (tests + board + dispatch report). |
-| No `.feature` edits | **PASS** | No `.feature` in PR diff. |
-| Board status token `In Review` (not `In Review / In QA`) | **PASS** | Story + Task `status`: `"In Review"`. |
-| Story `bdd[]` rows vs Task `tdd` / `scenarioIds` | **PASS** | Three scenarios `PD-GIT-SET-REMOTE-URL-01-{1,2,3}` on Story all `Green`; Task `tdd`: `Green`; `scenarioIds` match. |
-| No Done / blue | **PASS** | Story/Task `light`: `Green`; no `Done` / `Shipped`; no blue completion state. |
-| No skip / ignore on new tests | **PASS** | Six `pd_git_set_remote_url_01_*` tests run Green; no `#[ignore]` in added blocks. |
+| Architecture: no fetch / `--push` / `--mirror` on `set_remote_url` path | **PASS** | Adapter unchanged; still `git remote set-url -- <name> <url>` only. |
+| Allowed files only | **PASS** | PR vs `main`: `tests_git.rs`, `tests_git02.rs`, `docs/board.json`, `reports/dispatch-pd/*` — no product adapter edits. |
+| No `.feature` edits | **PASS** | None in PR diff. |
+| Board status `In Review` (not `In Review / In QA`) | **PASS** | Story + Task `status`: `"In Review"`. |
+| Story `bdd[]` vs Task `tdd` / `scenarioIds` | **PASS** | Three scenarios aligned; Task `tdd`: `Green`. |
+| No Done / blue | **PASS** | No `Done` / `Shipped`; Task `light`: `Red` (CI), Story `light`: `Green` — not blue. |
+| No skip / ignore on scenario tests | **PASS** | Six `pd_git_set_remote_url_01_*` tests; 0 ignored. |
 
 ## §B summary
 
-### 1–3 Architecture and scope
+### Fix quality (`cbbea62`)
 
-- **PASS.** TDD-lock only; port adapter implementation pre-existed on `main`. New coverage is Fake + Std integration-style unit tests with scenario IDs. No new coupling, no port bypass, no platform-hardcoded paths in the PR delta.
+- **PASS.** Correct cross-platform test strategy: satisfy existing `require_remote_url` without weakening security guards. Comment documents why (`\` rejection).
 
-### 4 Clean Code
+### BDD + TDD
 
-- **PASS.** Tests are focused, name-mapped to BDD IDs, use existing fixtures (`FakeGitWrite`, `make_worktree_with_bare_remote`). No weakened assertions or magic behavior changes.
-
-### 5–7 Production readiness / hooks
-
-- **PASS (task-appropriate).** Git write path validates approval, trims input, rejects option-like names via shared `remote_name_out_of_scope` / `remote_url_out_of_scope`. PR does not touch `.ai-hooks`, `.githooks`, or workflows.
-
-### 8 BDD + TDD
-
-- **PASS.** Trace: each BDD ID → two tests (Fake + Std). RED evidence file present; reviewer re-ran:
+- **PASS.** Reviewer re-ran Linux:
 
   ```text
-  cargo test pd_git_set_remote_url_01 --features std-adapters
-  → 6 passed; 0 failed; 0 ignored
+  cargo test pd_git_set_remote_url_01 --features std-adapters → 6 passed
   ```
 
-### 9 Completeness
+- **Windows (rust-windows job `132655153116`, head `cbbea62`):** all six scenario tests **ok**:
+  - `pd_git_set_remote_url_01_{1,2,3}` (Fake + Std)
+  - Related: `std_write_set_remote_url_without_fetch_when_approved` **ok** (same fixture pattern).
 
-- **PASS.** Task delivers scenario TDD lock only; no TODO stubs in scope.
+### CI (2026-11-15)
 
-### 10 Board
+| Check | Conclusion |
+|-------|------------|
+| `guard` | success |
+| `tests` | success |
+| `lint + test subset` | success |
+| `rust-windows` | **failure** (job completed `01:22:43Z`) |
 
-- **PASS** on requested status token (`In Review`), lights (Green, not blue), and BDD/tdd alignment. **CHANGES_REQUIRED:** missing Task `prUrl`; Task `ci: Pending` while `rust-windows` already **failed** on head SHA (board should reflect Red/Yellow once CI is known).
+**rust-windows failure is not from this task’s scenario tests.** Remaining failures on `cbbea62` (3 tests, pre-existing / out of task scope):
 
-### 11–12 CI / commits
+1. `std_write_add_and_remove_remote_without_fetch_when_approved` — native path `add` still hits `remote_url_out_of_scope` on Windows.
+2. `std_write_conflict_continue_rebase_without_skip` — `GIT_EDITOR=/bin/true` unavailable on Windows runner.
+3. `std_write_conflict_save_continue_abort_when_approved` — same editor issue.
 
-- **CHANGES_REQUIRED.** Linux: `guard`, `tests`, `lint + test subset` **success** on `f411e572`. **Windows `rust-windows` failed** (job `132653908968`):
+Task board `ci: Red` is honest for the **whole** job; Task `tdd: Green` matches scenario coverage. **Advisory:** update Task `lightReason` on the feature branch — scenario TDD is Green on Windows; red CI is from unrelated tests (separate triage, not this task’s allow-list).
 
-  | Test | Failure |
-  |------|---------|
-  | `pd_git_set_remote_url_01_2_*` (Std) | `approved set-url: Other("fetch/force/set-url/push remote writes are out of scope")` |
-  | `pd_git_set_remote_url_01_3_*` (Std) | `missing` remote: expected `PortError::Git(_)`, got out-of-scope / non-Git error |
-  | `std_write_set_remote_url_without_fetch_when_approved` | same ghost-remote assertion (pre-existing; same fixture pattern) |
+### Board
 
-  **Root cause:** `StdGitWrite` uses `remote_url_out_of_scope` (`git_write.rs` L143–157), which treats `\` as out of scope. Windows `std_write_temp` fixtures pass bare-repo paths like `D:\a\_temp\...` as URLs, so legitimate `set-url` is rejected before `git` runs. Fake tests pass on all OS; Std scenario tests are **not** Green on the Windows target platform.
+- **PASS** on `prUrl`, `In Review`, no Done/blue.
+- Task `light: Red` / `ci: Red` acceptable until repo-level `rust-windows` is green or failures are scoped to another card.
 
-- PR commits use Conventional Commits. No hook/workflow edits in diff.
+### §A verification
 
-## Required changes (return to dev agent on PR #76)
+Board note records independent verifier `verifier-agent-bc-b4771c9e` TDD pass (`PD-GIT-SET-REMOTE-URL-01-TDD-REVIEW.md`). High-tier reviewer did not re-run §A UI steps.
 
-1. **Fix Windows Std scenario tests** without skip/ignore: use remote URL forms that satisfy `require_remote_url` on Windows (e.g. `file:///` with forward slashes, or shared helper that normalizes temp bare paths cross-platform). Re-run `rust-windows` until Green.
-2. **Board:** add `prUrl`: `https://github.com/roy791202/AIAD/pull/76` on Task `PD-GIT-SET-REMOTE-URL-01`; set Task `ci` to match GitHub after fixes (Yellow/Red if Windows still failing).
-3. **Do not** set Done / blue until CI all Green and §A verifier completes.
+## Prior round (archived)
 
-## What passed (no rework needed)
-
-Dispatch checklist (architecture, allow-list, no `.feature`, `In Review` token, BDD/tdd alignment, no Done/blue, no skip) and Fake-layer TDD lock meet the requested review criteria. Adapter `set_remote_url` on `main` already uses `git remote set-url --` only (no fetch/`--push`).
-
-## Pipeline gates not completed by this review
-
-**Independent mid-tier verification (§A)** is still required and is not replaced by this document.
+Round 1 at `f411e572`: **CHANGES_REQUIRED** (Windows Std fixtures + missing `prUrl`). Addressed by `cbbea62` + board `prUrl`.
 
 ## Recommendation
 
-**Return PR #76 to implementation** for Windows Std test / fixture fix only (no verifier changes to product assertions from this reviewer). Re-request high-tier review after `rust-windows` Green.
+**PASS** high-tier §B for **PD-GIT-SET-REMOTE-URL-01** on PR #76 at `cbbea62`. Safe to merge **this task’s** TDD lock from a code-review perspective once repo policy accepts merge with known unrelated `rust-windows` failures, or after those are filed separately. **Do not** move cards to Done / blue until PR is merged and pipeline owner declares ship criteria met.
