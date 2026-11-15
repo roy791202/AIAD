@@ -2,6 +2,7 @@
 //! Never `--ff` / `-n` / `--no-commit` / `--continue` / `--skip` / `--abort`.
 //! Never rebase. Never push. Occupying Run/lease refuses before GitWritePort.
 
+use sgenaxis_adapters::cherry_pick_oid_out_of_scope;
 use sgenaxis_ports::{GitWriteApproval, GitWritePort};
 
 /// Contract string: occupying Run/lease refuses cherry-pick.
@@ -34,34 +35,6 @@ impl GitCherryPickResult {
             local_preserved: true,
         }
     }
-}
-
-fn cherry_pick_oid_out_of_scope(value: &str) -> bool {
-    let t = value.trim();
-    let lower = t.to_ascii_lowercase();
-    t.starts_with('-')
-        || t.starts_with('+')
-        || t.contains('\0')
-        || t.contains('\n')
-        || t.contains(' ')
-        || matches!(
-            lower.as_str(),
-            "-n" | "--no-commit"
-                | "--ff"
-                | "--ff-only"
-                | "--continue"
-                | "--skip"
-                | "--abort"
-                | "-x"
-                | "-m"
-                | "--mainline"
-                | "-f"
-                | "--force"
-                | "rebase"
-                | "--rebase"
-                | "push"
-                | "--push"
-        )
 }
 
 /// Soft-gated cherry-pick: occupying Run refuses before GitWritePort.
@@ -161,6 +134,10 @@ mod tests {
         assert!(ff.contains("out of scope"));
         let n = perform_git_cherry_pick(&w, "/r", "-n", true, None).unwrap_err();
         assert!(n.contains("out of scope"));
+        let range = perform_git_cherry_pick(&w, "/r", "abc1234..def", true, None).unwrap_err();
+        assert!(range.contains("out of scope"));
+        let tilde = perform_git_cherry_pick(&w, "/r", "HEAD~1", true, None).unwrap_err();
+        assert!(tilde.contains("out of scope"));
         assert!(w.last_cherry_pick("/r").is_none());
     }
 

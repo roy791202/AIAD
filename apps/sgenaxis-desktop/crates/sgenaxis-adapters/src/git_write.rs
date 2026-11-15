@@ -157,7 +157,7 @@ pub(crate) fn remote_url_out_of_scope(value: &str) -> bool {
 }
 
 /// OIDs that would become flags or widen cherry-pick beyond `git cherry-pick -- <oid>`.
-pub(crate) fn cherry_pick_oid_out_of_scope(value: &str) -> bool {
+pub fn cherry_pick_oid_out_of_scope(value: &str) -> bool {
     let t = value.trim();
     let lower = t.to_ascii_lowercase();
     t.starts_with('-')
