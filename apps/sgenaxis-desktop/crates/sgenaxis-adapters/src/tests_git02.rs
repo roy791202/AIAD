@@ -1191,6 +1191,98 @@ mod std_write_temp {
     }
 
     #[test]
+    fn pd_git_set_remote_url_01_1_denied_approval_does_not_change_url() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-denied-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = next.to_str().unwrap();
+
+        w.set_remote_url(repo, "origin", new_url, GitWriteApproval::denied())
+            .expect_err("denied set-url must not mutate");
+        assert!(remote_list(repo).contains(old));
+        assert!(!remote_list(repo).contains(new_url));
+        assert!(!work.join(".git").join("FETCH_HEAD").exists());
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
+    fn pd_git_set_remote_url_01_2_approved_set_url_updates_without_fetch_side_effects() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-approved-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = next.to_str().unwrap();
+        assert!(remote_list(repo).contains(old));
+
+        w.set_remote_url(repo, "origin", new_url, GitWriteApproval::granted())
+            .expect("approved set-url");
+        let listed = remote_list(repo);
+        assert!(listed.contains("origin"), "remote missing: {listed}");
+        assert!(listed.contains(new_url), "new url missing: {listed}");
+        assert!(!listed.contains(old), "old url still listed: {listed}");
+        assert!(
+            !work.join(".git").join("FETCH_HEAD").exists(),
+            "set-url must not fetch as a side effect"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
+    fn pd_git_set_remote_url_01_3_ghost_and_option_like_inputs_fail_honestly() {
+        let (work, bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let old = bare.to_str().unwrap();
+        let w = StdGitWrite::new();
+        let next = unique_temp("set-url-invalid-bare");
+        fs::create_dir_all(&next).unwrap();
+        git(&next, &["init", "--bare"]);
+        let new_url = next.to_str().unwrap();
+        let before = remote_list(repo);
+        assert!(before.contains(old));
+
+        w.set_remote_url(repo, "  ", new_url, GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.set_remote_url(repo, "origin", "  ", GitWriteApproval::granted())
+            .expect_err("empty url must fail");
+        w.set_remote_url(repo, "-f", new_url, GitWriteApproval::granted())
+            .expect_err("fetch flag name is out of scope");
+        w.set_remote_url(repo, "--mirror", new_url, GitWriteApproval::granted())
+            .expect_err("mirror flag name is out of scope");
+        w.set_remote_url(repo, "--push", new_url, GitWriteApproval::granted())
+            .expect_err("push-url flag name is out of scope");
+        w.set_remote_url(repo, "origin", "-u", GitWriteApproval::granted())
+            .expect_err("flag-like url is out of scope");
+        w.set_remote_url(
+            repo,
+            "origin",
+            &format!("{new_url};echo"),
+            GitWriteApproval::granted(),
+        )
+        .expect_err("shell metacharacters in url are out of scope");
+        assert_eq!(remote_list(repo), before);
+
+        let missing = w
+            .set_remote_url(repo, "ghost", new_url, GitWriteApproval::granted())
+            .expect_err("unknown remote must fail honestly");
+        assert!(matches!(missing, PortError::Git(_)));
+        assert_eq!(remote_list(repo), before);
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+        let _ = fs::remove_dir_all(&next);
+    }
+
+    #[test]
     fn std_write_set_remote_url_without_fetch_when_approved() {
         let (work, bare) = make_worktree_with_bare_remote();
         let repo = work.to_str().unwrap();
