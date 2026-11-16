@@ -417,9 +417,9 @@ pub trait GitWritePort: Send + Sync {
     ) -> Result<(), PortError>;
 
     /// Create a new local branch at current HEAD. Requires approval.
-    /// `git branch -- <name>`. Never `-C` / `--force` / `-D` / `-d`.
-    /// Never remote create. Never `--set-upstream`. Never switch/checkout.
-    /// Duplicate and invalid names fail honestly.
+    /// PD-GIT-CREATE-BRANCH-01: `git branch -- <name>`. Never `-C` / `--force` /
+    /// `-D` / `-d`. Never remote create. Never `--set-upstream`. Never
+    /// switch/checkout. Duplicate and invalid names fail honestly.
     fn create_branch(
         &self,
         repo: &str,
