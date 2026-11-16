@@ -974,6 +974,33 @@ mod std_write_temp {
         assert!(local_branch_list(repo).contains("feature/slot"));
         assert!(local_branch_list(repo).contains("unmerged"));
 
+        git(&work, &["fetch", "--", "origin"]);
+        assert!(
+            ref_exists(repo, "refs/remotes/origin/main"),
+            "fixture must have remote-tracking origin/main"
+        );
+        let remote_only = w
+            .delete_branch(repo, "origin/main", GitWriteApproval::granted())
+            .expect_err("remote-only name must not use -r or push :branch");
+        let rmsg = remote_only.to_string().to_ascii_lowercase();
+        assert!(
+            rmsg.contains("remote-only") || rmsg.contains("refusing"),
+            "remote-tracking delete must fail honestly: {remote_only}"
+        );
+        assert!(
+            ref_exists(repo, "refs/remotes/origin/main"),
+            "must never delete remote-tracking refs"
+        );
+        let origin_heads = Command::new("git")
+            .args(["-C", repo, "ls-remote", "--heads", "--", "origin"])
+            .output()
+            .expect("ls-remote");
+        let origin_heads = String::from_utf8_lossy(&origin_heads.stdout);
+        assert!(
+            origin_heads.contains("refs/heads/main"),
+            "must never git push :branch: {origin_heads}"
+        );
+
         let unmerged = w
             .delete_branch(repo, "unmerged", GitWriteApproval::granted())
             .expect_err("unmerged must fail without -D");
