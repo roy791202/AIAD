@@ -1034,8 +1034,12 @@ mod std_write_temp {
 
         w.rename_branch(repo, "  ", "feature/renamed", GitWriteApproval::granted())
             .expect_err("empty old name must fail");
+        w.rename_branch(repo, "feature/slot", "  ", GitWriteApproval::granted())
+            .expect_err("empty new name must fail");
         w.rename_branch(repo, "feature/slot", "-M", GitWriteApproval::granted())
             .expect_err("force-rename flag name is out of scope");
+        w.rename_branch(repo, "feature/slot", "--force", GitWriteApproval::granted())
+            .expect_err("--force name is out of scope");
         w.rename_branch(repo, "-m", "feature/renamed", GitWriteApproval::granted())
             .expect_err("leading dash is out of scope");
         w.rename_branch(repo, "../evil", "ok", GitWriteApproval::granted())
@@ -1071,6 +1075,32 @@ mod std_write_temp {
             )
             .expect_err("missing branch must fail");
         assert!(matches!(missing, PortError::Git(_) | PortError::Other(_)));
+
+        git(
+            &work,
+            &["update-ref", "refs/remotes/origin/only-remote", "HEAD"],
+        );
+        let remote_only = w
+            .rename_branch(
+                repo,
+                "origin/only-remote",
+                "from-remote",
+                GitWriteApproval::granted(),
+            )
+            .expect_err("remote-only name must fail; never remote rename");
+        assert!(matches!(
+            remote_only,
+            PortError::Git(_) | PortError::Other(_)
+        ));
+        let rmsg = remote_only.to_string().to_ascii_lowercase();
+        assert!(
+            rmsg.contains("remote") || rmsg.contains("not found"),
+            "remote-only must fail honestly: {remote_only}"
+        );
+        assert!(
+            !local_branch_list(repo).contains("from-remote"),
+            "must not invent a local branch from a remote-only name"
+        );
 
         w.rename_branch(
             repo,
