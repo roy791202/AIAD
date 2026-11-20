@@ -1,31 +1,36 @@
 # PR 驗收期
 
-## 硬性規則：驗證角色絕對不可以是開發程式角色
-- 實測者與審查者都必須是**另外啟動的獨立代理**，不能是寫這張工單程式的代理，也不能延續開發者的對話或工作階段。
-- 驗證代理不得修改產品程式碼，也不得修改 TDD。發現問題只能記錄並退回，由開發代理修正。
-- 驗證代理只讀工單、BDD、TDD 與產出本身，不採信開發代理自己寫的「已測過」說法，一切重新實測。
-- 每份驗收紀錄要寫明開發代理與驗證代理的身分；兩者相同，驗收結果一律無效。
+## 硬性規則
+- 你必須是**另外啟動的獨立代理**，不是寫這張卡的代理，也不延續它的對話。
+- 不改產品程式、不改測試斷言；發現問題只記錄並退回。
+- 不採信開發代理的「已測過」，一切重跑。
+- 驗收紀錄寫明開發者與驗證者身分；相同即無效。
+角色、何時需要高階審查、Done 條件見 [roles-and-gates.md](.agents/skills/ai-dev-pipeline/references/roles-and-gates.md)。
 
-## A. 實測（獨立的中低階 AI 模型代理）
-1. 依 TDD 執行自動化測試（含分層依賴檢查），能在多個目標平台跑就各跑一次。
-2. 依 TDD 的介面實測步驟，**實際操作產品介面**，每一步都截圖，關鍵流程要錄影，存到約定的證據資料夾。
-3. 逐項對照預期結果，記錄 PASS 或 FAIL。平台不符無法執行的項目記為 NOT RUN，不得偽造 PASS。
-4. 有 FAIL 就退回實作期，附上失敗的步驟和截圖。
+## A. 實測（獨立 TDD 代理，一律執行）
+1. 核對測試與 TDD 封包一致（斷言、預期值沒被削弱、沒新增 skip、RED 證據存在）——[bdd-tdd.md](.agents/skills/ai-dev-pipeline/references/bdd-tdd.md)。
+2. 重跑自動化測試（含分層依賴檢查、覆蓋率、安全與錯誤情境、有預算的效能回歸）；能在多個平台跑就各跑一次。
+3. 依封包的介面實測步驟**實際操作產品介面**，每步截圖、關鍵流程錄影，存到證據位置（[project.md](.agents/skills/ai-dev-pipeline/references/project.md)）。
+4. 逐項記 PASS／FAIL；無法執行記 NOT RUN 並寫原因，不得偽造 PASS。
+5. 寫驗收報告，結論 `TDD_PASS` 或 `TDD_FAIL`；FAIL 附失敗步驟與截圖退回實作期。
 
-## B. 審查與提交（獨立的高階 AI 模型代理）
-1. 審查程式碼品質，確認符合架構與 BDD，沒有改到允許範圍以外的檔案，測試證據完整可信，且開發者與驗證者確實是不同代理。
-2. 特別檢查：有沒有寫死平台特定的路徑、指令或 API；有沒有繞過 Port 直接引用其他模組的實作；有沒有新增沒有理由的耦合。有就退回。
-3. **分層檢查**：依賴是否只由外往內（渲染 → API → 命令 → 應用 → 領域）；領域層有沒有引用框架、資料庫或平台；渲染層或 API 層有沒有藏商業規則；有沒有跳層或把內部型別（如 ORM 實體）外漏到 API。有就退回。
-4. **寫法與 Clean Code 檢查**：對照實作期的 Clean Code 原則、程式寫法與自我審查清單——命名不明或誤導、函式過長或參數過多、深層巢狀 if、錯誤碼或 null、產品程式用 `unwrap()` / `panic!` 處理可預期錯誤、廢話註解或被註解掉的程式、在服務內自行 new 依賴、貧血領域模型、魔法數字、意外副作用、過度設計的抽象、以「童子軍法則」為名越界或改變行為。明顯違反就退回；小問題列為建議不擋 PR。
-5. **上線就緒檢查**：依 `ai-dev-production-readiness` 檢查覆蓋率門檻、整合與 E2E 測試、交易邊界、併發鎖、日誌遮罩、錯誤外洩、輸入驗證與權限，以及 Secure Coding 分層防禦表（SQL/指令注入、XSS、BFLA、BOLA/IDOR、商業邏輯邊界值、敏感資料、SCA 掃描結果），以及記憶體與資源設計（無上限配置、一次讀入大資料、資源未釋放、循環參照、無界佇列、沒有量測依據的池化）。實測者也要跑覆蓋率報告與安全、錯誤情境。明顯違反就退回。
-6. **演算法與效能檢查**：熱點與處理外部輸入的程式有寫出複雜度與推導；沒有在大輸入上出現意外的 O(n²)（例如迴圈內線性搜尋、重複排序、字串反覆串接）；任何效能宣稱都有前後 benchmark 數字；數學推理與正確性論證（不變量、邊界情況）站得住；沒有缺乏量測依據的複雜優化。實測者要跑效能回歸測試並對照效能預算。明顯違反就退回。
-7. **Hook 檢查**：PR 沒有修改或停用 `.ai-hooks/`、`.cursor/hooks.json`、`.claude/settings.json`（除非工單就是改 hook）；查看 `.ai-hooks/logs/hooks.log`，被擋下的指令、未修正的 guard 發現與測試失敗都要有交代。發現繞過 hook 就退回。hook 通過不能取代實測與審查。
-8. **BDD + TDD 檢查**：追溯表完整（Task 涵蓋的每個情境都有測試和 PR）；驗證代理自己重跑，這張 Task 涵蓋的情境全部 Green，Story 移到 Done 前它的所有情境都 Green；有 Red 先於 Green 的證據（失敗輸出或測試先提交）；PR 沒有修改或刪除 `.feature` 情境、沒有削弱斷言、沒有新增 skip（工單就是改情境且有高階模型或使用者核准除外）。不符就退回。
-9. **完整性檢查**：PR 只做了工單的一部分、在工單範圍內留 TODO／未實作樁，或這張工單的 TDD 有失敗或被 skip，一律退回（範圍太大就退回預製期重切）。
-10. **看板檢查**：PR 對應唯一一張 Task 卡片，卡片有上層 Story 連結、PR 連結與分支名 `feature/<task-id>-<slug>`；CI 與 TDD 都 Green；Task 沒有被給 Story Point；卡片只由對應角色移動（開發代理最多移到 In Review / In QA）；`docs/board.json` 通過格式驗證，燈號與實況相符（CI 失敗卻是綠燈、黃紅沒寫原因、上層匯總錯誤都算不符）；藍燈／Done 只在 PR 合併後由高階模型設定。不符就退回。
-11. 通過後由高階模型提交 PR，附上 BDD ID、TDD 結果、截圖與錄影連結；PR 合併後才把卡片移到 Done / Shipped，失敗則移回 In Progress 並附證據。
-- **強制機制檢查**：CI 的 `AI Dev Guard`（guard、tests）都通過；PR 沒有修改或停用 `.ai-hooks`、`.githooks`、`.github/workflows`（除非有 guard-change 標籤與核准）；commit 沒有用 `--no-verify` 跳過檢查的痕跡（例如不符 Conventional Commits 的訊息）。不符就退回。
-- **版本與佈署檢查**（與上面各項一起做）：PR 標題／commit 符合 Conventional Commits；若這次要發版，版本號升級符合 SemVer 且三個版本檔一致、CHANGELOG 有對應條目；佈署卡的 `releaseType` 與升版一致、Prod 卡有 `rollbackPlan` 與非開發代理的 `approvedBy`；Hotfix 有重現 Bug 的測試並已規劃 back-merge。不符就退回。
-12. 不通過就列出要修改的項目，退回實作期。
+## B. 審查（獨立高階代理；符合必要條件時執行）
+每項明顯違反就退回；小問題列建議不擋 PR。
 
-**完成關卡**：有產出、獨立實測 TDD 通過、獨立高階審查通過，三項都成立才能標完成。
+| 檢查 | 依據 |
+|---|---|
+| 只改允許範圍；開發者 ≠ 驗證者 | 工單、[roles-and-gates.md](.agents/skills/ai-dev-pipeline/references/roles-and-gates.md) |
+| 架構與分層、Port、耦合、平台寫死 | [architecture.md](.agents/skills/ai-dev-pipeline/references/architecture.md) |
+| Clean Code 與寫法 | [coding-standards.md](.agents/skills/ai-dev-pipeline/references/coding-standards.md) |
+| 測試、交易、併發、日誌、安全、記憶體 | [readiness.md](.agents/skills/ai-dev-pipeline/references/readiness.md) |
+| 複雜度與效能宣稱 | [performance.md](.agents/skills/ai-dev-pipeline/references/performance.md) |
+| BDD/TDD 追溯、RED 證據、未改情境 | [bdd-tdd.md](.agents/skills/ai-dev-pipeline/references/bdd-tdd.md) |
+| 完整性：沒有只做一部分、沒有 TODO 樁 | 工單（範圍太大退回預製期重切） |
+| hook／CI 未被修改或繞過、CI guard 全過 | [enforcement.md](.agents/skills/ai-dev-pipeline/references/enforcement.md) |
+| 看板：一 PR 一 Task、燈號與實況相符、board.json 通過驗證 | [board-and-lights.md](.agents/skills/ai-dev-pipeline/references/board-and-lights.md) |
+| Conventional Commits、版本與 CHANGELOG（發版時） | [release.md](.agents/skills/ai-dev-pipeline/references/release.md) |
+
+## 結果
+- 全部通過 → 回報給高階模型／Owner，由他們把 draft PR 轉 ready 並合併；合併後才設 Done／藍燈。
+- 不通過 → 列出要修改的項目，卡退回 In Progress（黃或紅燈＋原因），附證據。
+- **完成關卡**：有產出、獨立 `TDD_PASS`、（必要時）獨立審查通過、PR 已合併。

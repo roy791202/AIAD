@@ -1,5 +1,7 @@
 # SGenAxis Git 管理工作台 — C++ & PySide6 應用程式開發架構規格
 
+> **狀態：另案草稿，未拍板。** 現行已拍板技術棧為 Tauri 2 + Vanilla Web UI + Rust Core（`docs/PRODUCT-DEVELOPMENT.md` §2）。不得以本文件作為現行架構或工單依據。
+
 > **用途**：本文檔將 `git_workbench_interactive.html` 視覺與互動原型，轉譯為未來使用 **C++ (Qt 6)** 與 **Python (PySide6)** 開發桌面應用程式之核心規格與工程藍圖。
 
 ---

@@ -1,5 +1,7 @@
 # PM Agent 必作事項（看板工具 · 硬性）
 
+> **2026-11-21 起**：看板權威為 `docs/board.json`，`PROJECT-BOARD.html`／`#board-snapshot`／`zone` 已停用；燈號 Green＝進行中、Blue＝Done。下文的建卡、決策紅燈、派工精神仍適用，但寫入方式與燈號依 `.agents/skills/ai-dev-pipeline/references/board-and-lights.md`。
+
 母對話／PM Agent 操作 `docs/PROJECT-BOARD.html`（埠 **28789**）時必須遵守。  
 SSOT 摘要亦見 `docs/PRODUCT-DEVELOPMENT.md` §7.3；滅燈 §7.1；讀取範圍 §7.2；寫入殼 `SNAPSHOT-SAFE.md`。
 
