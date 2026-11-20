@@ -1,26 +1,27 @@
 # PM Agent 必作事項（看板工具 · 硬性）
 
-> **2026-11-21 起**：看板權威為 `docs/board.json`，`PROJECT-BOARD.html`／`#board-snapshot`／`zone` 已停用；燈號 Green＝進行中、Blue＝Done。下文的建卡、決策紅燈、派工精神仍適用，但寫入方式與燈號依 `.agents/skills/ai-dev-pipeline/references/board-and-lights.md`。
+母對話／PM Agent 操作開發看板 **`docs/board.json`** 時必須遵守。
+完整規則：`.agents/skills/ai-dev-pipeline/references/board-and-lights.md`（看板、燈號、讀取範圍）與 `roles-and-gates.md`（角色、PR、Done 條件）；SSOT 摘要亦見 `docs/PRODUCT-DEVELOPMENT.md` §7（Done 規則 §7.1、讀取範圍 §7.2、PM 必作 §7.3）。兩者衝突時以 references 為準。
 
-母對話／PM Agent 操作 `docs/PROJECT-BOARD.html`（埠 **28789**）時必須遵守。  
-SSOT 摘要亦見 `docs/PRODUCT-DEVELOPMENT.md` §7.3；滅燈 §7.1；讀取範圍 §7.2；寫入殼 `SNAPSHOT-SAFE.md`。
+燈號：**Gray** 未開始／暫停、**Green** 進行順利（不代表完成）、**Yellow** 有風險、**Red** 卡住或待決策、**Blue** 完成（只在 Done／Released）。
 
 ## 0. 寫入硬規則
 
-- **只**經 `board_core.snapshot_safe.mutate_snapshot_file` 或 `board.py report`／板面 API 改 `#board-snapshot`。
-- **禁止**整檔覆寫 HTML 殼（須保留 DOCTYPE／導覽）。
+- 只改**本卡**：更新 `updatedAt`；在 `history` 追加 `{at, from, to, by, note}`；決策、阻擋、退回原因追加到 `notes`（`{at, by, text}`）。只追加，不改刪舊紀錄或別人的備註。
+- **禁止**整檔重寫 `docs/board.json` 或用過期副本覆蓋。
+- 每次改完跑 `.ai-hooks/validate-board.ps1`，不通過不得提交。
 - 永不占用 `:8788`。
 
-## 1. 建工項（必作）
+## 1. 建卡（必作）
 
-安排下一批工作時，**必須先寫入看板工項**，不可只在對話口頭列清單：
+安排下一批工作時，**必須先寫入 `docs/board.json`**，不可只在對話口頭列清單：
 
 | 步驟 | 動作 |
 |------|------|
-| 1 | 用 `snapshot_safe` 追加 `kind=task` 卡（預設 **灰燈**） |
-| 2 | 欄位齊：`id`／`ref`／`title`／`bdd`／`tdd`／`note`（母工項、里程碑、允許／保護範圍、AC、依賴） |
-| 3 | Epic 備註追加「本批已建卡：…」一行 |
-| 4 | **有待 owner 決策者 → 走 §2，不得直接黃燈開工** |
+| 1 | 新增卡片：`level`（Story／Task）、`parentId` 指向上層 Epic／Feature／Story，`status=Todo`、`light=Gray` |
+| 2 | 必填欄位齊：`id`／`level`／`title`／`parentId`／`status`／`light`／`createdAt`／`updatedAt`；視情況 `owner`／`role`／`hours`（只 Task）／`storyPoints`（只 Story）／`bdd` 或 `scenarioIds`；允許／保護範圍、AC、依賴寫進 `notes` |
+| 3 | 上層卡 `notes` 追加「本批已建卡：…」一筆 |
+| 4 | **有待 owner 決策者 → 走 §2，不得直接開工** |
 
 ## 2. 決策項目 → 紅燈（必作）
 
@@ -28,19 +29,19 @@ SSOT 摘要亦見 `docs/PRODUCT-DEVELOPMENT.md` §7.3；滅燈 §7.1；讀取範
 
 | 步驟 | 動作 |
 |------|------|
-| 1 | 建或改為 `kind=decision`（或既有卡標明決策） |
-| 2 | **`zone=red`**（紅燈優先於實作黃燈；自動派工 **跳過** `decision`，見 `skip_kinds`） |
-| 3 | `note` 追加 **`待決策事項`** 清單（條列、可勾選語意）；每條含：問題／選項／影響卡 ID／建議 |
-| 4 | 決策未關閉前：**禁止**把依賴該決策的實作卡改黃並派 subagent |
-| 5 | Owner 拍板後：決策卡備註寫「已決：…」→ 灰／綠（僅文件決策可綠；仍須 §7.1 若有產出＋TDD）；再將實作卡灰→黃並派工 |
+| 1 | 建卡或在既有卡上標明決策 |
+| 2 | **`light=Red`**，`lightReason` 以「**待決策：**」開頭（≤200 字）；自動派工一律跳過待決策卡 |
+| 3 | `notes` 追加一筆，條列每項決策：問題／選項／影響卡 ID／建議 |
+| 4 | 決策未關閉前：**禁止**把依賴該決策的卡移到 `In Progress` 或派 subagent |
+| 5 | Owner 拍板後：`notes` 追加「已決：…」，紅燈解除（依狀態回 Gray／Green）；純決策卡若要設 Done 仍依 §7.1（無 PR 須註明）；再派依賴卡 |
 
-範本 note 片段：
+範本 `notes` 文字：
 
 ```text
 待決策事項:
-- [ ] DEC-1: …
+- [ ] DEC-1: 問題／選項 A·B／影響 PD-XXX／建議 A
 - [ ] DEC-2: …
-狀態: 紅燈阻塞實作派工直至 owner 回覆。
+狀態: 紅燈阻塞依賴卡派工，直至 owner 回覆。
 ```
 
 ## 3. 分派 subagent（必作）
@@ -49,23 +50,30 @@ SSOT 摘要亦見 `docs/PRODUCT-DEVELOPMENT.md` §7.3；滅燈 §7.1；讀取範
 
 | 步驟 | 動作 |
 |------|------|
-| 1 | 實作卡 **灰→黃**（派工開始）；Epic 記「黃燈開工：…」 |
-| 2 | 每個實作卡 **一個** Cursor Task／板面 lane；prompt **只含該卡欄位**（§7.2） |
-| 3 | 並行掛 **獨立 TDD Gate**（佇列 = 本批 ID）；禁止實作代理自改綠（§7.1） |
-| 4 | 實作回 `READY_FOR_GREEN` → TDD 寫 `<ID>-TDD-REVIEW.md` → **僅母對話**在 `TDD_PASS` 後滅燈 |
+| 1 | 卡 `Todo`→`In Progress`、`light=Green`、填 `startedAt`；上層卡 `notes` 記「開工：…」 |
+| 2 | 每張卡 **一個** 開發代理；prompt **只含該卡欄位**（§7.2） |
+| 3 | 另起 **獨立 TDD Gate**（佇列 = 本批 ID）；開發代理不可自設 Done（§7.1） |
+| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` → TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 且 PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
 
 ## 4. 角色對照
 
 | 角色 | 必作 | 禁作 |
 |------|------|------|
-| **PM Agent（母對話）** | 建卡、決策紅燈＋待決策清單、派實作／TDD、`TDD_PASS` 後滅燈 | 跳過建卡直接開工；決策未決就派實作；無 TDD 改綠 |
-| **實作 Agent** | 產出＋報告；區維持黃 | 改綠；讀整板 |
-| **TDD Agent** | 親跑測＋ REVIEW | 改綠；代做功能 |
+| **PM Agent（高階模型／母對話）** | 建卡、決策紅燈＋待決策清單、派開發／TDD、三項條件成立後設 Done／Blue、合併 PR | 跳過建卡直接開工；決策未決就派依賴卡；無 `TDD_PASS` 設 Done |
+| **開發代理** | 產出＋報告＋draft PR；卡最多到 `In Review` | 設 Done／Blue；讀整板 |
+| **TDD 代理** | 親跑測＋ REVIEW；回報 `TDD_PASS`／`TDD_FAIL` | 設 Done／Blue；改產品程式 |
 
 ## 5. 檢查清單（每批開工前）
 
-- [ ] 工項已進 `#board-snapshot`（非僅聊天）
-- [ ] 所有決策項已 **紅燈** 且 note 有 **待決策事項**
+- [ ] 卡片已寫入 `docs/board.json`（非僅聊天），`validate-board.ps1` 通過
+- [ ] 所有決策項已 **紅燈**，`lightReason` 以「待決策：」開頭且 `notes` 有待決策清單
 - [ ] 無未決決策阻塞本批，或 owner 已書面拍板
-- [ ] 實作卡已黃＋subagent 已派（§7.2 prompt）
-- [ ] TDD Gate 已掛；滅燈路徑清楚
+- [ ] 卡已 `In Progress`／Green＋subagent 已派（§7.2 prompt）
+- [ ] TDD Gate 已掛；Done 路徑（產出＋`TDD_PASS`＋PR 合併）清楚
+
+## 已知落差（工具尚未跟上本規則，未改程式）
+
+- `tools/board/poll_next_work.py`：預設讀 `docs/PROJECT-BOARD.html` 的 `#board-snapshot` 並依 `zone` 排序；該檔已不存在，目前無法使用。需改讀 `docs/board.json` 的 `light`／`status`。
+- `tools/board/poll_extinguish.py`：行為（一律拒絕批次結案）仍符合 §7.1，但訊息寫「母對話才可標綠」，應改為「高階模型／使用者才可設 Done／Blue」。
+- `tools/board/dispatch-agents.json` 的 `skip_kinds` 依賴已停用的 `kind=decision`；應改成跳過 `light=Red` 且 `lightReason` 以「待決策：」開頭的卡。
+- `tools/board/SNAPSHOT-SAFE.md`、`board_core.snapshot_safe`、`board.py report` 仍是寫 `#board-snapshot` 的舊流程。
