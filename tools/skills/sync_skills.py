@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -48,10 +49,11 @@ def split_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return meta, body.lstrip("\n")
 
 
-def to_repo_links(body: str) -> str:
-    """Rewrite skill-relative links to repo-root paths (for single-file rule targets)."""
-    body = body.replace(f"../{INDEX_ID}/references/", REF_ROOT)
-    return re.sub(r"\]\(references/", f"]({REF_ROOT}", body)
+def to_repo_links(body: str, target: Path) -> str:
+    """Rewrite skill-relative reference links so they resolve from `target`'s own folder."""
+    ref_dir = os.path.relpath(SRC / INDEX_ID / "references", target.parent).replace(os.sep, "/") + "/"
+    body = body.replace(f"](../{INDEX_ID}/references/", f"]({ref_dir}")
+    return body.replace("](references/", f"]({ref_dir}")
 
 
 def load_sources() -> dict[str, tuple[dict[str, str], str, str]]:
@@ -75,27 +77,28 @@ def build_targets() -> dict[Path, str]:
     targets: dict[Path, str] = {}
     for sid, (meta, body, raw) in sources.items():
         targets[CLAUDE_SKILLS / sid / "SKILL.md"] = raw
-        flat = to_repo_links(body)
-        targets[ROOT / ".clinerules" / f"{sid}.md"] = flat
+        cline = ROOT / ".clinerules" / f"{sid}.md"
+        targets[cline] = to_repo_links(body, cline)
+        windsurf = ROOT / ".windsurf" / "rules" / f"{sid}.md"
         desc = meta["description"].replace('"', '\\"')
-        targets[ROOT / ".windsurf" / "rules" / f"{sid}.md"] = (
-            f'---\ntrigger: model_decision\ndescription: "{desc}"\n---\n{flat}'
+        targets[windsurf] = (
+            f'---\ntrigger: model_decision\ndescription: "{desc}"\n---\n{to_repo_links(body, windsurf)}'
         )
     for ref in sorted((SRC / INDEX_ID / "references").glob("*.md")):
         targets[CLAUDE_SKILLS / INDEX_ID / "references" / ref.name] = (
             ref.read_text(encoding="utf-8").replace("\r\n", "\n")
         )
 
-    index_body = to_repo_links(sources[INDEX_ID][1])
-    always_loaded = "\n\n".join([
-        GENERATED_NOTE,
-        "# AI 開發流程規則（AI Dev Skills）",
-        "> 驗證角色絕對不可以是開發程式角色。本檔只放主索引；各階段與技術細節在下列檔案，需要時才讀。",
-        skill_index(sources),
-        index_body.replace("# AI 開發主索引", "# 主索引內容", 1),
-    ]) + "\n"
     for name in ("AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md"):
-        targets[ROOT / name] = always_loaded
+        path = ROOT / name
+        index_body = to_repo_links(sources[INDEX_ID][1], path)
+        targets[path] = "\n\n".join([
+            GENERATED_NOTE,
+            "# AI 開發流程規則（AI Dev Skills）",
+            "> 驗證角色絕對不可以是開發程式角色。本檔只放主索引；各階段與技術細節在下列檔案，需要時才讀。",
+            skill_index(sources),
+            index_body.replace("# AI 開發主索引", "# 主索引內容", 1),
+        ]) + "\n"
 
     targets[ROOT / "CLAUDE.md"] = "\n\n".join([
         GENERATED_NOTE,
@@ -118,8 +121,7 @@ def broken_links(files: dict[Path, str]) -> list[str]:
             link = m.group(1)
             if "://" in link:
                 continue
-            base = ROOT if link.startswith((".agents/", ".claude/")) else path.parent
-            target = (base / link).resolve()
+            target = (path.parent / link).resolve()  # strict: relative to the file, as GitHub renders it
             if target not in resolved and not target.is_file():
                 shown = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
                 errors.append(f"{shown}: 連結不存在 {link}")

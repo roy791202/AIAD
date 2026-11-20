@@ -5,7 +5,7 @@ description: "AI 開發主索引（先讀這份）：用 AI 代理把產品或�
 # AI 開發主索引
 
 > 這份是**唯一必讀**。下面「路由表」列的參考文件，只有做到那一步才去讀。
-> 專案事實（技術棧、路徑、看板位置）以 [references/project.md](.agents/skills/ai-dev-pipeline/references/project.md) 為準；通用原則與專案事實衝突時，以專案事實為準並回報。
+> 專案事實（技術棧、路徑、看板位置）以 [references/project.md](../../.agents/skills/ai-dev-pipeline/references/project.md) 為準；通用原則與專案事實衝突時，以專案事實為準並回報。
 
 ## 一、不變原則（任何階段都成立）
 1. **驗證者 ≠ 開發者**：寫程式的代理永遠不能實測、審查或核可自己的卡。驗證代理不改產品程式。每份驗收紀錄寫明兩者身分，相同即無效。
@@ -53,17 +53,17 @@ flowchart LR
 ## 四、路由表：什麼時候讀哪一份
 | 你正在… | 讀 |
 |---|---|
-| 確認角色、誰開 PR、誰能設 Done、何時要高階審查 | [references/roles-and-gates.md](.agents/skills/ai-dev-pipeline/references/roles-and-gates.md) |
-| 建卡、移卡、設燈號、寫 notes/history | [references/board-and-lights.md](.agents/skills/ai-dev-pipeline/references/board-and-lights.md) |
-| 寫 BDD 情境、TDD 封包、RED 證據、追溯表 | [references/bdd-tdd.md](.agents/skills/ai-dev-pipeline/references/bdd-tdd.md) |
-| 選架構、切分層、定 Port/Adapter、資料流 | [references/architecture.md](.agents/skills/ai-dev-pipeline/references/architecture.md) |
-| 設計畫面與流程 | [references/ux.md](.agents/skills/ai-dev-pipeline/references/ux.md) |
-| 寫程式、自我審查、審查程式品質 | [references/coding-standards.md](.agents/skills/ai-dev-pipeline/references/coding-standards.md) |
-| 處理效能、演算法、複雜度、benchmark | [references/performance.md](.agents/skills/ai-dev-pipeline/references/performance.md) |
-| 測試策略、交易與併發、日誌、安全、記憶體 | [references/readiness.md](.agents/skills/ai-dev-pipeline/references/readiness.md) |
-| 分支、commit、版本、發布、Hotfix、回滾 | [references/release.md](.agents/skills/ai-dev-pipeline/references/release.md) |
-| hook 被擋、CI guard、分支保護、看板伺服器 | [references/enforcement.md](.agents/skills/ai-dev-pipeline/references/enforcement.md) |
-| 本專案技術棧、路徑、證據位置、命名慣例 | [references/project.md](.agents/skills/ai-dev-pipeline/references/project.md) |
+| 確認角色、誰開 PR、誰能設 Done、何時要高階審查 | [references/roles-and-gates.md](../../.agents/skills/ai-dev-pipeline/references/roles-and-gates.md) |
+| 建卡、移卡、設燈號、寫 notes/history | [references/board-and-lights.md](../../.agents/skills/ai-dev-pipeline/references/board-and-lights.md) |
+| 寫 BDD 情境、TDD 封包、RED 證據、追溯表 | [references/bdd-tdd.md](../../.agents/skills/ai-dev-pipeline/references/bdd-tdd.md) |
+| 選架構、切分層、定 Port/Adapter、資料流 | [references/architecture.md](../../.agents/skills/ai-dev-pipeline/references/architecture.md) |
+| 設計畫面與流程 | [references/ux.md](../../.agents/skills/ai-dev-pipeline/references/ux.md) |
+| 寫程式、自我審查、審查程式品質 | [references/coding-standards.md](../../.agents/skills/ai-dev-pipeline/references/coding-standards.md) |
+| 處理效能、演算法、複雜度、benchmark | [references/performance.md](../../.agents/skills/ai-dev-pipeline/references/performance.md) |
+| 測試策略、交易與併發、日誌、安全、記憶體 | [references/readiness.md](../../.agents/skills/ai-dev-pipeline/references/readiness.md) |
+| 分支、commit、版本、發布、Hotfix、回滾 | [references/release.md](../../.agents/skills/ai-dev-pipeline/references/release.md) |
+| hook 被擋、CI guard、分支保護、看板伺服器 | [references/enforcement.md](../../.agents/skills/ai-dev-pipeline/references/enforcement.md) |
+| 本專案技術棧、路徑、證據位置、命名慣例 | [references/project.md](../../.agents/skills/ai-dev-pipeline/references/project.md) |
 
 ## 五、派工步驟（高階模型／Owner）
 1. 執行 `ai-dev-preproduction`；開始前先讀失敗經驗文件。

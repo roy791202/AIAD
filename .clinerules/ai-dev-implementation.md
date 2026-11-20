@@ -4,14 +4,14 @@
 遇到編譯錯誤、套件衝突、測試失敗先自己除錯；只有下列狀態碼才往上回報。
 
 ## 只讀這些
-這張卡、它的 Story/BDD、TDD 封包、允許路徑、失敗經驗文件、[project.md](.agents/skills/ai-dev-pipeline/references/project.md)。不掃整個專案或看板。
+這張卡、它的 Story/BDD、TDD 封包、允許路徑、失敗經驗文件、[project.md](../.agents/skills/ai-dev-pipeline/references/project.md)。不掃整個專案或看板。
 
 ## 步驟
-1. **領卡**：卡移到 In Progress（設 `startedAt`、`role`、綠燈），開分支 `feature/<task-id>-<slug>`。看板寫法見 [board-and-lights.md](.agents/skills/ai-dev-pipeline/references/board-and-lights.md)。
-2. **Red → Green → Refactor**：每個測試照做，RED 輸出存成證據。規則與禁止事項見 [bdd-tdd.md](.agents/skills/ai-dev-pipeline/references/bdd-tdd.md)。
-3. **寫程式**：只改允許範圍；守住分層（[architecture.md](.agents/skills/ai-dev-pipeline/references/architecture.md)）；平台相關一律經 Port，不寫死路徑或平台 API；寫法依 [coding-standards.md](.agents/skills/ai-dev-pipeline/references/coding-standards.md)；日誌、錯誤、輸入驗證、資源依 [readiness.md](.agents/skills/ai-dev-pipeline/references/readiness.md)；動到效能才讀 [performance.md](.agents/skills/ai-dev-pipeline/references/performance.md)。
-4. **hook 擋下**：修正程式或改用安全做法，不繞過（[enforcement.md](.agents/skills/ai-dev-pipeline/references/enforcement.md)）。
-5. **自我審查**：跑完 [coding-standards.md](.agents/skills/ai-dev-pipeline/references/coding-standards.md) 的清單與 linter。
+1. **領卡**：卡移到 In Progress（設 `startedAt`、`role`、綠燈），開分支 `feature/<task-id>-<slug>`。看板寫法見 [board-and-lights.md](../.agents/skills/ai-dev-pipeline/references/board-and-lights.md)。
+2. **Red → Green → Refactor**：每個測試照做，RED 輸出存成證據。規則與禁止事項見 [bdd-tdd.md](../.agents/skills/ai-dev-pipeline/references/bdd-tdd.md)。
+3. **寫程式**：只改允許範圍；守住分層（[architecture.md](../.agents/skills/ai-dev-pipeline/references/architecture.md)）；平台相關一律經 Port，不寫死路徑或平台 API；寫法依 [coding-standards.md](../.agents/skills/ai-dev-pipeline/references/coding-standards.md)；日誌、錯誤、輸入驗證、資源依 [readiness.md](../.agents/skills/ai-dev-pipeline/references/readiness.md)；動到效能才讀 [performance.md](../.agents/skills/ai-dev-pipeline/references/performance.md)。
+4. **hook 擋下**：修正程式或改用安全做法，不繞過（[enforcement.md](../.agents/skills/ai-dev-pipeline/references/enforcement.md)）。
+5. **自我審查**：跑完 [coding-standards.md](../.agents/skills/ai-dev-pipeline/references/coding-standards.md) 的清單與 linter。
 6. **交付**：開 draft PR、填 `prUrl`、`tdd=Green`、`ci`，卡移到 In Review，標 `READY_FOR_TDD`。不能設 Done／藍燈。
 7. **回報**：你的代理身分、BDD ID、變更摘要、RED/GREEN 證據路徑、阻擋事項、範圍外發現的問題。
 

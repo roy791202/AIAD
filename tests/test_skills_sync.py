@@ -46,9 +46,17 @@ def test_should_not_touch_frozen_requirements_snapshot():
     assert not any("AI_INSTRUCTIONS" in str(p) for p in sync.build_targets())
 
 
-def test_should_rewrite_relative_links_to_repo_paths():
-    out = sync.to_repo_links("[a](references/x.md) [b](../ai-dev-pipeline/references/y.md)")
-    assert out == f"[a]({sync.REF_ROOT}x.md) [b]({sync.REF_ROOT}y.md)"
+def test_should_rewrite_links_relative_to_each_target_folder():
+    body = "[a](references/x.md) [b](../ai-dev-pipeline/references/y.md)"
+    root = sync.to_repo_links(body, sync.ROOT / "AGENTS.md")
+    nested = sync.to_repo_links(body, sync.ROOT / ".windsurf" / "rules" / "r.md")
+    assert root == f"[a]({sync.REF_ROOT}x.md) [b]({sync.REF_ROOT}y.md)"
+    assert nested == f"[a](../../{sync.REF_ROOT}x.md) [b](../../{sync.REF_ROOT}y.md)"
+
+
+def test_should_flag_repo_root_link_in_nested_file():
+    nested = sync.ROOT / ".clinerules" / "x.md"
+    assert sync.broken_links({nested: f"[a]({sync.REF_ROOT}ux.md)"}) != []
 
 
 def test_should_parse_folded_description():
