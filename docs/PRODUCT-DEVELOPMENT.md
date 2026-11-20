@@ -284,6 +284,8 @@ UI「指派 Agent」
 
 ## 7. 開發期工具（非產品殼）
 
+> **2026-11-21 更新（以此為準）**：開發看板權威已改為 `docs/board.json`（`.ai-hooks/validate-board.ps1` 驗證），`PROJECT-BOARD.html`／`#board-snapshot`／`zone` 寫法停用。燈號改為 **Green＝進行順利、Blue＝Done**（不再以「改綠」表示滅燈）；Done 需有產出＋獨立 `TDD_PASS`＋PR 已合併。待決策改為紅燈卡＋`lightReason`「待決策：」。角色分離、讀取範圍、PM 必作的精神不變。完整規則見 `.agents/skills/ai-dev-pipeline/references/board-and-lights.md` 與 `roles-and-gates.md`。下列 §7.1–§7.3 中與此衝突的字句以本段為準。
+
 | 工具 | 位址／入口 | 用途 |
 |------|------------|------|
 | 專案看板 | `http://127.0.0.1:28789/`（`start-board-watch.cmd`） | 開發本產品用的燈號板；可寫回 `PROJECT-BOARD.html` |
