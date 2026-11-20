@@ -12,6 +12,20 @@ def test_should_report_in_sync_when_targets_generated():
     assert sync.main(["--check"]) == 0
 
 
+def test_should_generate_claude_copies_identical_to_sources():
+    targets = sync.build_targets()
+    local = {p: t for p, t in targets.items() if sync.is_local_only(p)}
+    assert local, "應產生 .claude/skills 副本"
+    for path, text in local.items():
+        src = sync.SRC / path.relative_to(sync.CLAUDE_SKILLS)
+        assert src.read_text(encoding="utf-8").replace("\r\n", "\n") == text, path
+
+
+def test_should_ignore_local_only_targets_when_checking(monkeypatch, tmp_path):
+    monkeypatch.setattr(sync, "CLAUDE_SKILLS", tmp_path / "absent" / ".claude" / "skills")
+    assert sync.main(["--check"]) == 0
+
+
 def test_should_resolve_every_link_in_sources_and_targets():
     targets = sync.build_targets()
     sources = {p: p.read_text(encoding="utf-8") for p in sync.SRC.rglob("*.md")}

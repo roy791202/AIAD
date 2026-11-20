@@ -126,6 +126,10 @@ def broken_links(files: dict[Path, str]) -> list[str]:
     return errors
 
 
+def is_local_only(path: Path) -> bool:
+    return path.is_relative_to(CLAUDE_SKILLS)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="只檢查，不寫入；有過期或壞連結回傳 1")
@@ -141,7 +145,10 @@ def main(argv: list[str] | None = None) -> int:
     stale = [p for p, text in targets.items()
              if not p.is_file() or p.read_text(encoding="utf-8").replace("\r\n", "\n") != text]
     if args.check:
-        errors += [f"{p.relative_to(ROOT)}: 與來源不同步" for p in stale]
+        # .claude/skills is gitignored and generated per machine; --check covers tracked targets only.
+        tracked_stale = [p for p in stale if not is_local_only(p)]
+        errors += [f"{p.relative_to(ROOT)}: 與來源不同步" for p in tracked_stale]
+        checked = sum(1 for p in targets if not is_local_only(p))
     else:
         for p in stale:
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     for e in errors:
         print(e, file=sys.stderr)
     if not errors:
-        print(f"OK：{len(targets)} 個目標與來源一致" if args.check else f"完成：更新 {len(stale)} 個檔案")
+        print(f"OK：{checked} 個進版控目標與來源一致" if args.check else f"完成：更新 {len(stale)} 個檔案")
     return 1 if errors else 0
 
 
