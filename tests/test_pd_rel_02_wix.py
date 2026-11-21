@@ -15,11 +15,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-ARTIFACT_ROOT = Path(os.environ.get("SGENAXIS_PACKAGING_TEST_ROOT", str(ROOT))).resolve()
+ARTIFACT_ROOT = Path(os.environ.get("ELUSLOT_PACKAGING_TEST_ROOT", str(ROOT))).resolve()
 WIX_DIR = ARTIFACT_ROOT / "packaging" / "windows" / "wix"
 MANIFEST_PATH = WIX_DIR / "packaging.manifest.json"
 BUILD_SCRIPT = WIX_DIR / "build-msi.ps1"
-PAYLOAD_EXE = WIX_DIR / "payload" / "SGenAxis.exe"
+PAYLOAD_EXE = WIX_DIR / "payload" / "EluSlot.exe"
 TAURI_RELEASE = (
     ARTIFACT_ROOT
     / "apps"
@@ -27,7 +27,7 @@ TAURI_RELEASE = (
     / "src-tauri"
     / "target"
     / "release"
-    / "sgenaxis-desktop.exe"
+    / "eluslot-desktop.exe"
 )
 MIN_REAL_EXE_BYTES = 100_000
 
@@ -50,9 +50,9 @@ def test_tauri_release_exe_exists_for_staging():
 
 def test_manifest_declares_payload_source_and_sha256():
     payload = _load_manifest()["payload"]
-    assert payload["stage_name"] == "SGenAxis.exe"
+    assert payload["stage_name"] == "EluSlot.exe"
     assert payload["source_relpath"].replace("\\", "/").endswith(
-        "sgenaxis-desktop.exe"
+        "eluslot-desktop.exe"
     )
     assert re.fullmatch(r"[0-9a-f]{64}", payload["sha256"]), payload["sha256"]
     assert int(payload["bytes"]) >= MIN_REAL_EXE_BYTES
@@ -95,7 +95,7 @@ def test_tracked_template_hashes_still_match():
 def test_build_script_stages_tauri_and_verifies_hash():
     text = BUILD_SCRIPT.read_text(encoding="utf-8")
     lower = text.lower()
-    assert "sgenaxis-desktop.exe" in lower
+    assert "eluslot-desktop.exe" in lower
     assert "sha256" in lower or "get-filehash" in lower
     assert "payload.sha256" in lower or "payload" in lower
     assert "packaging.manifest.json" in text
@@ -119,7 +119,7 @@ def test_build_msi_stages_and_embeds_when_wix_present(tmp_path: Path):
         pytest.fail("FIXTURE_SETUP: PowerShell required for the MSI build test")
 
     out_dir = tmp_path / "out"
-    msi = out_dir / "SGenAxis-0.1.0-windows-x64.msi"
+    msi = out_dir / "EluSlot-0.1.0-windows-x64.msi"
     proc = subprocess.run(
         [
             shell,

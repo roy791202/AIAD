@@ -18,7 +18,7 @@ HOST_PORTS = (
     / "apps"
     / "sgenaxis-desktop"
     / "crates"
-    / "sgenaxis-host"
+    / "eluslot-host"
     / "src"
     / "ports_view.rs"
 )
@@ -27,7 +27,7 @@ IPC = (
     / "apps"
     / "sgenaxis-desktop"
     / "crates"
-    / "sgenaxis-host"
+    / "eluslot-host"
     / "src"
     / "ipc.rs"
 )

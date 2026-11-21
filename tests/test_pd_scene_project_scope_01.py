@@ -8,9 +8,9 @@ ROOT = Path(__file__).resolve().parents[1]
 UI = ROOT / "apps" / "sgenaxis-desktop" / "ui"
 HTML = UI / "index.html"
 JS = UI / "app.js"
-HOST_IPC = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-host" / "src" / "ipc.rs"
+HOST_IPC = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-host" / "src" / "ipc.rs"
 SCENE_DOC = (
-    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-host" / "src" / "scene_doc.rs"
+    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-host" / "src" / "scene_doc.rs"
 )
 PERM = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "permissions" / "dispatch.toml"
 

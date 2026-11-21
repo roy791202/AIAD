@@ -1,6 +1,6 @@
 Feature: PD-REL-01 Windows WiX packaging scaffold
   As a release owner
-  I want a WiX MSI packager contract for SGenAxis
+  I want a WiX MSI packager contract for EluSlot
   So that Windows installs are silent-verifiable and artifact hashes are traceable
 
   Background:
@@ -24,16 +24,16 @@ Feature: PD-REL-01 Windows WiX packaging scaffold
     Then every digest matches the file bytes on disk
 
   @PD-REL-01 @REQ-REL-WIX-03
-  Scenario: WiX source names SGenAxis and carries a stable UpgradeCode
-    Given SGenAxis.wxs exists
+  Scenario: WiX source names EluSlot and carries a stable UpgradeCode
+    Given EluSlot.wxs exists
     When the WiX source is parsed as text
-    Then it declares Package Name SGenAxis
+    Then it declares Package Name EluSlot
     And it declares a fixed UpgradeCode GUID
     And it does not reference NSIS or Inno as the installer engine
 
   @PD-REL-01 @REQ-REL-WIX-06
   Scenario: MajorUpgrade removes prior install including same-version rebuilds
-    Given SGenAxis.wxs exists
+    Given EluSlot.wxs exists
     When the WiX source is parsed as text
     Then it declares MajorUpgrade with AllowSameVersionUpgrades yes
     And it schedules RemoveExistingProducts afterInstallInitialize

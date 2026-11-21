@@ -19,9 +19,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP = ROOT / "apps" / "sgenaxis-desktop"
-EXEC_DIR = DESKTOP / "crates" / "sgenaxis-exec"
+EXEC_DIR = DESKTOP / "crates" / "eluslot-exec"
 EXEC_MANIFEST = EXEC_DIR / "Cargo.toml"
-ADAPTERS_PROBE = DESKTOP / "crates" / "sgenaxis-adapters" / "src" / "cli_probe.rs"
+ADAPTERS_PROBE = DESKTOP / "crates" / "eluslot-adapters" / "src" / "cli_probe.rs"
 SMOKE_RS = EXEC_DIR / "tests" / "live_cli_smoke.rs"
 
 CANDIDATES = ("claude", "cursor-agent", "codex", "antigravity")

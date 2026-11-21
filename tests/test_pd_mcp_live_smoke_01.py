@@ -21,7 +21,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP = ROOT / "apps" / "sgenaxis-desktop"
-EXEC_DIR = DESKTOP / "crates" / "sgenaxis-exec"
+EXEC_DIR = DESKTOP / "crates" / "eluslot-exec"
 EXEC_MANIFEST = EXEC_DIR / "Cargo.toml"
 PROBE_RS = EXEC_DIR / "src" / "mcp_live_target.rs"
 SMOKE_RS = EXEC_DIR / "tests" / "live_mcp_smoke.rs"

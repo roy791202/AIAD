@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Seed default verify data for installed / local SGenAxis.
+"""Seed default verify data for installed / local EluSlot.
 
 Writes:
   1) fixtures/sgenaxis-verify-default/PROJECT-BOARD.html (if missing, keep)
-  2) %LOCALAPPDATA%\\sgenaxis\\host-settings.json  (and SGenAxis twin)
+  2) %LOCALAPPDATA%\\sgenaxis\\host-settings.json  (and EluSlot twin)
      binding project_root + board_path to the fixture.
 
   python tools/verify/seed_default_data.py
@@ -77,7 +77,7 @@ def ensure_readme() -> None:
     if README.is_file():
         return
     README.write_text(
-        "# SGenAxis 驗證預設專案\n\n"
+        "# EluSlot 驗證預設專案\n\n"
         "假資料看板，供安裝版／`tauri dev` 功能對照。\n\n"
         "**假資料 ≠ 產品證據 ≠ 正式 PASS。**\n\n"
         "```powershell\n"
@@ -100,7 +100,7 @@ def main() -> int:
         default="",
         help="board_path absolute or relative (default: PROJECT-BOARD.html under fixture)",
     )
-    ap.add_argument("--launch", action="store_true", help="start installed SGenAxis.exe")
+    ap.add_argument("--launch", action="store_true", help="start installed EluSlot.exe")
     args = ap.parse_args()
 
     if not BOARD.is_file():
@@ -114,7 +114,7 @@ def main() -> int:
     local = local_appdata()
     targets = [
         local / "sgenaxis" / "host-settings.json",
-        local / "SGenAxis" / "host-settings.json",
+        local / "EluSlot" / "host-settings.json",
     ]
     for t in targets:
         write_host_settings(t, project_root, board_path)
@@ -124,7 +124,7 @@ def main() -> int:
     print("tasks in fixture: open PROJECT-BOARD.html #board-snapshot")
 
     if args.launch:
-        exe = Path(r"C:\Program Files\SGenAxis\SGenAxis.exe")
+        exe = Path(r"C:\Program Files\EluSlot\EluSlot.exe")
         if not exe.is_file():
             print("installed exe missing:", exe, file=sys.stderr)
             return 3

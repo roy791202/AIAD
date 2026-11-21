@@ -21,7 +21,7 @@ EXE = (
     / "src-tauri"
     / "target"
     / "release"
-    / "sgenaxis-desktop.exe"
+    / "eluslot-desktop.exe"
 )
 TAURI_CONF = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "tauri.conf.json"
 

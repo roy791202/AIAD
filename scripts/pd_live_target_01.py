@@ -40,11 +40,11 @@ def _host_settings_candidates() -> list[Path]:
     paths: list[Path] = []
     local = os.environ.get("LOCALAPPDATA") or ""
     if local:
-        paths.append(Path(local) / "SGenAxis" / "host-settings.json")
-        paths.append(Path(local) / "SGenAxis" / "agent-settings.json")
+        paths.append(Path(local) / "EluSlot" / "host-settings.json")
+        paths.append(Path(local) / "EluSlot" / "agent-settings.json")
     home = Path.home()
-    paths.append(home / ".config" / "SGenAxis" / "host-settings.json")
-    paths.append(home / ".config" / "SGenAxis" / "agent-settings.json")
+    paths.append(home / ".config" / "EluSlot" / "host-settings.json")
+    paths.append(home / ".config" / "EluSlot" / "agent-settings.json")
     # Repo-local fixtures (optional)
     paths.append(ROOT / "reports" / "fixtures" / "host-settings.json")
     return paths

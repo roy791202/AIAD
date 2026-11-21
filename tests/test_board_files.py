@@ -274,7 +274,7 @@ def test_seed_projects_that_were_never_opened_are_not_saved():
 
 
 def test_registry_file_round_trip_and_an_unreadable_file_is_left_alone(tmp_path):
-    path = tmp_path / "SGenAxis" / "projects.json"
+    path = tmp_path / "EluSlot" / "projects.json"
     registry = JsonProjectRegistry(str(path))
     assert registry.load() == []
     registry.save([{"name": "P", "path": r"D:\P", "branch": "main", "opened": "2026-10-11 09:00"}])
@@ -285,7 +285,7 @@ def test_registry_file_round_trip_and_an_unreadable_file_is_left_alone(tmp_path)
     assert session.registry is None
     assert path.read_text(encoding="utf-8") == "{ broken"
     assert user_registry_path({"APPDATA": r"C:\Users\u\AppData\Roaming"}) == os.path.join(
-        r"C:\Users\u\AppData\Roaming", "SGenAxis", "projects.json"
+        r"C:\Users\u\AppData\Roaming", "EluSlot", "projects.json"
     )
 
 

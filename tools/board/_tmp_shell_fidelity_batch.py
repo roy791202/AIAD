@@ -50,7 +50,7 @@ def gray_task(id_, title, bdd, note):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis：安裝版桌機殼對齊 git_workbench_interactive.html（視覺／IA）",
+    "title": "EluSlot：安裝版桌機殼對齊 git_workbench_interactive.html（視覺／IA）",
     "zone": "gray",
     "kind": "epic",
     "createdAt": NOW,

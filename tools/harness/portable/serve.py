@@ -115,7 +115,7 @@ class HarnessHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="SGenAxis portable harness server")
+    ap = argparse.ArgumentParser(description="EluSlot portable harness server")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--stress", type=int, default=0, help="fake task count for mock board")
     ap.add_argument("--bind", default="127.0.0.1")
@@ -132,7 +132,7 @@ def main() -> int:
     url = f"http://{args.bind}:{args.port}/"
     if args.stress:
         url += f"?stress={args.stress}"
-    print("SGenAxis portable harness (no MSI)")
+    print("EluSlot portable harness (no MSI)")
     print("  UI+mock :", url)
     print("  Workbench:", f"http://{args.bind}:{args.port}/workbench/")
     print("  Ctrl+C to stop")

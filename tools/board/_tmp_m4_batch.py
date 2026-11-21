@@ -52,7 +52,7 @@ def task(id_, title, bdd, note):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis M4 首切：macOS／Linux 包裝契約＋stub＋文件（非完整發行）",
+    "title": "EluSlot M4 首切：macOS／Linux 包裝契約＋stub＋文件（非完整發行）",
     "zone": "yellow",
     "kind": "epic",
     "createdAt": NOW,

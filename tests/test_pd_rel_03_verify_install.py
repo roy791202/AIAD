@@ -21,7 +21,7 @@ MANIFEST_PATH = WIX_DIR / "packaging.manifest.json"
 CHECKLIST_PATH = WIX_DIR / "verify-install.checklist.json"
 VERIFY_SCRIPT = WIX_DIR / "verify-install.ps1"
 README_PATH = WIX_DIR / "README.md"
-WXS_PATH = WIX_DIR / "SGenAxis.wxs"
+WXS_PATH = WIX_DIR / "EluSlot.wxs"
 OUT_DIR = WIX_DIR / "out"
 RESULT_JSON = OUT_DIR / "verify-install-result.json"
 
@@ -95,7 +95,7 @@ def test_manifest_tracked_hashes_include_verify_artifacts():
 
 def test_wxs_declares_exe_and_start_menu_shortcut():
     text = WXS_PATH.read_text(encoding="utf-8")
-    assert "SGenAxis.exe" in text or "SGenAxisExe" in text
+    assert "EluSlot.exe" in text or "EluSlotExe" in text
     assert "Shortcut" in text
     assert "ApplicationStartMenuShortcut" in text or "ProgramMenuFolder" in text
     assert "INSTALLFOLDER" in text

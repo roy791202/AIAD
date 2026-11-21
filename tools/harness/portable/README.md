@@ -1,4 +1,4 @@
-# SGenAxis Portable Harness（免安裝）
+# EluSlot Portable Harness（免安裝）
 
 不經 **MSI／msiexec**，在本機開桌機 UI + **Mock Tauri IPC**，供 TDD Agent／人工：
 

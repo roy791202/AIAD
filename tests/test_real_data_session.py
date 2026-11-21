@@ -46,7 +46,7 @@ def test_folder_not_created_by_sgenaxis_is_not_read():
     session.open_named("AutoRig_Core")
     snapshot, message = session.git_status()
     assert snapshot is None
-    assert "不是 SGenAxis 建立的專案" in message
+    assert "不是 EluSlot 建立的專案" in message
     assert reader.asked == []
 
 

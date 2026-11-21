@@ -34,16 +34,16 @@ def test_matrix_lists_key_crates_and_summary():
     text = SCRIPT.read_text(encoding="utf-8")
     assert "KEY_CRATES" in text
     for pkg in (
-        "sgenaxis-core",
-        "sgenaxis-ports",
-        "sgenaxis-adapters",
-        "sgenaxis-exec",
-        "sgenaxis-work",
-        "sgenaxis-host",
-        "sgenaxis-guard",
-        "sgenaxis-listen",
-        "sgenaxis-evid",
-        "sgenaxis-spec",
+        "eluslot-core",
+        "eluslot-ports",
+        "eluslot-adapters",
+        "eluslot-exec",
+        "eluslot-work",
+        "eluslot-host",
+        "eluslot-guard",
+        "eluslot-listen",
+        "eluslot-evid",
+        "eluslot-spec",
     ):
         assert pkg in text, f"matrix must include {pkg}"
     assert "SUMMARY" in text or "summary" in text.lower()
@@ -66,8 +66,8 @@ def test_list_mode_prints_matrix_exits_zero():
     out = proc.stdout
     assert "PD-REGRESS-01" in out
     assert "smoke" in out.lower()
-    assert "sgenaxis-core" in out
-    assert "sgenaxis-exec" in out
+    assert "eluslot-core" in out
+    assert "eluslot-exec" in out
 
 
 def test_no_elevated_msi_required():
