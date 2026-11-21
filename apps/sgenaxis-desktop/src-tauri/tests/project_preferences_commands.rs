@@ -2,8 +2,8 @@
 #[path = "../src/dto.rs"] mod dto;
 #[path = "../src/git_index_commit.rs"] mod git_index_commit;
 use dispatch::DispatchHost;
-use sgenaxis_adapters::FakeFileSystem;
-use sgenaxis_ports::FileSystemPort;
+use eluslot_adapters::FakeFileSystem;
+use eluslot_ports::FileSystemPort;
 #[test]
 fn presets_and_import_preview_reuse_validated_schema_without_writing() {
  let fs=FakeFileSystem::new();let presets=DispatchHost::project_policy_presets().unwrap();
@@ -24,7 +24,7 @@ fn unbound_or_stale_project_is_rejected_before_any_write() {
 }
 #[test]
 fn current_project_load_save_and_stale_digest() {
- let fs=FakeFileSystem::new();let draft=serde_json::to_vec(&sgenaxis_spec::project_preferences::preset("balanced").unwrap()).unwrap();
+ let fs=FakeFileSystem::new();let draft=serde_json::to_vec(&eluslot_spec::project_preferences::preset("balanced").unwrap()).unwrap();
  assert_eq!(DispatchHost::project_policy_load(&fs,"/A","/A").unwrap()["configured"],false);
  let saved=DispatchHost::project_policy_save(&fs,"/A","/A",None,&draft).unwrap();
  assert_eq!(saved["preferences"]["batch"]["maxTasks"],4);
@@ -61,25 +61,25 @@ impl CreationFileSystemSpy {
 }
 
 impl FileSystemPort for CreationFileSystemSpy {
-    fn exists(&self, path: &str) -> Result<bool, sgenaxis_ports::PortError> {
+    fn exists(&self, path: &str) -> Result<bool, eluslot_ports::PortError> {
         self.record("exists"); self.inner.exists(path)
     }
-    fn is_file(&self, path: &str) -> Result<bool, sgenaxis_ports::PortError> {
+    fn is_file(&self, path: &str) -> Result<bool, eluslot_ports::PortError> {
         self.record("is_file"); self.inner.is_file(path)
     }
-    fn read(&self, path: &str) -> Result<Vec<u8>, sgenaxis_ports::PortError> {
+    fn read(&self, path: &str) -> Result<Vec<u8>, eluslot_ports::PortError> {
         self.record("read"); self.inner.read(path)
     }
-    fn read_to_string(&self, path: &str) -> Result<String, sgenaxis_ports::PortError> {
+    fn read_to_string(&self, path: &str) -> Result<String, eluslot_ports::PortError> {
         self.record("read_to_string"); self.inner.read_to_string(path)
     }
-    fn write_atomic(&self, path: &str, bytes: &[u8]) -> Result<(), sgenaxis_ports::PortError> {
+    fn write_atomic(&self, path: &str, bytes: &[u8]) -> Result<(), eluslot_ports::PortError> {
         self.record("write_atomic"); self.inner.write_atomic(path, bytes)
     }
-    fn create_dir_all(&self, path: &str) -> Result<(), sgenaxis_ports::PortError> {
+    fn create_dir_all(&self, path: &str) -> Result<(), eluslot_ports::PortError> {
         self.record("create_dir_all"); self.inner.create_dir_all(path)
     }
-    fn remove_file(&self, path: &str) -> Result<(), sgenaxis_ports::PortError> {
+    fn remove_file(&self, path: &str) -> Result<(), eluslot_ports::PortError> {
         self.record("remove_file"); self.inner.remove_file(path)
     }
 }

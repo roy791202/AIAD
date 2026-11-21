@@ -1,11 +1,11 @@
-use sgenaxis_work::{
+use eluslot_work::{
     DocumentAdoptionPlan, Project, ProjectDocumentKind, ProjectDocumentRecord, ProjectManifest,
     ProjectManifestError,
 };
 
 fn make_project() -> Project {
     Project::new(
-        sgenaxis_work::ProjectId::new("proj_fixture"),
+        eluslot_work::ProjectId::new("proj_fixture"),
         "/fixture/project".to_owned(),
         "/fixture/project".to_owned(),
     )

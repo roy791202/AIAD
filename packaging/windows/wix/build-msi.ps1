@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Build SGenAxis Windows MSI with WiX Toolset v4+ (`wix build`).
+  Build EluSlot Windows MSI with WiX Toolset v4+ (`wix build`).
 
 .DESCRIPTION
   PD-REL-02: stages the real Tauri release exe into payload\, verifies SHA-256
@@ -9,7 +9,7 @@
   Does not call makensis or iscc. Does not run elevated msiexec /qn.
 
 .PARAMETER PayloadDir
-  Directory containing SGenAxis.exe (default: .\payload).
+  Directory containing EluSlot.exe (default: .\payload).
 
 .PARAMETER OutDir
   Output directory for the MSI (default: .\out).
@@ -18,11 +18,11 @@
   Package version string (default: 0.1.0).
 
 .PARAMETER TauriReleaseExe
-  Absolute or repo-relative path to sgenaxis-desktop.exe. Empty = default under
-  apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe.
+  Absolute or repo-relative path to eluslot-desktop.exe. Empty = default under
+  apps/sgenaxis-desktop/src-tauri/target/release/eluslot-desktop.exe.
 
 .PARAMETER SkipStage
-  Do not copy from Tauri; use existing payload\SGenAxis.exe (still hash-checked).
+  Do not copy from Tauri; use existing payload\EluSlot.exe (still hash-checked).
 #>
 [CmdletBinding()]
 param(
@@ -38,13 +38,13 @@ $Root = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvoca
 $RepoRoot = (Resolve-Path (Join-Path $Root "..\..\..")).Path
 if (-not $PayloadDir) { $PayloadDir = Join-Path $Root "payload" }
 if (-not $OutDir) { $OutDir = Join-Path $Root "out" }
-$wxs = Join-Path $Root "SGenAxis.wxs"
+$wxs = Join-Path $Root "EluSlot.wxs"
 $manifestPath = Join-Path $Root "packaging.manifest.json"
-$exe = Join-Path $PayloadDir "SGenAxis.exe"
-$msiName = "SGenAxis-$Version-windows-x64.msi"
+$exe = Join-Path $PayloadDir "EluSlot.exe"
+$msiName = "EluSlot-$Version-windows-x64.msi"
 $msiPath = Join-Path $OutDir $msiName
 
-$defaultTauri = Join-Path $RepoRoot "apps\sgenaxis-desktop\src-tauri\target\release\sgenaxis-desktop.exe"
+$defaultTauri = Join-Path $RepoRoot "apps\sgenaxis-desktop\src-tauri\target\release\eluslot-desktop.exe"
 if (-not $TauriReleaseExe) {
     $TauriReleaseExe = $defaultTauri
 } elseif (-not [System.IO.Path]::IsPathRooted($TauriReleaseExe)) {
@@ -103,7 +103,7 @@ if (-not $wix) {
 WiX Toolset CLI (`wix`) not found on PATH.
 Install WiX v4+ / v5 / v7, then re-run.
 Classic candle/light (v3) are optional legacy; this script uses `wix build` only.
-NSIS (makensis) and Inno (iscc) are not the primary SGenAxis Windows channel.
+NSIS (makensis) and Inno (iscc) are not the primary EluSlot Windows channel.
 "@
     exit 2
 }

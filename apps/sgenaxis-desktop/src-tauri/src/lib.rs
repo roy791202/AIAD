@@ -34,28 +34,28 @@ mod mcp_stdio;
 mod pd_report_call;
 
 /// Pure Property + Dirty + Evaluation core (no OS).
-pub use sgenaxis_core as core;
+pub use eluslot_core as core;
 
 /// Port traits (FileSystem / Path / Process / Git).
-pub use sgenaxis_ports as ports;
+pub use eluslot_ports as ports;
 
 /// Port adapters + compose for Fake ↔ Std swap at host boot.
-pub use sgenaxis_adapters as adapters;
+pub use eluslot_adapters as adapters;
 
 /// Agent EXEC (CLI + MCP).
-pub use sgenaxis_exec as exec;
+pub use eluslot_exec as exec;
 
 /// EVID — immutable evidence, RED/GREEN classification, version binding (PD-EVID-01).
-pub use sgenaxis_evid as evid;
+pub use eluslot_evid as evid;
 
 /// SPEC — ModuleSpec / contract load; approved revisions immutable (PD-SPEC-01).
-pub use sgenaxis_spec as spec;
+pub use eluslot_spec as spec;
 
 /// Listen bridge — adapter events → debounce → Dirty／ListenProjection (PD-LISTEN-01).
-pub use sgenaxis_listen as listen;
+pub use eluslot_listen as listen;
 
 /// HOST lifecycle / settings / restricted IPC (PD-HOST-01).
-pub use sgenaxis_host as host;
+pub use eluslot_host as host;
 
 pub use commands::{AppState, HostState};
 pub use dispatch::DispatchHost;
@@ -177,7 +177,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod host_ipc_integration {
-    use sgenaxis_host::{authorize, is_allowed, CompositionRoot, LifecyclePhase};
+    use eluslot_host::{authorize, is_allowed, CompositionRoot, LifecyclePhase};
 
     #[test]
     fn boot_std_reaches_ready() {

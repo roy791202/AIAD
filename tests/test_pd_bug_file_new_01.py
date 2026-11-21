@@ -7,11 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 UI_JS = ROOT / "apps" / "sgenaxis-desktop" / "ui" / "app.js"
 COMMANDS = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "src" / "commands.rs"
-IPC = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-host" / "src" / "ipc.rs"
+IPC = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-host" / "src" / "ipc.rs"
 PROJECT_NEW = (
-    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-host" / "src" / "project_new.rs"
+    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-host" / "src" / "project_new.rs"
 )
-PORTS_FS = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-ports" / "src" / "fs.rs"
+PORTS_FS = ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-ports" / "src" / "fs.rs"
 HOST_TOML = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "permissions" / "host.toml"
 
 

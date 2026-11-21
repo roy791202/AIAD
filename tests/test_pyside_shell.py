@@ -358,7 +358,7 @@ def test_missing_project_path_keeps_the_toolbar():
     _app()
     window = MainWindow(WorkbenchSession())
     window._open_from_settings("Legacy Demo")
-    assert window.session.current_name == "SGenAxis"
+    assert window.session.current_name == "EluSlot"
     assert window.path_label.text() == r"D:\AutoCode"
     assert "路徑不存在" in window.status.currentMessage()
     window.close()
@@ -454,7 +454,7 @@ def test_html_menu_commands_stay_in_the_window():
     for expected in (
         "全選變更項目",
         "清除全選",
-        "✓ SGenAxis (作用中)",
+        "✓ EluSlot (作用中)",
         "重新掃描儲存庫變更",
         "Ports & Contracts 契約檢視",
         "新增工項...",
@@ -464,7 +464,7 @@ def test_html_menu_commands_stay_in_the_window():
         "顯示/隱藏 Inspector 側欄",
         "顯示/隱藏 分支樹態面板",
         "Qt / PySide 架構規格對照",
-        "關於 SGenAxis (v0.5.0)...",
+        "關於 EluSlot (v0.5.0)...",
         "歷史",
         "GIT 設定",
         "設定",
@@ -480,7 +480,7 @@ def test_html_menu_commands_stay_in_the_window():
     assert not window.agent_page.isWindow()
     _trigger(window, "Ports & Contracts 契約檢視")
     assert window.stack.currentWidget().objectName() == "archPage"
-    assert window.breadcrumb.text() == "SGenAxis  /  Ports & Contracts 契約"
+    assert window.breadcrumb.text() == "EluSlot  /  Ports & Contracts 契約"
     _trigger(window, "Qt / PySide 架構規格對照")
     assert window.stack.currentWidget() is window.qt_page
     assert not window.qt_page.isWindow()

@@ -9,7 +9,7 @@
 //! - [`CompositionRoot`] — wires Ports at boot
 //! - [`board_live`] — parse `#board-snapshot` from local HTML／JSON（no :8788）
 //! - [`git_board_sync`] — Git summary ↔ board snapshot isolation assertions
-//! - [`deploy`] — façade over [`sgenaxis_ports::DeployPort`]（status／check／list_artifacts）
+//! - [`deploy`] — façade over [`eluslot_ports::DeployPort`]（status／check／list_artifacts）
 //! - [`ports_view`] — registered Port／adapter status projection (PD-REMAIN-PORTS-UI-01)
 //! - [`guard_cmd`] — start_implementation／change-path gate → `CODE:detail` (PD-GUARD-CMD-01)
 //!
@@ -99,7 +99,7 @@ pub use uidesign_doc::{
     DESIGN_FORMAT, DESIGN_FORMAT_VERSION, PREVIEW_BANNER,
 };
 // Live CLI probe types re-exported from exec (PD-LIVE-TARGET-01 consumers).
-pub use sgenaxis_exec::{
+pub use eluslot_exec::{
     LiveTargetProbeResult, LIVE_TARGET_STATUS_NOT_RUN, LIVE_TARGET_STATUS_PASS,
 };
 

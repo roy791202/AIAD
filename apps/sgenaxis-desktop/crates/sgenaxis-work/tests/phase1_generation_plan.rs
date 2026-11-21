@@ -1,8 +1,8 @@
 //! M02-T01..T10 public policy contracts. Raw fixtures never invoke target code.
 //! No should_panic/ignore: the current Skeleton must fail at its missing body,
 //! while a later implementation must satisfy the actual assertions below.
-use sgenaxis_work::generation_plan::*;
-use sgenaxis_work::project_definition::*;
+use eluslot_work::generation_plan::*;
+use eluslot_work::project_definition::*;
 use std::collections::BTreeMap;
 
 fn digest(c: char) -> String {

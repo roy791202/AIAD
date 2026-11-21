@@ -4,7 +4,7 @@
 //! In-progress merge/rebase/cherry-pick/revert fails honestly.
 //! An already-staged path is a success no-op.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated stage-file (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +54,7 @@ pub fn perform_git_stage_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
+    use eluslot_adapters::FakeGitWrite;
 
     #[test]
     fn approved_stage_file_succeeds_including_already_staged_noop() {

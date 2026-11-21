@@ -14,11 +14,11 @@
 //! phase1_project_definition.rs); Windows CI (rust-windows) keeps covering it.
 #![cfg(windows)]
 
-use sgenaxis_host::project_definition::DefinitionAuthorityContext;
-use sgenaxis_host::project_definition::DefinitionLocation;
-use sgenaxis_host::project_preferences::PreferenceChoice;
-use sgenaxis_host::project_wizard::*;
-use sgenaxis_ports::{
+use eluslot_host::project_definition::DefinitionAuthorityContext;
+use eluslot_host::project_definition::DefinitionLocation;
+use eluslot_host::project_preferences::PreferenceChoice;
+use eluslot_host::project_wizard::*;
+use eluslot_ports::{
     CommitError, CommitReceipt, FileCommitPort, FileSystemPort, FileWriteLease, PortError,
 };
 use std::collections::BTreeMap;
@@ -48,7 +48,7 @@ impl Rig {
 
 /// Same digest form the HOST codec verifies receipts against.
 fn digest(b: &[u8]) -> String {
-    format!("sha256:{}", sgenaxis_spec::packet::source_sha256(b))
+    format!("sha256:{}", eluslot_spec::packet::source_sha256(b))
 }
 
 impl FileSystemPort for Rig {
@@ -354,13 +354,13 @@ fn wizard_full_fields_commit_persists_delivery_and_topology() {
         Node::File(b) => b.clone(),
         _ => panic!("definition is not a file"),
     };
-    let def = sgenaxis_host::project_definition::decode_definition(&bytes)
+    let def = eluslot_host::project_definition::decode_definition(&bytes)
         .expect("written definition decodes");
     assert_eq!(def.draft.delivery_targets.len(), 1);
     assert_eq!(def.draft.requirements.len(), 1);
     assert!(matches!(
         def.draft.topology,
-        sgenaxis_work::project_definition::FieldState::Confirmed(ref v) if v == "single-crate"
+        eluslot_work::project_definition::FieldState::Confirmed(ref v) if v == "single-crate"
     ));
 }
 

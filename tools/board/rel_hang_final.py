@@ -28,7 +28,7 @@ CARD_ID = "PD-REL-HANG-FINAL-01"
 BDD_ID = "BDD-PD-REL-HANG-FINAL-01"
 DEFAULT_VERSION = "0.1.0"
 FINAL_BR_GLOB = "build-0.1.0-final-*.md"
-MSI_REL = "packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi"
+MSI_REL = "packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi"
 
 if str(BOARD_DIR) not in sys.path:
     sys.path.insert(0, str(BOARD_DIR))

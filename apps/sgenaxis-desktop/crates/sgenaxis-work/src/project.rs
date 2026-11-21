@@ -5,7 +5,7 @@ use crate::manifest::{
     normalize_project_reference, prepare_adoption, DocumentAdoptionPlan, ProjectDocumentKind,
     ProjectManifest, ProjectManifestError, PROJECT_MANIFEST_RELATIVE_PATH,
 };
-use sgenaxis_ports::{GitPort, GitStatus, PortError};
+use eluslot_ports::{GitPort, GitStatus, PortError};
 
 /// Authoritative project entry after successful register / rebind.
 #[derive(Debug, Clone, PartialEq, Eq)]

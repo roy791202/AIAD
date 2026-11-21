@@ -1,6 +1,6 @@
 //! PD-GIT-01 unit tests — FakeGit + gated write + summary DTO (no real repos).
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitSettings,
     GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitWriteApproval, GitWritePort,
     PortError,

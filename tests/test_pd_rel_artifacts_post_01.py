@@ -24,7 +24,7 @@ REQUIRED_PHRASES = (
 )
 
 REQUIRED_PATH_HINTS = (
-    "packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi",
+    "packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi",
     "reports/sbom-",
     "reports/build-0.1.0-post-remain",
     "packaging/windows/out/sign-authenticode-result.json",
@@ -96,7 +96,7 @@ def test_post_artifacts_anti_unsigned_pass_forge() -> None:
 
 def test_post_remain_msi_sha_matches_live_and_inventory() -> None:
     text = DOC.read_text(encoding="utf-8")
-    msi = ROOT / "packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi"
+    msi = ROOT / "packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi"
     if not msi.is_file():
         assert "缺檔" in text or "NOT RUN" in text
         return

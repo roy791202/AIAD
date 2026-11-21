@@ -91,7 +91,7 @@ def _render_html(spec: Mapping[str, Any], evid: Mapping[str, Any], fingerprint: 
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SGenAxis Report — %s</title>
+<title>EluSlot Report — %s</title>
 <style>
 body{font:15px/1.6 system-ui,sans-serif;margin:2rem;color:#172c39;background:#f2f5f7}
 h1{font-size:1.6rem}table{border-collapse:collapse;width:100%%;background:#fff}
@@ -103,7 +103,7 @@ code{background:#edf2f4;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere
 </head>
 <body>
 <header>
-  <p class="meta">SGenAxis · PD-REPORT-01 · read-only projection</p>
+  <p class="meta">EluSlot · PD-REPORT-01 · read-only projection</p>
   <h1>%s</h1>
   <p>%s</p>
 </header>

@@ -4,7 +4,7 @@
 //! In-progress merge/rebase/cherry-pick/revert fails honestly.
 //! An already-unstaged path is a success no-op. Untracked files remain.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated unstage-file (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +54,7 @@ pub fn perform_git_unstage_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
+    use eluslot_adapters::FakeGitWrite;
 
     #[test]
     fn approved_unstage_file_succeeds_including_already_unstaged_noop() {

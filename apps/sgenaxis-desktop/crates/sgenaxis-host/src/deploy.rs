@@ -1,4 +1,4 @@
-//! PD-DEPLOY-CMD-01 — HOST façade over [`sgenaxis_ports::DeployPort`].
+//! PD-DEPLOY-CMD-01 — HOST façade over [`eluslot_ports::DeployPort`].
 //!
 //! Tauri invokes `deploy_status`／`deploy_check`／`list_artifacts` (read-only).
 //! No arbitrary shell; no elevated `/qn` auto. Failures map to observable
@@ -7,7 +7,7 @@
 //! Depends on **PD-DEPLOY-PORT-01** (`sgenaxis-ports`／`sgenaxis-adapters`).
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_ports::{
+use eluslot_ports::{
     windows_wix_artifact_relpath, DeployPlatform, DeployPort, DeploySupport, FileSystemPort,
     PathPort, PortError, WINDOWS_WIX_PRODUCT_VERSION,
 };
@@ -261,7 +261,7 @@ pub fn default_workspace_root() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::fake::FakeDeploy;
+    use eluslot_adapters::fake::FakeDeploy;
 
     #[test]
     fn status_view_qn_auto_always_false() {

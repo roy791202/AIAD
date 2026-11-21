@@ -52,7 +52,7 @@ def task(id_, title, bdd, note):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis M2 加深：E2E 閉環／MCP Live 冒煙／矩陣／Git↔看板／驗收",
+    "title": "EluSlot M2 加深：E2E 閉環／MCP Live 冒煙／矩陣／Git↔看板／驗收",
     "zone": "yellow",
     "kind": "epic",
     "createdAt": NOW,
@@ -97,7 +97,7 @@ TASKS = [
         "BDD-PD-MCP-LIVE-SMOKE-01：核准下對明示本機 MCP 做一次 Live 連線／工具呼叫或串流對帳，"
         "或明確 NOT RUN；秘密不進投影；不得把 DryRun 寫成 Live PASS。",
         "Primary module: EXEC\n依賴: PD-MCP-LIVE-01、PD-LIVE-TARGET-01、PD-DEC-VERIFY-GO-01（軟）\n"
-        "交付／AC: 冒煙測／腳本＋報告。\n允許範圍: crates sgenaxis-exec／adapters、tests、scripts、reports。\n"
+        "交付／AC: 冒煙測／腳本＋報告。\n允許範圍: crates eluslot-exec／adapters、tests、scripts、reports。\n"
         "不做: 雲端任意閘道；不強制購買服務。",
     ),
     task(

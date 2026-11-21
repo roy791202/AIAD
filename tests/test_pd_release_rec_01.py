@@ -15,8 +15,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 BOARD_TOOLS = ROOT / "tools" / "board"
-ARTIFACT_ROOT = Path(os.environ.get("SGENAXIS_PACKAGING_TEST_ROOT", str(ROOT))).resolve()
-MSI = ARTIFACT_ROOT / "packaging" / "windows" / "wix" / "out" / "SGenAxis-0.1.0-windows-x64.msi"
+ARTIFACT_ROOT = Path(os.environ.get("ELUSLOT_PACKAGING_TEST_ROOT", str(ROOT))).resolve()
+MSI = ARTIFACT_ROOT / "packaging" / "windows" / "wix" / "out" / "EluSlot-0.1.0-windows-x64.msi"
 REPORT_EXAMPLE = ARTIFACT_ROOT / "reports" / "dispatch-pd" / "PD-REL-02.md"
 EMPTY_ZONE_MARKER = "還沒有佈版紀錄"
 DOCTYPE = "<!DOCTYPE html"
@@ -108,7 +108,7 @@ def test_append_release_version_artifacts_report_path(board_copy: Path):
     assert r["reportPath"] == "reports/dispatch-pd/PD-REL-02.md"
     assert r["artifacts"][0]["label"] == "MSI"
     assert r["artifacts"][0]["exists"] is True
-    assert "SGenAxis-0.1.0-windows-x64.msi" in r["artifacts"][0]["path"]
+    assert "EluSlot-0.1.0-windows-x64.msi" in r["artifacts"][0]["path"]
 
 
 def test_append_via_cli_and_list(board_copy: Path, monkeypatch: pytest.MonkeyPatch):

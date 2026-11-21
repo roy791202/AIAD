@@ -5,8 +5,8 @@
 //! never write (no force push; no new write semantics). Failures are classified
 //! as `git`｜`board`｜`pollution`｜`write`.
 
-use sgenaxis_adapters::{summarize_worktree, GitWorkbenchSummary};
-use sgenaxis_ports::{FileSystemPort, GitPort, GitStatus, PortError};
+use eluslot_adapters::{summarize_worktree, GitWorkbenchSummary};
+use eluslot_ports::{FileSystemPort, GitPort, GitStatus, PortError};
 
 use crate::board_live::{load_board_file, BoardSnapshot};
 use crate::error::HostError;
@@ -134,7 +134,7 @@ fn git_baseline(
     git: &dyn GitPort,
     repo: &str,
     log_limit: usize,
-) -> Result<(GitStatus, Vec<sgenaxis_ports::GitCommit>), SyncFailKind> {
+) -> Result<(GitStatus, Vec<eluslot_ports::GitCommit>), SyncFailKind> {
     let status = git.status(repo).map_err(map_git)?;
     let log = git.log(repo, log_limit).map_err(map_git)?;
     Ok((status, log))
@@ -160,7 +160,7 @@ fn load_board_ro(fs: &dyn FileSystemPort, board_path: &str) -> Result<BoardSnaps
 /// 2. Git status／log are unchanged by the board read.
 /// 3. Board load goes through a write-forbidding FS wrapper.
 ///
-/// Does **not** call [`sgenaxis_ports::GitWritePort`] (no commit／push／force).
+/// Does **not** call [`eluslot_ports::GitWritePort`] (no commit／push／force).
 pub fn load_git_and_board_isolated(
     git: &dyn GitPort,
     fs: &dyn FileSystemPort,
@@ -220,9 +220,9 @@ pub fn load_git_and_board_isolated(
 
 #[cfg(test)]
 mod tests {
-    use sgenaxis_adapters::fake::status_with_modified;
-    use sgenaxis_adapters::{FakeFileSystem, FakeGit, GatedGitWrite};
-    use sgenaxis_ports::{
+    use eluslot_adapters::fake::status_with_modified;
+    use eluslot_adapters::{FakeFileSystem, FakeGit, GatedGitWrite};
+    use eluslot_ports::{
         GitCommit, GitStatus, GitStatusEntry, GitStatusKind, GitWriteApproval, GitWritePort,
     };
 

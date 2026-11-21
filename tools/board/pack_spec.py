@@ -216,7 +216,7 @@ def validate_pack_spec(spec: Mapping[str, Any]) -> dict:
         "cardId": str(spec.get("cardId") or CARD_ID),
         "bdd": str(spec.get("bdd") or BDD_ID),
         "version": str(spec.get("version") or "").strip().lstrip("v") or "0.0.0",
-        "product": str(spec.get("product") or "SGenAxis"),
+        "product": str(spec.get("product") or "EluSlot"),
         "generatedAt": str(spec.get("generatedAt") or now_iso()),
         "artifacts": arts,
         "status": normalize_status(
@@ -277,7 +277,7 @@ def default_matrix_v010(*, generated_at: str | None = None) -> dict:
     win = build_pack_artifact(
         os="windows",
         arch="x64",
-        path="packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi",
+        path="packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi",
         sha256="",
         status="PARTIAL",
         label="MSI",
@@ -287,7 +287,7 @@ def default_matrix_v010(*, generated_at: str | None = None) -> dict:
     mac = build_pack_artifact(
         os="macos",
         arch="universal",
-        path="packaging/macos/out/SGenAxis-0.1.0-macos-universal.dmg",
+        path="packaging/macos/out/EluSlot-0.1.0-macos-universal.dmg",
         sha256="",
         status="NOT RUN",
         label="DMG",
@@ -297,7 +297,7 @@ def default_matrix_v010(*, generated_at: str | None = None) -> dict:
     linux = build_pack_artifact(
         os="linux",
         arch="x64",
-        path="packaging/linux/out/SGenAxis-0.1.0-linux-x64.AppImage",
+        path="packaging/linux/out/EluSlot-0.1.0-linux-x64.AppImage",
         sha256="",
         status="NOT RUN",
         label="AppImage",
@@ -310,7 +310,7 @@ def default_matrix_v010(*, generated_at: str | None = None) -> dict:
             "cardId": CARD_ID,
             "bdd": BDD_ID,
             "version": "0.1.0",
-            "product": "SGenAxis",
+            "product": "EluSlot",
             "generatedAt": ts,
             "artifacts": [win, mac, linux],
             "notes": (

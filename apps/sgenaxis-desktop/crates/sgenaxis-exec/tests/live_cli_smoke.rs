@@ -3,15 +3,15 @@
 //! Requires `--features real-spawn`. When no CLI is on PATH → early return (NOT RUN).
 //! Uses `--version` only (no interactive prompt; no cloud gateway; no secrets in projection).
 //!
-//! Coordinate: PATH probe shared with PD-LIVE-TARGET-01 via `sgenaxis_adapters::probe_agent_cli`.
+//! Coordinate: PATH probe shared with PD-LIVE-TARGET-01 via `eluslot_adapters::probe_agent_cli`.
 
 #![cfg(feature = "real-spawn")]
 
 use std::thread;
 use std::time::{Duration, Instant};
 
-use sgenaxis_adapters::{probe_agent_cli, StdFileSystem, StdProcess};
-use sgenaxis_exec::{
+use eluslot_adapters::{probe_agent_cli, StdFileSystem, StdProcess};
+use eluslot_exec::{
     AgentChunk, AgentPort, AgentProvider, AgentSettingsDocument, CliAgentAdapter, CliAgentSettings,
     CliToolConfig, CliToolKind, ExitClassification, OutputStream, StartRunRequest,
 };
@@ -28,7 +28,7 @@ fn kind_for_key(key: &str) -> Option<CliToolKind> {
 
 fn drain_live_with_timeout(
     agent: &mut dyn AgentPort,
-    run: sgenaxis_exec::RunId,
+    run: eluslot_exec::RunId,
     timeout: Duration,
 ) -> Result<Vec<AgentChunk>, String> {
     let deadline = Instant::now() + timeout;

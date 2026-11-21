@@ -57,7 +57,7 @@ def _sha256_file(path: Path) -> str:
 def _write_app_stub(out_dir: Path, arch: str, version: str) -> Path:
     """Create a deterministic placeholder macOS stub (not a real .app / .pkg)."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"SGenAxis-{version}-macos-{arch}.stub"
+    name = f"EluSlot-{version}-macos-{arch}.stub"
     path = out_dir / name
     # Stub marker only; not notarized / not stapled / not shippable.
     payload = (

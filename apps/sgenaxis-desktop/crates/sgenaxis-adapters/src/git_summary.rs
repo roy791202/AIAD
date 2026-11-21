@@ -4,7 +4,7 @@
 //! here — approving writes go through [`crate::StdGitWrite`] / FakeGitWrite
 //! with explicit approval; this helper never calls commit / push.
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     GitBranch, GitCommit, GitConflictState, GitPort, GitRemote, GitSettings, GitStash,
     GitStatusEntry, GitTag, PortError,
 };

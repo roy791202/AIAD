@@ -12,7 +12,7 @@
   Does not self-elevate. Does not touch :8788. NSIS/Inno are not the channel.
 
 .PARAMETER MsiPath
-  Path to SGenAxis-*-windows-x64.msi (default: .\out\SGenAxis-0.1.0-windows-x64.msi).
+  Path to EluSlot-*-windows-x64.msi (default: .\out\EluSlot-0.1.0-windows-x64.msi).
 
 .PARAMETER OutDir
   Directory for logs + result JSON (default: .\out).
@@ -44,7 +44,7 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $checklistPath = Join-Path $Root "verify-install.checklist.json"
 $manifestPath = Join-Path $Root "packaging.manifest.json"
 if (-not $MsiPath) {
-    $MsiPath = Join-Path $OutDir "SGenAxis-$Version-windows-x64.msi"
+    $MsiPath = Join-Path $OutDir "EluSlot-$Version-windows-x64.msi"
 }
 
 function Test-IsElevated {
@@ -71,8 +71,8 @@ $checks = @($checklist.checks)
 $script:ViResults = @()
 $logInstall = Join-Path $OutDir "verify-install-install.log"
 $logUninstall = Join-Path $OutDir "verify-install-uninstall.log"
-$exePath = Expand-EnvPath "%ProgramFiles%/SGenAxis/SGenAxis.exe"
-$shortcutPath = Expand-EnvPath "%ProgramData%/Microsoft/Windows/Start Menu/Programs/SGenAxis/SGenAxis.lnk"
+$exePath = Expand-EnvPath "%ProgramFiles%/EluSlot/EluSlot.exe"
+$shortcutPath = Expand-EnvPath "%ProgramData%/Microsoft/Windows/Start Menu/Programs/EluSlot/EluSlot.lnk"
 
 function Add-ViResult {
     param(

@@ -32,7 +32,7 @@ def now_iso() -> str:
 
 
 def http_get(url: str, timeout: float = 8.0) -> tuple[int, int, str]:
-    req = urllib.request.Request(url, headers={"User-Agent": "SGenAxis-OpenStressGate/1"})
+    req = urllib.request.Request(url, headers={"User-Agent": "EluSlot-OpenStressGate/1"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = resp.read()
         return int(resp.status), len(body), body[:200].decode("utf-8", errors="replace")

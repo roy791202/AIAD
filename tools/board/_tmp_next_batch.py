@@ -47,7 +47,7 @@ def task(id_, title, bdd, note, *, milestone="Harden"):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis v0.1 硬化：CI／文件／安全掃描／回歸（非 M4）",
+    "title": "EluSlot v0.1 硬化：CI／文件／安全掃描／回歸（非 M4）",
     "zone": "yellow",
     "kind": "epic",
     "createdAt": NOW,

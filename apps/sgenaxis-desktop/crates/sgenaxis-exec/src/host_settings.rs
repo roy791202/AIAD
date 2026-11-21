@@ -6,7 +6,7 @@
 //! PD-EXEC-LIVE-01: live CLI also requires [`crate::settings::CliAgentSettings::live_approved`]
 //! (host mirrors `agent_active` → `live_approved` when wiring [`crate::CliAgentAdapter`]).
 
-use sgenaxis_ports::{FileSystemPort, PathPort, PortError};
+use eluslot_ports::{FileSystemPort, PathPort, PortError};
 
 use crate::settings::{
     is_cli_path_activatable, is_mcp_endpoint_activatable, AgentSettingsDocument, AgentSettingsProjection,
@@ -86,7 +86,7 @@ fn map_port(e: PortError) -> SettingsError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::fake::{FakeFileSystem, FakePath};
+    use eluslot_adapters::fake::{FakeFileSystem, FakePath};
 
     use crate::settings::{CliToolKind, McpTransportKind};
 

@@ -32,16 +32,16 @@ SMOKE_SCRIPT = ROOT / "scripts" / "pd_smoke_01.py"
 # Agreed key crates (desktop) — Pure/domain + adapters; no elevated install.
 # Paths relative to apps/sgenaxis-desktop.
 KEY_CRATES: list[tuple[str, str]] = [
-    ("sgenaxis-core", "crates/sgenaxis-core/Cargo.toml"),
-    ("sgenaxis-ports", "crates/sgenaxis-ports/Cargo.toml"),
-    ("sgenaxis-adapters", "crates/sgenaxis-adapters/Cargo.toml"),
-    ("sgenaxis-exec", "crates/sgenaxis-exec/Cargo.toml"),
-    ("sgenaxis-work", "crates/sgenaxis-work/Cargo.toml"),
-    ("sgenaxis-host", "crates/sgenaxis-host/Cargo.toml"),
-    ("sgenaxis-guard", "crates/sgenaxis-guard/Cargo.toml"),
-    ("sgenaxis-listen", "crates/sgenaxis-listen/Cargo.toml"),
-    ("sgenaxis-evid", "crates/sgenaxis-evid/Cargo.toml"),
-    ("sgenaxis-spec", "crates/sgenaxis-spec/Cargo.toml"),
+    ("eluslot-core", "crates/sgenaxis-core/Cargo.toml"),
+    ("eluslot-ports", "crates/sgenaxis-ports/Cargo.toml"),
+    ("eluslot-adapters", "crates/sgenaxis-adapters/Cargo.toml"),
+    ("eluslot-exec", "crates/sgenaxis-exec/Cargo.toml"),
+    ("eluslot-work", "crates/sgenaxis-work/Cargo.toml"),
+    ("eluslot-host", "crates/sgenaxis-host/Cargo.toml"),
+    ("eluslot-guard", "crates/sgenaxis-guard/Cargo.toml"),
+    ("eluslot-listen", "crates/sgenaxis-listen/Cargo.toml"),
+    ("eluslot-evid", "crates/sgenaxis-evid/Cargo.toml"),
+    ("eluslot-spec", "crates/sgenaxis-spec/Cargo.toml"),
 ]
 
 

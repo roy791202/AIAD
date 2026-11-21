@@ -14,7 +14,7 @@ HTML = UI / "index.html"
 JS = UI / "app.js"
 DISPATCH = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "src" / "dispatch.rs"
 CORE_EDIT = (
-    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "sgenaxis-core" / "src" / "edit.rs"
+    ROOT / "apps" / "sgenaxis-desktop" / "crates" / "eluslot-core" / "src" / "edit.rs"
 )
 LIB = ROOT / "apps" / "sgenaxis-desktop" / "src-tauri" / "src" / "lib.rs"
 

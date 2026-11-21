@@ -7,9 +7,9 @@
 mod controlled;
 
 use controlled::{StdFileWriteLease, TestCheckpoints};
-use sgenaxis_adapters::StdFileCommit;
-use sgenaxis_ports::{CommitError, CommitStage, FileCommitPort, FileWriteLease};
-use sgenaxis_spec::packet::source_sha256;
+use eluslot_adapters::StdFileCommit;
+use eluslot_ports::{CommitError, CommitStage, FileCommitPort, FileWriteLease};
+use eluslot_spec::packet::source_sha256;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::windows::fs::OpenOptionsExt;

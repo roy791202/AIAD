@@ -1,4 +1,4 @@
-//! PD-GUARD-CMD-01 — HOST／command façade over [`sgenaxis_guard`].
+//! PD-GUARD-CMD-01 — HOST／command façade over [`eluslot_guard`].
 //!
 //! Tauri／Dispatch call these helpers before EXEC start or write paths.
 //! Rejects surface as stable `CODE:detail` traces (BDD-PD-GUARD-CMD-01).
@@ -8,7 +8,7 @@
 //! PD-EXEC-BIND-01 lands concurrently.
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_guard::{
+use eluslot_guard::{
     check_changes, check_implementation_request, check_start_implementation, Envelope,
     GuardDecision, RedEvidence, RedKind,
 };

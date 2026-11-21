@@ -4,7 +4,7 @@
 //! signal whose classification mirrors EXEC [`ExitClassification`]. Success
 //! ends mark the run finished without a reconcile event.
 
-use sgenaxis_exec::ExitClassification;
+use eluslot_exec::ExitClassification;
 
 /// True when the EXEC end class requires listen-side reconciliation.
 ///
@@ -25,10 +25,10 @@ pub fn classification_label(classification: ExitClassification) -> &'static str 
 }
 
 /// Whether an [`crate::source::SourceEvent::Agent`] chunk is terminal for a run.
-pub fn is_terminal_chunk(chunk: &sgenaxis_exec::AgentChunk) -> bool {
+pub fn is_terminal_chunk(chunk: &eluslot_exec::AgentChunk) -> bool {
     matches!(
         chunk,
-        sgenaxis_exec::AgentChunk::Exited { .. } | sgenaxis_exec::AgentChunk::Failed { .. }
+        eluslot_exec::AgentChunk::Exited { .. } | eluslot_exec::AgentChunk::Failed { .. }
     )
 }
 

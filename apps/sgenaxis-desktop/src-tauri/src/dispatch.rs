@@ -18,31 +18,31 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use sgenaxis_adapters::{FakeProcess, StdFileSystem, StdGitIndexCommit, StdProcess};
-use sgenaxis_core::{
+use eluslot_adapters::{FakeProcess, StdFileSystem, StdGitIndexCommit, StdProcess};
+use eluslot_core::{
     EditError, EditSession, Engine, FlowError, FlowEvent, PropertyId, TaskFlow, Zone,
 };
-use sgenaxis_evid::{
+use eluslot_evid::{
     evidence_allows_flow_accept_or_complete, evidence_gaps, evaluate_ready_for_green,
     project_inspector_evidence, CaseResult, EvidenceStore, ProviderTerminal, RunCapture,
     VersionBinding, EVIDENCE_GAP_LAMP_HINT,
 };
-use sgenaxis_exec::{
+use eluslot_exec::{
     is_mcp_endpoint_activatable, require_run_binding, AgentChunk, AgentPort, AgentProvider,
     AgentRouter, CliAgentAdapter, CliAgentSettings, ExecError, ExitClassification,
     McpAgentAdapter, McpAgentSettings, OutputStream, RunId, StartRunRequest, StubMcpClient,
 };
-use sgenaxis_ports::{
+use eluslot_ports::{
     Cleanup, GitIndexCommitPort, InteractiveError, InteractiveFixturePort, InteractiveId,
     InteractiveObservation, FileSystemPort, InteractiveSize, PortError, ProcessPort, ReadState,
 };
-use sgenaxis_host::{
+use eluslot_host::{
     authorize_exec_start, authorize_write_paths, check_changes_view, check_start_view,
     occupying_run_id, GuardDecisionView, GuardExecPass, GuardPacketDto,
 };
-use sgenaxis_listen::{EventBridge, ListenProjection, SourceEvent};
-use sgenaxis_spec::{ApprovalStatus, Contract, EvidenceValidity, SpecError, SpecStore};
-use sgenaxis_work::{FakePathProbe, FakeWorkspaceStore, WorkspaceService};
+use eluslot_listen::{EventBridge, ListenProjection, SourceEvent};
+use eluslot_spec::{ApprovalStatus, Contract, EvidenceValidity, SpecError, SpecStore};
+use eluslot_work::{FakePathProbe, FakeWorkspaceStore, WorkspaceService};
 
 use crate::dto::{
     ArchEdgeDto, ArchModuleDto, ArchProjectionDto, BatchWorkTagsArgs, BoardView, CandidateDraft, ChunkDto,
@@ -156,7 +156,7 @@ impl DispatchHost {
         }
         let outcome = self.work.register(bound_root).map_err(|e| E::WorkspaceRejected { reason: format!("{e:?}") })?;
         let project = match outcome {
-            sgenaxis_work::RegisterOutcome::Created(p) | sgenaxis_work::RegisterOutcome::Existing(p) => p,
+            eluslot_work::RegisterOutcome::Created(p) | eluslot_work::RegisterOutcome::Existing(p) => p,
         };
         // WORK selected-view may change. HostSettings, leases and Run roots do not.
         Ok(DocumentPrepareResultDto { project_id: project.id.to_string(), project_root: bound_root.into() })
@@ -181,9 +181,9 @@ impl DispatchHost {
             "run" => self.active_run_id = Some(77),
             "lease_flag" => self.active_lease_project = Some("fixture".into()),
             "capture" => self.guard_capture_process = Some(GuardCaptureProcessSlot {
-                candidate_ref: 0, process_id: sgenaxis_ports::ProcessId(0), stage: GuardCaptureStage::BuildOnly }),
+                candidate_ref: 0, process_id: eluslot_ports::ProcessId(0), stage: GuardCaptureStage::BuildOnly }),
             "active_lease" | "reserved" | "unresolved" => {
-                let id = sgenaxis_work::ProjectId::new(self.document_test_register(root));
+                let id = eluslot_work::ProjectId::new(self.document_test_register(root));
                 if kind == "active_lease" {
                     self.work.acquire_lease(&id, "fixture-run", "fixture-work", "fixture-fp").unwrap();
                 } else {
@@ -213,13 +213,13 @@ impl DispatchHost {
         if bound_root.trim().is_empty() || args.expected_project_id.trim().is_empty() {
             return Err(E::ProjectNotBound);
         }
-        let project = self.work.get_project(&sgenaxis_work::ProjectId::new(&args.expected_project_id))
+        let project = self.work.get_project(&eluslot_work::ProjectId::new(&args.expected_project_id))
             .map_err(|_| E::ProjectNotBound)?.ok_or(E::ProjectNotBound)?;
         if Self::document_root_key(&project.root) != Self::document_root_key(bound_root) {
             return Err(E::ProjectMismatch);
         }
-        use sgenaxis_host::{DocumentAdoptionOutcome, ProjectManifestStoreError as H};
-        let outcome = sgenaxis_host::adopt_project_document(fs, &project, &args.reference, candidate)
+        use eluslot_host::{DocumentAdoptionOutcome, ProjectManifestStoreError as H};
+        let outcome = eluslot_host::adopt_project_document(fs, &project, &args.reference, candidate)
             .map_err(|error| match error {
                 H::InvalidProjectRoot => E::InvalidProjectRoot,
                 H::InvalidReference => E::InvalidReference,
@@ -249,60 +249,60 @@ impl DispatchHost {
     #[cfg(test)]
     pub(crate) fn document_test_register(&mut self, root: &str) -> String {
         match self.work.register(root).unwrap() {
-            sgenaxis_work::RegisterOutcome::Created(p) | sgenaxis_work::RegisterOutcome::Existing(p) => p.id.to_string(),
+            eluslot_work::RegisterOutcome::Created(p) | eluslot_work::RegisterOutcome::Existing(p) => p.id.to_string(),
         }
     }
 
     pub fn project_policy_load(fs: &dyn FileSystemPort, bound: &str, expected: &str) -> Result<serde_json::Value, String> {
         if bound.trim().is_empty() || bound != expected {return Err("PROJECT_CHANGED_OR_UNBOUND".into());}
-        let view=sgenaxis_host::project_preferences::load_project_preferences(fs,bound).map_err(|e|format!("{e:?}"))?;
+        let view=eluslot_host::project_preferences::load_project_preferences(fs,bound).map_err(|e|format!("{e:?}"))?;
         Ok(match view {Some(v)=>serde_json::json!({"configured":true,"projectRoot":v.project_root,"digest":v.digest,"preferences":v.preferences}),None=>serde_json::json!({"configured":false,"projectRoot":bound,"digest":null,"preferences":null})})
     }
     pub fn project_policy_save(fs: &dyn FileSystemPort, bound: &str, expected: &str, digest: Option<&str>, draft: &[u8]) -> Result<serde_json::Value, String> {
         if bound.trim().is_empty() || bound != expected {return Err("PROJECT_CHANGED_OR_UNBOUND".into());}
-        let draft=sgenaxis_spec::project_preferences::parse_project_preferences(draft).map_err(|e|format!("{e:?}"))?;
-        let v=sgenaxis_host::project_preferences::save_project_preferences(fs,bound,digest,&draft).map_err(|e|format!("{e:?}"))?;
+        let draft=eluslot_spec::project_preferences::parse_project_preferences(draft).map_err(|e|format!("{e:?}"))?;
+        let v=eluslot_host::project_preferences::save_project_preferences(fs,bound,digest,&draft).map_err(|e|format!("{e:?}"))?;
         Ok(serde_json::json!({"configured":true,"projectRoot":v.project_root,"digest":v.digest,"preferences":v.preferences}))
     }
     pub fn project_policy_create(fs: &dyn FileSystemPort, parent: &str, name: &str, preset: Option<&str>, imported: Option<&str>) -> Result<serde_json::Value, String> {
-        use sgenaxis_host::project_preferences::{CreationOutcome,PreferenceChoice};
+        use eluslot_host::project_preferences::{CreationOutcome,PreferenceChoice};
         if preset.is_some()&&imported.is_some(){return Err("CHOOSE_PRESET_OR_IMPORT".into());}
-        let root=sgenaxis_host::join_new_project_path(parent,name).map_err(|e|e.to_string())?;
+        let root=eluslot_host::join_new_project_path(parent,name).map_err(|e|e.to_string())?;
         let choice=match(preset,imported){(Some(id),None)=>PreferenceChoice::Preset(id),(None,Some(text))=>PreferenceChoice::Imported(text.as_bytes()),_=>PreferenceChoice::Skip};
-        match sgenaxis_host::project_preferences::create_project_with_preferences(fs,&root,choice).map_err(|e|format!("{e:?}"))? {
+        match eluslot_host::project_preferences::create_project_with_preferences(fs,&root,choice).map_err(|e|format!("{e:?}"))? {
             CreationOutcome::Created{project_root,..}=>Ok(serde_json::json!({"status":"ok","path":project_root})),
             CreationOutcome::DirectoryCreatedPreferencesFailed{project_root,error}=>Ok(serde_json::json!({"status":"error","path":project_root,"message":format!("目錄已建立，偏好未完成：{error:?}；目前專案未切換。") })),
         }
     }
     pub fn project_policy_presets() -> Result<serde_json::Value,String> {
         let mut result=serde_json::Map::new();
-        for id in ["conservative","balanced","throughput"] {result.insert(id.into(),serde_json::to_value(sgenaxis_spec::project_preferences::preset(id).map_err(|e|format!("{e:?}"))?).map_err(|e|e.to_string())?);}
+        for id in ["conservative","balanced","throughput"] {result.insert(id.into(),serde_json::to_value(eluslot_spec::project_preferences::preset(id).map_err(|e|format!("{e:?}"))?).map_err(|e|e.to_string())?);}
         Ok(serde_json::Value::Object(result))
     }
     pub fn project_policy_import(fs: &dyn FileSystemPort,path:&str) -> Result<serde_json::Value,String> {
         let bytes=fs.read(path).map_err(|e|e.to_string())?;
-        sgenaxis_spec::project_preferences::parse_project_preferences(&bytes).map_err(|e|format!("{e:?}"))?;
+        eluslot_spec::project_preferences::parse_project_preferences(&bytes).map_err(|e|format!("{e:?}"))?;
         let text=String::from_utf8(bytes).map_err(|e|e.to_string())?;
         Ok(serde_json::json!({"status":"ok","json":text}))
     }
     /// M01-S3 owner-snapshot authority producer. Snapshots the host's *live*
     /// owner facts (owner window + a per-host selection/session nonce) into a
-    /// [`sgenaxis_host::project_definition::DefinitionAuthorityContext`]. Authority
+    /// [`eluslot_host::project_definition::DefinitionAuthorityContext`]. Authority
     /// is derived only from the host owner; it is NEVER inferred from a
     /// UI-supplied project root.
     pub fn definition_authority(
         &self,
         owner_window: &str,
     ) -> Result<
-        sgenaxis_host::project_definition::DefinitionAuthorityContext,
-        sgenaxis_host::project_wizard::WizardBridgeError,
+        eluslot_host::project_definition::DefinitionAuthorityContext,
+        eluslot_host::project_wizard::WizardBridgeError,
     > {
-        let snapshot = sgenaxis_host::project_wizard::OwnerWindowSnapshot {
+        let snapshot = eluslot_host::project_wizard::OwnerWindowSnapshot {
             owner_window: owner_window.to_owned(),
             selection_id: format!("sel-{:016x}", guard_session_nonce()),
             session_id: format!("ses-{:016x}", guard_session_nonce()),
         };
-        sgenaxis_host::project_wizard::snapshot_definition_authority(&snapshot)
+        eluslot_host::project_wizard::snapshot_definition_authority(&snapshot)
     }
 
     /// Compose Fake Process + unavailable MCP transport.
@@ -372,7 +372,7 @@ impl DispatchHost {
     }
 
     fn edit_dto_from(
-        proj: sgenaxis_core::EditProjection,
+        proj: eluslot_core::EditProjection,
         status: &str,
         message: impl Into<String>,
     ) -> EditProjectionDto {
@@ -658,7 +658,7 @@ impl DispatchHost {
     /// Replace Core projection with tasks from a local board snapshot (read-only load).
     pub fn replace_projection_tasks(
         &mut self,
-        tasks: Vec<sgenaxis_core::TaskRecord>,
+        tasks: Vec<eluslot_core::TaskRecord>,
     ) -> BoardView {
         self.engine.replace_all_tasks(tasks);
         self.sync_edit_universe();
@@ -947,7 +947,7 @@ impl DispatchHost {
         );
 
         let (title, zone) =
-            sgenaxis_core::task_from_store(self.engine.property_store(), work_item_id).map_or(
+            eluslot_core::task_from_store(self.engine.property_store(), work_item_id).map_or(
                 (None, None),
                 |rec| (Some(rec.title), Some(rec.zone.as_str().to_string())),
             );
@@ -1082,7 +1082,7 @@ impl DispatchHost {
         }
     }
 
-    fn evid_decision(&self, work_item_id: &str) -> sgenaxis_evid::GreenDecision {
+    fn evid_decision(&self, work_item_id: &str) -> eluslot_evid::GreenDecision {
         let required = self
             .required_bdd
             .get(work_item_id)
@@ -1109,7 +1109,7 @@ impl DispatchHost {
             let mut flow = TaskFlow::new(work_item_id, "dispatch");
             // Best-effort align: if already blue／yellow／red from Engine, drive SM.
             if let Some(rec) =
-                sgenaxis_core::task_from_store(self.engine.property_store(), work_item_id)
+                eluslot_core::task_from_store(self.engine.property_store(), work_item_id)
             {
                 match rec.zone {
                     Zone::Blue => {
@@ -1136,7 +1136,7 @@ impl DispatchHost {
         event: FlowEvent,
         reason: &str,
         evidence_ready: bool,
-    ) -> Result<sgenaxis_core::TransitionOutcome, FlowError> {
+    ) -> Result<eluslot_core::TransitionOutcome, FlowError> {
         self.ensure_task_and_flow(work_item_id)
             .map_err(|_| FlowError::IllegalTransition {
                 from: Zone::Gray,
@@ -1325,8 +1325,8 @@ impl DispatchHost {
     #[cfg(test)]
     fn with_fake_listen(
         window_ms: u64,
-    ) -> (Self, sgenaxis_listen::FakeClock) {
-        let clock = sgenaxis_listen::FakeClock::new();
+    ) -> (Self, eluslot_listen::FakeClock) {
+        let clock = eluslot_listen::FakeClock::new();
         let mut host = Self::new();
         host.listen = EventBridge::with_clock(
             Duration::from_millis(window_ms),
@@ -1515,7 +1515,7 @@ impl DispatchHost {
         let snap = self.engine.snapshot();
         let mut tasks = Vec::new();
         for id in self.engine.task_ids() {
-            if let Some(rec) = sgenaxis_core::task_from_store(self.engine.property_store(), &id) {
+            if let Some(rec) = eluslot_core::task_from_store(self.engine.property_store(), &id) {
                 let bdd = self
                     .required_bdd
                     .get(&rec.id)
@@ -1634,7 +1634,7 @@ fn evidence_validity_str(v: EvidenceValidity) -> &'static str {
     }
 }
 
-fn revision_to_dto(rev: &sgenaxis_spec::SpecRevision) -> SpecRevisionDto {
+fn revision_to_dto(rev: &eluslot_spec::SpecRevision) -> SpecRevisionDto {
     let immutable = rev.status == ApprovalStatus::Approved;
     SpecRevisionDto {
         id: rev.id.clone(),
@@ -1876,7 +1876,7 @@ enum GuardCaptureStage {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct GuardCaptureProcessSlot {
     candidate_ref: u64,
-    process_id: sgenaxis_ports::ProcessId,
+    process_id: eluslot_ports::ProcessId,
     stage: GuardCaptureStage,
 }
 
@@ -2042,7 +2042,7 @@ impl DispatchHost {
         {
             return Err(GuardCandidateError::InvalidCandidate);
         }
-        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let project_id = eluslot_work::ProjectId::new(draft.project_id.clone());
         let project = self.work.get_project(&project_id)
             .map_err(|_| GuardCandidateError::ProjectReadFailure)?
             .ok_or(GuardCandidateError::ProjectNotFound)?;
@@ -2074,7 +2074,7 @@ impl DispatchHost {
             architecture: snapshot.artifact_digests.get("architecture").cloned().unwrap_or_default(),
             bdd: snapshot.artifact_digests.get("bdd").cloned().unwrap_or_default(),
             skeleton: snapshot.artifact_digests.get("skeleton").cloned().unwrap_or_default(),
-            envelope: sgenaxis_spec::packet::source_sha256(&envelope_bytes),
+            envelope: eluslot_spec::packet::source_sha256(&envelope_bytes),
             red_id: String::new(),
             test_manifest: snapshot.artifact_digests.get("tests").cloned().unwrap_or_default(),
         };
@@ -2141,7 +2141,7 @@ impl DispatchHost {
             return Ok(());
         };
 
-        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let project_id = eluslot_work::ProjectId::new(draft.project_id.clone());
         let manifest = GuardInputManifest {
             revision: draft.manifest_revision.clone(),
             inputs: draft.input_paths.clone(),
@@ -2251,7 +2251,7 @@ impl DispatchHost {
         }
         let artifact_bytes = self.guard_input_fs.read(&capture.artifact_path)
             .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable))?;
-        if sgenaxis_spec::packet::source_sha256(&artifact_bytes) != capture.artifact_sha256 {
+        if eluslot_spec::packet::source_sha256(&artifact_bytes) != capture.artifact_sha256 {
             return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
         }
         let mut bdd_text = String::new();
@@ -2271,7 +2271,7 @@ impl DispatchHost {
         }
         let artifact_after_prompt_read = self.guard_input_fs.read(&capture.artifact_path)
             .map_err(|_| GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable))?;
-        if sgenaxis_spec::packet::source_sha256(&artifact_after_prompt_read) != capture.artifact_sha256 {
+        if eluslot_spec::packet::source_sha256(&artifact_after_prompt_read) != capture.artifact_sha256 {
             return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
         }
 
@@ -2365,7 +2365,7 @@ impl DispatchHost {
                 return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactUnreadable));
             }
         };
-        if sgenaxis_spec::packet::source_sha256(&artifact_bytes) != pending.artifact_sha256 {
+        if eluslot_spec::packet::source_sha256(&artifact_bytes) != pending.artifact_sha256 {
             if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
                 record.pending_qualification = None;
                 record.qualified_red = None;
@@ -2516,7 +2516,7 @@ impl DispatchHost {
         if now() >= deadline {
             return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
         }
-        let artifact_sha256 = sgenaxis_spec::packet::source_sha256(&artifact_before);
+        let artifact_sha256 = eluslot_spec::packet::source_sha256(&artifact_before);
         let exact_args = ["--exact", draft.red_job.test_id.as_str(), "--nocapture"];
         let test = self.guard_run_capture_process(
             candidate_ref,
@@ -2547,7 +2547,7 @@ impl DispatchHost {
         if now() >= deadline {
             return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
         }
-        if sgenaxis_spec::packet::source_sha256(&artifact_after) != artifact_sha256 {
+        if eluslot_spec::packet::source_sha256(&artifact_after) != artifact_sha256 {
             return Err(GuardCandidateError::Capture(GuardCaptureError::ArtifactChanged));
         }
         let after = self.guard_capture_current_binding(&candidate, deadline, &mut now)?;
@@ -2583,8 +2583,8 @@ impl DispatchHost {
             failure_summary_line: Some(observed_failure.summary_line),
             raw_test_stdout: test.stdout,
             raw_test_stderr: test.stderr,
-            build_stdout_sha256: sgenaxis_spec::packet::source_sha256(build.stdout.as_bytes()),
-            build_stderr_sha256: sgenaxis_spec::packet::source_sha256(build.stderr.as_bytes()),
+            build_stdout_sha256: eluslot_spec::packet::source_sha256(build.stdout.as_bytes()),
+            build_stderr_sha256: eluslot_spec::packet::source_sha256(build.stderr.as_bytes()),
         };
         if let Some(record) = self.guard_candidates.get_mut(&candidate_ref) {
             record.mechanical_capture = Some(capture.clone());
@@ -2599,7 +2599,7 @@ impl DispatchHost {
         now: &mut impl FnMut() -> std::time::Instant,
     ) -> Result<GuardSnapshot, GuardCandidateError> {
         let draft = candidate.draft.as_ref().ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
-        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let project_id = eluslot_work::ProjectId::new(draft.project_id.clone());
         let manifest = GuardInputManifest {
             revision: draft.manifest_revision.clone(),
             inputs: draft.input_paths.clone(),
@@ -2642,7 +2642,7 @@ impl DispatchHost {
     ) -> Result<GuardSnapshot, GuardCandidateError> {
         let draft = candidate.draft.as_ref()
             .ok_or(GuardCandidateError::Capture(GuardCaptureError::MissingCandidate))?;
-        let project_id = sgenaxis_work::ProjectId::new(draft.project_id.clone());
+        let project_id = eluslot_work::ProjectId::new(draft.project_id.clone());
         let manifest = GuardInputManifest {
             revision: draft.manifest_revision.clone(),
             inputs: draft.input_paths.clone(),
@@ -2707,8 +2707,8 @@ impl DispatchHost {
         self.guard_capture_process = Some(GuardCaptureProcessSlot { candidate_ref, process_id, stage });
         let mut stdout = String::new();
         let mut stderr = String::new();
-        let mut stdout_completion = sgenaxis_ports::StreamCompletion::Open;
-        let mut stderr_completion = sgenaxis_ports::StreamCompletion::Open;
+        let mut stdout_completion = eluslot_ports::StreamCompletion::Open;
+        let mut stderr_completion = eluslot_ports::StreamCompletion::Open;
         let mut exit_code = None;
         let mut drain_deadline = None;
 
@@ -2753,15 +2753,15 @@ impl DispatchHost {
                 return Err(GuardCandidateError::Capture(GuardCaptureError::TimedOut));
             }
 
-            if matches!(stdout_completion, sgenaxis_ports::StreamCompletion::Error(_))
-                || matches!(stderr_completion, sgenaxis_ports::StreamCompletion::Error(_))
+            if matches!(stdout_completion, eluslot_ports::StreamCompletion::Error(_))
+                || matches!(stderr_completion, eluslot_ports::StreamCompletion::Error(_))
             {
                 self.guard_cancel_capture_process(process_id, exit_code, &stdout_completion, &stderr_completion);
                 return Err(GuardCandidateError::Capture(GuardCaptureError::ProcessObservation));
             }
             if let Some(code) = exit_code {
-                if stdout_completion == sgenaxis_ports::StreamCompletion::Eof
-                    && stderr_completion == sgenaxis_ports::StreamCompletion::Eof
+                if stdout_completion == eluslot_ports::StreamCompletion::Eof
+                    && stderr_completion == eluslot_ports::StreamCompletion::Eof
                 {
                     self.guard_capture_process = None;
                     return Ok(GuardCaptureProcessResult { exit_code: code, stdout, stderr, dual_eof: true });
@@ -2778,10 +2778,10 @@ impl DispatchHost {
 
     fn guard_cancel_capture_process(
         &mut self,
-        process_id: sgenaxis_ports::ProcessId,
+        process_id: eluslot_ports::ProcessId,
         known_exit: Option<i32>,
-        stdout_completion: &sgenaxis_ports::StreamCompletion,
-        stderr_completion: &sgenaxis_ports::StreamCompletion,
+        stdout_completion: &eluslot_ports::StreamCompletion,
+        stderr_completion: &eluslot_ports::StreamCompletion,
     ) {
         if known_exit.is_none() {
             let _ = self.guard_red_process.cancel(process_id);
@@ -2807,8 +2807,8 @@ struct GuardCaptureProcessResult {
     dual_eof: bool,
 }
 
-fn guard_capture_stream_terminal(completion: &sgenaxis_ports::StreamCompletion) -> bool {
-    !matches!(completion, sgenaxis_ports::StreamCompletion::Open)
+fn guard_capture_stream_terminal(completion: &eluslot_ports::StreamCompletion) -> bool {
+    !matches!(completion, eluslot_ports::StreamCompletion::Open)
 }
 
 fn guard_capture_draft_is_safe(draft: &CandidateDraft, bound_root: &str) -> bool {
@@ -3216,7 +3216,7 @@ fn guard_current_byte_snapshot_with_checkpoint<F>(
 where
     F: FnMut() -> Result<(), GuardSnapshotProducerError>,
 {
-    use sgenaxis_spec::packet::source_sha256;
+    use eluslot_spec::packet::source_sha256;
     let invalid = GuardSnapshotProducerError::InvalidManifest;
     checkpoint()?;
     if logical_root.is_empty() || manifest.revision.is_empty() || manifest.inputs.is_empty() {
@@ -3248,7 +3248,7 @@ where
     for path in paths {
         checkpoint()?;
         let bytes = fs.read(&format!("{root}/{path}")).map_err(|error| {
-            use sgenaxis_ports::PortError;
+            use eluslot_ports::PortError;
             let category = match error {
                 PortError::NotFound(_) => GuardReadFailureCategory::NotFound,
                 PortError::PermissionDenied(_) => GuardReadFailureCategory::PermissionDenied,
@@ -3300,7 +3300,7 @@ where
 enum GuardProjectSnapshotError {
     NotReady,
     ProjectNotFound,
-    ProjectReadFailure(sgenaxis_work::WorkError),
+    ProjectReadFailure(eluslot_work::WorkError),
     Snapshot(GuardSnapshotProducerError),
 }
 
@@ -3312,7 +3312,7 @@ impl DispatchHost {
     #[allow(dead_code)]
     fn guard_project_input_snapshot(
         &self,
-        project_id: &sgenaxis_work::ProjectId,
+        project_id: &eluslot_work::ProjectId,
         manifest: &GuardInputManifest,
     ) -> Result<GuardCurrentByteSnapshot, GuardProjectSnapshotError> {
         let project = self.work.get_project(project_id)
@@ -3546,11 +3546,11 @@ impl<P: InteractiveFixturePort> Session<P> {
 
 #[cfg(test)]
 mod tests {
-    use sgenaxis_exec::FakeMcpClient;
+    use eluslot_exec::FakeMcpClient;
     mod mcp_notrun_tests { include!("mcp_notrun_tests.rs"); }
     use super::*;
-    use sgenaxis_exec::{DEMO_PROJECT_ROOT, DEMO_WORK_ITEM_ID, DEMO_WORKTREE_FINGERPRINT};
-    use sgenaxis_listen::FsChangeKind;
+    use eluslot_exec::{DEMO_PROJECT_ROOT, DEMO_WORK_ITEM_ID, DEMO_WORKTREE_FINGERPRINT};
+    use eluslot_listen::FsChangeKind;
 
     #[test]
     fn list_commands_exposes_dispatch_table() {
@@ -3755,12 +3755,12 @@ mod tests {
         })
         .unwrap();
         let board = host.replace_projection_tasks(vec![
-            sgenaxis_core::TaskRecord {
+            eluslot_core::TaskRecord {
                 id: "PD-A".into(),
                 title: "Alpha".into(),
                 zone: Zone::Yellow,
             },
-            sgenaxis_core::TaskRecord {
+            eluslot_core::TaskRecord {
                 id: "PD-B".into(),
                 title: "Beta".into(),
                 zone: Zone::Green,
@@ -4400,8 +4400,8 @@ mod tests {
     }
 
     // —— BDD-PD-GUARD-CMD-01 ——
-    fn sample_guard_packet(approved: bool) -> sgenaxis_host::GuardPacketDto {
-        use sgenaxis_host::{EnvelopeDto, GuardPacketDto, RedKindDto};
+    fn sample_guard_packet(approved: bool) -> eluslot_host::GuardPacketDto {
+        use eluslot_host::{EnvelopeDto, GuardPacketDto, RedKindDto};
         GuardPacketDto {
             envelope: EnvelopeDto {
                 id: "GUARD-CMD-01".into(),
@@ -4738,7 +4738,7 @@ mod tests {
         );
 
         // Board command-path seam (what load_local_board writes into DispatchHost).
-        let board = host.replace_projection_tasks(vec![sgenaxis_core::TaskRecord {
+        let board = host.replace_projection_tasks(vec![eluslot_core::TaskRecord {
             id: WORK_ITEM.into(),
             title: "wire smoke fixture".into(),
             zone: Zone::Gray,

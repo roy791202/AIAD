@@ -13,7 +13,7 @@
 
 #![cfg(feature = "real-mcp")]
 
-use sgenaxis_exec::{
+use eluslot_exec::{
     is_mcp_endpoint_activatable, probe_mcp_live_smoke_target, AgentChunk, AgentPort,
     AgentProvider, AgentSettingsDocument, ExitClassification, FakeMcpClient, McpAgentAdapter,
     McpAgentSettings, McpTransportKind, OutputStream, StartRunRequest, ENV_MCP_LIVE_ENDPOINT,

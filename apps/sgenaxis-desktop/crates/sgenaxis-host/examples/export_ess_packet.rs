@@ -1,7 +1,7 @@
 //! Explicit .ess capture to stdout; never publishes or modifies the source.
-use sgenaxis_adapters::{ess_codec::ProductEssDecoder, StdFileSystem};
-use sgenaxis_host::module_packet::export_module_packet;
-use sgenaxis_spec::packet::{ExportRequest, PacketLimits};
+use eluslot_adapters::{ess_codec::ProductEssDecoder, StdFileSystem};
+use eluslot_host::module_packet::export_module_packet;
+use eluslot_spec::packet::{ExportRequest, PacketLimits};
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.len() != 4 {

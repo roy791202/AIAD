@@ -11,7 +11,7 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use sgenaxis_ports::{PortError, ProcessId, ProcessOutput, ProcessPort, StreamCompletion};
+use eluslot_ports::{PortError, ProcessId, ProcessOutput, ProcessPort, StreamCompletion};
 
 #[derive(Default)]
 struct PipeCapture {

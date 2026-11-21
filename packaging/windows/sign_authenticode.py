@@ -39,7 +39,7 @@ VALID_STATUS = frozenset({"PASS", "FAIL", "BLOCKED", "NOT RUN", "PARTIAL"})
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_OUT = HERE / "out"
-DEFAULT_MSI = HERE / "wix" / "out" / "SGenAxis-0.1.0-windows-x64.msi"
+DEFAULT_MSI = HERE / "wix" / "out" / "EluSlot-0.1.0-windows-x64.msi"
 
 ENV_CERT = "AIAD_AUTHENTICODE_CERT"
 ENV_PASSWORD = "AIAD_AUTHENTICODE_PASSWORD"

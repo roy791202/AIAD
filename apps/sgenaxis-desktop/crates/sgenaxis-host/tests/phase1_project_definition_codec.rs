@@ -1,6 +1,6 @@
 //! Approved M01-S2 codec behavior, isolated from filesystem and production parsing.
-use sgenaxis_host::project_definition::*;
-use sgenaxis_work::project_definition::*;
+use eluslot_host::project_definition::*;
+use eluslot_work::project_definition::*;
 fn base() -> ProjectDefinition {
     ProjectDefinition {
         project_uuid: PersistentProjectId::candidate("11111111-1111-4111-8111-111111111111"),

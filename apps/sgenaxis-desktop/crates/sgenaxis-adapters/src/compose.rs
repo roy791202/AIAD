@@ -15,7 +15,7 @@
 //! sgenaxis-core stays free of this crate; use-cases take `&dyn …Port`.
 //! ```
 
-use sgenaxis_ports::{DeployPort, FileSystemPort, GitPort, GitWritePort, PathPort, ProcessPort};
+use eluslot_ports::{DeployPort, FileSystemPort, GitPort, GitWritePort, PathPort, ProcessPort};
 
 use crate::fake::{FakeDeploy, FakeFileSystem, FakeGit, FakeGitWrite, FakePath, FakeProcess};
 use crate::git_write::GatedGitWrite;
@@ -77,7 +77,7 @@ impl HostPorts<StdFileSystem, StdPath, StdProcess, StdGit> {
 #[cfg(feature = "std-adapters")]
 impl HostPorts<StdFileSystem, StdPath, StdProcess, StdGit, StdGitWrite> {
     /// Std read + approving write (`StdGitWrite`). Still requires
-    /// [`sgenaxis_ports::GitWriteApproval::granted`] per call.
+    /// [`eluslot_ports::GitWriteApproval::granted`] per call.
     pub fn std_with_approving_git_write() -> Self {
         Self {
             fs: StdFileSystem::new(),
@@ -161,7 +161,7 @@ pub fn ensure_app_config_dir(
     path: &dyn PathPort,
     fs: &dyn FileSystemPort,
     app_name: &str,
-) -> Result<String, sgenaxis_ports::PortError> {
+) -> Result<String, eluslot_ports::PortError> {
     let dir = path.config_dir(app_name)?;
     fs.create_dir_all(&dir)?;
     Ok(dir)

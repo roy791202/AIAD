@@ -7,7 +7,7 @@
 //! implementation does not claim symlink/junction containment.
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 use std::path::{Component, Path, PathBuf};
 use syn::visit::Visit;
 
@@ -137,7 +137,7 @@ pub fn preview_selected(
             ));
         }
 
-        let source_sha256 = sgenaxis_spec::packet::source_sha256(&bytes);
+        let source_sha256 = eluslot_spec::packet::source_sha256(&bytes);
         let parse_bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(&bytes);
         let first_line_bom_characters = usize::from(bytes.len() != parse_bytes.len());
         let source = std::str::from_utf8(parse_bytes).map_err(|_| {
@@ -347,7 +347,7 @@ impl<'ast> syn::visit::Visit<'ast> for SyntaxFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_ports::PortError;
+    use eluslot_ports::PortError;
     use std::collections::BTreeMap;
     use std::sync::Mutex;
 
@@ -508,7 +508,7 @@ mod tests {
             (call.span.as_ref().unwrap().start_line, call.span.as_ref().unwrap().start_column),
             (1, 18)
         );
-        assert_eq!(bom_file.source_sha256, sgenaxis_spec::packet::source_sha256(bom));
+        assert_eq!(bom_file.source_sha256, eluslot_spec::packet::source_sha256(bom));
     }
 
     #[test]
@@ -543,8 +543,8 @@ mod tests {
         );
         assert_eq!(a.symbols[0].span.start_column, 7);
         assert_eq!(b.symbols[0].span.start_column, 8);
-        assert_eq!(a.source_sha256, sgenaxis_spec::packet::source_sha256(plain));
-        assert_eq!(b.source_sha256, sgenaxis_spec::packet::source_sha256(bom));
+        assert_eq!(a.source_sha256, eluslot_spec::packet::source_sha256(plain));
+        assert_eq!(b.source_sha256, eluslot_spec::packet::source_sha256(bom));
         assert_ne!(a.source_sha256, b.source_sha256);
     }
 

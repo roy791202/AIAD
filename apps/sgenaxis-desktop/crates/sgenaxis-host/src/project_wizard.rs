@@ -1,5 +1,5 @@
 //! M01-S3 wizard command bridge — wraps the S2 project-definition DOMAIN
-//! (`crate::project_definition` + `sgenaxis_work::project_definition`) as a
+//! (`crate::project_definition` + `eluslot_work::project_definition`) as a
 //! step-wise lifecycle the Tauri command layer can expose over IPC.
 //!
 //! Boundaries (HEX / DDD):
@@ -25,8 +25,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use sgenaxis_ports::{FileCommitPort, FileSystemPort};
-use sgenaxis_work::project_definition::{
+use eluslot_ports::{FileCommitPort, FileSystemPort};
+use eluslot_work::project_definition::{
     missing_generation_requirements, validate_definition, DefinitionDraft, DefinitionError,
     DefinitionMode, DefinitionRequirement, DefinitionRevision, DeliveryTarget, ExtensionValue,
     FieldState, PersistentProjectId, PreferenceSource, ProjectDefinition, RequirementState,

@@ -21,7 +21,7 @@ HTML = UI / "index.html"
 JS = UI / "app.js"
 CSS = UI / "styles.css"
 DESKTOP = ROOT / "apps" / "sgenaxis-desktop"
-EXEC_MANIFEST = DESKTOP / "crates" / "sgenaxis-exec" / "Cargo.toml"
+EXEC_MANIFEST = DESKTOP / "crates" / "eluslot-exec" / "Cargo.toml"
 SCRIPT = ROOT / "scripts" / "pd_smoke_01.py"
 
 # EXEC DryRun (PD-EXEC-CLI): started → chunk → progress → exited; no OS spawn／MSI.
@@ -49,7 +49,7 @@ def test_ui_assets_load():
     html = HTML.read_text(encoding="utf-8")
     assert 'id="app"' in html
     assert 'role="menubar"' in html
-    assert "EluSlot" in html or "SGenAxis" in html or "sgenaxis" in html.lower()
+    assert "EluSlot" in html or "EluSlot" in html or "sgenaxis" in html.lower()
 
 
 def test_project_select_chrome():
@@ -100,7 +100,7 @@ def test_dryrun_start_end_ui_wiring():
 
 
 def test_dryrun_start_and_end_cargo():
-    """DryRun start＋結束 — sgenaxis-exec CliAgentAdapter sequence; fail ⇒ FAIL."""
+    """DryRun start＋結束 — eluslot-exec CliAgentAdapter sequence; fail ⇒ FAIL."""
     assert EXEC_MANIFEST.is_file(), f"missing exec manifest: {EXEC_MANIFEST}"
     env = os.environ.copy()
     cargo_bin_dir = str(Path.home() / ".cargo" / "bin")

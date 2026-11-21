@@ -47,7 +47,7 @@ def task(id_, title, bdd, note, *, milestone="Remain"):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis 剩餘未作 backlog：桌機未接功能／Live spawn／另案",
+    "title": "EluSlot 剩餘未作 backlog：桌機未接功能／Live spawn／另案",
     "zone": "gray",
     "kind": "epic",
     "createdAt": NOW,
@@ -160,7 +160,7 @@ TASKS = [
         "（非僅 DryRun compose）；無核准／無 CLI→NOT RUN／可讀拒絕；秘密不進投影。",
         "Primary module: EXEC\n依賴: PD-WIRE-AGENT-01、PD-EXEC-LIVE-01、PD-LIVE-CLI-SMOKE-01\n"
         "交付／AC: DispatchHost 接 StdProcess／real-spawn＋測試。\n"
-        "允許範圍: src-tauri dispatch／commands、sgenaxis-exec／adapters。\n"
+        "允許範圍: src-tauri dispatch／commands、eluslot-exec／adapters。\n"
         "不做: 雲端閘道。",
         milestone="Remain/EXEC",
     ),
@@ -170,7 +170,7 @@ TASKS = [
         "BDD-PD-REMAIN-LIVE-MCP-01：核准 Live＋有效本機 MCP 端點時經 Command→DispatchHost 真連；"
         "禁 :8788／:8787；無目標→NOT RUN。",
         "Primary module: EXEC\n依賴: PD-REMAIN-LIVE-SPAWN-01、PD-MCP-LIVE-SMOKE-01\n"
-        "交付／AC: 接線＋測試。\n允許範圍: src-tauri、sgenaxis-exec。\n不做: 任意雲端 MCP。",
+        "交付／AC: 接線＋測試。\n允許範圍: src-tauri、eluslot-exec。\n不做: 任意雲端 MCP。",
         milestone="Remain/EXEC",
     ),
     task(

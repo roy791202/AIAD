@@ -1,4 +1,4 @@
-# SGenAxis 驗證預設專案
+# EluSlot 驗證預設專案
 
 假資料看板，供**已安裝版**／`tauri dev` 功能對照。
 

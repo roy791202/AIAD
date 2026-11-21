@@ -1,8 +1,8 @@
 //! M01-S2 approved HOST codec and Port-based project-definition persistence.
 //! No filesystem or native ownership; all effects must pass the declared Ports.
 use crate::project_preferences::PreferenceChoice;
-use sgenaxis_ports::{CommitReceipt, CommitStage, FileCommitPort, FileSystemPort};
-use sgenaxis_work::project_definition::{
+use eluslot_ports::{CommitReceipt, CommitStage, FileCommitPort, FileSystemPort};
+use eluslot_work::project_definition::{
     DefinitionRevision, PersistentProjectId, ProjectDefinition,
 };
 
@@ -376,7 +376,7 @@ pub fn decode_definition(bytes: &[u8]) -> Result<ProjectDefinition, DefinitionSt
 
 // Private codec machinery. Numbers retain their token; no floating-point or
 // serde_json::Value numeric intermediate enters the domain projection.
-use sgenaxis_work::project_definition::*;
+use eluslot_work::project_definition::*;
 use std::collections::BTreeMap;
 const BYTE_LIMIT: usize = 16_777_216;
 const STRING_LIMIT: usize = 1_048_576;
@@ -1215,7 +1215,7 @@ pub fn open_definition(
 pub fn prepare_definition_preferences(
     choice: PreferenceChoice<'_>,
 ) -> Result<PreparedPreferencePlan, DefinitionStoreError> {
-    use sgenaxis_spec::project_preferences::{parse_project_preferences, preset};
+    use eluslot_spec::project_preferences::{parse_project_preferences, preset};
     let (preferences, id, captured) = match choice {
         PreferenceChoice::Skip => return Ok(PreparedPreferencePlan::Skip),
         PreferenceChoice::Preset(id) => (
@@ -1308,7 +1308,7 @@ pub fn save_definition(
 fn raw_hash(bytes: &[u8]) -> RawDefinitionDigest {
     RawDefinitionDigest(format!(
         "sha256:{}",
-        sgenaxis_spec::packet::source_sha256(bytes)
+        eluslot_spec::packet::source_sha256(bytes)
     ))
 }
 fn check_context(c: &DefinitionAuthorityContext) -> StoreResult<()> {
@@ -1378,7 +1378,7 @@ fn check_claims(
     }
     Ok(())
 }
-fn fs_error(path: &str, e: sgenaxis_ports::PortError) -> DefinitionStoreError {
+fn fs_error(path: &str, e: eluslot_ports::PortError) -> DefinitionStoreError {
     DefinitionStoreError::StorageFailure {
         fault: StoreFault {
             stage: CommitStage::Read,
@@ -1416,7 +1416,7 @@ fn open_impl(
     let path = join(&root, ".sgenaxis/project-definition.json");
     let first = match fs.read(&path) {
         Ok(b) => b,
-        Err(sgenaxis_ports::PortError::NotFound(_)) => {
+        Err(eluslot_ports::PortError::NotFound(_)) => {
             existing_root(fs, &root)?;
             return Ok(DefinitionOpenView::Legacy {
                 canonical_root: root,
@@ -1462,10 +1462,10 @@ fn check_prepared(p: &PreparedPreferencePlan) -> StoreResult<()> {
             encoded_bytes,
             digest,
         } => {
-            let preset = sgenaxis_spec::project_preferences::preset(preset_id)
+            let preset = eluslot_spec::project_preferences::preset(preset_id)
                 .map_err(|_| input("preferences.preset", DefinitionInputCode::PreferenceInvalid))?;
             let parsed =
-                sgenaxis_spec::project_preferences::parse_project_preferences(encoded_bytes)
+                eluslot_spec::project_preferences::parse_project_preferences(encoded_bytes)
                     .map_err(|_| input("preferences", DefinitionInputCode::PreferenceInvalid))?;
             if preset != parsed {
                 return Err(input("preferences", DefinitionInputCode::PreferenceInvalid));
@@ -1486,7 +1486,7 @@ fn check_prepared(p: &PreparedPreferencePlan) -> StoreResult<()> {
             (encoded_bytes, digest)
         }
     };
-    sgenaxis_spec::project_preferences::parse_project_preferences(bytes)
+    eluslot_spec::project_preferences::parse_project_preferences(bytes)
         .map_err(|_| input("preferences", DefinitionInputCode::PreferenceInvalid))?;
     if raw_hash(bytes) != *digest {
         return Err(input("preferences", DefinitionInputCode::PreferenceInvalid));
@@ -1494,11 +1494,11 @@ fn check_prepared(p: &PreparedPreferencePlan) -> StoreResult<()> {
     Ok(())
 }
 fn map_commit(
-    e: sgenaxis_ports::CommitError,
+    e: eluslot_ports::CommitError,
     p: &CreationProgress,
     path: &str,
 ) -> DefinitionStoreError {
-    use sgenaxis_ports::CommitError as E;
+    use eluslot_ports::CommitError as E;
     match e {
         E::RecoveryRequired {
             target_path,
@@ -1589,12 +1589,12 @@ fn map_commit(
     }
 }
 fn progress_fs(
-    e: sgenaxis_ports::PortError,
+    e: eluslot_ports::PortError,
     p: &CreationProgress,
     path: &str,
 ) -> DefinitionStoreError {
     map_commit(
-        sgenaxis_ports::CommitError::Storage {
+        eluslot_ports::CommitError::Storage {
             stage: CommitStage::Read,
             path: path.into(),
             reason: e.to_string(),
@@ -1761,7 +1761,7 @@ fn save_impl(
                         observed_revision: None,
                     })
                 }
-                Err(sgenaxis_ports::PortError::NotFound(_)) => {}
+                Err(eluslot_ports::PortError::NotFound(_)) => {}
                 Err(error) => return Err(progress_fs(error, &p, &path)),
             }
             p.phase = CreationPhase::CreateMetadata;
@@ -1796,7 +1796,7 @@ fn save_impl(
         if observed != expected_digest {
             return Err(if p.root_created {
                 map_commit(
-                    sgenaxis_ports::CommitError::Conflict {
+                    eluslot_ports::CommitError::Conflict {
                         expected: baseline_digest.map(String::from),
                         observed: observed.as_ref().map(|d| d.as_str().into()),
                     },

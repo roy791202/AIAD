@@ -2,7 +2,7 @@
 //!
 //! Temp dirs only for StdGitWrite; never touches user repos.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
+use eluslot_ports::{GitWriteApproval, GitWritePort, PortError};
 
 use crate::fake::FakeGitWrite;
 use crate::git_write::{
@@ -2510,7 +2510,7 @@ mod std_write_temp {
             !patch.contains("LINE-35"),
             "first hunk must not include second change: {patch}"
         );
-        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let hash = eluslot_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
         let w = StdGitWrite::new();
 
         w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::denied())
@@ -2576,7 +2576,7 @@ mod std_write_temp {
         fs::write(work.join("a.txt"), &index_drift).unwrap();
         git(&work, &["add", "a.txt"]);
         fs::write(work.join("a.txt"), &dirty).unwrap();
-        let hash_now = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let hash_now = eluslot_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
         let index_before_drift = {
             let out = Command::new("git")
                 .args(["-C", repo, "diff", "--cached", "--", "a.txt"])
@@ -2614,7 +2614,7 @@ mod std_write_temp {
         git(&work, &["reset", "--", "a.txt"]);
 
         fs::write(work.join("a.txt"), &dirty).unwrap();
-        let hash = sgenaxis_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
+        let hash = eluslot_spec::packet::source_sha256(&fs::read(work.join("a.txt")).unwrap());
         w.stage_hunk(repo, "a.txt", &patch, &hash, GitWriteApproval::granted())
             .expect("approved git apply --cached");
         let staged = porcelain(repo);

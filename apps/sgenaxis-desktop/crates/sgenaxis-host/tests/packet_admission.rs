@@ -1,9 +1,9 @@
-use sgenaxis_host::packet_admission::{
+use eluslot_host::packet_admission::{
     authorize_packet_bound_start, derive_packet_admission, PacketAdmissionRejection as Reject,
     PacketAdmissionVerdict as Verdict, PacketBoundStartError, PacketBoundStartRequest as Request,
     VerifiedPacketFacts as Facts,
 };
-use sgenaxis_host::{EnvelopeDto, GuardPacketDto, RedKindDto};
+use eluslot_host::{EnvelopeDto, GuardPacketDto, RedKindDto};
 
 // The admission logic compares normalized ABSOLUTE project roots, so the
 // fixture root must be absolute on the running OS: a drive-anchored path on

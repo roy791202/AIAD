@@ -1,7 +1,7 @@
 //! Approved EA-A0 ConPTY adapter skeleton. No native operation is implemented.
 //! Adapter owns resource tokens; backend is a private acquisition/release test seam.
 //! Resource RED proves missing orchestration only, never native ConPTY correctness.
-use sgenaxis_ports::{Cleanup, InteractiveError, InteractiveErrorKind, InteractiveFixturePort,
+use eluslot_ports::{Cleanup, InteractiveError, InteractiveErrorKind, InteractiveFixturePort,
     InteractiveId, InteractiveObservation, InteractiveSize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -163,7 +163,7 @@ impl ConptyFixtureAdapter {
         Ok(InteractiveObservation {
             output: Vec::new(),
             child_exit: None,
-            read_state: sgenaxis_ports::ReadState::Open,
+            read_state: eluslot_ports::ReadState::Open,
             cleanup: self.cleanup.clone(),
         })
     }
@@ -636,7 +636,7 @@ mod native_backend_tests {
             Ok(trace.observation.clone().unwrap_or(InteractiveObservation {
                 output: Vec::new(),
                 child_exit: None,
-                read_state: sgenaxis_ports::ReadState::Open,
+                read_state: eluslot_ports::ReadState::Open,
                 cleanup: Cleanup::Pending,
             }))
         }
@@ -664,7 +664,7 @@ mod native_backend_tests {
     }
 
     fn expected_observation(
-        output: &[u8], child_exit: Option<i32>, read_state: sgenaxis_ports::ReadState,
+        output: &[u8], child_exit: Option<i32>, read_state: eluslot_ports::ReadState,
         cleanup: Cleanup,
     ) -> InteractiveObservation {
         InteractiveObservation { output: output.to_vec(), child_exit, read_state, cleanup }
@@ -716,10 +716,10 @@ mod native_backend_tests {
         let text = "你好 fixture\n";
         assert_eq!(adapter.write_text(id, text), Ok(()));
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"configured output", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"configured output", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         ));
         assert_eq!(adapter.poll(id), Ok(expected_observation(
-            b"configured output", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"configured output", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         )));
         let trace = trace.lock().unwrap();
         assert_eq!(trace.writes, vec![(id, text.into())]);
@@ -731,16 +731,16 @@ mod native_backend_tests {
         let (mut adapter, trace) = adapter();
         let id = start(&mut adapter);
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         ));
         assert_eq!(adapter.poll(id), Ok(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         )));
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Eof, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Eof, Cleanup::Pending,
         ));
         assert_eq!(adapter.poll(id), Ok(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Eof, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Eof, Cleanup::Pending,
         )));
         assert_eq!(trace.lock().unwrap().polls, vec![id, id]);
     }
@@ -765,10 +765,10 @@ mod native_backend_tests {
         let (mut adapter, trace) = adapter();
         let completed = start(&mut adapter);
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"", Some(0), sgenaxis_ports::ReadState::Eof, Cleanup::Complete,
+            b"", Some(0), eluslot_ports::ReadState::Eof, Cleanup::Complete,
         ));
         let completed_observation = expected_observation(
-            b"", Some(0), sgenaxis_ports::ReadState::Eof, Cleanup::Complete,
+            b"", Some(0), eluslot_ports::ReadState::Eof, Cleanup::Complete,
         );
         assert_eq!(adapter.poll(completed), Ok(completed_observation.clone()));
         assert_eq!(adapter.poll(completed), Ok(completed_observation),
@@ -805,10 +805,10 @@ mod native_backend_tests {
         trace.lock().unwrap().release_pending = true;
         adapter.request_stop(id).expect("stop request should be accepted");
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         ));
         assert_eq!(adapter.poll(id), Ok(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Open, Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Open, Cleanup::Pending,
         )));
         assert_eq!(adapter.owned.len(), 8, "pending cleanup retains session resources");
         assert_eq!(trace.lock().unwrap().stops, vec![id]);
@@ -819,10 +819,10 @@ mod native_backend_tests {
         let (mut adapter, trace) = adapter();
         let id = start(&mut adapter);
         trace.lock().unwrap().observation = Some(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Error("controlled read error".into()), Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Error("controlled read error".into()), Cleanup::Pending,
         ));
         assert_eq!(adapter.poll(id), Ok(expected_observation(
-            b"", None, sgenaxis_ports::ReadState::Error("controlled read error".into()), Cleanup::Pending,
+            b"", None, eluslot_ports::ReadState::Error("controlled read error".into()), Cleanup::Pending,
         )));
         assert_eq!(trace.lock().unwrap().polls, vec![id]);
     }
@@ -849,7 +849,7 @@ mod native_backend_tests {
         let (mut adapter, trace) = adapter();
         let id = start(&mut adapter);
         let expected = expected_observation(b"configured output", Some(7),
-            sgenaxis_ports::ReadState::Eof, Cleanup::Pending);
+            eluslot_ports::ReadState::Eof, Cleanup::Pending);
         trace.lock().unwrap().observation = Some(expected.clone());
         assert_eq!(adapter.poll(id), Ok(expected));
         assert_eq!(trace.lock().unwrap().polls, vec![id]);
@@ -874,7 +874,7 @@ mod native_backend_tests {
             let mut trace = trace.lock().unwrap();
             trace.release_pending = false;
             trace.observation = Some(expected_observation(
-                b"", Some(0), sgenaxis_ports::ReadState::Eof, Cleanup::Complete,
+                b"", Some(0), eluslot_ports::ReadState::Eof, Cleanup::Complete,
             ));
         }
         assert_eq!(adapter.poll(id).unwrap().cleanup, Cleanup::Complete);
@@ -962,7 +962,7 @@ mod session_cleanup_recovery_tests {
             -> Result<InteractiveObservation, InteractiveError> {
             Ok(self.trace.lock().unwrap().observation.clone().unwrap_or(InteractiveObservation {
                 output: Vec::new(), child_exit: None,
-                read_state: sgenaxis_ports::ReadState::Open, cleanup: Cleanup::Pending,
+                read_state: eluslot_ports::ReadState::Open, cleanup: Cleanup::Pending,
             }))
         }
     }
@@ -981,7 +981,7 @@ mod session_cleanup_recovery_tests {
     fn completed_observation() -> InteractiveObservation {
         // EOF is intentionally not required to confirm child termination/cleanup.
         InteractiveObservation { output: Vec::new(), child_exit: Some(7),
-            read_state: sgenaxis_ports::ReadState::Open, cleanup: Cleanup::Complete }
+            read_state: eluslot_ports::ReadState::Open, cleanup: Cleanup::Complete }
     }
 
     fn expected_release_order() -> Vec<(ResourceKind, u64)> {
@@ -1003,7 +1003,7 @@ mod session_cleanup_recovery_tests {
         trace.lock().unwrap().observation = Some(completed_observation());
         let observed = adapter.poll(id).unwrap();
         assert_eq!(observed.child_exit, Some(7));
-        assert_eq!(observed.read_state, sgenaxis_ports::ReadState::Open);
+        assert_eq!(observed.read_state, eluslot_ports::ReadState::Open);
         assert_eq!(observed.cleanup, Cleanup::Complete);
         assert!(adapter.owned.is_empty());
         assert_eq!(trace.lock().unwrap().releases, expected_release_order());
@@ -1054,7 +1054,7 @@ mod session_cleanup_recovery_tests {
         assert_eq!(adapter.request_stop(id).map_err(|error| error.kind),
             Err(InteractiveErrorKind::Stop));
         let complete_without_exit = InteractiveObservation { output: Vec::new(), child_exit: None,
-            read_state: sgenaxis_ports::ReadState::Open, cleanup: Cleanup::Complete };
+            read_state: eluslot_ports::ReadState::Open, cleanup: Cleanup::Complete };
         trace.lock().unwrap().observation = Some(complete_without_exit);
         let pending_stop = adapter.poll(id).unwrap();
         assert_eq!(pending_stop.child_exit, None);
@@ -1069,7 +1069,7 @@ mod session_cleanup_recovery_tests {
         trace.lock().unwrap().observation = Some(completed_observation());
         let stopped = adapter.poll(id).unwrap();
         assert_eq!(stopped.child_exit, Some(7));
-        assert_eq!(stopped.read_state, sgenaxis_ports::ReadState::Open, "EOF is not a cleanup gate");
+        assert_eq!(stopped.read_state, eluslot_ports::ReadState::Open, "EOF is not a cleanup gate");
         assert_eq!(stopped.cleanup, Cleanup::Complete);
         assert!(adapter.owned.is_empty());
         assert_eq!(trace.lock().unwrap().releases, expected_release_order());
@@ -1257,7 +1257,7 @@ mod independent_resource_tests {
         let o=a.poll(InteractiveId(1)).unwrap();
         assert_eq!(o.cleanup,Cleanup::Complete);
         assert_eq!(o.child_exit,None);
-        assert_eq!(o.read_state,sgenaxis_ports::ReadState::Open);
+        assert_eq!(o.read_state,eluslot_ports::ReadState::Open);
     }
     #[test]
     fn resource_edge_15_pending_then_late_observation_releases_without_duplicate_request() {
@@ -1281,7 +1281,7 @@ mod independent_resource_tests {
         let o=a.poll(InteractiveId(1)).unwrap();
         assert_eq!(o.cleanup,Cleanup::Failed);
         assert_eq!(o.child_exit,None);
-        assert_eq!(o.read_state,sgenaxis_ports::ReadState::Open);
+        assert_eq!(o.read_state,eluslot_ports::ReadState::Open);
         assert_eq!(a.owned.len(),8);
         assert_eq!(a.phase,ResourcePhase::Failed);
         a.request_stop(InteractiveId(1)).unwrap();a.poll(InteractiveId(1)).unwrap();

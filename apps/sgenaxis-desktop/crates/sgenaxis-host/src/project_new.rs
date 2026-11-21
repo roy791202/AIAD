@@ -6,7 +6,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 use crate::error::HostError;
 
@@ -105,8 +105,8 @@ pub fn create_new_project_under(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeFileSystem;
-    use sgenaxis_ports::FileSystemPort;
+    use eluslot_adapters::FakeFileSystem;
+    use eluslot_ports::FileSystemPort;
 
     #[test]
     fn empty_path_is_readable_error() {

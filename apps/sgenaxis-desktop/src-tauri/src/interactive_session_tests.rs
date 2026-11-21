@@ -3,7 +3,7 @@
 //! Targets production private Session seams + InteractiveFixturePort FakePort.
 //! FakePort is NOT Native/ConPTY/ACL proof.
 use super::*;
-use sgenaxis_ports::{Cleanup, InteractiveObservation, InteractiveSize, ReadState};
+use eluslot_ports::{Cleanup, InteractiveObservation, InteractiveSize, ReadState};
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -42,14 +42,14 @@ impl InteractiveFixturePort for FakePort {
 
     fn request_stop(&mut self, _: InteractiveId) -> Result<(), InteractiveError> {
         self.stop_calls += 1;
-        if self.stop_error { return Err(InteractiveError { kind: sgenaxis_ports::InteractiveErrorKind::Stop, message: "controlled stop error".into() }); }
+        if self.stop_error { return Err(InteractiveError { kind: eluslot_ports::InteractiveErrorKind::Stop, message: "controlled stop error".into() }); }
         Ok(())
     }
 
     fn poll(&mut self, _: InteractiveId) -> Result<InteractiveObservation, InteractiveError> {
         if self.poll_error {
             return Err(InteractiveError {
-                kind: sgenaxis_ports::InteractiveErrorKind::Observe,
+                kind: eluslot_ports::InteractiveErrorKind::Observe,
                 message: "controlled observation error".into(),
             });
         }
@@ -232,7 +232,7 @@ fn ea16_repeated_close_does_not_duplicate_stop_or_extend_deadline() {
 fn ea17_spawn_failure_owns_no_handle_and_reopen_gets_new_id() {
     let mut s=Session::new(FakePort::default());
     let first=s.begin_start(true).unwrap();
-    let _result=s.finish_start(Err(InteractiveError { kind:sgenaxis_ports::InteractiveErrorKind::Spawn,message:"controlled spawn failure".into() }));
+    let _result=s.finish_start(Err(InteractiveError { kind:eluslot_ports::InteractiveErrorKind::Spawn,message:"controlled spawn failure".into() }));
     assert_eq!(s.phase,Phase::FailedNoHandle);
     assert!(s.resource.is_none());
     let next=s.begin_start(true).unwrap();

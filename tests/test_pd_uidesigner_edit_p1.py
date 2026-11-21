@@ -55,7 +55,7 @@ def test_host_uidesign_geom_preview():
             "cargo",
             "test",
             "-p",
-            "sgenaxis-host",
+            "eluslot-host",
             "preview_includes_geometry",
             "--",
             "--nocapture",

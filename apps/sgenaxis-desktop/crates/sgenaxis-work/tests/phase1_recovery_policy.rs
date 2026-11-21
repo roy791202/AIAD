@@ -1,5 +1,5 @@
 //! M07-S1 pure state contracts, without real time, snapshot storage or IO.
-use sgenaxis_work::recovery_state::*;
+use eluslot_work::recovery_state::*;
 fn digest(c: char) -> String {
     format!("sha256:{}", c.to_string().repeat(64))
 }
