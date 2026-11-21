@@ -2,9 +2,9 @@
 //!
 //! HOST does **not** own WORK／FLOW／EXEC business state here.
 
-use sgenaxis_adapters::compose::{boxed_deploy_fake, ensure_app_config_dir};
-use sgenaxis_adapters::BoxedPorts;
-use sgenaxis_ports::{DeployPort, FileSystemPort, GitPort, GitWritePort, PathPort, PortError};
+use eluslot_adapters::compose::{boxed_deploy_fake, ensure_app_config_dir};
+use eluslot_adapters::BoxedPorts;
+use eluslot_ports::{DeployPort, FileSystemPort, GitPort, GitWritePort, PathPort, PortError};
 
 use crate::deploy::{
     check_view, default_workspace_root, find_workspace_root, focus_platform, list_artifact_views,
@@ -61,7 +61,7 @@ impl CompositionRoot {
         let ports = BoxedPorts::std_with_approving_git_write();
         let cwd = default_workspace_root();
         let root = find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd).unwrap_or(cwd);
-        let deploy = sgenaxis_adapters::boxed_deploy_std(root);
+        let deploy = eluslot_adapters::boxed_deploy_std(root);
         Self::boot_with_ports_deploy_labels(
             ports,
             deploy,
@@ -80,7 +80,7 @@ impl CompositionRoot {
             let cwd = default_workspace_root();
             let root =
                 find_workspace_root(ports.fs.as_ref(), ports.path.as_ref(), &cwd).unwrap_or(cwd);
-            let deploy = sgenaxis_adapters::boxed_deploy_std(root);
+            let deploy = eluslot_adapters::boxed_deploy_std(root);
             return Self::boot_with_ports_deploy_labels(
                 ports,
                 deploy,

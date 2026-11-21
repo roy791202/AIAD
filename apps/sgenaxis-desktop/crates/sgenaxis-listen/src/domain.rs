@@ -2,7 +2,7 @@
 //!
 //! UI must subscribe to Core projections only; never ingest [`crate::SourceEvent`].
 
-use sgenaxis_exec::{ExitClassification, RunId};
+use eluslot_exec::{ExitClassification, RunId};
 
 use crate::source::FsChangeKind;
 
@@ -64,19 +64,19 @@ impl AgentEventKind {
 
 impl DomainEvent {
     /// Stable property id used when marking Core dirty.
-    pub fn property_id(&self) -> sgenaxis_core::PropertyId {
+    pub fn property_id(&self) -> eluslot_core::PropertyId {
         match self {
             DomainEvent::FsDirty { path, .. } => {
-                sgenaxis_core::PropertyId::new(format!("listen.fs:{path}"))
+                eluslot_core::PropertyId::new(format!("listen.fs:{path}"))
             }
             DomainEvent::GitDirty { repo_root, .. } => {
-                sgenaxis_core::PropertyId::new(format!("listen.git:{repo_root}"))
+                eluslot_core::PropertyId::new(format!("listen.git:{repo_root}"))
             }
             DomainEvent::AgentDirty { run_id, .. } => {
-                sgenaxis_core::PropertyId::new(format!("listen.agent:{}", run_id.0))
+                eluslot_core::PropertyId::new(format!("listen.agent:{}", run_id.0))
             }
             DomainEvent::AgentReconcile { run_id, .. } => {
-                sgenaxis_core::PropertyId::new(format!("listen.agent.recon:{}", run_id.0))
+                eluslot_core::PropertyId::new(format!("listen.agent.recon:{}", run_id.0))
             }
         }
     }

@@ -4,7 +4,7 @@
 //! or read host／agent settings; if none → explicit `NOT RUN`. Secrets never enter the
 //! probe projection (for PD-LIVE-CLI-SMOKE-01 consumption).
 
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 use crate::settings::{
     is_cli_path_activatable, AgentSettingsProjection, CliAgentSettings, CliToolKind,
@@ -290,7 +290,7 @@ pub fn probe_from_cli_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::fake::FakeFileSystem;
+    use eluslot_adapters::fake::FakeFileSystem;
 
     use crate::settings::{AgentSettingsDocument, McpAgentSettings};
 

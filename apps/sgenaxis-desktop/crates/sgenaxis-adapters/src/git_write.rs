@@ -3,7 +3,7 @@
 //! - [`GatedGitWrite`]: default-deny adapter (compose stays safe).
 //! - [`redact_credentials`]: strip secrets from error text before surfacing.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
+use eluslot_ports::{GitWriteApproval, GitWritePort, PortError};
 
 /// Human-readable reason returned by the default write gate.
 pub const GIT_WRITE_GATED_MSG: &str =

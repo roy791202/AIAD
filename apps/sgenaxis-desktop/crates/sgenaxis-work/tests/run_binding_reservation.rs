@@ -1,4 +1,4 @@
-use sgenaxis_work::{
+use eluslot_work::{
     FakePathProbe, FakeWorkspaceStore, ProjectId, RegisterOutcome, RunBindingReservation,
     WorkError, WorkspaceService,
 };

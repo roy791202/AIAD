@@ -173,7 +173,7 @@ pub struct StartRunArgs {
     pub worktree_fingerprint: Option<String>,
     /// PD-GUARD-CMD-01: when set, GUARD must allow before EXEC starts.
     #[serde(default)]
-    pub guard: Option<sgenaxis_host::GuardPacketDto>,
+    pub guard: Option<eluslot_host::GuardPacketDto>,
 }
 
 fn default_true() -> bool {
@@ -194,7 +194,7 @@ pub struct StartRunResult {
 /// PD-GUARD-CMD-01 — GUARD packet + EXEC DryRun args for `start_implementation`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StartImplementationArgs {
-    pub guard: sgenaxis_host::GuardPacketDto,
+    pub guard: eluslot_host::GuardPacketDto,
     pub provider: ProviderDto,
     #[serde(default = "default_true")]
     pub dry_run: bool,
@@ -1087,7 +1087,7 @@ pub struct GuardReferenceStartRunArgs {
     #[serde(default)]
     pub worktree_fingerprint: Option<String>,
     #[serde(default)]
-    pub guard: Option<sgenaxis_host::GuardPacketDto>,
+    pub guard: Option<eluslot_host::GuardPacketDto>,
     #[serde(default)]
     pub approval_ref: Option<u64>,
 }

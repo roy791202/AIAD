@@ -2,7 +2,7 @@
 //!
 //! Produced by watch adapters or fakes — **not** by UI. UI never sees these.
 
-use sgenaxis_exec::{AgentChunk, RunId};
+use eluslot_exec::{AgentChunk, RunId};
 
 /// Kind of filesystem change (notify-style; OS-agnostic enum).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

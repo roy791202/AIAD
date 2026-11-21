@@ -2,8 +2,8 @@
 //! The manifest is one project-local file; this module does no identity policy.
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_ports::{FileSystemPort, PortError};
-use sgenaxis_work::{
+use eluslot_ports::{FileSystemPort, PortError};
+use eluslot_work::{
     DocumentAdoptionPlan, Project, ProjectDocumentKind, ProjectDocumentRecord, ProjectManifest,
 };
 
@@ -68,7 +68,7 @@ pub fn adopt_project_document(
     reference: &str,
     document_id_candidate: &str,
 ) -> Result<DocumentAdoptionOutcome, ProjectManifestStoreError> {
-    use sgenaxis_work::{
+    use eluslot_work::{
         document_kind_from_str, normalize_project_reference, validate_document_id,
         validate_revision_id, PROJECT_MANIFEST_SCHEMA, PROJECT_MANIFEST_VERSION,
     };
@@ -85,7 +85,7 @@ pub fn adopt_project_document(
         .map_err(ProjectManifestStoreError::SourceRead)?;
     let revision_id = format!(
         "sha256:{}",
-        sgenaxis_spec::packet::source_sha256(&source_bytes)
+        eluslot_spec::packet::source_sha256(&source_bytes)
     );
 
     let manifest_path = project.manifest_path().map_err(map_work_error)?;
@@ -199,8 +199,8 @@ fn read_manifest(
     }
 }
 
-fn map_work_error(error: sgenaxis_work::ProjectManifestError) -> ProjectManifestStoreError {
-    use sgenaxis_work::ProjectManifestError as WorkError;
+fn map_work_error(error: eluslot_work::ProjectManifestError) -> ProjectManifestStoreError {
+    use eluslot_work::ProjectManifestError as WorkError;
     match error {
         WorkError::InvalidProjectRoot => ProjectManifestStoreError::InvalidProjectRoot,
         WorkError::InvalidReference => ProjectManifestStoreError::InvalidReference,
@@ -216,7 +216,7 @@ fn map_work_error(error: sgenaxis_work::ProjectManifestError) -> ProjectManifest
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_ports::PortError;
+    use eluslot_ports::PortError;
     use std::collections::HashMap;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::Mutex;
@@ -315,7 +315,7 @@ mod tests {
 
     fn project() -> Project {
         Project::new(
-            sgenaxis_work::ProjectId::new("proj_fixture"),
+            eluslot_work::ProjectId::new("proj_fixture"),
             "/fixture/project".to_owned(),
             "/fixture/project".to_owned(),
         )
@@ -383,7 +383,7 @@ mod tests {
             record.revision_id,
             format!(
                 "sha256:{}",
-                sgenaxis_spec::packet::source_sha256(&source_before)
+                eluslot_spec::packet::source_sha256(&source_before)
             )
         );
         assert_eq!(fs.get(SOURCE_PATH).unwrap(), source_before);

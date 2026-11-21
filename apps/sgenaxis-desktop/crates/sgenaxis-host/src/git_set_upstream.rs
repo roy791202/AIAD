@@ -1,7 +1,7 @@
 //! Gated local upstream tracking (`git branch --set-upstream-to=<remote>/<branch>`).
 //! Never `--unset-upstream`. Never create remotes, tracking refs, or local branches.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated set-upstream (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,8 +68,8 @@ pub fn perform_git_set_upstream(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
-    use sgenaxis_ports::GitWriteApproval;
+    use eluslot_adapters::FakeGitWrite;
+    use eluslot_ports::GitWriteApproval;
 
     fn seed(w: &FakeGitWrite) {
         w.add_remote(

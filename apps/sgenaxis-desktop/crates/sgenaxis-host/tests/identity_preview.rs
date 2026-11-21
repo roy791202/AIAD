@@ -1,6 +1,6 @@
-use sgenaxis_host::identity_preview::inspect_document_identity;
-use sgenaxis_ports::{FileSystemPort, PortError};
-use sgenaxis_spec::identity_preview::*;
+use eluslot_host::identity_preview::inspect_document_identity;
+use eluslot_ports::{FileSystemPort, PortError};
+use eluslot_spec::identity_preview::*;
 use std::sync::Mutex;
 
 struct ReadOnlyFs {

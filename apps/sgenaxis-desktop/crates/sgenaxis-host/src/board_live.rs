@@ -7,7 +7,7 @@
 //! `board.py` — replace only `#board-snapshot`; never whole-file overwrite the HTML shell.
 
 use serde::Deserialize;
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 use crate::error::HostError;
 
@@ -130,7 +130,7 @@ pub fn load_board_file(fs: &dyn FileSystemPort, path: &str) -> Result<BoardSnaps
 
 #[cfg(test)]
 mod tests {
-    use sgenaxis_adapters::FakeFileSystem;
+    use eluslot_adapters::FakeFileSystem;
 
     use super::*;
 

@@ -1,9 +1,9 @@
 //! Independent acceptance tests for owner-approved read-only A envelope.
 use std::sync::{Mutex,atomic::{AtomicUsize,Ordering}};
-use sgenaxis_ports::{FileSystemPort,PortError};
-use sgenaxis_adapters::ess_codec::ProductEssDecoder;
-use sgenaxis_spec::packet::*;
-use sgenaxis_host::module_packet::{export_module_packet,check_module_packet_freshness};
+use eluslot_ports::{FileSystemPort,PortError};
+use eluslot_adapters::ess_codec::ProductEssDecoder;
+use eluslot_spec::packet::*;
+use eluslot_host::module_packet::{export_module_packet,check_module_packet_freshness};
 const XML: &str = include_str!("fixtures/module_packet.ess");
 #[test]
 fn extra_structure_validation_and_selectors() {

@@ -4,7 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use sgenaxis_ports::{FileSystemPort, PortError};
+use eluslot_ports::{FileSystemPort, PortError};
 
 /// Real-ish filesystem adapter via `std::fs`.
 ///

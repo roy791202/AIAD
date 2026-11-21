@@ -5,16 +5,16 @@
 //! Missing OS deps (git binary／board file) → explicit skip／NOT RUN.
 //! This test **never** implies full Live PASS — DryRun only; no DCC.
 
-use sgenaxis_adapters::fake::status_with_modified;
-use sgenaxis_adapters::{
+use eluslot_adapters::fake::status_with_modified;
+use eluslot_adapters::{
     summarize_worktree, FakeFileSystem, FakeGit, FakeProcess, StdFileSystem, StdGit,
 };
-use sgenaxis_exec::{
+use eluslot_exec::{
     drain_until_terminal, AgentChunk, AgentPort, AgentProvider, AgentRouter, CliAgentAdapter,
     ExitClassification, McpAgentAdapter, StartRunRequest, StubMcpClient,
 };
-use sgenaxis_host::load_board_file;
-use sgenaxis_ports::{GitCommit, GitPort};
+use eluslot_host::load_board_file;
+use eluslot_ports::{GitCommit, GitPort};
 
 const BOARD_PATH: &str = "/fixture/docs/PROJECT-BOARD.html";
 const REPO: &str = "/fixture/repo";

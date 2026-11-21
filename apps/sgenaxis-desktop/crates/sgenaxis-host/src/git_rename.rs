@@ -1,7 +1,7 @@
 //! Gated local branch rename (`git branch -m`). Occupying Run blocks renaming
 //! the current HEAD branch (same lease gate as GIT-002-03 switch).
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 use crate::git_switch::ACTIVE_LEASE_BLOCKS_SWITCH;
 
@@ -82,10 +82,10 @@ pub fn perform_git_rename_branch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
-    use sgenaxis_ports::GitWriteApproval;
-    use sgenaxis_work::LeaseSummary;
-    use sgenaxis_work::WorkspaceProjection;
+    use eluslot_adapters::FakeGitWrite;
+    use eluslot_ports::GitWriteApproval;
+    use eluslot_work::LeaseSummary;
+    use eluslot_work::WorkspaceProjection;
 
     use crate::git_switch::occupying_run_id;
 

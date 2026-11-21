@@ -40,7 +40,7 @@ python scripts/pd_sign_stub_01.py
 .\packaging\windows\sign-authenticode.ps1
 ```
 
-Default target: `packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi`  
+Default target: `packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi`  
 Result JSON: `packaging/windows/out/sign-authenticode-result.json`
 
 ## Certificate env (optional)

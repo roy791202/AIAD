@@ -8,11 +8,11 @@
 //! whole native-IO test compiles on Windows only. Matches the guard on
 //! adapters/tests/phase1_file_commit.rs. On Linux CI the test binary is empty.
 #![cfg(all(windows, feature = "std-adapters"))]
-use sgenaxis_host::project_definition::*;
-use sgenaxis_host::project_preferences::*;
-use sgenaxis_ports::FileSystemPort;
-use sgenaxis_spec::project_preferences::preset;
-use sgenaxis_work::project_definition::*;
+use eluslot_host::project_definition::*;
+use eluslot_host::project_preferences::*;
+use eluslot_ports::FileSystemPort;
+use eluslot_spec::project_preferences::preset;
+use eluslot_work::project_definition::*;
 
 struct OwnedFixture {
     base: std::path::PathBuf,
@@ -72,8 +72,8 @@ fn real_filesystem_project_preference_roundtrip() {
     let parent = fixture.base.to_str().unwrap();
     let root = fixture.base.join("Project-A");
     assert!(!root.exists());
-    let fs = sgenaxis_adapters::StdFileSystem::new();
-    let commit = sgenaxis_adapters::StdFileCommit::new();
+    let fs = eluslot_adapters::StdFileSystem::new();
+    let commit = eluslot_adapters::StdFileCommit::new();
     let context = DefinitionAuthorityContext {
         selection_id: "native-test-selection".into(),
         session_id: "native-test-session".into(),

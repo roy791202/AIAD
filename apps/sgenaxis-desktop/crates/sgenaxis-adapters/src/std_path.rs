@@ -4,7 +4,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use sgenaxis_ports::{PathPort, PortError};
+use eluslot_ports::{PathPort, PortError};
 
 /// Platform path conventions via `std::env` + `std::path`.
 #[derive(Debug, Default, Clone, Copy)]

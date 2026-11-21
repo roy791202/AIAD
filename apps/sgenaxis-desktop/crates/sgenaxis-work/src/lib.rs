@@ -6,7 +6,7 @@
 //! select(id)        ──view only─▶ WorkspaceProjection (Run root untouched)
 //! ```
 //!
-//! Depends on `sgenaxis-ports` for [`sgenaxis_ports::PortError`] only.
+//! Depends on `sgenaxis-ports` for [`eluslot_ports::PortError`] only.
 //! Fake [`PathProbePort`] / [`WorkspaceStorePort`] live in-crate for unit tests.
 //! Does **not** touch HoneyBadger / `:8788` / `:8787`.
 

@@ -9,7 +9,7 @@
 
 .EXAMPLE
   .\packaging\windows\sign-authenticode.ps1
-  .\packaging\windows\sign-authenticode.ps1 -Target .\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi
+  .\packaging\windows\sign-authenticode.ps1 -Target .\packaging\windows\wix\out\EluSlot-0.1.0-windows-x64.msi
 #>
 [CmdletBinding()]
 param(

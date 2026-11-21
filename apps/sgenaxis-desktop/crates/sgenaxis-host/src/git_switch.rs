@@ -3,8 +3,8 @@
 //! Git adapter stays free of WORK/OS lease types. Occupying Run is passed in
 //! (from WORK `projection().active_run()` / dispatch `active_run_id`).
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
-use sgenaxis_work::WorkspaceProjection;
+use eluslot_ports::{GitWriteApproval, GitWritePort};
+use eluslot_work::WorkspaceProjection;
 
 /// Contract string for BDD-GIT-002-03 (活動租約禁止切換).
 pub const ACTIVE_LEASE_BLOCKS_SWITCH: &str = "活動租約禁止切換";
@@ -86,8 +86,8 @@ pub fn perform_git_switch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
-    use sgenaxis_work::LeaseSummary;
+    use eluslot_adapters::FakeGitWrite;
+    use eluslot_work::LeaseSummary;
 
     fn occupying_proj(run_id: &str) -> WorkspaceProjection {
         WorkspaceProjection {

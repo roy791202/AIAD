@@ -28,9 +28,9 @@ jobs:
         working-directory: apps/sgenaxis-desktop
         shell: pwsh
         run: |
-          cargo build -p sgenaxis-adapters --example file_commit_probe --locked
+          cargo build -p eluslot-adapters --example file_commit_probe --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $artifacts = cargo test -p sgenaxis-adapters --example file_commit_probe --no-run --message-format=json --locked
+          $artifacts = cargo test -p eluslot-adapters --example file_commit_probe --no-run --message-format=json --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $helper = $artifacts | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.reason -eq 'compiler-artifact' -and $_.executable } | Select-Object -Last 1
           if (-not $helper -or -not (Test-Path -LiteralPath $helper.executable)) { throw 'checkpoint helper missing' }
@@ -42,7 +42,7 @@ jobs:
         run: cargo test --workspace --locked
       - name: EXEC feature matrix
         working-directory: apps/sgenaxis-desktop
-        run: cargo test -p sgenaxis-exec --all-features --lib --locked
+        run: cargo test -p eluslot-exec --all-features --lib --locked
       - name: Independent Tauri host
         working-directory: apps/sgenaxis-desktop/src-tauri
         run: cargo test --lib --locked

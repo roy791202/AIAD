@@ -93,7 +93,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort, PortError};
+use eluslot_ports::{GitWriteApproval, GitWritePort, PortError};
 
 use crate::git_write::{git_error_redacted, GIT_WRITE_NOT_APPROVED_MSG};
 
@@ -1115,7 +1115,7 @@ impl GitWritePort for StdGitWrite {
         if bytes.contains(&0) {
             return Err(PortError::Git("binary hunks are disabled".into()));
         }
-        let sha = sgenaxis_spec::packet::source_sha256(&bytes);
+        let sha = eluslot_spec::packet::source_sha256(&bytes);
         let oid = self
             .run(repo, &["hash-object", "--", rel])
             .ok()

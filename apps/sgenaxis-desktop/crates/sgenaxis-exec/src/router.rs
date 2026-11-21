@@ -107,7 +107,7 @@ mod tests {
     use crate::events::ExitClassification;
     use crate::mcp_client::StubMcpClient;
     use crate::{drain_until_terminal, AgentProvider};
-    use sgenaxis_adapters::FakeProcess;
+    use eluslot_adapters::FakeProcess;
 
     fn dry_router() -> AgentRouter {
         AgentRouter::new(

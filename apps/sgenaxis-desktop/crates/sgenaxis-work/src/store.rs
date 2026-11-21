@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use sgenaxis_ports::PortError;
+use eluslot_ports::PortError;
 
 use crate::id::ProjectId;
 use crate::project::Project;

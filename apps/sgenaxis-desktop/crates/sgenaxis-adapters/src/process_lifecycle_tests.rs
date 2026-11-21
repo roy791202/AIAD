@@ -1,6 +1,6 @@
 //! Independent reader status and real direct-child/inherited-pipe tests.
 use super::*;
-use sgenaxis_ports::StreamCompletion;
+use eluslot_ports::StreamCompletion;
 use std::sync::mpsc;
 use std::time::{Duration,Instant};
 enum ReadStep {Bytes(Vec<u8>),Interrupted,Error,Eof}

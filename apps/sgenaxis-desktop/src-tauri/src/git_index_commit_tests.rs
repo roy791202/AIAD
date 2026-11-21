@@ -1,6 +1,6 @@
 use std::sync::{mpsc, Arc, Mutex};
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     GitIndexCommitPort, GitOperationState, GitWriteApproval, IndexCommitError,
     IndexCommitFacts, IndexCommitFingerprint, IndexCommitObservation,
 };

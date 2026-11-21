@@ -1,8 +1,8 @@
-use sgenaxis_adapters::FakeFileSystem;
-use sgenaxis_host::project_preferences::*;
-use sgenaxis_ports::{FileSystemPort, PortError};
-use sgenaxis_spec::packet::source_sha256;
-use sgenaxis_spec::project_preferences::{preset, PreferenceError};
+use eluslot_adapters::FakeFileSystem;
+use eluslot_host::project_preferences::*;
+use eluslot_ports::{FileSystemPort, PortError};
+use eluslot_spec::packet::source_sha256;
+use eluslot_spec::project_preferences::{preset, PreferenceError};
 use std::sync::atomic::{AtomicBool, Ordering};
 #[test]
 fn missing_file_stays_unconfigured_and_does_not_write_defaults() {

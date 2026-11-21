@@ -3,7 +3,7 @@
 //! Format is SGenAxis-owned (`sgenaxis.design`); not Qt `.ui`. Preview is not product PASS.
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 use crate::error::HostError;
 
@@ -401,7 +401,7 @@ fn html_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeFileSystem;
+    use eluslot_adapters::FakeFileSystem;
 
     #[test]
     fn project_paths_reject_drive_prefixes_and_absolute_paths() {

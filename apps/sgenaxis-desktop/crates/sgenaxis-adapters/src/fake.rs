@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     unsupported_platform_reason, windows_wix_supported, DeployCapability, DeployPlatform,
     DeployPort, DeploySupport, FileSystemPort, GitBranch, GitCommit, GitConflictState, GitPort,
     GitRemote, GitSettings, GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag,
@@ -354,12 +354,12 @@ impl ProcessPort for FakeProcess {
             stdout: std::mem::take(&mut entry.stdout),
             stderr: std::mem::take(&mut entry.stderr),
             stdout_completion: if entry.exit.is_some() {
-                sgenaxis_ports::StreamCompletion::Eof
+                eluslot_ports::StreamCompletion::Eof
             } else {
                 Default::default()
             },
             stderr_completion: if entry.exit.is_some() {
-                sgenaxis_ports::StreamCompletion::Eof
+                eluslot_ports::StreamCompletion::Eof
             } else {
                 Default::default()
             },

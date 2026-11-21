@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use sgenaxis_ports::PortError;
+use eluslot_ports::PortError;
 
 /// Result of probing a candidate project root.
 #[derive(Debug, Clone, PartialEq, Eq)]

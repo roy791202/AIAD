@@ -1,5 +1,5 @@
-use sgenaxis_spec::identity_preview::*;
-use sgenaxis_spec::packet::source_sha256;
+use eluslot_spec::identity_preview::*;
+use eluslot_spec::packet::source_sha256;
 
 #[test]
 fn legacy_is_derived_without_fabricating_identity() {

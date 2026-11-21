@@ -1,7 +1,7 @@
 //! Independent approved process lifecycle contract tests: private controlled Instant.
 #![cfg(feature = "real-spawn")]
 use super::*;
-use sgenaxis_ports::{PortError, ProcessOutput, StreamCompletion};
+use eluslot_ports::{PortError, ProcessOutput, StreamCompletion};
 use std::sync::{Arc,Mutex};
 use std::time::{Duration,Instant};
 #[derive(Default)]

@@ -10,7 +10,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 MANIFEST = HERE / "packaging.manifest.json"
 TRACKED = (
-    "SGenAxis.wxs",
+    "EluSlot.wxs",
     "README.md",
     "build-msi.ps1",
     "refresh_manifest_hashes.py",
@@ -36,11 +36,11 @@ def main() -> None:
     payload = data.setdefault("payload", {})
     source_rel = payload.get(
         "source_relpath",
-        "apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe",
+        "apps/sgenaxis-desktop/src-tauri/target/release/eluslot-desktop.exe",
     )
     source = REPO / source_rel
     if not source.is_file():
-        staged = HERE / "payload" / payload.get("stage_name", "SGenAxis.exe")
+        staged = HERE / "payload" / payload.get("stage_name", "EluSlot.exe")
         if staged.is_file() and staged.stat().st_size > 100_000:
             source = staged
         else:
@@ -49,7 +49,7 @@ def main() -> None:
             )
     payload_digest = sha256(source)
     size = source.stat().st_size
-    payload["stage_name"] = payload.get("stage_name", "SGenAxis.exe")
+    payload["stage_name"] = payload.get("stage_name", "EluSlot.exe")
     payload["source_relpath"] = source_rel.replace("\\", "/")
     payload["sha256"] = payload_digest
     payload["bytes"] = size

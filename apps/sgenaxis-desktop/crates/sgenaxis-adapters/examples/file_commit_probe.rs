@@ -50,8 +50,8 @@ fn run() -> Result<(), String> {
         return Err("refusing a sidecar outside the owned fixture".into());
     }
     if args[1] != "native-hold" {
-        use sgenaxis_adapters::StdFileCommit;
-        use sgenaxis_ports::FileCommitPort;
+        use eluslot_adapters::StdFileCommit;
+        use eluslot_ports::FileCommitPort;
         println!("PROBE_STARTED");
         io::stdout().flush().map_err(|e| e.to_string())?;
         let target = root.join("document.ess").to_string_lossy().into_owned();
@@ -105,7 +105,7 @@ mod checkpoint_source;
 #[cfg(all(windows, test))]
 #[test]
 fn checkpoint_probe_entry() {
-    use sgenaxis_ports::FileWriteLease;
+    use eluslot_ports::FileWriteLease;
     use std::io::{self, Write};
     use std::path::PathBuf;
     use std::sync::Arc;
@@ -155,7 +155,7 @@ fn checkpoint_probe_entry() {
             let old = lease.read_current().expect("product read before commit");
             let expected = old
                 .as_ref()
-                .map(|v| format!("sha256:{}", sgenaxis_spec::packet::source_sha256(v)));
+                .map(|v| format!("sha256:{}", eluslot_spec::packet::source_sha256(v)));
             println!(
                 "RESULT {:?}",
                 lease.replace_checked(expected.as_deref(), b"NEW-COMPLETE-DOCUMENT")

@@ -12,7 +12,7 @@
 //! Fake path remains via [`FakeFsSource`]. macOS／Linux watcher out of scope.
 //!
 //! PD-LISTEN-RECON-01: abnormal Agent end → [`DomainEvent::AgentReconcile`];
-//! projection mirrors EXEC [`sgenaxis_exec::ExitClassification`]; last Chunk
+//! projection mirrors EXEC [`eluslot_exec::ExitClassification`]; last Chunk
 //! retained; ended runs are not re-ingested.
 
 #![forbid(unsafe_code)]
@@ -41,8 +41,8 @@ pub use adapters::notify_fs::WinFsNotify;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_core::{DirtySet, Engine};
-    use sgenaxis_exec::{
+    use eluslot_core::{DirtySet, Engine};
+    use eluslot_exec::{
         AgentChunk, AgentProvider, ExitClassification, OutputStream, RunId,
     };
     use std::sync::{Arc, Mutex};
@@ -461,7 +461,7 @@ mod tests {
 mod win_notify_tests {
     use super::*;
     use crate::adapters::notify_fs::WinFsNotify;
-    use sgenaxis_core::DirtySet;
+    use eluslot_core::DirtySet;
     use std::fs;
     use std::path::PathBuf;
     use std::thread;

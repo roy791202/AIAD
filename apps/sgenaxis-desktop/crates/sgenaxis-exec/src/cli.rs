@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
-use sgenaxis_ports::{ProcessId, ProcessPort, StreamCompletion};
+use eluslot_ports::{ProcessId, ProcessPort, StreamCompletion};
 
 use crate::error::ExecError;
 use crate::events::{AgentChunk, ExitClassification, OutputStream};
@@ -435,7 +435,7 @@ pub fn drain_until_terminal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeProcess;
+    use eluslot_adapters::FakeProcess;
 
     fn dry_adapter() -> CliAgentAdapter {
         CliAgentAdapter::with_defaults(Box::new(FakeProcess::new()))
@@ -649,7 +649,7 @@ mod tests {
     #[cfg(feature = "real-spawn")]
     #[test]
     fn approve_live_requires_activatable_path() {
-        use sgenaxis_adapters::fake::FakeFileSystem;
+        use eluslot_adapters::fake::FakeFileSystem;
 
         let fs = FakeFileSystem::new();
         fs.seed("/bin/claude", b"");
