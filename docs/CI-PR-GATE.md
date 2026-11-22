@@ -24,6 +24,8 @@ python scripts/pd_ci_pr_gate.py
 # 分步等價
 python scripts/pd_ci_lint.py
 python -m pytest tests/test_board_rules.py tests/test_board_files.py tests/test_stats.py tests/test_schedule.py tests/test_dispatcher.py -q --tb=short
+python -X utf8 tools/skills/sync_skills.py --check
+python -X utf8 -m pytest tests/test_skills_sync.py -q --tb=short
 ```
 
 前置：Python 3.10+；`pip install pytest==9.1.1`（見根目錄 `requirements.txt`）。
@@ -34,6 +36,7 @@ python -m pytest tests/test_board_rules.py tests/test_board_files.py tests/test_
 |------|------------|
 | Lint | `scripts/pd_ci_lint.py` → `compileall`：`scripts/`、`sgenaxis/`、`tests/`、`tools/board/` |
 | 測試子集 | 上表五個 `tests/test_*.py`（單元；無 elevated MSI、無付費 runner） |
+| AI-dev skills | `tools/skills/sync_skills.py --check`（進版控產生檔與 `.agents/skills` 一致；略過被 gitignore 的 `.claude/skills`，CI 不需先產生）＋ `tests/test_skills_sync.py`（PD-CI-SKILLS-GATE-01） |
 
 任一非零退出 ⇒ **FAIL**（非綠）。
 
