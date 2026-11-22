@@ -1,6 +1,6 @@
 """Generate every tool-specific copy of the AI dev skills from one source.
 
-Source of truth: .agents/skills/<id>/SKILL.md (+ ai-dev-pipeline/references/), tracked in git.
+Source of truth: .agents/skills/<id>/SKILL.md (+ <id>/references/), tracked in git.
 Targets: .claude/skills (gitignored, local copy for Claude Code), .clinerules, .windsurf/rules, AGENTS.md, GEMINI.md,
 .github/copilot-instructions.md, CLAUDE.md.
 AI_INSTRUCTIONS/ is a frozen requirements snapshot and is never touched.
@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -27,7 +28,20 @@ SKILL_IDS = (
     "ai-dev-implementation",
     "ai-dev-pr-acceptance",
     "ai-dev-production-readiness",
+    "ai-dev-product-tests",
 )
+TESTS_ID = "ai-dev-product-tests"
+MANIFEST = ROOT / "docs" / "requirements-confirmation" / "phase1-spec" / "tasks" / "manifest.json"
+TEST_REF_SECTIONS = (
+    "## 1. 範圍與來源",
+    "## 2. 業務規則",
+    "## 3. 已有測試對照",
+    "## 4. 測試矩陣",
+    "## 5. 開發段（RED）",
+    "## 6. 驗證段",
+    "## 7. 已知衝突",
+)
+DELIVERY_RE = re.compile(r"^PD-P1-(F\d{2})-DELIVERY-\d{2}$")
 REF_ROOT = f".agents/skills/{INDEX_ID}/references/"
 GENERATED_NOTE = "<!-- 由 tools/skills/sync_skills.py 自 .agents/skills 產生；請改來源後重跑，不要直接編輯 -->"
 LINK_RE = re.compile(r"\]\(([^)#\s]+\.md)(#[^)]*)?\)")
@@ -49,11 +63,13 @@ def split_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return meta, body.lstrip("\n")
 
 
-def to_repo_links(body: str, target: Path) -> str:
-    """Rewrite skill-relative reference links so they resolve from `target`'s own folder."""
-    ref_dir = os.path.relpath(SRC / INDEX_ID / "references", target.parent).replace(os.sep, "/") + "/"
-    body = body.replace(f"](../{INDEX_ID}/references/", f"]({ref_dir}")
-    return body.replace("](references/", f"]({ref_dir}")
+def to_repo_links(body: str, target: Path, sid: str = INDEX_ID) -> str:
+    """Rewrite skill-relative links (`references/…`, `../<skill>/…`) so they resolve from `target`'s own folder."""
+    def rel(path: Path) -> str:
+        return os.path.relpath(path, target.parent).replace(os.sep, "/") + "/"
+    for other in SKILL_IDS:
+        body = body.replace(f"](../{other}/", f"]({rel(SRC / other)}")
+    return body.replace("](references/", f"]({rel(SRC / sid / 'references')}")
 
 
 def load_sources() -> dict[str, tuple[dict[str, str], str, str]]:
@@ -78,16 +94,16 @@ def build_targets() -> dict[Path, str]:
     for sid, (meta, body, raw) in sources.items():
         targets[CLAUDE_SKILLS / sid / "SKILL.md"] = raw
         cline = ROOT / ".clinerules" / f"{sid}.md"
-        targets[cline] = to_repo_links(body, cline)
+        targets[cline] = to_repo_links(body, cline, sid)
         windsurf = ROOT / ".windsurf" / "rules" / f"{sid}.md"
         desc = meta["description"].replace('"', '\\"')
         targets[windsurf] = (
-            f'---\ntrigger: model_decision\ndescription: "{desc}"\n---\n{to_repo_links(body, windsurf)}'
+            f'---\ntrigger: model_decision\ndescription: "{desc}"\n---\n{to_repo_links(body, windsurf, sid)}'
         )
-    for ref in sorted((SRC / INDEX_ID / "references").glob("*.md")):
-        targets[CLAUDE_SKILLS / INDEX_ID / "references" / ref.name] = (
-            ref.read_text(encoding="utf-8").replace("\r\n", "\n")
-        )
+        for ref in sorted((SRC / sid / "references").glob("*.md")):
+            targets[CLAUDE_SKILLS / sid / "references" / ref.name] = (
+                ref.read_text(encoding="utf-8").replace("\r\n", "\n")
+            )
 
     for name in ("AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md"):
         path = ROOT / name
@@ -128,6 +144,27 @@ def broken_links(files: dict[Path, str]) -> list[str]:
     return errors
 
 
+def load_product_test_inputs() -> tuple[list[str], dict[str, str]]:
+    ids = json.loads(MANIFEST.read_text(encoding="utf-8"))["ids"]
+    refs = {p.name: p.read_text(encoding="utf-8") for p in sorted((SRC / TESTS_ID / "references").glob("*.md"))}
+    return ids, refs
+
+
+def product_test_errors(manifest_ids: list[str], refs: dict[str, str]) -> list[str]:
+    """Every reference has all fixed sections; every delivery feature appears in some scope section."""
+    errors = []
+    scopes = []
+    for name, text in refs.items():
+        errors += [f"{name}：缺少段落 {s}" for s in TEST_REF_SECTIONS if s not in text]
+        if TEST_REF_SECTIONS[0] in text and TEST_REF_SECTIONS[1] in text:
+            scopes.append(text.split(TEST_REF_SECTIONS[0], 1)[1].split(TEST_REF_SECTIONS[1], 1)[0])
+    for mid in manifest_ids:
+        m = DELIVERY_RE.match(mid)
+        if m and not any(re.search(rf"\b{m.group(1)}\b", s) for s in scopes):
+            errors.append(f"{m.group(1)}：沒有出現在任何產品測試參考檔的「1. 範圍與來源」")
+    return errors
+
+
 def is_local_only(path: Path) -> bool:
     return path.is_relative_to(CLAUDE_SKILLS)
 
@@ -143,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     targets = build_targets()
     sources = {p: p.read_text(encoding="utf-8") for p in SRC.rglob("*.md")}
     errors = broken_links({**sources, **targets})
+    errors += product_test_errors(*load_product_test_inputs())
 
     stale = [p for p, text in targets.items()
              if not p.is_file() or p.read_text(encoding="utf-8").replace("\r\n", "\n") != text]

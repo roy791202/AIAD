@@ -62,3 +62,47 @@ def test_should_flag_repo_root_link_in_nested_file():
 def test_should_parse_folded_description():
     meta, body = sync.split_frontmatter("---\nname: n\ndescription: >-\n  第一行\n  第二行\n---\n# B\n")
     assert meta["description"] == "第一行 第二行" and body == "# B\n"
+
+
+TESTS_ID = "ai-dev-product-tests"
+
+
+def test_should_register_product_tests_skill():
+    assert TESTS_ID in sync.SKILL_IDS
+
+
+def test_should_copy_product_tests_references_to_claude_skills():
+    targets = sync.build_targets()
+    refs = sorted(p.name for p in targets if p.parent == sync.CLAUDE_SKILLS / TESTS_ID / "references")
+    assert "m01-project-definition.md" in refs and "ui-parameters.md" in refs and len(refs) == 9
+
+
+def test_should_rewrite_own_references_for_non_index_skill():
+    out = sync.to_repo_links("[m](references/m01.md)", sync.ROOT / "AGENTS.md", TESTS_ID)
+    assert out == f"[m](.agents/skills/{TESTS_ID}/references/m01.md)"
+
+
+def test_should_cover_every_delivery_feature_in_product_tests():
+    assert sync.product_test_errors(*sync.load_product_test_inputs()) == []
+
+
+def _ref(skip: str = "") -> str:
+    """A reference with F01 inside the scope section, optionally missing one section."""
+    sections = [s for s in sync.TEST_REF_SECTIONS if not (skip and skip in s)]
+    return sections[0] + "\nF01\n" + "\n".join(sections[1:]) + "\n"
+
+
+def test_should_flag_feature_missing_from_product_tests():
+    errors = sync.product_test_errors(["PD-P1-F01-DELIVERY-01", "PD-P1-F99-DELIVERY-01"], {"m.md": _ref()})
+    assert errors == ["F99：沒有出現在任何產品測試參考檔的「1. 範圍與來源」"]
+
+
+def test_should_flag_reference_missing_required_section():
+    errors = sync.product_test_errors(["PD-P1-F01-DELIVERY-01"], {"m.md": _ref(skip="6.")})
+    assert errors == ["m.md：缺少段落 ## 6. 驗證段"]
+
+
+def test_should_ignore_feature_mentioned_outside_scope_section():
+    sections = list(sync.TEST_REF_SECTIONS)
+    ref = sections[0] + "\n" + "\n".join(sections[1:]) + "\nF01\n"
+    assert sync.product_test_errors(["PD-P1-F01-DELIVERY-01"], {"m.md": ref}) != []
