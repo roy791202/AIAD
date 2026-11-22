@@ -106,3 +106,26 @@ def test_should_ignore_feature_mentioned_outside_scope_section():
     sections = list(sync.TEST_REF_SECTIONS)
     ref = sections[0] + "\n" + "\n".join(sections[1:]) + "\nF01\n"
     assert sync.product_test_errors(["PD-P1-F01-DELIVERY-01"], {"m.md": ref}) != []
+
+
+_MAP = "| 模組 | 功能 | 參考檔 |\n|---|---|---|\n| M01 | F01 | [m.md](references/m.md) |\n"
+
+
+def test_should_pass_mapping_check_for_real_index():
+    ids, refs = sync.load_product_test_inputs()
+    assert sync.mapping_errors(ids, sync.load_product_test_index(), refs) == []
+
+
+def test_should_flag_mapped_reference_file_missing():
+    errors = sync.mapping_errors(["PD-P1-F01-DELIVERY-01"], _MAP, {})
+    assert errors == ["m.md：對照表指向的參考檔不存在"]
+
+
+def test_should_flag_feature_absent_from_mapping_table():
+    errors = sync.mapping_errors(["PD-P1-F01-DELIVERY-01", "PD-P1-F02-DELIVERY-01"], _MAP, {"m.md": ""})
+    assert errors == ["F02：對照表沒有對應的參考檔"]
+
+
+def test_should_flag_reference_file_not_in_mapping_table():
+    errors = sync.mapping_errors(["PD-P1-F01-DELIVERY-01"], _MAP, {"m.md": "", "extra.md": ""})
+    assert errors == ["extra.md：沒有列在對照表"]

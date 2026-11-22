@@ -165,6 +165,27 @@ def product_test_errors(manifest_ids: list[str], refs: dict[str, str]) -> list[s
     return errors
 
 
+MAP_ROW_RE = re.compile(r"^\|[^|\n]*\|([^|\n]*)\|\s*\[[^\]]*\]\(references/([^)]+\.md)\)\s*\|", re.M)
+
+
+def load_product_test_index() -> str:
+    return (SRC / TESTS_ID / "SKILL.md").read_text(encoding="utf-8")
+
+
+def mapping_errors(manifest_ids: list[str], index_text: str, refs: dict[str, str]) -> list[str]:
+    """The SKILL.md mapping table names a primary reference for every delivery feature, and that file exists."""
+    rows = MAP_ROW_RE.findall(index_text)
+    mapped = {f for features, _ in rows for f in re.findall(r"F\d{2}", features)}
+    files = [name for _, name in rows]
+    errors = [f"{name}：對照表指向的參考檔不存在" for name in files if name not in refs]
+    errors += [f"{name}：沒有列在對照表" for name in refs if name not in files]
+    for mid in manifest_ids:
+        m = DELIVERY_RE.match(mid)
+        if m and m.group(1) not in mapped:
+            errors.append(f"{m.group(1)}：對照表沒有對應的參考檔")
+    return errors
+
+
 def is_local_only(path: Path) -> bool:
     return path.is_relative_to(CLAUDE_SKILLS)
 
@@ -180,7 +201,9 @@ def main(argv: list[str] | None = None) -> int:
     targets = build_targets()
     sources = {p: p.read_text(encoding="utf-8") for p in SRC.rglob("*.md")}
     errors = broken_links({**sources, **targets})
-    errors += product_test_errors(*load_product_test_inputs())
+    ids, refs = load_product_test_inputs()
+    errors += product_test_errors(ids, refs)
+    errors += mapping_errors(ids, load_product_test_index(), refs)
 
     stale = [p for p, text in targets.items()
              if not p.is_file() or p.read_text(encoding="utf-8").replace("\r\n", "\n") != text]

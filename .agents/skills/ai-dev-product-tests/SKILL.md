@@ -44,4 +44,4 @@ description: >-
 ## 四、每份參考檔的固定段落
 
 `1. 範圍與來源`、`2. 業務規則`、`3. 已有測試對照`、`4. 測試矩陣`、`5. 開發段（RED）`、`6. 驗證段`、`7. 已知衝突`。
-`python tools/skills/sync_skills.py --check` 會檢查段落齊全，並確認 manifest 的每個交付功能都出現在某份參考檔的「1. 範圍與來源」。
+`python tools/skills/sync_skills.py --check` 會檢查段落齊全；確認 manifest 的每個交付功能都出現在某份參考檔的「1. 範圍與來源」，且在上面對照表有指定的參考檔；對照表與 `references/` 的檔案一一對應。
