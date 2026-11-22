@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<title>M03-C1 cx-c1-revision v3 獨立受限文件複驗 2026-11-14</title>
+<style>
+body{max-width:1100px;margin:40px auto;font:16px system-ui;line-height:1.6;color:#193143}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f7;padding:16px}
+table{border-collapse:collapse;width:100%}
+td,th{padding:8px;border:1px solid #ccc;text-align:left;vertical-align:top}
+.pass{color:#0a6}
+.fail{color:#b00}
+</style>
+<h1>M03-C1 cx-c1-revision-v3 獨立受限文件複驗</h1>
+<p><strong>Verdict: BOUNDED_DOCUMENT_REACCEPTANCE_PASS</strong></p>
+<p>卡 <code>PD-P1-M03-CX-C1-V3-REVIEW-01</code>。審查者 <code>independent-document-reviewer-m03-c1-20261114</code>，不是 v3 撰寫者，也不是產品實作者。未改 Rust/TS/產品測試。未把 Owner 設為已採納。未設 Feature PASS／Done。候選包狀態維持 <code>PENDING_REACCEPTANCE_AND_OWNER</code>。</p>
+<p>對照：<a href="../cx-c1-revision-v3/index.html">v3 候選</a> · <a href="../cx-c1-revision-v2/index.html">v2</a> · <a href="verification.json">verification.json</a></p>
+<p>產品／compile／RED／GREEN／native／build：<strong>NOT RUN</strong>。Skeleton：<strong>NOT AUTHORIZED</strong>。</p>
+<h2>已知母卡狀態（不重跑）</h2>
+<ul>
+<li>identity 仍為 <code>V3_CANDIDATE_PENDING_REACCEPTANCE_AND_OWNER</code></li>
+<li>Owner 一次採納：<strong>pending</strong></li>
+<li>父卡 <code>PD-P1-M03-PREP-01</code> 維持黃燈；本輪不設藍燈／Done</li>
+</ul>
+<h2>v2 → v3（文件包裝，不是產品）</h2>
+<ul>
+<li>v2 <code>review-request.status</code> = <code>ONE_OWNER_CONFIRMATION_PENDING</code>；v3 = <code>PENDING_REACCEPTANCE_AND_OWNER</code></li>
+<li>v3 <code>previous_revision</code> 等於 v2 <code>revision_sha256</code>（<code>0a5568dd…adaab8f6</code>）</li>
+<li>shared-contract 宣告 SHA <code>aa9af712…</code> → <code>dfa91713…</code>（live 檔 <code>5d68800f…</code>；artifact-hashes 仍寫 <code>4e00bc45…</code>）</li>
+<li>v3 包未含 v2 的 <code>module.feature</code>、<code>fixtures.json</code>、<code>step-definition-plan.json</code></li>
+<li>index 明示：未建立 Skeleton、未改產品、tests/build/RED/GREEN/native NOT RUN</li>
+<li>case-trace 36 列；test-plan 原 24 情境＋資源 recipes 均 <code>PLANNED_NOT_RUN</code></li>
+</ul>
+<h2>Checks</h2>
+<table>
+<tr><th>ID</th><th>結果</th><th>說明</th></tr>
+<tr><td>C1</td><td class="pass">PASS</td><td>review-request 維持 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>C2</td><td class="pass">PASS</td><td>identity.status = V3_CANDIDATE_PENDING_REACCEPTANCE_AND_OWNER（M03-C1）</td></tr>
+<tr><td>C3</td><td class="pass">PASS</td><td>previous_revision 綁定 v2</td></tr>
+<tr><td>C4</td><td class="pass">PASS</td><td>envelope 仍是 RR_REVISED_CANDIDATE_PENDING_OWNER</td></tr>
+<tr><td>C5</td><td class="pass">PASS</td><td>index 免責：待複驗與 Owner；未建 Skeleton；未改產品；NOT RUN</td></tr>
+<tr><td>C6</td><td class="pass">PASS</td><td>沒有 Owner adopted 事實句</td></tr>
+<tr><td>C7</td><td class="pass">PASS</td><td>沒有 Skeleton 已建立／已接受</td></tr>
+<tr><td>C8</td><td class="pass">PASS</td><td>沒有 product RED/GREEN 宣稱</td></tr>
+<tr><td>C9</td><td class="pass">PASS</td><td>沒有 native PASS</td></tr>
+<tr><td>C10</td><td class="pass">PASS</td><td>envelope 仍是候選限制，不是已落地產品改動</td></tr>
+<tr><td>C11</td><td class="pass">PASS</td><td>V2-F1–F3 與 PASS_C1_RESOURCE_DOCUMENT_CORRECTION_ONLY 是歷史 scoped evidence，不是採納</td></tr>
+<tr><td>C12</td><td class="pass">PASS</td><td>本包未裁決 H2 執行權、UI open/save、CP1–CP3</td></tr>
+<tr><td>C13</td><td class="pass">PASS</td><td>v2 對照僅文件包裝差異</td></tr>
+<tr><td>C14</td><td class="pass">PASS</td><td>列仍為 PROPOSED_NOT_APPROVED / PENDING_OWNER</td></tr>
+<tr><td>C15</td><td class="pass">PASS</td><td>本輪審查未改產品／測試／v3 候選檔</td></tr>
+<tr><td>C16</td><td class="fail">FAIL</td><td>artifact-hashes.json 七檔宣告 SHA 與現檔不符（F-SEAL-HASH-DRIFT）。不構成採納。</td></tr>
+<tr><td>C17</td><td class="fail">FAIL</td><td>common_sha256 與 live shared-contract 及宣告檔 hash 皆不符（F-COMMON-SHA-DRIFT）。不構成採納。</td></tr>
+</table>
+<p>15 PASS / 2 FAIL（完整性）。主張邊界複驗仍 PASS。</p>
+<h2>Negative probes（全部 rejected）</h2>
+<table>
+<tr><th>Probe</th><th>Rejected</th><th>為何拒絕</th></tr>
+<tr><td>owner_adopted</td><td>yes</td><td>狀態仍 PENDING_REACCEPTANCE_AND_OWNER</td></tr>
+<tr><td>skeleton_created</td><td>yes</td><td>未建立 Skeleton</td></tr>
+<tr><td>valid_red_pass</td><td>yes</td><td>RED NOT RUN</td></tr>
+<tr><td>product_green</td><td>yes</td><td>No product RED/GREEN claimed</td></tr>
+<tr><td>native_pass</td><td>yes</td><td>environment NOT RUN remains</td></tr>
+<tr><td>product_edits</td><td>yes</td><td>產品碼受保護；本輪未碰 apps/tests</td></tr>
+<tr><td>ready_for_implementation</td><td>yes</td><td>僅 NOT_READY_FOR_IMPLEMENTATION</td></tr>
+<tr><td>hash_drift_is_adoption</td><td>yes</td><td>雜湊漂移只是文件完整性 finding</td></tr>
+<tr><td>f1f3_or_c1_resource_pass_is_owner</td><td>yes</td><td>範圍寫明 historical scoped evidence，非採納</td></tr>
+<tr><td>feature_pass_or_done</td><td>yes</td><td>獨立驗證不得設 Feature PASS／Done</td></tr>
+</table>
+<h2>下一步</h2>
+<p>Owner 對<strong>現檔 live SHA</strong> 做一次採納仍未發生。重封 artifact-hashes.json 是文件衛生，不是進度。不得據此開 Skeleton、產品實作，也不得把 Feature／父卡標 PASS 或 Done。</p>
+</html>
