@@ -744,8 +744,18 @@ fn fake_git_write_delete_branch_records_when_approved() {
     assert!(matches!(empty, Err(PortError::Other(_))));
     let force = w.delete_branch("/r", "-D", GitWriteApproval::granted());
     assert!(matches!(force, Err(PortError::Other(_))));
+    let remote_flag = w.delete_branch("/r", "-r", GitWriteApproval::granted());
+    assert!(matches!(remote_flag, Err(PortError::Other(_))));
+    let remotes_flag = w.delete_branch("/r", "--remotes", GitWriteApproval::granted());
+    assert!(matches!(remotes_flag, Err(PortError::Other(_))));
     let traversal = w.delete_branch("/r", "../evil", GitWriteApproval::granted());
     assert!(matches!(traversal, Err(PortError::Other(_))));
+    w.mark_remote_only("/r", "origin/main");
+    let remote_only = w.delete_branch("/r", "origin/main", GitWriteApproval::granted());
+    assert!(
+        matches!(remote_only, Err(PortError::Other(ref m)) if m.contains("remote-only")),
+        "remote-tracking names must fail honestly without -r: {remote_only:?}"
+    );
     let missing = w.delete_branch("/r", "ghost", GitWriteApproval::granted());
     assert!(matches!(missing, Err(PortError::Git(ref m)) if m.contains("not found")));
     let unmerged = w.delete_branch("/r", "unmerged", GitWriteApproval::granted());

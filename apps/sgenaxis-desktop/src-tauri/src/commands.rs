@@ -2706,6 +2706,8 @@ fn branch_out_of_scope(value: &str) -> bool {
                 | "-f"
                 | "-d"
                 | "-D"
+                | "-r"
+                | "--remotes"
                 | "-m"
                 | "-M"
                 | "--move"
@@ -5440,6 +5442,7 @@ mod git_ui_tests {
         w.create_branch("/r", "unmerged", GitWriteApproval::granted())
             .expect("seed unmerged");
         w.mark_unmerged("/r", "unmerged");
+        w.mark_remote_only("/r", "origin/main");
 
         let denied = perform_git_write_branch_delete(&w, "/r", "feature/slot", false).unwrap();
         assert!(!denied.ok);
@@ -5459,6 +5462,9 @@ mod git_ui_tests {
         assert!(force.contains("out of scope"));
         let remote_flag = perform_git_write_branch_delete(&w, "/r", "-r", true).unwrap_err();
         assert!(remote_flag.contains("out of scope"));
+        let remotes_flag =
+            perform_git_write_branch_delete(&w, "/r", "--remotes", true).unwrap_err();
+        assert!(remotes_flag.contains("out of scope"));
         let traversal = perform_git_write_branch_delete(&w, "/r", "../evil", true).unwrap_err();
         assert!(traversal.contains("out of scope"));
         assert!(w.last_branch_delete("/r").is_none());
@@ -5467,6 +5473,15 @@ mod git_ui_tests {
         assert!(!head.ok);
         assert!(head.local_preserved);
         assert!(head.message.to_ascii_lowercase().contains("head"));
+        assert!(w.last_branch_delete("/r").is_none());
+
+        let remote_only = perform_git_write_branch_delete(&w, "/r", "origin/main", true).unwrap();
+        assert!(!remote_only.ok);
+        assert!(remote_only.local_preserved);
+        assert!(remote_only
+            .message
+            .to_ascii_lowercase()
+            .contains("remote-only"));
         assert!(w.last_branch_delete("/r").is_none());
 
         let missing = perform_git_write_branch_delete(&w, "/r", "ghost", true).unwrap();

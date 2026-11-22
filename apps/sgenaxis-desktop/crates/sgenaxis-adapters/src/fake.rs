@@ -1428,6 +1428,16 @@ impl GitWritePort for FakeGitWrite {
                 "cannot delete the current HEAD branch".into(),
             ));
         }
+        let remote_only = st
+            .remote_only_branches
+            .get(&key)
+            .map(|v| v.iter().any(|b| b == branch))
+            .unwrap_or(false);
+        if remote_only {
+            return Err(PortError::Other(format!(
+                "refusing remote-only name '{branch}'"
+            )));
+        }
         let exists = st
             .branches
             .get(&key)
