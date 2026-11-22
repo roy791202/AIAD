@@ -890,6 +890,117 @@ mod std_write_temp {
         String::from_utf8_lossy(&out.stdout).to_string()
     }
 
+    fn remote_branch_list(repo: &str) -> String {
+        let out = Command::new("git")
+            .args(["-C", repo, "branch", "-r"])
+            .output()
+            .expect("git branch -r");
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    /// PD-GIT-CREATE-BRANCH-01: denied StdGitWrite.create_branch does not mutate.
+    #[test]
+    fn pd_git_create_branch_01_std_denied_create_branch_does_not_mutate() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let before_remote = remote_branch_list(repo);
+        let w = StdGitWrite::new();
+
+        w.create_branch(repo, "feature/slot", GitWriteApproval::denied())
+            .expect_err("denied create must not mutate");
+        assert!(!local_branch_list(repo).contains("feature/slot"));
+        assert_eq!(head_ref(repo), "main");
+        assert_eq!(remote_branch_list(repo), before_remote);
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    /// PD-GIT-CREATE-BRANCH-01: approved `git branch -- name` at HEAD, no switch/upstream/remote.
+    #[test]
+    fn pd_git_create_branch_01_std_create_branch_from_head_without_switch_or_upstream() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let before_remote = remote_branch_list(repo);
+        let head_sha = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "HEAD"])
+                .output()
+                .expect("rev-parse HEAD");
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        let w = StdGitWrite::new();
+
+        w.create_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect("approved create");
+        let list = local_branch_list(repo);
+        assert!(
+            list.contains("feature/slot"),
+            "local branch missing: {list}"
+        );
+        assert_eq!(head_ref(repo), "main", "create must not switch HEAD");
+
+        let branch_sha = {
+            let out = Command::new("git")
+                .args(["-C", repo, "rev-parse", "feature/slot"])
+                .output()
+                .expect("rev-parse feature/slot");
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        assert_eq!(branch_sha, head_sha, "new branch must point at current HEAD");
+        assert!(
+            upstream_of(repo, "feature/slot").is_empty(),
+            "create must not set upstream"
+        );
+        assert_eq!(
+            remote_branch_list(repo),
+            before_remote,
+            "create must not create a remote branch"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
+    /// PD-GIT-CREATE-BRANCH-01: duplicate / flag / invalid names fail without mutation.
+    #[test]
+    fn pd_git_create_branch_01_std_duplicate_invalid_create_branch_fail_honestly() {
+        let (work, _bare) = make_worktree_with_bare_remote();
+        let repo = work.to_str().unwrap();
+        let w = StdGitWrite::new();
+
+        w.create_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect("seed");
+
+        w.create_branch(repo, "  ", GitWriteApproval::granted())
+            .expect_err("empty name must fail");
+        w.create_branch(repo, "-D", GitWriteApproval::granted())
+            .expect_err("delete flag name is out of scope");
+        w.create_branch(repo, "-C", GitWriteApproval::granted())
+            .expect_err("force-create flag name is out of scope");
+        w.create_branch(repo, "--force", GitWriteApproval::granted())
+            .expect_err("force flag name is out of scope");
+        w.create_branch(repo, "--set-upstream", GitWriteApproval::granted())
+            .expect_err("upstream is out of scope");
+        w.create_branch(repo, "bad..name", GitWriteApproval::granted())
+            .expect_err("invalid name must fail");
+
+        let dup = w
+            .create_branch(repo, "feature/slot", GitWriteApproval::granted())
+            .expect_err("duplicate must fail without -f/-C");
+        assert!(matches!(dup, PortError::Git(_)));
+        let msg = dup.to_string().to_ascii_lowercase();
+        assert!(
+            msg.contains("already exists") || msg.contains("feature/slot"),
+            "duplicate must fail honestly: {dup}"
+        );
+        assert_eq!(head_ref(repo), "main");
+        assert!(
+            !local_branch_list(repo).contains("-D"),
+            "flag names must not become branches"
+        );
+
+        let _ = fs::remove_dir_all(work.parent().unwrap());
+    }
+
     #[test]
     fn std_write_create_branch_from_head_without_switch_when_approved() {
         let (work, _bare) = make_worktree_with_bare_remote();
