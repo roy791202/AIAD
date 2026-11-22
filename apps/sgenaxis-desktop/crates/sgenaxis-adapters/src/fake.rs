@@ -1218,6 +1218,9 @@ impl GitWritePort for FakeGitWrite {
                 GIT_WRITE_NOT_APPROVED_MSG.into(),
             ));
         }
+        if message.trim().is_empty() {
+            return Err(PortError::Other("empty stash message".into()));
+        }
         let mut st = self
             .inner
             .lock()
