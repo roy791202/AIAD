@@ -486,6 +486,34 @@ fn fake_git_write_stash_records_when_approved() {
 }
 
 #[test]
+fn pd_git_stash_push_01_fake_stash_push_denies_and_rejects_empty_message() {
+    let w = FakeGitWrite::new();
+    let denied = w.stash_push("/r", "wip", GitWriteApproval::denied());
+    assert!(matches!(denied, Err(PortError::PermissionDenied(_))));
+    assert!(w.last_stash_push("/r").is_none());
+
+    let empty = w.stash_push("/r", "   ", GitWriteApproval::granted());
+    assert!(
+        matches!(empty, Err(PortError::Other(ref m)) if m.contains("empty stash message")),
+        "empty message must fail honestly, got {empty:?}"
+    );
+    assert!(w.last_stash_push("/r").is_none());
+
+    w.fail_next_stash("/r", "https://ci:p@ssw0rd@example.com/r.git No local changes to save");
+    let fail = w.stash_push("/r", "WIP: panel", GitWriteApproval::granted());
+    let rendered = fail.expect_err("injected fail").to_string();
+    assert!(
+        !rendered.contains("p@ssw0rd"),
+        "credential leaked in stash_push error: {rendered}"
+    );
+    assert!(w.last_stash_push("/r").is_none());
+
+    w.stash_push("/r", "WIP: panel", GitWriteApproval::granted())
+        .expect("approved stash_push");
+    assert_eq!(w.last_stash_push("/r").as_deref(), Some("WIP: panel"));
+}
+
+#[test]
 fn fake_git_write_tag_records_when_approved() {
     let w = FakeGitWrite::new();
     let denied = w.create_tag("/r", "v1.0.0", "", GitWriteApproval::denied());
