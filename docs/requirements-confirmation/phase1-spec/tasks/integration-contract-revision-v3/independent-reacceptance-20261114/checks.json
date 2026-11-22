@@ -1,0 +1,195 @@
+{
+  "method": "Independent re-hash of git working-tree bytes (LF) and CRLF reconstruction; canonical JSON digest per build_documents.py canon(); local JSON Pointer $ref walk; case-trace unique original_case_id counts; status string scan. jsonschema module NOT RUN. Native/product tests NOT RUN.",
+  "rollup": [
+    {
+      "id": "H1",
+      "name": "Package artifact-hashes vs git/LF payload bytes",
+      "result": "FAIL",
+      "pass": 0,
+      "fail": 52,
+      "total": 52,
+      "note": "Every declared SHA-256 is the Windows CRLF byte hash; git stores LF. Working-tree sha256(file) != artifact-hashes.json."
+    },
+    {
+      "id": "H2",
+      "name": "Package artifact-hashes vs CRLF-reconstructed bytes",
+      "result": "PASS",
+      "pass": 52,
+      "fail": 0,
+      "total": 52,
+      "note": "sha256(LF bytes with \\n replaced by \\r\\n) matches all 52 declared hashes. Content is otherwise intact."
+    },
+    {
+      "id": "H3",
+      "name": "review-request.revision_sha256 vs canon(artifact-hashes)",
+      "result": "PASS",
+      "pass": 1,
+      "fail": 0,
+      "total": 1,
+      "actual": "395024750cc8f28061f82882aace8d06090bc6e7d30089d3b0da8c132d8392cb"
+    },
+    {
+      "id": "H4",
+      "name": "common_sha256 vs canon(shared-contract object)",
+      "result": "PASS",
+      "pass": 1,
+      "fail": 0,
+      "total": 1,
+      "actual": "dfa917135150858c26030ba6575f899102d21b20b92c8b4ceede939b217c5681"
+    },
+    {
+      "id": "H5",
+      "name": "Nine child revision_sha256 vs canon(child artifact-hashes)",
+      "result": "PASS",
+      "pass": 9,
+      "fail": 0,
+      "total": 9,
+      "note": "Child revision is digest of hash map, not sha256(index.html)."
+    },
+    {
+      "id": "H6",
+      "name": "Child package files git/LF vs child artifact-hashes",
+      "result": "FAIL",
+      "pass": 0,
+      "fail": 63,
+      "total": 63
+    },
+    {
+      "id": "H7",
+      "name": "Child package files CRLF reconstruction vs child artifact-hashes",
+      "result": "PASS",
+      "pass": 63,
+      "fail": 0,
+      "total": 63
+    },
+    {
+      "id": "H8",
+      "name": "request-hash-vectors a_sha256/b_sha256 vs canon(body)",
+      "result": "PASS",
+      "pass": 173,
+      "fail": 0,
+      "total": 173
+    },
+    {
+      "id": "H9",
+      "name": "request-hash-vectors a_utf8_hex/b_utf8_hex vs canon(body)",
+      "result": "PASS",
+      "pass": 173,
+      "fail": 0,
+      "total": 173
+    },
+    {
+      "id": "S1",
+      "name": "Schema roots present",
+      "result": "PASS",
+      "pass": 38,
+      "fail": 0,
+      "total": 38
+    },
+    {
+      "id": "S2",
+      "name": "Local $ref JSON Pointer resolution",
+      "result": "PASS",
+      "pass": 1079,
+      "fail": 0,
+      "total": 1079,
+      "note": "Matches author local_ref_resolution_count. Non-local/network refs: 0. Full draft 2020-12 validator NOT RUN."
+    },
+    {
+      "id": "C1",
+      "name": "Original cases unshrunk (case-trace vs declared original_cases)",
+      "result": "PASS",
+      "pass": 769,
+      "fail": 0,
+      "total": 769,
+      "by_module": {
+        "M01-S3": 89,
+        "M02": 101,
+        "M03-C1": 36,
+        "M03-H2": 62,
+        "M04": 83,
+        "M05": 124,
+        "M06-preflight": 64,
+        "M06": 100,
+        "M07": 110
+      },
+      "shrink_dispositions": 0
+    },
+    {
+      "id": "C2",
+      "name": "u64-vectors admission vs U64Decimal pattern and max 2^64-1",
+      "result": "PASS",
+      "pass": 8,
+      "fail": 0,
+      "total": 8
+    },
+    {
+      "id": "P1",
+      "name": "Declared pending / not-ready statuses preserved; no Ready/native PASS/Done/blue",
+      "result": "PASS",
+      "pass": 6,
+      "fail": 0,
+      "total": 6,
+      "observed": {
+        "verification.status": "AUTHOR_STATIC_DOCUMENT_CHECKS_ONLY",
+        "verification.tests_build_RED_GREEN_native": "NOT RUN",
+        "verification.reacceptance": "NOT RUN",
+        "review-request.status": "ONE_OWNER_CONFIRMATION_PENDING",
+        "current-state.state": "V3_CANDIDATE_PENDING_REACCEPTANCE_AND_OWNER",
+        "module-spec.identity.status": "ONE_OWNER_CONFIRMATION_PENDING_NOT_READY_FOR_IMPLEMENTATION",
+        "shared-contract.status": "PROPOSED_PENDING_OWNER_AND_READONLY_REACCEPTANCE"
+      }
+    },
+    {
+      "id": "P2",
+      "name": "Prerequisite inherited gates not marked PASS/GREEN/DONE",
+      "result": "PASS",
+      "pass": 7,
+      "fail": 0,
+      "total": 7
+    },
+    {
+      "id": "F1",
+      "name": "V3-F1 UnsupportedDocument.nodes still type string; InvalidRequest.reason unrestricted string",
+      "result": "FAIL",
+      "pass": 0,
+      "fail": 26,
+      "total": 26,
+      "note": "26 H2 *-response.schema.json Error oneOf variants. Typed node array and closed reason enum still absent. Prior independent finding remains open."
+    },
+    {
+      "id": "F2",
+      "name": "V3-F2 MaterialError codes mapped into H2 lifecycle",
+      "result": "FAIL",
+      "pass": 0,
+      "fail": 11,
+      "total": 11,
+      "unmapped": [
+        "CatalogInvalid",
+        "InvalidBinding",
+        "InvalidInput",
+        "MaterialRecoveryBlocked",
+        "MissingVersion",
+        "PermissionDenied",
+        "PinConflict",
+        "StaleCatalog",
+        "StaleRoot",
+        "Storage",
+        "UnmappedReference"
+      ],
+      "mapped_instead": "StaleRoots (plural) only"
+    },
+    {
+      "id": "B1",
+      "name": "This review did not modify docs/board.json, product code, or .feature scenarios",
+      "result": "PASS",
+      "pass": 1,
+      "fail": 0,
+      "total": 1
+    }
+  ],
+  "atomic_pass": 2418,
+  "atomic_fail": 152,
+  "atomic_total": 2570,
+  "atomic_formula": "H2+H3+H4+H5+H7+H8+H9+S1+S2+C1+C2+P1+P2+B1 = 52+1+1+9+63+173+173+38+1079+769+8+6+7+1 = 2418 pass; H1+H6+F1+F2 = 52+63+26+11 = 152 fail"
+}
