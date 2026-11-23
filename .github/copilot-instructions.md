@@ -11,6 +11,7 @@
 - **ai-dev-implementation**（`.agents/skills/ai-dev-implementation/SKILL.md`）：實作期（中低階 AI 模型）：當要依已核准的工單、BDD 與 TDD 封包實作一張工單（Task）時使用。
 - **ai-dev-pr-acceptance**（`.agents/skills/ai-dev-pr-acceptance/SKILL.md`）：PR 驗收期（獨立 TDD 驗證代理，必要時加獨立高階審查代理）：當工單標成 READY_FOR_TDD，要依 TDD 封包重跑測試、實際操作介面截圖錄影、 審查並決定 PR 能否合併時使用。
 - **ai-dev-production-readiness**（`.agents/skills/ai-dev-production-readiness/SKILL.md`）：上線就緒標準：規劃、實作或審查程式時，要確認測試策略、資料一致性與併發、可觀測性、安全防禦、記憶體、效能與發布回滾是否到位時使用。
+- **ai-dev-product-tests**（`.agents/skills/ai-dev-product-tests/SKILL.md`）：產品測試索引：要為 Phase 1 業務邏輯（M01–M08）或 UI/UX 參數調整寫測試（RED）、或以獨立驗證代理重跑驗收時使用。 列出共用規則與 9 份測試參考的對照，只讀當下那一份。
 
 # 主索引內容
 
@@ -74,6 +75,7 @@ flowchart LR
 | 分支、commit、版本、發布、Hotfix、回滾 | [references/release.md](../.agents/skills/ai-dev-pipeline/references/release.md) |
 | hook 被擋、CI guard、分支保護、看板伺服器 | [references/enforcement.md](../.agents/skills/ai-dev-pipeline/references/enforcement.md) |
 | 本專案技術棧、路徑、證據位置、命名慣例 | [references/project.md](../.agents/skills/ai-dev-pipeline/references/project.md) |
+| 為 Phase 1 業務邏輯（M01–M08）或 UI/UX 參數寫測試、驗收重跑 | [ai-dev-product-tests](../.agents/skills/ai-dev-product-tests/SKILL.md)（再依對照表只讀一份模組參考） |
 
 ## 五、派工步驟（高階模型／Owner）
 1. 執行 `ai-dev-preproduction`；開始前先讀失敗經驗文件。

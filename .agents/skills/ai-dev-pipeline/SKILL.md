@@ -66,6 +66,7 @@ flowchart LR
 | 分支、commit、版本、發布、Hotfix、回滾 | [references/release.md](references/release.md) |
 | hook 被擋、CI guard、分支保護、看板伺服器 | [references/enforcement.md](references/enforcement.md) |
 | 本專案技術棧、路徑、證據位置、命名慣例 | [references/project.md](references/project.md) |
+| 為 Phase 1 業務邏輯（M01–M08）或 UI/UX 參數寫測試、驗收重跑 | [ai-dev-product-tests](../ai-dev-product-tests/SKILL.md)（再依對照表只讀一份模組參考） |
 
 ## 五、派工步驟（高階模型／Owner）
 1. 執行 `ai-dev-preproduction`；開始前先讀失敗經驗文件。
