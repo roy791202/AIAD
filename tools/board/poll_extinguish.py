@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 """DEPRECATED / SAFETY LOCK.
 
-Owner clarified: 「滅燈」= 實際做完工項後才改綠，禁止排程直接改綠。
-
-本檔保留為明確拒絕，避免誤用舊 cmd。
-請改用實際實作 + 驗收改綠；查下一張待做：
+No tool may batch-close cards or write docs/board.json. This script always refuses (exit 2).
+To see the next open work card:
 
   python tools/board/poll_next_work.py
 """
@@ -13,17 +11,21 @@ from __future__ import annotations
 
 import sys
 
+EXIT_REFUSED = 2
+
 
 def main() -> int:
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     print(
-        "REFUSED: poll_extinguish must NOT admin-green cards.\n"
-        "硬性規則（PRODUCT-DEVELOPMENT §7.1）：未產出 → 不可滅；\n"
-        "且須獨立 TDD Agent 回報 TDD_PASS 後，母對話才可標綠。\n"
-        "實作代理不可改綠／不可自稱 TDD PASS。\n"
+        "REFUSED: poll_extinguish must NOT close cards or write docs/board.json.\n"
+        "硬性規則（PRODUCT-DEVELOPMENT §7.1）：未產出 → 不可結案。\n"
+        "只有高階模型／使用者才可設 Done／Blue；須先有獨立 TDD 代理回報 TDD_PASS，且 PR 已合併。\n"
+        "實作代理不可設 Done／Blue，也不可自稱 TDD PASS。\n"
         "Use: python tools/board/poll_next_work.py\n",
         file=sys.stderr,
     )
-    return 2
+    return EXIT_REFUSED
 
 
 if __name__ == "__main__":
