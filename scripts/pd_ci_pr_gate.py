@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PD-CI-01 — PR gate entry (lint + fixed unit/smoke-adjacent pytest subset).
+"""PD-CI-01 — PR gate entry (lint + fixed unit/smoke-adjacent pytest subset + AI-dev skills checks).
 
 Local equivalent of ``.github/workflows/pr-gate.yml``.
 Any step failure → exit 1 (never treat as green).
@@ -18,6 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LINT = ROOT / "scripts" / "pd_ci_lint.py"
+SKILLS_SYNC = ROOT / "tools" / "skills" / "sync_skills.py"
+SKILLS_TEST = "tests/test_skills_sync.py"
 
 # Fixed PR test subset (unit; no cargo / no elevated MSI).
 # Keep in sync with docs/CI-PR-GATE.md and .github/workflows/pr-gate.yml.
@@ -62,6 +64,22 @@ def main() -> int:
     if _run(cmd, "test-subset") != 0:
         print("PD-CI-01 PR gate FAIL", file=sys.stderr)
         return 1
+
+    # PD-CI-SKILLS-GATE-01: AI-dev skills generated copies in sync + skills tests.
+    # --check covers tracked targets only (gitignored .claude/skills is skipped),
+    # so CI needs no local generation step.
+    if not SKILLS_SYNC.is_file() or not (ROOT / SKILLS_TEST).is_file():
+        print(f"FAIL: missing {SKILLS_SYNC} or {SKILLS_TEST}", file=sys.stderr)
+        print("PD-CI-01 PR gate FAIL", file=sys.stderr)
+        return 1
+    skills_steps = (
+        ([sys.executable, "-X", "utf8", str(SKILLS_SYNC), "--check"], "skills-sync-check"),
+        ([sys.executable, "-X", "utf8", "-m", "pytest", SKILLS_TEST, "-q", "--tb=short"], "skills-test"),
+    )
+    for skills_cmd, label in skills_steps:
+        if _run(skills_cmd, label) != 0:
+            print("PD-CI-01 PR gate FAIL", file=sys.stderr)
+            return 1
 
     print("PD-CI-01 PR gate PASS")
     return 0
