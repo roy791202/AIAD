@@ -73,8 +73,8 @@
 
 ## 已知落差（工具尚未跟上本規則，未改程式）
 
-- `tools/board/poll_next_work.py`：預設讀 `docs/PROJECT-BOARD.html` 的 `#board-snapshot` 並依 `zone` 排序；該檔已不存在，目前無法使用。需改讀 `docs/board.json` 的 `light`／`status`。
-- `tools/board/poll_extinguish.py`：行為（一律拒絕批次結案）仍符合 §7.1，但訊息寫「母對話才可標綠」，應改為「高階模型／使用者才可設 Done／Blue」。
+- `tools/board/poll_next_work.py`：已修正（PD-BOARD-GAPS-POLL-01）。改為唯讀 `docs/board.json`，篩 `status`∈{Todo, Backlog, In Progress}，排除 Epic（除非 `--include-epic`）與待決策卡，依 `light` Red>Yellow>Gray>Green、`updatedAt` 舊→新、`id` 排序；檔案不存在或 JSON 壞回 exit 2。
+- `tools/board/poll_extinguish.py`：已修正（PD-BOARD-GAPS-POLL-01）。仍一律拒絕（exit 2），訊息改為「只有高階模型／使用者才可設 Done／Blue；須獨立 `TDD_PASS` 與 PR 合併」；`docs/start-board-extinguish.cmd` 末行同步。
 - `tools/board/dispatch-agents.json` 的 `skip_kinds` 依賴已停用的 `kind=decision`；應改成跳過 `light=Red` 且 `lightReason` 以「待決策：」開頭的卡。
 - `tools/board/SNAPSHOT-SAFE.md`、`board_core.snapshot_safe`、`board.py report` 仍是寫 `#board-snapshot` 的舊流程。
 - `docs/start-board-watch.cmd`／`docs/board_watch.py`：仍在埠 28789 提供並寫回已不存在的 `docs/PROJECT-BOARD.html`，目前無法使用；看板請直接看 `docs/board.json`。

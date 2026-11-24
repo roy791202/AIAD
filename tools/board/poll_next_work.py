@@ -1,66 +1,103 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""排程輪詢：列出下一張「尚未真正做完」的工項（紅 > 黃 > 灰），不改燈號。
+"""List the next open work card from docs/board.json (read-only; never writes the board).
 
-滅燈規則：實作完成 → cargo/tauri/驗收通過 → 才手動或由母對話改綠。
+Filters status in {Todo, Backlog, In Progress}; skips Epics (unless --include-epic)
+and pending-decision cards (light=Red with lightReason starting with 「待決策：」).
+Order: light Red > Yellow > Gray > Green, then oldest updatedAt, then id.
+Exit 0 on success (including QUEUE_EMPTY); exit 2 if the board is missing or not valid JSON.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-DEFAULT_BOARD = REPO / "docs" / "PROJECT-BOARD.html"
-PRIORITY = ("red", "yellow", "gray")
-# epic is tracking only — skip for "next implement" unless --include-epic
-SKIP_DEFAULT = {"PRODUCT-DEV-20261023"}
+DEFAULT_BOARD = REPO / "docs" / "board.json"
+
+EXIT_OK = 0
+EXIT_BOARD_UNREADABLE = 2
+
+OPEN_STATUSES = frozenset({"Todo", "Backlog", "In Progress"})
+LIGHT_RANK = {"Red": 0, "Yellow": 1, "Gray": 2, "Green": 3}
+EPIC_LEVEL = "Epic"
+PENDING_DECISION_PREFIX = "待決策："
+TITLE_WIDTH = 80
 
 
-def load_tasks(board: Path) -> list[dict]:
-    html = board.read_text(encoding="utf-8")
-    m = re.search(r'id="board-snapshot">(.*?)</script>', html, re.S)
-    if not m:
-        raise SystemExit("board-snapshot missing")
-    data = json.loads(m.group(1))
-    return list(data.get("tasks") or [])
+class BoardUnreadable(Exception):
+    """The board file is missing or is not valid JSON."""
+
+
+def load_items(board: Path) -> list[dict]:
+    try:
+        data = json.loads(board.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BoardUnreadable(f"{board}: {exc}") from exc
+    items = data.get("items") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        raise BoardUnreadable(f"{board}: no 'items' list")
+    return [item for item in items if isinstance(item, dict)]
+
+
+def is_pending_decision(card: dict) -> bool:
+    reason = card.get("lightReason") or ""
+    return card.get("light") == "Red" and reason.startswith(PENDING_DECISION_PREFIX)
+
+
+def is_open_work(card: dict, include_epic: bool) -> bool:
+    if card.get("status") not in OPEN_STATUSES:
+        return False
+    if card.get("level") == EPIC_LEVEL and not include_epic:
+        return False
+    return not is_pending_decision(card)
+
+
+def sort_key(card: dict) -> tuple:
+    light_rank = LIGHT_RANK.get(card.get("light"), len(LIGHT_RANK))
+    return (light_rank, str(card.get("updatedAt") or ""), str(card.get("id") or ""))
+
+
+def pending_work(items: list[dict], include_epic: bool) -> list[dict]:
+    return sorted((c for c in items if is_open_work(c, include_epic)), key=sort_key)
+
+
+def format_row(card: dict) -> str:
+    title = str(card.get("title") or "")[:TITLE_WIDTH]
+    return f"{card.get('light')}\t{card.get('status')}\t{card.get('id')}\t{title}"
+
+
+def parse_args(argv: list[str] | None) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--board", type=Path, default=DEFAULT_BOARD, help="board JSON (default docs/board.json)")
+    ap.add_argument("--all", action="store_true", help="list every open card, not only the first")
+    ap.add_argument("--include-epic", action="store_true", help="also list Epic-level cards")
+    return ap.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--board", type=Path, default=DEFAULT_BOARD)
-    ap.add_argument("--include-epic", action="store_true")
-    ap.add_argument("--all", action="store_true", help="list all pending, not only first")
-    args = ap.parse_args(argv)
-    board = args.board.resolve()
-    if not board.is_file():
-        print("missing", board, file=sys.stderr)
-        return 2
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    args = parse_args(argv)
+    try:
+        items = load_items(args.board)
+    except BoardUnreadable as exc:
+        print(f"BOARD_UNREADABLE: {exc}", file=sys.stderr)
+        return EXIT_BOARD_UNREADABLE
 
-    skip = set() if args.include_epic else set(SKIP_DEFAULT)
-    pending: list[dict] = []
-    for z in PRIORITY:
-        for t in load_tasks(board):
-            if t.get("zone") != z:
-                continue
-            if t.get("id") in skip:
-                continue
-            pending.append(t)
-
+    pending = pending_work(items, args.include_epic)
     if not pending:
-        print("QUEUE_EMPTY: no red/yellow/gray work cards (epic ignored)")
-        return 0
+        print("QUEUE_EMPTY: no open Todo/Backlog/In Progress work cards")
+        return EXIT_OK
 
     rows = pending if args.all else pending[:1]
-    for t in rows:
-        print(
-            f"{t.get('zone')}\t{t.get('id')}\t{t.get('title', '')[:80]}"
-        )
+    for card in rows:
+        print(format_row(card))
     if not args.all and len(pending) > 1:
-        print(f"# … and {len(pending) - 1} more; use --all", file=sys.stderr)
-    return 0
+        print(f"# ... and {len(pending) - 1} more; use --all", file=sys.stderr)
+    return EXIT_OK
 
 
 if __name__ == "__main__":
