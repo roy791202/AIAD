@@ -3876,6 +3876,11 @@
           "at": "2026-11-03T01:55:00.726671+08:00",
           "by": "Codex migration",
           "text": "遷移保留原卡完整資料於legacyTask；新制TDD/CI未重驗，不宣稱Green或Done。原報告："
+        },
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "本批已建卡（PM-AGENT.md 已知落差，Owner 2026-11-24 定案 L0–L2）：PD-BOARD-GAPS-TMP-01、PD-BOARD-GAPS-POLL-01、PD-BOARD-GAPS-RETIRE-01（依賴 POLL-01）、PD-BOARD-GAPS-RELEASE-01、PD-BOARD-GAPS-LIVE-DEC-01（決策紅燈）。"
         }
       ],
       "history": [
@@ -26737,6 +26742,162 @@
         }
       ],
       "prUrl": "https://github.com/roy791202/AIAD/pull/112"
+    },
+    {
+      "id": "PD-BOARD-GAPS-TMP-01",
+      "level": "Task",
+      "title": "刪除 tools/board/_tmp_* 239 支暫存腳本",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Gray",
+      "createdAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 1,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "PM-AGENT.md 已知落差處理（Owner 2026-11-24 定案 L0–L2）卡 A。允許：tools/board/_tmp_*。保護：其餘所有檔案。AC-A1 git ls-files tools/board 無 _tmp_；AC-A2 _tmp_ 以外無檔案引用被刪檔名；AC-A3 pd_ci_pr_gate 與 pytest tests 結果與改前相同。依賴：無。純刪除，無 BDD。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡。"
+        }
+      ]
+    },
+    {
+      "id": "PD-BOARD-GAPS-POLL-01",
+      "level": "Task",
+      "title": "poll_next_work.py 改為唯讀 docs/board.json；poll_extinguish 訊息改為 Done 規則",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Gray",
+      "createdAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 2,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "已知落差卡 B。介面：poll_next_work.py --board（預設 docs/board.json）--all --include-epic；篩 status∈{Todo,Backlog,In Progress}，排除 Epic（除非 --include-epic）、待決策卡（light=Red 且 lightReason 以「待決策：」開頭）、In Review／Done；排序 light Red>Yellow>Gray>Green，再 updatedAt 舊→新，再 id；輸出 light\\tstatus\\tid\\ttitle[:80]；無則 QUEUE_EMPTY；exit 0，檔案不存在或 JSON 壞 exit 2。poll_extinguish.py 維持 exit 2，訊息改「高階模型／使用者才可設 Done／Blue；須獨立 TDD_PASS 與 PR 合併」。start-board-extinguish.cmd 末行同步。AC-B1 待決策卡與 Epic 不列；AC-B2 排序符合（fixture）；AC-B3 缺檔／壞 JSON 回 2；AC-B4 執行前後 board.json hash 不變；AC-B5 poll_extinguish 回 2、含 Done、不含「母對話」；AC-B6 真 docs/board.json 可跑。允許：上述三檔、新增 tests/test_poll_next_work.py、PM-AGENT.md 已知落差前兩條。保護：board.json 只改本卡。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡。"
+        }
+      ]
+    },
+    {
+      "id": "PD-BOARD-GAPS-RETIRE-01",
+      "level": "Task",
+      "title": "停用並移除舊 HTML 看板（board_watch）與派工工具，同步文件",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Gray",
+      "createdAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 4,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "已知落差卡 C1。依賴：PD-BOARD-GAPS-POLL-01 合併後才開工（兩卡都改 PM-AGENT.md）。刪除：docs/board_watch.py、docs/start-board-watch.cmd、tools/board/board.py、SNAPSHOT-SAFE.md、test_snapshot_safe.py、dispatch-agents.json、claude-dispatch-settings.json；board_core 的 snapshot_safe、dispatch、dispatch_config、dispatch_store、dispatcher、report_channels、report_inbox、subprocess_launcher、usecases、pm；tests/test_board_orange.py、test_board_owner_action.py、test_board_orange_ui.py；tools/board/report-inbox/README.md（開工時確認屬派工專用）。保留 board_core 的 json_store、domain、ports、__init__（約 40 支歷史證據腳本 import，介面不變）。文件：PRODUCT-DEVELOPMENT.md、DESKTOP-APP-USAGE.md、VERIFY-ELEVATED-AND-LIVE-SMOKE.md、apps/sgenaxis-desktop/README.md 中埠 28789／start-board-watch／board.py report；PM-AGENT.md 已知落差後三條改為「已停用移除」；references/board-and-lights.md、project.md 視需要標已移除。AC-C1-1 搜尋 board_watch／snapshot_safe／board.py report／dispatch-agents 只剩歷史紀錄與「已移除」字樣；AC-C1-2 python -I 逐一 import 保留模組成功；AC-C1-3 抽 3 支 docs/requirements-confirmation 歷史腳本 import 成功；AC-C1-4 pd_ci_pr_gate、pytest tests、sync_skills.py --check 全 Green；AC-C1-5 sgenaxis/core/dispatcher.py 未改。保護：sgenaxis/**、apps/**（README 除外）、release_*、build_result、rel_hang_*。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡。"
+        }
+      ]
+    },
+    {
+      "id": "PD-BOARD-GAPS-RELEASE-01",
+      "level": "Task",
+      "title": "發布工具不再寫看板：release_report 改輸出 .release.json",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Gray",
+      "createdAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 3,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "已知落差卡 C2。release_report.py：移除 append_release、list_releases、_mutate_snapshot、--board 與 board_watch import；保留 build_release、build_artifact、now_iso、size_text；子指令改 build，輸出一筆發布紀錄 JSON，--out <path> 寫檔、否則 stdout。build_result.py、rel_hang_final.py、rel_hang_post.py：拿掉 --board 與寫看板步驟，改寫 <report>.release.json。tests/test_pd_release_rec_01.py 與 tests/features/pd_release_rec_01.feature 改驗發布紀錄 JSON 與輸出檔；rust-gate.yml 測試清單沿用檔名。AC-C2-1 四支工具不 import board_watch、不參照 PROJECT-BOARD；AC-C2-2 build 產出 JSON 欄位與原 build_release 一致；AC-C2-3 三支呼叫端產生 .release.json 且不寫任何看板檔；AC-C2-4 release 測試與 tools/board/test_build_result.py、test_rel_hang_*.py 全 Green。保護：C1 檔案清單、board_core/**。依賴：無。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡。"
+        }
+      ]
+    },
+    {
+      "id": "PD-BOARD-GAPS-LIVE-DEC-01",
+      "level": "Task",
+      "title": "決策：桌面 App 看板讀取來源（board_live.rs 仍讀已不存在的 PROJECT-BOARD.html）",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Red",
+      "lightReason": "待決策：桌面 App 看板讀取來源（board_live.rs 改讀 board.json／停用 PD-BOARD-LIVE-01／維持現狀）。",
+      "createdAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 1,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "待決策事項:\n- [ ] DEC-1: apps/sgenaxis-desktop/crates/sgenaxis-host/src/board_live.rs 讀 docs/PROJECT-BOARD.html #board-snapshot（已不存在）／選項 A 改讀 docs/board.json（light/status 對應 UI）·B 停用 PD-BOARD-LIVE-01 功能·C 維持現狀／影響 PD-BOARD-LIVE-01／建議 A（產品功能，需另開實作卡與 BDD）\n- [ ] DEC-2: 測試資料 tools/verify/seed_default_data.py 與 tools/harness/portable/mock_tauri_bridge.js 的 PROJECT-BOARD.html／隨 DEC-1 一起處理／影響 PD-BOARD-LIVE-01／建議跟 DEC-1 同卡\n狀態: 紅燈阻塞依賴卡派工，直至 owner 回覆。本卡不寫程式。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:00:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡（決策紅燈）。"
+        }
+      ]
     }
   ],
   "migration": {
