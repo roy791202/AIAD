@@ -1,5 +1,5 @@
 //! M04-S1 pure contract tests. Fixtures are plain values, never stub calls.
-use sgenaxis_work::document_edit::*;
+use eluslot_work::document_edit::*;
 
 // Canonical full-document fixtures; expected hashes computed independently.
 fn payload(label: &str) -> &'static str {

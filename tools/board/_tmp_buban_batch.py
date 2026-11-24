@@ -52,7 +52,7 @@ def task(id_, title, bdd, note):
 EPIC = {
     "id": PARENT,
     "ref": PARENT,
-    "title": "SGenAxis v0.1 佈版：#release 掛最終證據／佈版說明／產物清單",
+    "title": "EluSlot v0.1 佈版：#release 掛最終證據／佈版說明／產物清單",
     "zone": "yellow",
     "kind": "epic",
     "createdAt": NOW,

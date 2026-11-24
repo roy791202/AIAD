@@ -1,6 +1,6 @@
 //! IO-PREREQ Windows single-file commit adapter, approved journal protocol A.
 
-use sgenaxis_ports::{CommitError, CommitReceipt, CommitStage, FileCommitPort, FileWriteLease};
+use eluslot_ports::{CommitError, CommitReceipt, CommitStage, FileCommitPort, FileWriteLease};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
@@ -179,7 +179,7 @@ impl StdFileWriteLease {
 }
 
 fn digest(bytes: &[u8]) -> String {
-    format!("sha256:{}", sgenaxis_spec::packet::source_sha256(bytes))
+    format!("sha256:{}", eluslot_spec::packet::source_sha256(bytes))
 }
 fn storage(stage: CommitStage, path: &Path, error: impl std::fmt::Display) -> CommitError {
     CommitError::Storage {
@@ -486,7 +486,7 @@ fn encode(r: &JournalRecord) -> Vec<u8> {
     b.extend_from_slice(&r.version.to_le_bytes());
     b.extend_from_slice(&(payload.len() as u32).to_le_bytes());
     b.extend(payload);
-    let hash = sgenaxis_spec::packet::source_sha256(&b);
+    let hash = eluslot_spec::packet::source_sha256(&b);
     b.extend_from_slice(hash.as_bytes());
     b
 }
@@ -507,7 +507,7 @@ fn decode(b: &[u8], target: &str) -> Result<JournalRecord, JournalDecodeError> {
     if version != 1 {
         return Err(Version);
     }
-    if sgenaxis_spec::packet::source_sha256(&b[..end]).as_bytes() != &b[end..] {
+    if eluslot_spec::packet::source_sha256(&b[..end]).as_bytes() != &b[end..] {
         return Err(Checksum);
     }
     let mut p = 17usize;

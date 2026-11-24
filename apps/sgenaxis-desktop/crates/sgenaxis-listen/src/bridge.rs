@@ -1,6 +1,6 @@
 //! Event bridge: SourceEvent → debounce → DomainEvent → mark Dirty.
 //!
-//! UI must only [`sgenaxis_core::Engine::subscribe`] / snapshot — never call OS
+//! UI must only [`eluslot_core::Engine::subscribe`] / snapshot — never call OS
 //! watchers or push [`crate::SourceEvent`] from the front-end.
 //!
 //! PD-LISTEN-RECON-01: terminal AgentChunk flushes immediately; last Chunk is
@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
-use sgenaxis_core::{DirtySet, Engine, PropertyId, PropertyValue, Zone};
-use sgenaxis_exec::{AgentChunk, ExitClassification, RunId};
+use eluslot_core::{DirtySet, Engine, PropertyId, PropertyValue, Zone};
+use eluslot_exec::{AgentChunk, ExitClassification, RunId};
 
 use crate::clock::{Clock, SystemClock};
 use crate::domain::{AgentEventKind, DomainEvent};

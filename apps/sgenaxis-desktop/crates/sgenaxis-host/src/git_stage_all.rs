@@ -3,7 +3,7 @@
 //! In-progress merge/rebase/cherry-pick/revert fails honestly.
 //! A clean worktree is a success no-op.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated stage-all (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,7 +52,7 @@ pub fn perform_git_stage_all(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
+    use eluslot_adapters::FakeGitWrite;
 
     #[test]
     fn approved_stage_all_succeeds_including_clean_noop() {

@@ -6,7 +6,7 @@
 //! Patch drift (check fails) refuses with no mutation.
 //! An already-applied matching hunk is a success no-op.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated stage-hunk (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +58,7 @@ pub fn perform_git_stage_hunk(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
+    use eluslot_adapters::FakeGitWrite;
 
     const TEXT_HUNK: &str =
         "diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-old\n+new\n";

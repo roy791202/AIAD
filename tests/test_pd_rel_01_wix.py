@@ -16,11 +16,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 WIX_DIR = ROOT / "packaging" / "windows" / "wix"
 MANIFEST_PATH = WIX_DIR / "packaging.manifest.json"
-WXS_PATH = WIX_DIR / "SGenAxis.wxs"
+WXS_PATH = WIX_DIR / "EluSlot.wxs"
 README_PATH = WIX_DIR / "README.md"
 BUILD_SCRIPT = WIX_DIR / "build-msi.ps1"
 
-# Stable UpgradeCode — must match SGenAxis.wxs (upgrade identity).
+# Stable UpgradeCode — must match EluSlot.wxs (upgrade identity).
 EXPECTED_UPGRADE_CODE = "B7E4C2A1-9F83-4D6E-A1B2-C3D4E5F60718"
 GUID_RE = re.compile(
     r"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"
@@ -48,9 +48,9 @@ def test_manifest_declares_wix_primary_forbids_nsis_inno():
     forbidden = {item.lower() for item in packager["forbidden_primary"]}
     assert "nsis" in forbidden
     assert "inno" in forbidden
-    assert packager["product"] == "SGenAxis"
+    assert packager["product"] == "EluSlot"
     assert packager["version"] == "0.1.0"
-    assert packager["artifact_name_pattern"] == "SGenAxis-{version}-windows-x64.msi"
+    assert packager["artifact_name_pattern"] == "EluSlot-{version}-windows-x64.msi"
 
 
 def test_manifest_marks_non_windows_unsupported():
@@ -66,7 +66,7 @@ def test_manifest_marks_non_windows_unsupported():
 def test_manifest_file_hashes_match_on_disk():
     manifest = _load_manifest()
     files = manifest["files"]
-    assert "SGenAxis.wxs" in files
+    assert "EluSlot.wxs" in files
     assert "README.md" in files
     assert "build-msi.ps1" in files
     assert "refresh_manifest_hashes.py" in files
@@ -90,7 +90,7 @@ def test_manifest_silent_commands_are_msiexec():
 
 def test_wxs_declares_sgenaxis_package_and_stable_upgrade_code():
     text = WXS_PATH.read_text(encoding="utf-8")
-    assert 'Name="SGenAxis"' in text or "Name='SGenAxis'" in text
+    assert 'Name="EluSlot"' in text or "Name='EluSlot'" in text
     assert "Manufacturer" in text
     assert EXPECTED_UPGRADE_CODE in text
     assert GUID_RE.match(EXPECTED_UPGRADE_CODE)
@@ -114,7 +114,7 @@ def test_wxs_has_install_folder_feature_and_embed_cab():
 
 
 def test_wxs_major_upgrade_removes_prior_including_same_version():
-    """Installer must uninstall prior SGenAxis (same UpgradeCode) then overwrite payload.
+    """Installer must uninstall prior EluSlot (same UpgradeCode) then overwrite payload.
 
     Same-Version rebuilds (new ProductCode, Version still 0.1.0) require
     AllowSameVersionUpgrades; otherwise ARP keeps the old product / files conflict.
@@ -148,7 +148,7 @@ def test_build_script_uses_wix_build_not_nsis_inno():
     # May mention makensis/iscc only as non-primary; must not invoke them.
     assert not re.search(r"(?m)^\s*&?\s*makensis\b", text, flags=re.IGNORECASE)
     assert not re.search(r"(?m)^\s*&?\s*iscc\b", text, flags=re.IGNORECASE)
-    assert "SGenAxis.wxs" in text or "sgenaxis.wxs" in lower
+    assert "EluSlot.wxs" in text or "sgenaxis.wxs" in lower
     assert "not the primary" in lower or "not primary" in lower or "forbidden" in lower
 
 
@@ -159,8 +159,8 @@ def test_payload_stage_documented_or_present():
     readme = payload_dir / "README.txt"
     assert readme.is_file()
     # Either real exe or scaffold stub for contract / optional wix build.
-    stub = payload_dir / "SGenAxis.exe"
-    assert stub.is_file(), "payload/SGenAxis.exe required (Tauri release or scaffold stub)"
+    stub = payload_dir / "EluSlot.exe"
+    assert stub.is_file(), "payload/EluSlot.exe required (Tauri release or scaffold stub)"
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,5 @@
 //! M01-S1 contract tests. Raw fixture construction does not call target behavior.
-use sgenaxis_work::project_definition::*;
+use eluslot_work::project_definition::*;
 use std::collections::BTreeMap;
 
 fn draft() -> DefinitionDraft {

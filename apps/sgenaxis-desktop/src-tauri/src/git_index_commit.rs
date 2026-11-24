@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, TryLockError};
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_ports::{GitIndexCommitPort, IndexCommitError, IndexCommitFacts, IndexCommitFingerprint};
-use sgenaxis_ports::{GitOperationState, GitWriteApproval};
+use eluslot_ports::{GitIndexCommitPort, IndexCommitError, IndexCommitFacts, IndexCommitFingerprint};
+use eluslot_ports::{GitOperationState, GitWriteApproval};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexCommitFingerprintDto {

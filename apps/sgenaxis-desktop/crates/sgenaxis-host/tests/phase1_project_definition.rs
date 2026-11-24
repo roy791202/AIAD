@@ -6,10 +6,10 @@
 //! with a path mismatch. Gate the whole file to Windows (as with
 //! project_preferences_creation.rs); Windows CI (rust-windows) keeps covering it.
 #![cfg(windows)]
-use sgenaxis_host::project_definition::*;
-use sgenaxis_host::project_preferences::PreferenceChoice;
-use sgenaxis_ports::*;
-use sgenaxis_work::project_definition::*;
+use eluslot_host::project_definition::*;
+use eluslot_host::project_preferences::PreferenceChoice;
+use eluslot_ports::*;
+use eluslot_work::project_definition::*;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 const ROOT: &str = "C:/owned-fixture-parent/Project-A";
@@ -59,7 +59,7 @@ fn existing() -> DefinitionLocation {
     }
 }
 fn digest(b: &[u8]) -> String {
-    format!("sha256:{}", sgenaxis_spec::packet::source_sha256(b))
+    format!("sha256:{}", eluslot_spec::packet::source_sha256(b))
 }
 fn raw_digest(b: &[u8]) -> RawDefinitionDigest {
     RawDefinitionDigest::try_from_text(&digest(b)).expect("fixture digest is valid")
@@ -330,7 +330,7 @@ fn receipt(
     p
 }
 fn prepared_preset() -> PreparedPreferencePlan {
-    let p = sgenaxis_spec::project_preferences::preset("balanced").expect("fixture preset");
+    let p = eluslot_spec::project_preferences::preset("balanced").expect("fixture preset");
     let b = serde_json::to_vec_pretty(&p).expect("fixture preference JSON");
     PreparedPreferencePlan::Preset {
         preset_id: "balanced".into(),
@@ -466,7 +466,7 @@ fn t053_preference_commit() {
     assert_eq!(r.tree().get(PREF), Some(&Node::File(expected)));
     assert_eq!(r.tree().get("C:/source/sentinel").cloned(), before);
     let changed =
-        serde_json::to_vec(&sgenaxis_spec::project_preferences::preset("throughput").unwrap())
+        serde_json::to_vec(&eluslot_spec::project_preferences::preset("throughput").unwrap())
             .unwrap();
     let mut lease = r.acquire_write(PREF).unwrap();
     let old_digest = match r.tree().get(PREF).unwrap() {
@@ -1823,9 +1823,9 @@ fn preparation_positive_contract() {
             assert_eq!(preset_id, "balanced");
             assert_eq!(digest.as_str(), self::digest(&encoded_bytes));
             assert_eq!(
-                sgenaxis_spec::project_preferences::parse_project_preferences(&encoded_bytes)
+                eluslot_spec::project_preferences::parse_project_preferences(&encoded_bytes)
                     .unwrap(),
-                sgenaxis_spec::project_preferences::preset("balanced").unwrap()
+                eluslot_spec::project_preferences::preset("balanced").unwrap()
             );
             encoded_bytes
         }
@@ -1842,9 +1842,9 @@ fn preparation_positive_contract() {
             assert_eq!(captured_source_digest.as_str(), self::digest(&before));
             assert_eq!(digest.as_str(), self::digest(&encoded_bytes));
             assert_eq!(
-                sgenaxis_spec::project_preferences::parse_project_preferences(&encoded_bytes)
+                eluslot_spec::project_preferences::parse_project_preferences(&encoded_bytes)
                     .unwrap(),
-                sgenaxis_spec::project_preferences::parse_project_preferences(&before).unwrap()
+                eluslot_spec::project_preferences::parse_project_preferences(&before).unwrap()
             );
         }
         other => panic!("independent import {other:?}"),

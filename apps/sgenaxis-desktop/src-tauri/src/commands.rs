@@ -1,7 +1,7 @@
 //! Thin Tauri invoke handlers.
 //!
 //! - PD-CMD-01 → [`crate::dispatch::DispatchHost`] (Core／EXEC DryRun)
-//! - PD-HOST-01 → [`sgenaxis_host::CompositionRoot`] (lifecycle／settings)
+//! - PD-HOST-01 → [`eluslot_host::CompositionRoot`] (lifecycle／settings)
 //! - PD-BOARD-LIVE-01 → read-only local `#board-snapshot` → Core projection
 //! - PD-GIT-UI-01 → read-only GitPort projection
 //! - PD-GIT-WRITE-UI-01 → approval-gated GitWritePort commit／push（no force；no UI→CLI）
@@ -27,13 +27,13 @@ use std::sync::Mutex;
 
 use rfd::{AsyncMessageDialog, MessageButtons, MessageDialogResult, MessageLevel};
 use serde::{Deserialize, Serialize};
-use sgenaxis_adapters::{summarize_worktree, GitWorkbenchSummary};
-use sgenaxis_core::{TaskRecord, Zone};
-use sgenaxis_exec::{
+use eluslot_adapters::{summarize_worktree, GitWorkbenchSummary};
+use eluslot_core::{TaskRecord, Zone};
+use eluslot_exec::{
     is_cli_path_activatable, is_mcp_endpoint_activatable, AgentSettingsDocument, CliAgentSettings,
     CliToolConfig, CliToolKind, McpAgentSettings, McpTransportKind,
 };
-use sgenaxis_host::{
+use eluslot_host::{
     ask_agent_draft, authorize, build_preview_file, load_board_file, load_design_file,
     load_scene_text, perform_git_push_tag, perform_git_rename_branch, perform_git_rename_remote,
     perform_git_set_upstream, perform_git_stage_all, perform_git_stage_file, perform_git_switch,
@@ -47,7 +47,7 @@ use sgenaxis_host::{
     GuardDecisionView, GuardPacketDto,
     HostSettings, LifecyclePhase, DEFAULT_REL_PATH as UIDESIGN_DEFAULT_REL, DEFAULT_SGS_REL,
 };
-use sgenaxis_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
+use eluslot_ports::{FileSystemPort, GitPort, GitStatusKind, GitWriteApproval, GitWritePort};
 use tauri::{AppHandle, State, WebviewWindow};
 
 use crate::code_import::{preview_selected, ImportPreview, ImportPreviewRequest};
@@ -98,7 +98,7 @@ pub struct HostState {
     pub inner: Mutex<CompositionRoot>,
     /// M01-S3: server-side in-flight wizard sessions keyed by opaque token
     /// (option A). The UI round-trips the token and never sees binding internals.
-    pub wizard: Mutex<sgenaxis_host::project_wizard::WizardSessionStore>,
+    pub wizard: Mutex<eluslot_host::project_wizard::WizardSessionStore>,
 }
 
 impl HostState {
@@ -106,7 +106,7 @@ impl HostState {
         let root = CompositionRoot::boot_std().map_err(|e| e.to_string())?;
         Ok(Self {
             inner: Mutex::new(root),
-            wizard: Mutex::new(sgenaxis_host::project_wizard::WizardSessionStore::new()),
+            wizard: Mutex::new(eluslot_host::project_wizard::WizardSessionStore::new()),
         })
     }
 }
@@ -1316,7 +1316,7 @@ pub fn host_new_project_directory(
     };
     let path_str = path.to_string_lossy().to_string();
     let root = state.inner.lock().map_err(|_| poison_host())?;
-    match sgenaxis_host::create_new_project_root(root.fs(), &path_str) {
+    match eluslot_host::create_new_project_root(root.fs(), &path_str) {
         Ok(created) => Ok(PickProjectDirectoryResult {
             status: "ok".into(),
             path: created,
@@ -1346,7 +1346,7 @@ pub fn host_create_project_directory(
 ) -> Result<PickProjectDirectoryResult, String> {
     authorize("host_create_project_directory").map_err(|e| e.to_string())?;
     let root = state.inner.lock().map_err(|_| poison_host())?;
-    match sgenaxis_host::create_new_project_under(root.fs(), &args.parent, &args.name) {
+    match eluslot_host::create_new_project_under(root.fs(), &args.parent, &args.name) {
         Ok(created) => Ok(PickProjectDirectoryResult {
             status: "ok".into(),
             path: created,
@@ -1441,9 +1441,9 @@ pub fn host_create_project_with_preferences(
 // In-flight state lives server-side in `HostState.wizard`, keyed by an opaque
 // token. Orchestration bodies are SKELETON (RED): `wizard_commit` returns the
 // NOT_IMPLEMENTED sentinel until GREEN wires bind_definition + save_definition.
-use sgenaxis_host::project_definition::DefinitionLocation;
-use sgenaxis_host::project_preferences::PreferenceChoice;
-use sgenaxis_host::project_wizard::{
+use eluslot_host::project_definition::DefinitionLocation;
+use eluslot_host::project_preferences::PreferenceChoice;
+use eluslot_host::project_wizard::{
     wizard_apply_step as host_wizard_apply_step, wizard_begin as host_wizard_begin,
     wizard_cancel as host_wizard_cancel, wizard_commit as host_wizard_commit,
     wizard_prepare_preferences as host_wizard_prepare_preferences, WizardBeginView,
@@ -1577,7 +1577,7 @@ pub fn wizard_commit(
     let token = WizardToken::from_raw(&args.token);
     let root = state.inner.lock().map_err(|_| poison_host())?;
     let mut store = state.wizard.lock().map_err(|_| poison_host())?;
-    let commit = sgenaxis_adapters::StdFileCommit::new();
+    let commit = eluslot_adapters::StdFileCommit::new();
     host_wizard_commit(root.fs(), &commit, &mut store, &token).map_err(|e| e.to_string())
 }
 
@@ -4137,8 +4137,8 @@ pub struct PortsStatusDto {
     pub message: Option<String>,
 }
 
-impl From<&sgenaxis_host::PortsStatusView> for PortsStatusDto {
-    fn from(v: &sgenaxis_host::PortsStatusView) -> Self {
+impl From<&eluslot_host::PortsStatusView> for PortsStatusDto {
+    fn from(v: &eluslot_host::PortsStatusView) -> Self {
         Self {
             status: v.status.clone(),
             entry_count: v.entry_count,
@@ -4696,8 +4696,8 @@ pub fn import_preview(
 #[cfg(test)]
 mod git_ui_tests {
     use super::*;
-    use sgenaxis_adapters::fake::{FakeGit, FakeGitWrite};
-    use sgenaxis_ports::{
+    use eluslot_adapters::fake::{FakeGit, FakeGitWrite};
+    use eluslot_ports::{
         GitBranch, GitCommit, GitConflictFile, GitConflictState, GitRemote, GitSettings, GitStash,
         GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream,
     };
@@ -5033,7 +5033,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_commands_allowlisted_raw_cli_names_not() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_workbench_summary"));
         assert!(is_allowed("git_workbench_diff"));
         assert!(is_allowed("git_write_commit"));
@@ -5047,7 +5047,7 @@ mod git_ui_tests {
     // (unapproved / empty branch never switches; approved switches via port).
     #[test]
     fn git_switch_branch_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_switch_branch"));
         assert!(!is_allowed("git_switch"));
         assert!(!is_allowed("git_checkout"));
@@ -5083,7 +5083,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_settings_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_identity"));
         assert!(is_allowed("git_write_ignore"));
         assert!(!is_allowed("git_config"));
@@ -5122,7 +5122,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_stash_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_stash_apply"));
         assert!(is_allowed("git_write_stash_pop"));
         assert!(is_allowed("git_write_stash_drop"));
@@ -5166,7 +5166,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_stash_drop_and_push_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_stash_drop"));
         assert!(is_allowed("git_write_stash_push"));
         assert!(!is_allowed("git_stash_drop"));
@@ -5211,7 +5211,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_tag_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_tag"));
         assert!(!is_allowed("git_tag"));
         assert!(!is_allowed("git_tag_delete"));
@@ -5260,7 +5260,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_tag_delete_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_tag_delete"));
         assert!(!is_allowed("git_tag_delete"));
         assert!(!is_allowed("git_tag_push"));
@@ -5304,7 +5304,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_tag_push_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_tag_push"));
         assert!(!is_allowed("git_tag_push"));
         assert!(is_allowed("git_write_push"));
@@ -5385,7 +5385,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_branch_create_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_branch_create"));
         assert!(!is_allowed("git_branch"));
         assert!(!is_allowed("git_branch_create"));
@@ -5428,7 +5428,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_branch_delete_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_branch_delete"));
         assert!(!is_allowed("git_branch_delete"));
         assert!(!is_allowed("git_branch_force_delete"));
@@ -5495,7 +5495,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_branch_rename_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_branch_rename"));
         assert!(!is_allowed("git_branch_rename"));
         assert!(!is_allowed("git_branch_move"));
@@ -5610,7 +5610,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_remote_add_remove_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_remote_add"));
         assert!(is_allowed("git_write_remote_remove"));
         assert!(is_allowed("git_write_remote_set_url"));
@@ -5705,7 +5705,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_remote_set_url_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_remote_set_url"));
         assert!(!is_allowed("git_remote_set_url"));
 
@@ -5810,7 +5810,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_remote_rename_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_remote_rename"));
         assert!(!is_allowed("git_remote_rename"));
 
@@ -5895,7 +5895,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_set_upstream_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_set_upstream"));
         assert!(!is_allowed("git_set_upstream"));
         assert!(!is_allowed("git_branch_set_upstream"));
@@ -5963,7 +5963,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_unset_upstream_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_unset_upstream"));
         assert!(!is_allowed("git_unset_upstream"));
         assert!(!is_allowed("git_branch_unset_upstream"));
@@ -6012,7 +6012,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_stage_all_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_stage_all"));
         assert!(!is_allowed("git_stage_all"));
         assert!(!is_allowed("git_add"));
@@ -6040,7 +6040,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_unstage_all_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_unstage_all"));
         assert!(!is_allowed("git_unstage_all"));
         assert!(!is_allowed("git_reset"));
@@ -6068,7 +6068,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_stage_file_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_stage_file"));
         assert!(!is_allowed("git_stage_file"));
         assert!(!is_allowed("git_add"));
@@ -6100,7 +6100,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_unstage_file_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_unstage_file"));
         assert!(!is_allowed("git_unstage_file"));
         assert!(!is_allowed("git_reset"));
@@ -6132,7 +6132,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_stage_hunk_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_stage_hunk"));
         assert!(!is_allowed("git_stage_hunk"));
         assert!(!is_allowed("git_apply"));
@@ -6173,7 +6173,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_fetch_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_fetch"));
         assert!(!is_allowed("git_fetch"));
         assert!(!is_allowed("git_pull"));
@@ -6237,7 +6237,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_fetch_prune_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_fetch_prune"));
         assert!(!is_allowed("git_fetch_prune"));
         assert!(!is_allowed("git_pull"));
@@ -6304,7 +6304,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_pull_ff_only_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_pull_ff_only"));
         assert!(!is_allowed("git_pull"));
 
@@ -6389,7 +6389,7 @@ mod git_ui_tests {
 
     #[test]
     fn git_write_conflict_save_continue_abort_gated_and_allowlisted() {
-        use sgenaxis_host::is_allowed;
+        use eluslot_host::is_allowed;
         assert!(is_allowed("git_write_conflict_save"));
         assert!(is_allowed("git_write_conflict_continue"));
         assert!(is_allowed("git_write_conflict_abort"));
@@ -6447,7 +6447,7 @@ mod git_ui_tests {
         assert!(!skip_merge.ok);
         assert!(skip_merge.message.contains("cannot be skipped"));
         assert_eq!(w.conflict_kind("/r").as_deref(), Some("Merge"));
-        w.conflict_abort("/r", sgenaxis_ports::GitWriteApproval::granted())
+        w.conflict_abort("/r", eluslot_ports::GitWriteApproval::granted())
             .unwrap();
 
         w.set_conflict_in_progress("/r", "Rebase", &["src/skip.rs"]);
@@ -6510,7 +6510,7 @@ mod git_ui_tests {
 #[cfg(test)]
 mod ports_ui_tests {
     use super::*;
-    use sgenaxis_host::{is_allowed, CompositionRoot};
+    use eluslot_host::{is_allowed, CompositionRoot};
 
     #[test]
     fn ports_status_dto_maps_boot_fake() {
@@ -6538,7 +6538,7 @@ mod ports_ui_tests {
 
     #[test]
     fn empty_ports_projection_is_ok() {
-        use sgenaxis_host::project_ports_status;
+        use eluslot_host::project_ports_status;
         let empty = project_ports_status(None, false);
         let dto = PortsStatusDto::from(&empty);
         assert_eq!(dto.status, "empty");
@@ -6550,9 +6550,9 @@ mod ports_ui_tests {
 #[cfg(test)]
 mod deploy_cmd_tests {
     use super::*;
-    use sgenaxis_adapters::{boxed_deploy_fake, FakeDeploy};
-    use sgenaxis_host::{is_allowed, CompositionRoot};
-    use sgenaxis_ports::DeployPlatform;
+    use eluslot_adapters::{boxed_deploy_fake, FakeDeploy};
+    use eluslot_host::{is_allowed, CompositionRoot};
+    use eluslot_ports::DeployPlatform;
 
     #[test]
     fn deploy_dto_maps_and_qn_auto_false() {
@@ -6562,23 +6562,23 @@ mod deploy_cmd_tests {
         ))
         .unwrap();
         let root = CompositionRoot::boot_with_ports_and_deploy(
-            sgenaxis_adapters::BoxedPorts::fake(),
+            eluslot_adapters::BoxedPorts::fake(),
             Box::new(fake),
             false,
         )
         .unwrap();
         // Force Windows view via port directly for deterministic CI on any OS.
         let st_view =
-            sgenaxis_host::status_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
+            eluslot_host::status_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
         let st = DeployStatusDto::from(&st_view);
         assert!(st.supported);
         assert!(!st.elevated_qn_auto);
         let check_view =
-            sgenaxis_host::check_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
+            eluslot_host::check_view(root.deploy_port(), DeployPlatform::Windows).unwrap();
         let check = DeployCheckDto::from(&check_view);
         assert!(check.needs_manual_elevated);
         let arts: Vec<_> =
-            sgenaxis_host::list_artifact_views(root.deploy_port(), DeployPlatform::Windows)
+            eluslot_host::list_artifact_views(root.deploy_port(), DeployPlatform::Windows)
                 .unwrap()
                 .iter()
                 .map(DeployArtifactDto::from)
@@ -6601,10 +6601,10 @@ mod deploy_cmd_tests {
     #[test]
     fn deploy_unsupported_is_observable_not_panic() {
         let root = CompositionRoot::boot_fake().unwrap();
-        let v = sgenaxis_host::status_view(root.deploy_port(), DeployPlatform::MacOs).unwrap();
+        let v = eluslot_host::status_view(root.deploy_port(), DeployPlatform::MacOs).unwrap();
         assert!(!v.supported);
         assert!(!v.message.is_empty());
-        let c = sgenaxis_host::check_view(root.deploy_port(), DeployPlatform::MacOs).unwrap();
+        let c = eluslot_host::check_view(root.deploy_port(), DeployPlatform::MacOs).unwrap();
         assert_eq!(c.status, "unsupported");
     }
 }
@@ -6678,7 +6678,7 @@ mod wire_root_tests {
 #[cfg(test)]
 mod wire_agent_tests {
     use super::*;
-    use sgenaxis_adapters::fake::FakeFileSystem;
+    use eluslot_adapters::fake::FakeFileSystem;
 
     /// BDD-PD-WIRE-AGENT-01: DryRun always passes Live gate.
     #[test]

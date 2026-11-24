@@ -265,9 +265,9 @@ def build_prompt(card, run_id, repo, tasks_path, state_path, default_tasks_path,
         return (card.get(name) or "").strip() or "(empty)"
 
     return "\n".join([
-        "# SGenAxis board dispatch — run %s" % run_id,
+        "# EluSlot board dispatch — run %s" % run_id,
         "",
-        "You were started by the local SGenAxis board dispatcher on 127.0.0.1:28789 in %s." % repo,
+        "You were started by the local EluSlot board dispatcher on 127.0.0.1:28789 in %s." % repo,
         "Work on exactly ONE board card — the one below — then report and exit.",
         "",
         "## 0b. Read scope (hard · save tokens) — PRODUCT-DEVELOPMENT §7.2",

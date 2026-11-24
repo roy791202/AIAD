@@ -3,7 +3,7 @@
 #[path = "../src/git_index_commit.rs"] mod git_index_commit;
 use dispatch::DispatchHost;
 use dto::{DocumentAdoptArgs,DocumentAdoptErrorDto as E};
-use sgenaxis_ports::{FileSystemPort,PortError};
+use eluslot_ports::{FileSystemPort,PortError};
 use std::sync::{Mutex,atomic::{AtomicBool,AtomicUsize,Ordering}};
 use std::collections::{BTreeMap,BTreeSet};
 const ROOT:&str="/doc-entry/A";
@@ -44,7 +44,7 @@ fn doc_e02_fresh_host_requires_existing_work_registration() {
     let mut host = DispatchHost::new();
     let fs = Fs::default();
     let args = DocumentAdoptArgs {
-        expected_project_id: sgenaxis_work::ProjectId::from_canonical_root(ROOT).to_string(),
+        expected_project_id: eluslot_work::ProjectId::from_canonical_root(ROOT).to_string(),
         reference: "docs/sample.ess".into(),
     };
     assert_eq!(host.project_document_adopt(&fs, ROOT, &args, UUID, "main", true), Err(E::ProjectNotBound));

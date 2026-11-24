@@ -6,7 +6,7 @@
 
 use std::process::Command;
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     GitBranch, GitCommit, GitConflictFile, GitConflictState, GitPort, GitRemote, GitSettings,
     GitStash, GitStatus, GitStatusEntry, GitStatusKind, GitTag, GitUpstream, PortError,
 };

@@ -1,11 +1,11 @@
 //! Read-only inspection; does not retain or mutate an active model or draft.
-use sgenaxis_adapters::ess_codec::ProductEssDecoder;
-use sgenaxis_ports::{FileSystemPort, PortError};
-use sgenaxis_spec::identity_preview::{
+use eluslot_adapters::ess_codec::ProductEssDecoder;
+use eluslot_ports::{FileSystemPort, PortError};
+use eluslot_spec::identity_preview::{
     inspect_identity_claims, DocumentKind, IdentityError, IdentityInspectionRequest,
     IdentityPreview,
 };
-use sgenaxis_spec::packet::{EssDecoderPort, PacketLimits, SourceElement};
+use eluslot_spec::packet::{EssDecoderPort, PacketLimits, SourceElement};
 use std::collections::BTreeSet;
 
 pub fn inspect_document_identity(

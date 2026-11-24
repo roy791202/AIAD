@@ -21,7 +21,7 @@ HOST_DOC = (
     / "apps"
     / "sgenaxis-desktop"
     / "crates"
-    / "sgenaxis-host"
+    / "eluslot-host"
     / "src"
     / "uidesign_doc.rs"
 )
@@ -125,7 +125,7 @@ def test_host_uidesign_unit_tests_pass():
             "cargo",
             "test",
             "-p",
-            "sgenaxis-host",
+            "eluslot-host",
             "uidesign_doc",
             "--",
             "--nocapture",

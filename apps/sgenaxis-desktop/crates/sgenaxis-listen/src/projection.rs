@@ -1,6 +1,6 @@
 //! Listen projection — what UI may subscribe to (never raw OS／adapter events).
 
-use sgenaxis_exec::RunId;
+use eluslot_exec::RunId;
 
 use crate::domain::DomainEvent;
 use crate::recon::classification_label;
@@ -15,7 +15,7 @@ pub struct ListenProjection {
     pub last_agent_run: Option<u64>,
     pub last_agent_kind: Option<String>,
     pub last_agent_burst: u32,
-    /// EXEC [`sgenaxis_exec::ExitClassification`] label when the run exited.
+    /// EXEC [`eluslot_exec::ExitClassification`] label when the run exited.
     pub last_agent_classification: Option<String>,
     pub last_agent_exit_code: Option<i32>,
     /// True while a non-success end awaits reconciliation (zone stays yellow).

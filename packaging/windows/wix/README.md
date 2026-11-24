@@ -1,11 +1,11 @@
-# SGenAxis Windows packaging (WiX) — PD-REL-03
+# EluSlot Windows packaging (WiX) — PD-REL-03
 
 Primary Windows release channel: **WiX → MSI**.  
 **Not primary:** NSIS, Inno Setup, portable-zip-only.
 
 PD-REL-02: `build-msi.ps1` stages the **real** Tauri release exe  
-(`apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe`) into  
-`payload/SGenAxis.exe`, verifies **SHA-256** against `packaging.manifest.json`  
+(`apps/sgenaxis-desktop/src-tauri/target/release/eluslot-desktop.exe`) into  
+`payload/EluSlot.exe`, verifies **SHA-256** against `packaging.manifest.json`  
 → `payload.sha256`, then embeds it with `wix build`.
 
 PD-REL-03: **VERIFY-INSTALL** contract — silent install/uninstall checklist +  
@@ -19,22 +19,22 @@ Aligns with `docs/PRODUCT-DEVELOPMENT.md` §6.4 and VERIFY-INSTALL.
 
 | Path | Role |
 |------|------|
-| `SGenAxis.wxs` | WiX v4+ package source (Product name SGenAxis, stable UpgradeCode, `MajorUpgrade` removes prior install incl. same-Version rebuilds, Start Menu shortcut) |
+| `EluSlot.wxs` | WiX v4+ package source (Product name EluSlot, stable UpgradeCode, `MajorUpgrade` removes prior install incl. same-Version rebuilds, Start Menu shortcut) |
 | `packaging.manifest.json` | Packager contract + template hashes + payload SHA-256 + verify_install |
 | `build-msi.ps1` | Stage Tauri exe → hash gate → `wix build` (not makensis / iscc) |
 | `verify-install.checklist.json` | VERIFY-INSTALL checklist (exit / log / files / shortcut) |
 | `verify-install.ps1` | Runnable hook — dry/contract always; live `/qn` only if already elevated + `-RunElevated` |
-| `payload/` | Staged `SGenAxis.exe` (must match Tauri release digest) |
+| `payload/` | Staged `EluSlot.exe` (must match Tauri release digest) |
 | `out/` | MSI + `.sha256` + optional verify-install logs/result JSON |
 
 ## Prerequisites
 
 1. [WiX Toolset](https://wixtoolset.org/) **v4 / v5 / v7** (`wix.exe` on PATH).  
-2. Built Tauri release: `apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe`.
+2. Built Tauri release: `apps/sgenaxis-desktop/src-tauri/target/release/eluslot-desktop.exe`.
 
 ```powershell
 where.exe wix
-Test-Path D:\AIAD\apps\sgenaxis-desktop\src-tauri\target\release\sgenaxis-desktop.exe
+Test-Path D:\AIAD\apps\sgenaxis-desktop\src-tauri\target\release\eluslot-desktop.exe
 ```
 
 ## Build MSI (stages + verifies hash)
@@ -42,25 +42,25 @@ Test-Path D:\AIAD\apps\sgenaxis-desktop\src-tauri\target\release\sgenaxis-deskto
 ```powershell
 cd D:\AIAD\packaging\windows\wix
 .\build-msi.ps1
-# optional: -SkipStage if payload\SGenAxis.exe already staged and hash-matched
+# optional: -SkipStage if payload\EluSlot.exe already staged and hash-matched
 ```
 
-Artifact: `out\SGenAxis-0.1.0-windows-x64.msi` plus `*.sha256`.
+Artifact: `out\EluSlot-0.1.0-windows-x64.msi` plus `*.sha256`.
 
 ## Upgrade / replace prior install
 
-`SGenAxis.wxs` uses a **stable `UpgradeCode`** plus `<MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize">`:
+`EluSlot.wxs` uses a **stable `UpgradeCode`** plus `<MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize">`:
 
 | Scenario | Behavior |
 |----------|----------|
-| Newer `Version` over older | Old MSI product removed, then new files installed (overwrite under `Program Files\SGenAxis`) |
+| Newer `Version` over older | Old MSI product removed, then new files installed (overwrite under `Program Files\EluSlot`) |
 | Same `Version` (e.g. 0.1.0 rebuild, new ProductCode) | Prior install still removed — avoids duplicate ARP entries / leftover exe |
 | Older over newer | Blocked (`DowngradeErrorMessage`) |
 
 This is the MSI-native “remove old / cover with new” path — no separate NSIS-style wizard page.  
 Prefer bumping SemVer when shipping intentional upgrades; same-version rebuilds remain supported for v0.1 iteration.
 
-Re-run `.\build-msi.ps1` after changing `SGenAxis.wxs` so the on-disk MSI picks up the upgrade table.
+Re-run `.\build-msi.ps1` after changing `EluSlot.wxs` so the on-disk MSI picks up the upgrade table.
 
 ## VERIFY-INSTALL (PD-REL-03)
 
@@ -91,10 +91,10 @@ Elevated rows are **NOT RUN** — never reported as PASS without a real elevated
 Equivalent manual operators:
 
 ```powershell
-msiexec /i D:\AIAD\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi /qn /norestart /l*v out\verify-install-install.log
-Test-Path "${env:ProgramFiles}\SGenAxis\SGenAxis.exe"
-Test-Path "${env:ProgramData}\Microsoft\Windows\Start Menu\Programs\SGenAxis\SGenAxis.lnk"
-msiexec /x D:\AIAD\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi /qn /norestart /l*v out\verify-install-uninstall.log
+msiexec /i D:\AIAD\packaging\windows\wix\out\EluSlot-0.1.0-windows-x64.msi /qn /norestart /l*v out\verify-install-install.log
+Test-Path "${env:ProgramFiles}\EluSlot\EluSlot.exe"
+Test-Path "${env:ProgramData}\Microsoft\Windows\Start Menu\Programs\EluSlot\EluSlot.lnk"
+msiexec /x D:\AIAD\packaging\windows\wix\out\EluSlot-0.1.0-windows-x64.msi /qn /norestart /l*v out\verify-install-uninstall.log
 ```
 
 ## Unsupported targets (M4)

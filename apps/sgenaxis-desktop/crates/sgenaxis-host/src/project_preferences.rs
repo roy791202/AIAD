@@ -1,8 +1,8 @@
 //! Project policy storage. Callers serialize same-process mutation through HOST.
 //! Digest checks detect stale drafts, not cross-process atomic compare-and-swap.
-use sgenaxis_ports::{FileSystemPort, PortError};
-use sgenaxis_spec::packet::source_sha256;
-use sgenaxis_spec::project_preferences::{
+use eluslot_ports::{FileSystemPort, PortError};
+use eluslot_spec::packet::source_sha256;
+use eluslot_spec::project_preferences::{
     parse_project_preferences, validate, PreferenceError, ProjectPreferences, PREFERENCES_PATH,
 };
 #[derive(Debug, Clone, PartialEq, Eq)]

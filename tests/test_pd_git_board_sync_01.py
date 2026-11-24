@@ -1,6 +1,6 @@
 """PD-GIT-BOARD-SYNC-01 — smoke that host sync module + report exist.
 
-Behavioral assertions live in `sgenaxis-host::git_board_sync` cargo tests
+Behavioral assertions live in `eluslot-host::git_board_sync` cargo tests
 (FakeGit + FakeFileSystem fixture; git/board/pollution/write classes).
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ HOST_MOD = (
     / "apps"
     / "sgenaxis-desktop"
     / "crates"
-    / "sgenaxis-host"
+    / "eluslot-host"
     / "src"
     / "git_board_sync.rs"
 )
@@ -23,7 +23,7 @@ FAKE_FS = (
     / "apps"
     / "sgenaxis-desktop"
     / "crates"
-    / "sgenaxis-adapters"
+    / "eluslot-adapters"
     / "src"
     / "fake.rs"
 )

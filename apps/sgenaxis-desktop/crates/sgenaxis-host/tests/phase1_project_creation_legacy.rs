@@ -1,8 +1,8 @@
 //! Deprecated creation entries must fail before any filesystem access.
-use sgenaxis_adapters::FakeFileSystem;
-use sgenaxis_host::error::HostError;
-use sgenaxis_host::{project_new::*, project_preferences::*};
-use sgenaxis_ports::{FileSystemPort, PortError};
+use eluslot_adapters::FakeFileSystem;
+use eluslot_host::error::HostError;
+use eluslot_host::{project_new::*, project_preferences::*};
+use eluslot_ports::{FileSystemPort, PortError};
 use std::sync::Mutex;
 struct Spy {
     fs: FakeFileSystem,

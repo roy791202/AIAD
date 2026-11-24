@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    sgenaxis_desktop_lib::run()
+    eluslot_desktop_lib::run()
 }

@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     unsupported_platform_reason, windows_wix_artifact_relpath, windows_wix_supported,
     DeployCapability, DeployPlatform, DeployPort, DeploySupport, PortError,
     WINDOWS_WIX_PRODUCT_VERSION,

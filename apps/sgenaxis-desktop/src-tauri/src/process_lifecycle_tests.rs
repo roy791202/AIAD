@@ -1,7 +1,7 @@
 //! Approved cancellation acknowledgment and terminal reconciliation, independent tests.
 use super::*;
-use sgenaxis_exec::{DEMO_PROJECT_ROOT,DEMO_WORKTREE_FINGERPRINT};
-use sgenaxis_ports::{PortError,ProcessId,ProcessOutput,ProcessPort,StreamCompletion};
+use eluslot_exec::{DEMO_PROJECT_ROOT,DEMO_WORKTREE_FINGERPRINT};
+use eluslot_ports::{PortError,ProcessId,ProcessOutput,ProcessPort,StreamCompletion};
 use std::sync::{Arc,Mutex};
 #[derive(Default)]struct State{reads:usize,cancels:usize,out:ProcessOutput,exit:Option<i32>}
 #[derive(Clone,Default)]struct CountProcess(Arc<Mutex<State>>);

@@ -481,7 +481,7 @@ def candidate_v010_from_packaging(
     """Assemble v0.1.0 candidate Build Result from packaging/ windows WiX evidence (read-only)."""
     root = repo or REPO
     ts = generated_at or now_iso()
-    msi = root / "packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi"
+    msi = root / "packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi"
     verify_json = root / "packaging/windows/wix/out/verify-install-result.json"
     manifest = root / "packaging/windows/wix/packaging.manifest.json"
 
@@ -553,7 +553,7 @@ def candidate_v010_from_packaging(
         )
     )
 
-    deps: dict[str, str] = {"packager": "wix", "product": "SGenAxis", "version": "0.1.0"}
+    deps: dict[str, str] = {"packager": "wix", "product": "EluSlot", "version": "0.1.0"}
     if manifest.is_file():
         try:
             man = json.loads(manifest.read_text(encoding="utf-8-sig"))
@@ -590,7 +590,7 @@ def candidate_v010_from_packaging(
     return build_result(
         version="0.1.0",
         summary=(
-            "v0.1.0 Windows MSI candidate (SGenAxis). "
+            "v0.1.0 Windows MSI candidate (EluSlot). "
             "Structured Build Result from packaging evidence; "
             "elevated VERIFY-INSTALL=%s (live=%s); signing and non-Windows packs NOT RUN (M4)."
             % (elev_overall, elev_live)
@@ -599,7 +599,7 @@ def candidate_v010_from_packaging(
         verification=verify_rows,
         status=overall,
         changed_files=[
-            "packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi",
+            "packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi",
             "packaging/windows/wix/out/verify-install-result.json",
             "packaging/windows/wix/packaging.manifest.json",
         ],
@@ -632,7 +632,7 @@ def candidate_v010_from_packaging(
         ],
         rollback=[
             "Do not distribute unsigned/unverified MSI beyond lab.",
-            "Remove or quarantine packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi if a bad candidate is published.",
+            "Remove or quarantine packaging/windows/wix/out/EluSlot-0.1.0-windows-x64.msi if a bad candidate is published.",
             "If a release row was appended, re-append a corrected reportPath via release_report or delete that release id in snapshot.releases via snapshot_safe.",
         ],
         pending=pending,

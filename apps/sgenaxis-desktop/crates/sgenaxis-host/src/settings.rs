@@ -4,12 +4,12 @@
 //! stored as active; projections omit secrets.
 
 use serde::{Deserialize, Serialize};
-use sgenaxis_exec::{
+use eluslot_exec::{
     is_cli_path_activatable, is_mcp_endpoint_activatable, probe_live_cli_targets,
     AgentSettingsDocument, AgentSettingsProjection, CliAgentAdapter, CliAgentSettings,
     LiveTargetProbeResult, LiveTargetSettingsProjection,
 };
-use sgenaxis_ports::{FileSystemPort, ProcessPort};
+use eluslot_ports::{FileSystemPort, ProcessPort};
 
 use crate::error::HostError;
 
@@ -270,8 +270,8 @@ fn split_parent(path: &str) -> Option<(&str, &str)> {
 
 #[cfg(test)]
 mod tests {
-    use sgenaxis_adapters::FakeFileSystem;
-    use sgenaxis_exec::CliToolKind;
+    use eluslot_adapters::FakeFileSystem;
+    use eluslot_exec::CliToolKind;
 
     use super::*;
 
@@ -398,8 +398,8 @@ mod tests {
 
     #[test]
     fn activate_wires_cli_live_approved_and_dry_run_revocable() {
-        use sgenaxis_adapters::FakeProcess;
-        use sgenaxis_exec::{AgentPort, StartRunRequest};
+        use eluslot_adapters::FakeProcess;
+        use eluslot_exec::{AgentPort, StartRunRequest};
 
         let fs = FakeFileSystem::new();
         fs.seed("/tools/claude.exe", b"");
@@ -422,7 +422,7 @@ mod tests {
         let ev = adapter.poll_chunks(run).expect("poll");
         assert!(matches!(
             &ev[0],
-            sgenaxis_exec::AgentChunk::Started { dry_run: true, .. }
+            eluslot_exec::AgentChunk::Started { dry_run: true, .. }
         ));
 
         host.revoke_agent_live();
@@ -447,7 +447,7 @@ mod tests {
         let fs = FakeFileSystem::new();
         let host = HostSettings::defaults();
         let r = host.probe_live_cli_targets(&fs, "", ':', false);
-        assert_eq!(r.status, sgenaxis_exec::LIVE_TARGET_STATUS_NOT_RUN);
+        assert_eq!(r.status, eluslot_exec::LIVE_TARGET_STATUS_NOT_RUN);
         assert!(r.targets.is_empty());
     }
 
@@ -459,7 +459,7 @@ mod tests {
         host.agent.cli.claude.path = "/tools/claude.exe".into();
         host.agent.mcp.secret_token = Some("host-live-secret".into());
         let r = host.probe_live_cli_targets(&fs, "", ':', false);
-        assert_eq!(r.status, sgenaxis_exec::LIVE_TARGET_STATUS_PASS);
+        assert_eq!(r.status, eluslot_exec::LIVE_TARGET_STATUS_PASS);
         assert_eq!(r.targets[0].tool, "claude");
         assert!(r.settings.mcp_has_secret);
         let json = r.to_json_pretty().expect("json");

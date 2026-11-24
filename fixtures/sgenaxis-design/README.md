@@ -1,4 +1,4 @@
-# SGenAxis Design format (`.sgendesign`)
+# EluSlot Design format (`.sgendesign`)
 
 - **format:** `sgenaxis.design`
 - **formatVersion:** `1` (integer)

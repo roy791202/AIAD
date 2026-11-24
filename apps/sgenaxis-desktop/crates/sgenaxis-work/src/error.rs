@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use sgenaxis_ports::PortError;
+use eluslot_ports::PortError;
 
 /// Failures from workspace register / bind / lease / select.
 #[derive(Debug, Clone, PartialEq, Eq)]

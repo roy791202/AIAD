@@ -2,7 +2,7 @@
 //! All process calls go through a private seam; tests inject a recorder and never invoke Git.
 
 use std::{collections::BTreeMap, io::Write, path::Path, process::{Command, Stdio}};
-use sgenaxis_ports::{GitIndexCommitPort, GitOperationState as Operation, GitWriteApproval,
+use eluslot_ports::{GitIndexCommitPort, GitOperationState as Operation, GitWriteApproval,
     IndexCommitError as Error, IndexCommitFacts as Facts, IndexCommitFingerprint as Fingerprint,
     IndexCommitObservation as Observation};
 

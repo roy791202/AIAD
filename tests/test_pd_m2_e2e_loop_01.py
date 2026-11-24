@@ -16,7 +16,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP = ROOT / "apps" / "sgenaxis-desktop"
-HOST_DIR = DESKTOP / "crates" / "sgenaxis-host"
+HOST_DIR = DESKTOP / "crates" / "eluslot-host"
 HOST_MANIFEST = HOST_DIR / "Cargo.toml"
 E2E_RS = HOST_DIR / "tests" / "m2_e2e_loop.rs"
 SCRIPT = ROOT / "scripts" / "pd_m2_e2e_loop_01.py"
@@ -71,7 +71,7 @@ def test_m2_e2e_loop_cargo_or_not_run():
         cargo,
         "test",
         "-p",
-        "sgenaxis-host",
+        "eluslot-host",
         "--test",
         "m2_e2e_loop",
         FILTER,

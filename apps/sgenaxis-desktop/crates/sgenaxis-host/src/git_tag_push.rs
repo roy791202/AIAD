@@ -1,6 +1,6 @@
 //! Gated single-tag push (`git push -- <remote> refs/tags/<tag>`). Never force / bulk.
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated tag push (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,8 +61,8 @@ pub fn perform_git_push_tag(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
-    use sgenaxis_ports::GitWriteApproval;
+    use eluslot_adapters::FakeGitWrite;
+    use eluslot_ports::GitWriteApproval;
 
     fn seed(w: &FakeGitWrite) {
         w.add_remote(

@@ -1,5 +1,5 @@
 /**
- * SGenAxis portable harness — Mock Tauri invoke (PD-HARNESS-MOCK-01).
+ * EluSlot portable harness — Mock Tauri invoke (PD-HARNESS-MOCK-01).
  * Inject BEFORE app.js. Fake data only; harness=true; not product evidence.
  */
 (function () {
@@ -37,7 +37,7 @@
   const baseN = stressN > 0 ? stressN : 24;
   let boardTasks = makeTasks(baseN);
   const settings = {
-    project_root: "D:\\\\HarnessFake\\\\SGenAxis",
+    project_root: "D:\\\\HarnessFake\\\\EluSlot",
     board_path: "docs/PROJECT-BOARD.html",
     agent_active: false,
     run_mode: "dry_run",

@@ -1,6 +1,6 @@
 use super::*;
 use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
-use sgenaxis_exec::{McpClientPort, McpSessionId, ExecError};
+use eluslot_exec::{McpClientPort, McpSessionId, ExecError};
 
 const SECRET: &str = "notrun-secret-token";
 const TARGET: &str = "http://127.0.0.1:3920/sse";

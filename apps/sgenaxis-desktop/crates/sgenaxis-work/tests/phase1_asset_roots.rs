@@ -1,5 +1,5 @@
 //! M05-S1 executable contracts. Fixtures are raw data, not target-policy results.
-use sgenaxis_work::asset_reference::*;
+use eluslot_work::asset_reference::*;
 
 const KINDS: [RootKind; 5] = [
     RootKind::LiveDocuments,

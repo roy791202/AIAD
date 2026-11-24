@@ -1,6 +1,6 @@
 //! PD-DEPLOY-PORT-01 — capability / last path / Unsupported / Fake↔Std swap.
 
-use sgenaxis_ports::{
+use eluslot_ports::{
     windows_wix_artifact_relpath, DeployPlatform, DeployPort, DeploySupport,
     WINDOWS_WIX_FORMAT, WINDOWS_WIX_PACKAGER, WINDOWS_WIX_PRODUCT_VERSION,
 };

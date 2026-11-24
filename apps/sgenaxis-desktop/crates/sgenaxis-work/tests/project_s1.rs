@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
-use sgenaxis_ports::{GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, PortError};
-use sgenaxis_work::{
+use eluslot_ports::{GitCommit, GitPort, GitStatus, GitStatusEntry, GitStatusKind, PortError};
+use eluslot_work::{
     FakePathProbe, FakeWorkspaceStore, Project, RegisterOutcome, WorkError, WorkspaceService,
 };
 
@@ -59,7 +59,7 @@ fn create_project(
 
 fn snapshot(
     ws: &WorkspaceService<FakePathProbe, FakeWorkspaceStore>,
-) -> (usize, sgenaxis_work::WorkspaceProjection) {
+) -> (usize, eluslot_work::WorkspaceProjection) {
     (
         ws.store_len().expect("store length"),
         ws.projection().expect("projection"),

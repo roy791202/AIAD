@@ -9,7 +9,7 @@
 
 .EXAMPLE
   .\packaging\windows\sign-live.ps1
-  .\packaging\windows\sign-live.ps1 -Target .\packaging\windows\wix\out\SGenAxis-0.1.0-windows-x64.msi
+  .\packaging\windows\sign-live.ps1 -Target .\packaging\windows\wix\out\EluSlot-0.1.0-windows-x64.msi
 #>
 [CmdletBinding()]
 param(

@@ -5,7 +5,7 @@
 //!   Windows-aware path conventions + read-only [`StdGit`] + approving
 //!   [`StdGitWrite`] + query-only [`StdDeploy`]
 //! - **Default write** remains [`GatedGitWrite`] (deny); approving writes use
-//!   [`FakeGitWrite`] / [`StdGitWrite`] with [`sgenaxis_ports::GitWriteApproval`]
+//!   [`FakeGitWrite`] / [`StdGitWrite`] with [`eluslot_ports::GitWriteApproval`]
 //!
 //! Core (`sgenaxis-core`) must **not** depend on this crate. Host / use-cases
 //! compose Ports at the boundary; see [`compose`] and [`git_summary`].

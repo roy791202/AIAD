@@ -1,6 +1,6 @@
 //! Contract / swap tests — Fake ↔ Std behind `dyn` Ports (source-level; needs cargo).
 
-use sgenaxis_ports::{FileSystemPort, GitPort, PathPort, ProcessPort};
+use eluslot_ports::{FileSystemPort, GitPort, PathPort, ProcessPort};
 
 use crate::compose::{ensure_app_config_dir, BoxedPorts, HostPorts};
 use crate::fake::{status_with_modified, FakeFileSystem, FakeGit, FakePath, FakeProcess};
@@ -115,7 +115,7 @@ fn fake_git_status_log_diff() {
     git.set_status("/repo", status_with_modified("main", "src/lib.rs"));
     git.set_log(
         "/repo",
-        vec![sgenaxis_ports::GitCommit {
+        vec![eluslot_ports::GitCommit {
             hash: "abc123".into(),
             subject: "init".into(),
             ..Default::default()

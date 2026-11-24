@@ -3,8 +3,8 @@
 //! This module supplies entropy only. WORK remains responsible for validating
 //! the UUID candidate, checking manifest conflicts, and owning the identity.
 
-use sgenaxis_ports::FileSystemPort;
-use sgenaxis_work::Project;
+use eluslot_ports::FileSystemPort;
+use eluslot_work::Project;
 
 pub(crate) fn new_document_id_candidate() -> String {
     uuid::Uuid::new_v4().to_string()
@@ -17,16 +17,16 @@ pub(crate) fn adopt_project_document_by_reference(
     fs: &dyn FileSystemPort,
     project: &Project,
     reference: &str,
-) -> Result<sgenaxis_host::DocumentAdoptionOutcome, sgenaxis_host::ProjectManifestStoreError> {
+) -> Result<eluslot_host::DocumentAdoptionOutcome, eluslot_host::ProjectManifestStoreError> {
     let candidate = new_document_id_candidate();
-    sgenaxis_host::adopt_project_document(fs, project, reference, &candidate)
+    eluslot_host::adopt_project_document(fs, project, reference, &candidate)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{adopt_project_document_by_reference, new_document_id_candidate};
-    use sgenaxis_ports::{FileSystemPort, PortError};
-    use sgenaxis_work::{Project, ProjectId};
+    use eluslot_ports::{FileSystemPort, PortError};
+    use eluslot_work::{Project, ProjectId};
     use std::collections::{HashMap, HashSet};
     use std::sync::Mutex;
 
@@ -116,7 +116,7 @@ mod tests {
 
         let outcome = adopt_project_document_by_reference(&fs, &project, "docs/legacy.ess")
             .expect("controlled explicit adoption succeeds");
-        let sgenaxis_host::DocumentAdoptionOutcome::Adopted(record) = outcome else {
+        let eluslot_host::DocumentAdoptionOutcome::Adopted(record) = outcome else {
             panic!("first adoption should persist");
         };
         assert!(uuid::Uuid::parse_str(&record.document_id).is_ok());

@@ -1,5 +1,5 @@
 //! Read-only product XML decoder implementing the SPEC-owned output port.
-use sgenaxis_spec::packet::{EssDecoderPort, PacketError, PacketLimits, SourceElement};
+use eluslot_spec::packet::{EssDecoderPort, PacketError, PacketLimits, SourceElement};
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ProductEssDecoder;
 impl EssDecoderPort for ProductEssDecoder {

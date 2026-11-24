@@ -1,6 +1,6 @@
 //! Host-layer errors (lifecycle / settings / IPC). No OS types.
 
-use sgenaxis_ports::PortError;
+use eluslot_ports::PortError;
 
 /// Failures at the HOST boundary (not business-domain errors).
 #[derive(Debug, Clone, PartialEq, Eq)]

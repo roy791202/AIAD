@@ -1,5 +1,5 @@
 use serde_json::{json, Value};
-use sgenaxis_spec::project_preferences::*;
+use eluslot_spec::project_preferences::*;
 fn fixture() -> Value {
     json!({"format":"sgenaxis.project-preferences","formatVersion":1,"presetId":"custom",
         "modelPolicy":{"allowedModelIds":[],"preferredModelId":null},

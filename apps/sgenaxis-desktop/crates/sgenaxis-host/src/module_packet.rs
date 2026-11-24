@@ -1,6 +1,6 @@
 //! Explicit read-only application orchestration; lexical containment only.
-use sgenaxis_ports::FileSystemPort;
-use sgenaxis_spec::packet::{
+use eluslot_ports::FileSystemPort;
+use eluslot_spec::packet::{
     project_module_packet, source_sha256, EssDecoderPort, ExportRequest, ModulePacket, PacketError,
     PacketFreshness, SourceProvenance,
 };

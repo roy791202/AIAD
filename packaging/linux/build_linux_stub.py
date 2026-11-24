@@ -56,7 +56,7 @@ def _sha256_file(path: Path) -> str:
 def _write_appimage_stub(out_dir: Path, arch: str, version: str) -> Path:
     """Create a deterministic placeholder AppImage (not a real AppImage runtime)."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"SGenAxis-{version}-linux-{arch}.AppImage"
+    name = f"EluSlot-{version}-linux-{arch}.AppImage"
     path = out_dir / name
     # Stub marker only; not store-publishable.
     payload = (

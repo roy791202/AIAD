@@ -393,7 +393,7 @@ fn gr22_revoke_pending_prompt_wins_yes() {
 #[cfg(test)]
 mod guard_fingerprint_tests {
     use super::super::{guard_current_byte_snapshot, GuardCurrentByteSnapshot, GuardInputManifest, GuardReadFailureCategory, GuardSnapshotProducerError};
-    use sgenaxis_ports::{FileSystemPort, PortError};
+    use eluslot_ports::{FileSystemPort, PortError};
     use std::collections::BTreeMap;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex;
@@ -666,8 +666,8 @@ mod guard_host_fs_tests {
         DispatchHost, GuardCurrentByteSnapshot, GuardInputManifest, GuardProjectSnapshotError,
         GuardReadFailureCategory, GuardSnapshotProducerError,
     };
-    use sgenaxis_ports::{FileSystemPort, PortError};
-    use sgenaxis_work::{ProjectId, RegisterOutcome};
+    use eluslot_ports::{FileSystemPort, PortError};
+    use eluslot_work::{ProjectId, RegisterOutcome};
     use std::collections::BTreeMap;
     use std::sync::Mutex;
 
@@ -860,8 +860,8 @@ mod guard_host_fs_boundary_tests {
         GuardProjectSnapshotError, GuardSessionState, GuardSnapshotProducerError,
         GuardPending,
     };
-    use sgenaxis_ports::{FileSystemPort, PortError};
-    use sgenaxis_work::{ProjectId, RegisterOutcome};
+    use eluslot_ports::{FileSystemPort, PortError};
+    use eluslot_work::{ProjectId, RegisterOutcome};
     use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
 
@@ -983,9 +983,9 @@ mod guard_candidate_producer_tests {
         GuardNativeObservation,
     };
     use crate::dto::{CandidateDraft, EnvelopeDraft, RedJobDraft};
-    use sgenaxis_core::Zone;
-    use sgenaxis_ports::{FileSystemPort, PortError, ProcessId, ProcessOutput, ProcessPort, StreamCompletion};
-    use sgenaxis_work::{ProjectId, RegisterOutcome};
+    use eluslot_core::Zone;
+    use eluslot_ports::{FileSystemPort, PortError, ProcessId, ProcessOutput, ProcessPort, StreamCompletion};
+    use eluslot_work::{ProjectId, RegisterOutcome};
     use std::collections::{BTreeMap, BTreeSet, VecDeque};
     use std::sync::{Arc, Mutex};
     use std::time::Instant;
@@ -1092,7 +1092,7 @@ mod guard_candidate_producer_tests {
     fn capture_candidate(project_id: &str) -> CandidateDraft {
         let mut draft = candidate(project_id);
         draft.red_job.build_argv = vec!["test".into(), "--no-run".into(), "--message-format=json".into(), "--lib".into()];
-        draft.red_job.test_target = "sgenaxis_desktop_lib".into();
+        draft.red_job.test_target = "eluslot_desktop_lib".into();
         draft
     }
 
@@ -1327,14 +1327,14 @@ mod guard_candidate_producer_tests {
     }
 
     fn seed_capture_artifact(fs: &Fs) -> (&'static str, Vec<u8>) {
-        let path = "D:/candidate/target/debug/deps/sgenaxis_desktop_lib-abc.exe";
+        let path = "D:/candidate/target/debug/deps/eluslot_desktop_lib-abc.exe";
         let bytes = b"fake test executable bytes".to_vec();
         fs.seed(path, &bytes);
         (path, bytes)
     }
 
     fn successful_capture_processes(path: &str) -> Vec<ProcessScript> {
-        let build = completed_output(&format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")), "");
+        let build = completed_output(&format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")), "");
         let test = completed_output(
             "running 1 test\ntest mod_a::red_case ... FAILED\npanicked at src\\test.rs:7:3: expected failure\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 42 filtered out\n",
             "",
@@ -1363,7 +1363,7 @@ mod guard_candidate_producer_tests {
             .expect("bounded fake process evidence should be captured");
 
         assert_eq!(captured.test_id, "mod_a::red_case");
-        assert_eq!(captured.target, "sgenaxis_desktop_lib");
+        assert_eq!(captured.target, "eluslot_desktop_lib");
         assert_eq!(captured.test_exit_code, 101);
         assert!(captured.dual_eof);
         assert_eq!(captured.observed_case_line.as_deref(), Some("test mod_a::red_case ... FAILED"));
@@ -1373,8 +1373,8 @@ mod guard_candidate_producer_tests {
         assert_eq!(captured.build_stdout_sha256.len(), 64);
         assert_eq!(captured.build_stderr_sha256.len(), 64);
         assert_eq!(captured.artifact_path, path);
-        assert_eq!(captured.selected_artifact_record, cargo_artifact_message(path, "sgenaxis_desktop_lib"));
-        let expected_hash = sgenaxis_spec::packet::source_sha256(&bytes);
+        assert_eq!(captured.selected_artifact_record, cargo_artifact_message(path, "eluslot_desktop_lib"));
+        let expected_hash = eluslot_spec::packet::source_sha256(&bytes);
         assert_eq!(captured.artifact_sha256, expected_hash);
         assert_eq!(process.calls().len(), 2);
         assert_eq!(process.calls()[0].program, "D:/tools/cargo.exe");
@@ -1599,13 +1599,13 @@ mod guard_candidate_producer_tests {
     #[test]
     fn guard_capture_red_rejects_ambiguous_target_artifacts() {
         let (mut host, fs, _, reference) = confirmed_capture_host();
-        let first = "D:/candidate/target/debug/deps/sgenaxis_desktop_lib-abc.exe";
-        let second = "D:/candidate/target/debug/deps/sgenaxis_desktop_lib-def.exe";
+        let first = "D:/candidate/target/debug/deps/eluslot_desktop_lib-abc.exe";
+        let second = "D:/candidate/target/debug/deps/eluslot_desktop_lib-def.exe";
         fs.seed(first, b"first");
         fs.seed(second, b"second");
-        let mut build = cargo_artifact_message(first, "sgenaxis_desktop_lib");
+        let mut build = cargo_artifact_message(first, "eluslot_desktop_lib");
         build.push('\n');
-        build.push_str(&cargo_artifact_message(second, "sgenaxis_desktop_lib"));
+        build.push_str(&cargo_artifact_message(second, "eluslot_desktop_lib"));
         let process = RecordingProcess::scripted([ProcessScript::completed(0, completed_output(&build, ""))]);
         host.guard_red_process = Box::new(process.clone());
         assert_eq!(
@@ -1619,7 +1619,7 @@ mod guard_candidate_producer_tests {
     fn guard_capture_red_rejects_non_failed_or_unobserved_exact_case() {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
-        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")), ""));
+        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")), ""));
         let pass = ProcessScript::completed(0, completed_output("running 1 test\ntest mod_a::red_case ... ok\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 42 filtered out\n", ""));
         let process = RecordingProcess::scripted([build, pass]);
         host.guard_red_process = Box::new(process.clone());
@@ -1635,7 +1635,7 @@ mod guard_candidate_producer_tests {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
         let output = ProcessOutput {
-            stdout: format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")),
+            stdout: format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")),
             stdout_completion: StreamCompletion::Eof,
             stderr_completion: StreamCompletion::Open,
             ..ProcessOutput::default()
@@ -1653,7 +1653,7 @@ mod guard_candidate_producer_tests {
     fn guard_capture_red_accepts_late_eof_within_the_existing_drain_window() {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
-        let mut build_output = completed_output(&format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")), "");
+        let mut build_output = completed_output(&format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")), "");
         build_output.stdout_completion = StreamCompletion::Open;
         build_output.stderr_completion = StreamCompletion::Open;
         let mut build = ProcessScript::completed(0, build_output);
@@ -1694,7 +1694,7 @@ mod guard_candidate_producer_tests {
     fn guard_capture_red_rechecks_candidate_inputs_after_process_execution() {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
-        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")), ""));
+        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")), ""));
         let test = ProcessScript::completed(101, completed_output(
             "running 1 test\ntest mod_a::red_case ... FAILED\npanicked at src\\test.rs:7:3: expected failure\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 42 filtered out\n", ""))
             .mutate_on_start(fs.clone(), "D:/candidate/test.rs", b"changed during exact-case execution");
@@ -1712,7 +1712,7 @@ mod guard_candidate_producer_tests {
     fn guard_capture_red_rejects_artifact_bytes_changed_after_execution() {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
-        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")), ""));
+        let build = ProcessScript::completed(0, completed_output(&format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")), ""));
         let test = ProcessScript::completed(101, completed_output(
             "running 1 test\ntest mod_a::red_case ... FAILED\npanicked at src\\test.rs:7:3: expected failure\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 42 filtered out\n", ""))
             .mutate_on_start(fs.clone(), path, b"replacement executable bytes");
@@ -1761,7 +1761,7 @@ mod guard_candidate_producer_tests {
         let (mut host, fs, _, reference) = confirmed_capture_host();
         let (path, _) = seed_capture_artifact(&fs);
         let build = ProcessOutput {
-            stdout: format!("{}\n", cargo_artifact_message(path, "sgenaxis_desktop_lib")),
+            stdout: format!("{}\n", cargo_artifact_message(path, "eluslot_desktop_lib")),
             stdout_completion: StreamCompletion::Eof,
             stderr_completion: StreamCompletion::Error("scripted stderr failure".into()),
             ..ProcessOutput::default()

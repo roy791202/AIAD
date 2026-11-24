@@ -1,6 +1,6 @@
 //! Gated local remote rename (`git remote rename`). URL unchanged (set-url is separate).
 
-use sgenaxis_ports::{GitWriteApproval, GitWritePort};
+use eluslot_ports::{GitWriteApproval, GitWritePort};
 
 /// Result of a gated remote rename (mirrors desktop `GitWriteResultDto`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,8 +59,8 @@ pub fn perform_git_rename_remote(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::FakeGitWrite;
-    use sgenaxis_ports::GitWriteApproval;
+    use eluslot_adapters::FakeGitWrite;
+    use eluslot_ports::GitWriteApproval;
 
     #[test]
     fn approved_remote_rename_succeeds() {

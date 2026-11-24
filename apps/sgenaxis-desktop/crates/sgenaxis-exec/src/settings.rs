@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 /// Config keys／labels for known Agent CLIs (path + args only; no secrets).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -337,7 +337,7 @@ pub fn is_mcp_endpoint_activatable(endpoint: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::fake::FakeFileSystem;
+    use eluslot_adapters::fake::FakeFileSystem;
 
     #[test]
     fn document_has_cli_and_mcp_partitions() {

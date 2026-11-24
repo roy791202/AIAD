@@ -2,7 +2,7 @@
 //! Writes only relative paths inside the bound project — no arbitrary FS paths from UI.
 //! Legacy `.sgs`／`.sg`／`.sgml`／`.sgui` remain readable for migration.
 
-use sgenaxis_ports::FileSystemPort;
+use eluslot_ports::FileSystemPort;
 
 use crate::error::HostError;
 use crate::uidesign_doc::join_project_rel;
@@ -104,7 +104,7 @@ pub fn scene_file_exists(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sgenaxis_adapters::fake::FakeFileSystem;
+    use eluslot_adapters::fake::FakeFileSystem;
 
     #[test]
     fn rejects_outside_scene_dir() {

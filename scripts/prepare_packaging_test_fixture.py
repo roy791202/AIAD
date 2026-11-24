@@ -11,9 +11,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_REL = Path("apps/sgenaxis-desktop/src-tauri/target/release/sgenaxis-desktop.exe")
+SOURCE_REL = Path("apps/sgenaxis-desktop/src-tauri/target/release/eluslot-desktop.exe")
 TEMPLATES = (
-    "packaging.manifest.json", "SGenAxis.wxs", "README.md", "build-msi.ps1",
+    "packaging.manifest.json", "EluSlot.wxs", "README.md", "build-msi.ps1",
     "refresh_manifest_hashes.py", "verify-install.ps1", "verify-install.checklist.json",
 )
 
@@ -58,7 +58,7 @@ def main() -> None:
         if result.returncode:
             (output / "fixture-build.json").write_text(json.dumps(logs, indent=2), encoding="utf-8")
             raise SystemExit(f"FIXTURE_SETUP: command failed: {command}\n{result.stdout}\n{result.stderr}")
-    msi = wix_target / "out/SGenAxis-0.1.0-windows-x64.msi"
+    msi = wix_target / "out/EluSlot-0.1.0-windows-x64.msi"
     evidence = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "source_exe": str(source), "source_sha256": sha256(source),
@@ -74,7 +74,7 @@ def main() -> None:
         "Install verification: NOT RUN\nRelease approval: NOT RUN\nEvidence: fixture-build.json\n",
         encoding="utf-8",
     )
-    print(f"SGENAXIS_PACKAGING_TEST_ROOT={output}")
+    print(f"ELUSLOT_PACKAGING_TEST_ROOT={output}")
 
 
 if __name__ == "__main__":

@@ -143,7 +143,7 @@ def test_missing_path_does_not_switch_the_current_project():
     session = WorkbenchSession()
     with pytest.raises(ValueError, match="路徑不存在"):
         session.open_named("Legacy Demo")
-    assert session.current_name == "SGenAxis"
+    assert session.current_name == "EluSlot"
     assert session.current_path == r"D:\AutoCode"
 
 
@@ -152,7 +152,7 @@ def test_create_project_rejects_blank_and_duplicate_names():
     with pytest.raises(ValueError, match="請輸入專案名稱"):
         session.create_project("  ", r"D:\AIAD")
     with pytest.raises(ValueError, match="專案已存在"):
-        session.create_project("SGenAxis", r"D:\AIAD")
+        session.create_project("EluSlot", r"D:\AIAD")
 
 
 def test_create_project_becomes_current_and_recent():
