@@ -26530,6 +26530,123 @@
       ]
     },
     {
+      "id": "PD-AIDEV-PRODUCT-TESTS-01",
+      "level": "Task",
+      "title": "產品測試 skills：Phase 1 業務邏輯 M01–M08＋UI/UX 參數 9 份測試參考與覆蓋檢查",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "In Review",
+      "light": "Green",
+      "createdAt": "2026-11-22T10:00:00+08:00",
+      "updatedAt": "2026-11-23T12:00:00+08:00",
+      "startedAt": "2026-11-22T10:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 6,
+      "tdd": "Green",
+      "ci": "None",
+      "prUrl": "https://github.com/roy791202/AIAD/pull/114",
+      "notes": [
+        {
+          "at": "2026-11-22T10:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "使用者依 L0–L3 逐層定案後實作。範圍：.agents/skills/ai-dev-product-tests（索引＋references 9 份）、主索引路由表一列、tools/skills/sync_skills.py（多 skill references、連結改寫、manifest 覆蓋與固定段落檢查）、tests/test_skills_sync.py（17 passed）。統計：已核准 114、待決策 97、待確認 24、已知衝突 12 列（見 PD-AIDEV-PRODUCT-TESTS-DEC-01）。路徑仍為 sgenaxis，待 PR #113 合併後改 EluSlot。尚待獨立 TDD 代理驗收；無 BDD 情境（文件／工具卡）。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T10:00:00+08:00",
+          "from": "new",
+          "to": "In Progress",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "開工：草稿已由 9 個唯讀子代理盤點，套用 L3 四項定案。"
+        },
+        {
+          "at": "2026-11-23T10:00:00+08:00",
+          "from": "In Progress",
+          "to": "In Review",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "READY_FOR_TDD：draft PR #114（commit 6022f8ac）；自測 17 passed、sync --check OK、PR gate PASS。待獨立 TDD 代理驗收。"
+        },
+        {
+          "at": "2026-11-23T12:00:00+08:00",
+          "from": "In Review",
+          "to": "In Review",
+          "by": "Owner（指示記錄；檔案由 dev-agent 代改，Owner 審 diff 後 commit）",
+          "note": "tdd Green：獨立 TDD 代理兩次 TDD_PASS（6022f8ac+4a8c7421 見 PD-AIDEV-PRODUCT-TESTS-01-TDD-REVIEW.md；81f22658 見 -TDD-REVIEW-2.md），驗證者 ≠ 開發者。"
+        }
+      ]
+    },
+    {
+      "id": "PD-AIDEV-PRODUCT-TESTS-DEC-01",
+      "level": "Task",
+      "title": "決策：測試盤點發現的 8 處規格與實作衝突",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Backlog",
+      "light": "Red",
+      "lightReason": "待決策：8 處規格與實作衝突，相關規則在測試參考 §7 暫不斷言",
+      "createdAt": "2026-11-22T10:00:00+08:00",
+      "updatedAt": "2026-11-22T10:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-22T10:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "待決策事項（出處見 .agents/skills/ai-dev-product-tests/references/*.md §7）:\n- [ ] DEC-1 最小視窗：ui-spec 1024×720 vs tauri.conf.json 960×600｜選項：改實作／改規格｜影響 R-UI-15｜建議：改規格須附理由，否則改實作\n- [ ] DEC-2 圓角：ui-spec 4px vs styles.css 3/5/8px｜選項：統一 4／規格改三階｜影響 R-UI-14｜建議：規格改三階（實作已分層）\n- [ ] DEC-3 running 狀態色 #56a8ff 未實作｜選項：補實作／自規格移除｜影響 R-UI-12｜建議：補實作\n- [ ] DEC-4 預算空白＝未配置(null) vs RC-29 SET02「儲存空白要拒絕」｜選項：空白允許表示未配置／空白拒絕｜影響 R-M02、R-UI 預算列｜建議：Owner 裁定 SET02 文意\n- [ ] DEC-5 數值上限：JS 2^53−1 vs Rust u64，規格無上限｜選項：規格訂上限（≤2^53−1）／維持｜影響 R-M02、R-UI 數值列｜建議：規格訂上限 2^53−1 兩層一致\n- [ ] DEC-6 Designer 經 HOST 存檔丟 gridSize/formSize/guides/properties｜選項：依 C1 保存契約修正／接受｜影響 R-M03、R-UI Designer 列｜建議：先核 C1（M03 planning c1-owner-packet）\n- [ ] DEC-7 方案數值 1/1、4/2、8/4 只在程式與測試，規格無出處｜選項：補進規格／改值｜影響 R-M02｜建議：補進規格 D05\n- [ ] DEC-8 精靈步驟名稱與 REQ-03 不一致｜選項：改 UI 名稱／改規格｜影響 R-M01｜建議：改 UI 名稱對齊 REQ-03\n狀態：紅燈；決策未關前，相關測試不得寫成斷言。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T10:00:00+08:00",
+          "from": "new",
+          "to": "Backlog",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "建決策卡（紅燈），等 Owner 逐項拍板。"
+        }
+      ]
+    },
+    {
+      "id": "PD-LESSONS-AUTOMERGE-01",
+      "level": "Task",
+      "title": "建立 docs/LESSONS.md，記錄 PR #114 以 --auto 在必要檢查未設定時提前合併",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "In Review",
+      "light": "Green",
+      "createdAt": "2026-11-23T13:00:00+08:00",
+      "updatedAt": "2026-11-24T09:00:00+08:00",
+      "startedAt": "2026-11-23T13:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 1,
+      "tdd": "Green",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-23T13:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "依主索引原則 9 與 project.md（失敗經驗文件 docs/LESSONS.md，第一次記錄時建立）。只新增 docs/LESSONS.md 一筆紀錄；不改分支保護（建議項待 Owner 決定）。純文件卡，無 BDD；待獨立代理核對紀錄事實（PR #114 合併時間與檢查狀態）。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:00:00+08:00",
+          "from": "new",
+          "to": "In Review",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "READY_FOR_TDD：commit c43754f7 新增 docs/LESSONS.md。"
+        },
+        {
+          "at": "2026-11-24T09:00:00+08:00",
+          "from": "In Review",
+          "to": "In Review",
+          "by": "Owner（指示記錄；檔案由 dev-agent 代改並提交）",
+          "note": "tdd Green：獨立驗證 faa9f15a TDD_PASS（PD-LESSONS-AUTOMERGE-01-TDD-REVIEW-3.md；前一輪 ca433408 TDD_FAIL 之 D1 已修），驗證者 ≠ 開發者。"
+        }
+      ]
+    },
+    {
       "id": "PD-CI-SKILLS-GATE-01",
       "level": "Task",
       "title": "PR gate 加跑 AI-dev skills 檢查（sync_skills --check＋test_skills_sync）",

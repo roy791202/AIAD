@@ -34,5 +34,5 @@
 
 ## 其他
 - `AI_INSTRUCTIONS/` 是**凍結的需求快照**（`docs/requirements-confirmation/requirements.json` 以 sha256 引用），不是代理要讀的 skill，不要同步或修改。
-- 失敗經驗文件：`docs/LESSONS.md`（尚未建立；第一次記錄時建立）。
+- 失敗經驗文件：`docs/LESSONS.md`（新紀錄加在最上面）。
 - 禁用埠：`:8788`、`:8787`。
