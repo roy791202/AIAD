@@ -53,14 +53,14 @@
 | 1 | 卡 `Todo`→`In Progress`、`light=Green`、填 `startedAt`；上層卡 `notes` 記「開工：…」 |
 | 2 | 每張卡 **一個** 開發代理；prompt **只含該卡欄位**（§7.2） |
 | 3 | 另起 **獨立 TDD Gate**（佇列 = 本批 ID）；開發代理不可自設 Done（§7.1） |
-| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` → TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 後依此記 `tdd=Green`（CI `guard` 要求 PR 對應卡為 `In Review`＋`tdd=Green`，涵蓋情境皆 Green；開發代理不可自記）→ PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
+| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` （交付時依自測填 `tdd=Green`；CI `guard` 要求 PR 對應卡為 `In Review`＋`tdd=Green`，涵蓋情境皆 Green）→ TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 且 PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
 
 ## 4. 角色對照
 
 | 角色 | 必作 | 禁作 |
 |------|------|------|
 | **PM Agent（高階模型／母對話）** | 建卡、決策紅燈＋待決策清單、派開發／TDD、三項條件成立後設 Done／Blue、合併 PR | 跳過建卡直接開工；決策未決就派依賴卡；無 `TDD_PASS` 設 Done |
-| **開發代理** | 產出＋報告＋draft PR；卡最多到 `In Review` | 設 Done／Blue／Released／`approvedBy`；記自己卡的 `tdd=Green`；讀整板 |
+| **開發代理** | 產出＋報告＋draft PR；卡最多到 `In Review` | 設 Done／Blue／Released／`approvedBy`；讀整板 |
 | **TDD 代理** | 親跑測＋ REVIEW；回報 `TDD_PASS`／`TDD_FAIL` | 設 Done／Blue；改產品程式；改測試斷言（測試基礎設施壞掉除外，需註明） |
 
 ## 5. 檢查清單（每批開工前）
@@ -77,3 +77,4 @@
 - `tools/board/poll_extinguish.py`：行為（一律拒絕批次結案）仍符合 §7.1，但訊息寫「母對話才可標綠」，應改為「高階模型／使用者才可設 Done／Blue」。
 - `tools/board/dispatch-agents.json` 的 `skip_kinds` 依賴已停用的 `kind=decision`；應改成跳過 `light=Red` 且 `lightReason` 以「待決策：」開頭的卡。
 - `tools/board/SNAPSHOT-SAFE.md`、`board_core.snapshot_safe`、`board.py report` 仍是寫 `#board-snapshot` 的舊流程。
+- `docs/start-board-watch.cmd`／`docs/board_watch.py`：仍在埠 28789 提供並寫回已不存在的 `docs/PROJECT-BOARD.html`，目前無法使用；看板請直接看 `docs/board.json`。

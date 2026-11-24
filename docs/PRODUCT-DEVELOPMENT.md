@@ -314,11 +314,11 @@ UI「指派 Agent」
 |---|------|----------|
 | 1 | **有產出** | 可指認的原始碼／報告／產物路徑；空承諾、只改 `notes` → **不可 Done** |
 | 2 | **獨立 `TDD_PASS`** | 由**獨立 TDD 代理**（驗證者 ≠ 開發者）親跑測試並回報 PASS，必要時高階審查也通過；`PENDING_TDD_PACKET`、開發代理自測自報、未跑測、弱化 assertion → **不可 Done** |
-| 3 | **PR 已合併** | 沒有 PR 的純文件／決策卡免此項，須在 `notes` 註明 | PR 仍 open／draft → **不可 Done** |
+| 3 | **PR 已合併** | 沒有 PR 的純文件／決策卡免此項，須在 `notes` 註明；PR 仍 open／draft → **不可 Done** |
 
 綠燈只表示進行順利；開發中、In Review 的卡都是 Green（或依風險 Yellow／Red），**不可**用 Green 表示完成。
 
-**CI guard**：PR 必須對應一張 Task 卡，該卡 `status=In Review`、`tdd=Green`，且涵蓋的情境都是 Green，否則 `guard` 失敗（`.github/ai-dev-guard/guard.ps1`）。`tdd=Green` 依獨立 `TDD_PASS` 記錄，開發代理不可自記。
+**CI guard**：PR 必須對應一張 Task 卡，該卡 `status=In Review`、`tdd=Green`，且涵蓋的情境都是 Green，否則 `guard` 失敗（`.github/ai-dev-guard/guard.ps1`）。開發代理交付時依本卡 TDD 自測 Green 填 `tdd=Green`（`ai-dev-implementation` 交付步驟）；這不代表驗收，Done 仍須上表的獨立 `TDD_PASS`。
 
 **角色分離（硬性）**
 | 角色 | 可做 | 不可做 |
