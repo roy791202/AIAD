@@ -23,7 +23,7 @@ Same status vocabulary as Build Result (`tools/board/build_result.py`).
 ## Hang points
 
 - **Build Result** (`PD-BUILD-RESULT-01`): `pack_spec.apply_to_build_result` merges artifacts + `targetMatrix` + requirement trace.
-- **releases** (`PD-RELEASE-REC-01`): `pack_spec.to_release_artifacts` / `hang_pack_spec_to_release` via `release_report`.
+- **releases** (`PD-RELEASE-REC-01`): `pack_spec.to_release_artifacts` / `hang_pack_spec_to_release` via `release_report` (writes `<report>.release.json`; never a board — PD-BOARD-GAPS-RELEASE-01).
 
 ## Policy
 

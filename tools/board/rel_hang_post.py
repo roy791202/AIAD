@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""PD-REL-HANG-POST-01 — hang Post-Remain Build Result + key artifacts into #release.
+"""PD-REL-HANG-POST-01 — hang Post-Remain Build Result + key artifacts as a release record.
 
-BDD-PD-REL-HANG-POST-01: append/update snapshot.releases v0.1.0 (or equiv);
+BDD-PD-REL-HANG-POST-01: write <report>.release.json for v0.1.0 (or equiv);
 reportPath → Post-Remain BR (or best-available build-0.1.0-* with honest PARTIAL);
 artifacts include MSI / SBOM when present; never rewrite signing NOT RUN as PASS.
 
 Soft dep PD-REL-BR-POST-REMAIN-01: prefer that card's BR; else hang best-available.
-Reuses release_report + rel_hang_final helpers (snapshot-only mutate).
+Reuses release_report + rel_hang_final helpers; never writes a board
+(PD-BOARD-GAPS-RELEASE-01).
 No git tag; no store listing.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import time
@@ -23,8 +23,6 @@ from typing import Any, MutableMapping, Sequence
 
 BOARD_DIR = Path(__file__).resolve().parent
 REPO = BOARD_DIR.parents[1]
-DOCS = REPO / "docs"
-DEFAULT_BOARD = DOCS / "PROJECT-BOARD.html"
 TAIPEI = timezone(timedelta(hours=8))
 
 CARD_ID = "PD-REL-HANG-POST-01"
@@ -152,7 +150,6 @@ def refuse_signing_forged_pass(release: MutableMapping[str, Any]) -> MutableMapp
 
 
 def hang_post_to_release(
-    board_path: Path,
     *,
     version: str = DEFAULT_VERSION,
     report_path: Path | str | None = None,
@@ -161,7 +158,7 @@ def hang_post_to_release(
     include_missing_artifacts: bool = False,
     poll_seconds: float = 0.0,
 ) -> dict:
-    """Append/replace v0.1.0 release pointing at Post-Remain (or best) BR + MSI/SBOM."""
+    """Write <report>.release.json for v0.1.0 (Post-Remain or best BR + MSI/SBOM)."""
     root = repo or REPO
     hang_source = "override"
     if report_path:
@@ -217,20 +214,16 @@ def hang_post_to_release(
         and release["buildResultStatus"].upper() == "PASS"
     ):
         release["buildResultStatus"] = "PARTIAL"
-    return release_report.append_release(Path(board_path), release)
+    release_report.write_release_json(release, release_report.release_json_path(rp))
+    return release
 
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument(
-        "--board",
-        default=os.environ.get("HB_BOARD_TASKS") or str(DEFAULT_BOARD),
-        help="PROJECT-BOARD.html path",
-    )
     ap.add_argument("--repo", default=str(REPO), help="Repo root")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    h = sub.add_parser("hang", help="Hang Post-Remain / best BR into snapshot.releases")
+    h = sub.add_parser("hang", help="Write <Post-Remain / best BR>.release.json")
     h.add_argument("--version", default=DEFAULT_VERSION)
     h.add_argument(
         "--report-path",
@@ -268,7 +261,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.cmd == "hang":
         stored = hang_post_to_release(
-            Path(args.board),
             version=args.version,
             report_path=args.report_path or None,
             repo=root,

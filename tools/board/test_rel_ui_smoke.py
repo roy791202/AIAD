@@ -1,7 +1,7 @@
 """PD-REL-UI-SMOKE-01 — #release recent row / empty-state smoke (script).
 
 BDD-PD-REL-UI-SMOKE-01:
-  - Read snapshot.releases via release_report.list / snapshot_safe.
+  - Read snapshot.releases via snapshot_safe (release_report no longer touches boards).
   - Non-empty: latest version + reportPath are parseable.
   - Empty assumption: empty-state contract still holds; DOCTYPE + nav intact.
   - Never whole-file overwrite HTML; no UI visual redesign.
@@ -69,6 +69,21 @@ MINI_SHELL = """<!DOCTYPE html>
 """
 
 
+def _append_release(board: Path, release: dict) -> None:
+    """Fixture-only writer: release_report no longer writes boards (PD-BOARD-GAPS-RELEASE-01)."""
+
+    def append(data: dict):
+        data.setdefault("releases", []).append(release)
+        return release
+
+    snapshot_safe.mutate_snapshot_file(board, append)
+
+
+def _list_releases(board: Path) -> list:
+    data = snapshot_safe.load_snapshot_dict(board.read_text(encoding="utf-8"))
+    return list(data.get("releases") or [])
+
+
 def _latest_release(rels: list) -> dict | None:
     """Match board UI: sort by releasedAt descending; first is 最近."""
     if not rels:
@@ -99,7 +114,7 @@ def test_empty_releases_empty_state_contract_shell_intact(board_path: Path):
     _assert_shell_contract(html)
     data = snapshot_safe.load_snapshot_dict(html)
     assert data["releases"] == []
-    rels = release_report.list_releases(board_path)
+    rels = _list_releases(board_path)
     assert rels == []
     assert _latest_release(rels) is None
 
@@ -130,8 +145,8 @@ def test_nonempty_latest_version_and_report_path_parseable(board_path: Path):
         embed_report_md=False,
         repo=REPO,
     )
-    release_report.append_release(board_path, older)
-    release_report.append_release(board_path, newer)
+    _append_release(board_path, older)
+    _append_release(board_path, newer)
 
     after = board_path.read_text(encoding="utf-8")
     _assert_shell_contract(after)
@@ -140,7 +155,7 @@ def test_nonempty_latest_version_and_report_path_parseable(board_path: Path):
     assert prefix_a == prefix_b
     assert suffix_a == suffix_b
 
-    rels = release_report.list_releases(board_path)
+    rels = _list_releases(board_path)
     assert len(rels) == 2
     latest = _latest_release(rels)
     assert latest is not None
@@ -156,7 +171,7 @@ def test_clear_releases_via_snapshot_safe_keeps_shell(board_path: Path):
     art = release_report.build_artifact(
         Path("x.msi"), "MSI", "2026-10-24T11:00:00+08:00", REPO
     )
-    release_report.append_release(
+    _append_release(
         board_path,
         release_report.build_release(
             version="0.1.0",
@@ -183,7 +198,7 @@ def test_clear_releases_via_snapshot_safe_keeps_shell(board_path: Path):
     assert prefix_a == prefix_b
     assert suffix_a == suffix_b
     assert json.loads(inner)["releases"] == []
-    assert release_report.list_releases(board_path) == []
+    assert _list_releases(board_path) == []
 
 
 def test_full_overwrite_rejected_keeps_smoke_contract(board_path: Path):
@@ -210,7 +225,7 @@ def test_live_board_releases_list_smoke_readonly():
     # Empty-state copy must remain in shell even when releases are populated.
     assert EMPTY_ZONE_MARKER in html
 
-    rels = release_report.list_releases(LIVE_BOARD)
+    rels = _list_releases(LIVE_BOARD)
     assert isinstance(rels, list)
     if not rels:
         data = snapshot_safe.load_snapshot_dict(html)
