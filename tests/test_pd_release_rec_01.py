@@ -1,13 +1,13 @@
-"""PD-RELEASE-REC-01: append release to snapshot.releases; #release empty-state intact.
+"""PD-RELEASE-REC-01 (PD-BOARD-GAPS-RELEASE-01): release record JSON, no board writes.
 
-Uses tools/board/release_report.py. Writes only #board-snapshot (HTML shell preserved).
-Does not touch Firebase; does not force elevated install; does not set zone=green.
+Uses tools/board/release_report.py. The board's single source of truth is
+docs/board.json; release tools never write any board file. ``build`` emits one
+release record JSON to stdout or ``--out``.
 """
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -18,165 +18,118 @@ BOARD_TOOLS = ROOT / "tools" / "board"
 ARTIFACT_ROOT = Path(os.environ.get("SGENAXIS_PACKAGING_TEST_ROOT", str(ROOT))).resolve()
 MSI = ARTIFACT_ROOT / "packaging" / "windows" / "wix" / "out" / "SGenAxis-0.1.0-windows-x64.msi"
 REPORT_EXAMPLE = ARTIFACT_ROOT / "reports" / "dispatch-pd" / "PD-REL-02.md"
-EMPTY_ZONE_MARKER = "還沒有佈版紀錄"
-DOCTYPE = "<!DOCTYPE html"
-TAB_RELEASE = 'id="tab-release"'
-VIEW_RELEASE = 'id="view-release"'
-SNAPSHOT_OPEN = '<script type="application/json" id="board-snapshot">'
+REPORT_REL = "reports/dispatch-pd/PD-REL-02.md"
+RELEASED_AT = "2026-10-24T02:05:00+08:00"
+RELEASE_TOOLS = ("release_report.py", "build_result.py", "rel_hang_final.py", "rel_hang_post.py")
+LEGACY_BOARD_MARKERS = ("board_watch", "PROJECT-BOARD")
 
 sys.path.insert(0, str(BOARD_TOOLS))
-sys.path.insert(0, str(ROOT / "docs"))
 
 import release_report  # noqa: E402
 
 
-MINIMAL_BOARD = """<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="utf-8"/><title>board fixture</title></head>
-<body>
-<nav><button type="button" id="tab-release" data-view="release">最近佈版</button></nav>
-<section id="view-release" hidden>
-  <div class="rel-body" id="relBody"></div>
-</section>
-<script type="application/json" id="board-snapshot">
-{
-  "asOf": "2026-10-24T00:00:00+08:00",
-  "version": "0.0.0-test",
-  "overall": "PARTIAL",
-  "source": "fixture",
-  "tasks": [],
-  "releases": []
-}
-</script>
-<script>
-/* empty-state copy mirrored from PROJECT-BOARD for contract */
-var EMPTY = "還沒有佈版紀錄。";
-</script>
-</body>
-</html>
-"""
+def _msi_rel() -> str:
+    return str(MSI.relative_to(ARTIFACT_ROOT)).replace("\\", "/")
 
 
-@pytest.fixture()
-def board_copy(tmp_path: Path) -> Path:
-    path = tmp_path / "PROJECT-BOARD.html"
-    path.write_text(MINIMAL_BOARD, encoding="utf-8", newline="\n")
-    return path
+def _build_argv(*extra: str) -> list[str]:
+    return [
+        "build",
+        "--version",
+        "0.1.0",
+        "--artifact",
+        _msi_rel(),
+        "--label",
+        "MSI",
+        "--report-path",
+        REPORT_REL,
+        "--no-embed-report",
+        "--released-at",
+        RELEASED_AT,
+        *extra,
+    ]
 
 
-def _snapshot(path: Path) -> dict:
-    html = path.read_text(encoding="utf-8")
-    assert SNAPSHOT_OPEN in html
-    start = html.find(SNAPSHOT_OPEN) + len(SNAPSHOT_OPEN)
-    end = html.find("</script>", start)
-    return json.loads(html[start:end])
-
-
-def test_empty_releases_preserves_empty_state_copy(board_copy: Path):
-    html = board_copy.read_text(encoding="utf-8")
-    assert EMPTY_ZONE_MARKER in html
-    snap = _snapshot(board_copy)
-    assert snap["releases"] == []
-
-
-def test_append_release_version_artifacts_report_path(board_copy: Path):
-    assert MSI.is_file(), f"missing example MSI: {MSI}"
-    ts = "2026-10-24T02:00:00+08:00"
-    art = release_report.build_artifact(MSI, "MSI", ts, ARTIFACT_ROOT)
-    release = release_report.build_release(
+def _expected_release() -> dict:
+    art = release_report.build_artifact(Path(_msi_rel()), "MSI", RELEASED_AT, ARTIFACT_ROOT)
+    return release_report.build_release(
         version="0.1.0",
         artifacts=[art],
-        report_path="reports/dispatch-pd/PD-REL-02.md",
+        report_path=REPORT_REL,
         kind="installer",
         recorded_by="agent",
-        released_at=ts,
+        released_at=RELEASED_AT,
         embed_report_md=False,
         repo=ARTIFACT_ROOT,
     )
-    release_report.append_release(board_copy, release)
-
-    html = board_copy.read_text(encoding="utf-8")
-    assert html.lstrip().startswith(DOCTYPE)
-    assert TAB_RELEASE in html
-    assert VIEW_RELEASE in html
-    assert EMPTY_ZONE_MARKER in html  # shell empty-state copy remains
-
-    snap = _snapshot(board_copy)
-    assert len(snap["releases"]) == 1
-    r = snap["releases"][0]
-    assert r["version"] == "0.1.0"
-    assert r["reportPath"] == "reports/dispatch-pd/PD-REL-02.md"
-    assert r["artifacts"][0]["label"] == "MSI"
-    assert r["artifacts"][0]["exists"] is True
-    assert "SGenAxis-0.1.0-windows-x64.msi" in r["artifacts"][0]["path"]
 
 
-def test_append_via_cli_and_list(board_copy: Path, monkeypatch: pytest.MonkeyPatch):
-    assert MSI.is_file()
+@pytest.fixture()
+def repo_at_artifacts(monkeypatch: pytest.MonkeyPatch) -> Path:
+    assert MSI.is_file(), f"missing example MSI: {MSI}"
     monkeypatch.setattr(release_report, "REPO", ARTIFACT_ROOT)
-    rc = release_report.main(
-        [
-            "--board",
-            str(board_copy),
-            "append",
-            "--version",
-            "0.1.0",
-            "--artifact",
-            str(MSI.relative_to(ARTIFACT_ROOT)).replace("\\", "/"),
-            "--label",
-            "MSI",
-            "--report-path",
-            "reports/dispatch-pd/PD-REL-02.md",
-            "--no-embed-report",
-            "--released-at",
-            "2026-10-24T02:05:00+08:00",
-        ]
-    )
+    return ARTIFACT_ROOT
+
+
+def test_should_print_release_json_to_stdout_when_build_without_out(
+    repo_at_artifacts: Path, capsys: pytest.CaptureFixture[str]
+):
+    rc = release_report.main(_build_argv())
     assert rc == 0
-    rels = release_report.list_releases(board_copy)
-    assert len(rels) == 1
-    assert rels[0]["version"] == "0.1.0"
-    assert rels[0]["reportPath"].endswith("PD-REL-02.md")
+    printed = json.loads(capsys.readouterr().out)
+    assert printed == _expected_release()
+    assert printed["version"] == "0.1.0"
+    assert printed["reportPath"] == REPORT_REL
+    assert printed["artifacts"][0]["label"] == "MSI"
+    assert printed["artifacts"][0]["exists"] is True
+    assert "SGenAxis-0.1.0-windows-x64.msi" in printed["artifacts"][0]["path"]
 
 
-def test_append_does_not_destroy_shell_when_board_has_nav(board_copy: Path):
-    """Regression: whole-file overwrite would drop DOCTYPE / #release chrome."""
-    src = board_copy
-    assert src.is_file(), "FIXTURE_SETUP: versioned shell fixture is required"
-    # Work on a disposable copy of the isolated shell fixture (read shell markers only).
-    # Do not mutate the live board inside unit tests.
-    import tempfile
+def test_should_write_release_json_file_when_build_with_out(repo_at_artifacts: Path, tmp_path: Path):
+    out = tmp_path / "nested" / "v0.1.0.release.json"
+    rc = release_report.main(_build_argv("--out", str(out)))
+    assert rc == 0
+    assert json.loads(out.read_text(encoding="utf-8")) == _expected_release()
 
-    with tempfile.TemporaryDirectory() as td:
-        dest = Path(td) / "PROJECT-BOARD.html"
-        shutil.copy2(src, dest)
-        before = dest.read_text(encoding="utf-8")
-        assert DOCTYPE in before[:64] or before.lstrip().startswith(DOCTYPE)
-        assert TAB_RELEASE in before
-        assert VIEW_RELEASE in before
-        assert EMPTY_ZONE_MARKER in before
 
-        art = release_report.build_artifact(MSI, "MSI", "2026-10-24T02:10:00+08:00", ARTIFACT_ROOT)
-        release_report.append_release(
-            dest,
-            release_report.build_release(
-                version="0.1.0-test-fixture",
-                artifacts=[art],
-                report_path="reports/dispatch-pd/PD-REL-02.md",
-                kind="installer",
-                recorded_by="agent",
-                released_at="2026-10-24T02:10:00+08:00",
-                embed_report_md=False,
-                repo=ARTIFACT_ROOT,
-            ),
-        )
-        after = dest.read_text(encoding="utf-8")
-        assert after.lstrip().startswith(DOCTYPE)
-        assert TAB_RELEASE in after
-        assert VIEW_RELEASE in after
-        assert EMPTY_ZONE_MARKER in after
-        snap = _snapshot(dest)
-        assert any(r.get("version") == "0.1.0-test-fixture" for r in snap["releases"])
+def test_should_leave_board_files_untouched_when_build(
+    repo_at_artifacts: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    board = tmp_path / "board.json"
+    board.write_text('{"items": []}\n', encoding="utf-8", newline="\n")
+    before = board.read_bytes()
+    monkeypatch.chdir(tmp_path)
+    rc = release_report.main(_build_argv("--out", str(tmp_path / "r.release.json")))
+    assert rc == 0
+    assert board.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["board.json", "r.release.json"]
+
+
+def test_should_reject_board_option_and_board_writers():
+    with pytest.raises(SystemExit):
+        release_report.build_parser().parse_args(["--board", "x.html", *_build_argv()])
+    for legacy in ("append_release", "list_releases", "_mutate_snapshot"):
+        assert not hasattr(release_report, legacy), legacy
+
+
+def test_should_reject_build_without_artifact(capsys: pytest.CaptureFixture[str]):
+    rc = release_report.main(["build", "--version", "0.1.0"])
+    assert rc == 1
+    assert "artifact" in capsys.readouterr().err
+
+
+def test_should_derive_release_json_path_next_to_report():
+    report = Path("reports") / "build-0.1.0-final-20261024T120000.md"
+    assert release_report.release_json_path(report) == (
+        Path("reports") / "build-0.1.0-final-20261024T120000.release.json"
+    )
+
+
+def test_should_not_reference_legacy_board_in_release_tools():
+    for name in RELEASE_TOOLS:
+        text = (BOARD_TOOLS / name).read_text(encoding="utf-8")
+        for marker in LEGACY_BOARD_MARKERS:
+            assert marker not in text, f"{name} still references {marker}"
 
 
 def test_example_msi_and_report_exist_for_demo():

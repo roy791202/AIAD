@@ -8,22 +8,14 @@ import unittest
 from pathlib import Path
 
 import rel_hang_final as rhf
-import release_report
 
 
-def _mini_board(releases: list | None = None) -> str:
-    snap = {
-        "asOf": "2026-10-24T00:00:00+08:00",
-        "tasks": [],
-        "releases": list(releases or []),
-    }
-    return (
-        "<!DOCTYPE html>\n<html><head><title>t</title></head>"
-        '<body><div class="nav">導覽</div>'
-        '<script type="application/json" id="board-snapshot">\n'
-        + json.dumps(snap, ensure_ascii=False, indent=2)
-        + "\n</script>\n<script>/* runtime */</script></body></html>\n"
-    )
+def _seed_board_json(root: Path) -> Path:
+    """A board file that release tools must never touch (PD-BOARD-GAPS-RELEASE-01)."""
+    board = root / "docs" / "board.json"
+    board.parent.mkdir(parents=True, exist_ok=True)
+    board.write_text('{"items": []}\n', encoding="utf-8", newline="\n")
+    return board
 
 
 def _seed_final_br(root: Path, *, status: str = "PARTIAL", signing: str = "NOT RUN") -> Path:
@@ -138,28 +130,10 @@ class TestHangFinalToRelease(unittest.TestCase):
             (reports / "sbom-test.cdx.json").write_text("{}", encoding="utf-8")
             (reports / "sbom-test.spdx.json").write_text("{}", encoding="utf-8")
 
-            board = root / "PROJECT-BOARD.html"
-            # Pre-existing refresh release must be replaced.
-            board.write_text(
-                _mini_board(
-                    [
-                        {
-                            "id": "v0.1.0",
-                            "version": "0.1.0",
-                            "reportPath": "reports/build-0.1.0-br-refresh.md",
-                            "artifacts": [],
-                            "buildResultStatus": "PARTIAL",
-                        }
-                    ]
-                ),
-                encoding="utf-8",
-                newline="\n",
-            )
-            before = board.read_text(encoding="utf-8")
-            self.assertTrue(before.lstrip().startswith("<!DOCTYPE"))
+            board = _seed_board_json(root)
+            before = board.read_bytes()
 
             stored = rhf.hang_final_to_release(
-                board,
                 report_path=md,
                 repo=root,
                 embed_report_md=False,
@@ -176,21 +150,17 @@ class TestHangFinalToRelease(unittest.TestCase):
             self.assertIn("SBOM-CycloneDX", labels)
             self.assertIn("SBOM-SPDX", labels)
 
-            after = board.read_text(encoding="utf-8")
-            self.assertTrue(after.lstrip().startswith("<!DOCTYPE"))
-            self.assertIn('class="nav"', after)
-            rels = release_report.list_releases(board)
-            self.assertEqual(len(rels), 1)
-            self.assertIn("final-", rels[0]["reportPath"])
+            release_json = md.with_name(md.stem + ".release.json")
+            self.assertEqual(json.loads(release_json.read_text(encoding="utf-8")), stored)
+            self.assertIn("final-", stored["reportPath"])
+            self.assertEqual(board.read_bytes(), before)
+            self.assertFalse((root / "docs" / "PROJECT-BOARD.html").exists())
 
     def test_never_writes_signing_pass_from_not_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             md = _seed_final_br(root, status="PARTIAL", signing="NOT RUN")
-            board = root / "PROJECT-BOARD.html"
-            board.write_text(_mini_board(), encoding="utf-8", newline="\n")
             stored = rhf.hang_final_to_release(
-                board,
                 report_path=md,
                 repo=root,
                 embed_report_md=False,
@@ -198,12 +168,17 @@ class TestHangFinalToRelease(unittest.TestCase):
             )
             self.assertNotEqual(stored.get("signingStatus"), "PASS")
             self.assertEqual(stored["signingStatus"], "NOT RUN")
+            self.assertTrue(md.with_name(md.stem + ".release.json").is_file())
             # Even if someone mutates meta to forge — refuse helper demotes.
             forged = dict(stored)
             forged["signingStatus"] = "PASS"
             forged["_forgedSigningPass"] = True
             rhf.refuse_signing_forged_pass(forged)
             self.assertEqual(forged["signingStatus"], "NOT RUN")
+
+    def test_cli_has_no_board_option(self):
+        with self.assertRaises(SystemExit):
+            rhf.build_parser().parse_args(["--board", "x.html", "hang"])
 
 
 if __name__ == "__main__":

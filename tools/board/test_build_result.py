@@ -137,21 +137,8 @@ class TestWriteAndHang(unittest.TestCase):
                 self.assertEqual(data["status"], "PARTIAL")
                 self.assertEqual(data["schema"], "aiad.build-result.v1")
 
-    def test_hang_to_release_uses_release_report(self):
-        """Hang Build Result into snapshot.releases via release_report (fake board)."""
-        # Minimal board HTML shell + snapshot (matches snapshot_safe landmarks).
-        snap = {
-            "asOf": "2026-10-24T00:00:00+08:00",
-            "tasks": [],
-            "releases": [],
-        }
-        html = (
-            "<!DOCTYPE html>\n<html><head><title>t</title></head>"
-            '<body><div class="nav">導覽</div>'
-            '<script type="application/json" id="board-snapshot">\n'
-            + json.dumps(snap, ensure_ascii=False, indent=2)
-            + "\n</script>\n<script>/* runtime */</script></body></html>\n"
-        )
+    def test_hang_to_release_writes_release_json_next_to_report(self):
+        """PD-BOARD-GAPS-RELEASE-01: hang writes <report>.release.json, never a board."""
         result = br.build_result(
             version="0.1.0",
             summary="hang",
@@ -166,18 +153,22 @@ class TestWriteAndHang(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            board = root / "PROJECT-BOARD.html"
-            board.write_text(html, encoding="utf-8", newline="\n")
             report = root / "reports" / "build-0.1.0-test.md"
             report.parent.mkdir(parents=True)
             br.write_report(result, report, also_json=False, repo=root)
-            stored = br.hang_to_release(board, result, report, repo=root)
+            stored = br.hang_to_release(result, report, repo=root)
             self.assertEqual(stored.get("version"), "0.1.0")
             self.assertEqual(stored.get("buildResultStatus"), "PARTIAL")
             self.assertTrue(str(stored.get("reportPath") or "").endswith("build-0.1.0-test.md"))
-            rels = release_report.list_releases(board)
-            self.assertEqual(len(rels), 1)
-            self.assertEqual(rels[0]["buildResultStatus"], "PARTIAL")
+            out = root / "reports" / "build-0.1.0-test.release.json"
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8")), stored)
+            files = sorted(p.name for p in report.parent.iterdir())
+            self.assertEqual(files, ["build-0.1.0-test.md", "build-0.1.0-test.release.json"])
+            self.assertEqual(sorted(p.name for p in root.iterdir()), ["reports"])
+
+    def test_cli_has_no_board_option(self):
+        with self.assertRaises(SystemExit):
+            br.build_parser().parse_args(["--board", "x.html", "generate"])
 
 
 if __name__ == "__main__":
