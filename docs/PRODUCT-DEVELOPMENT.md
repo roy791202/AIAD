@@ -6,7 +6,7 @@
 | 狀態 | **已拍板技術棧與製作流程**；產品實作尚未開工 |
 | 產品名稱 | SGenAxis（工作台原型／文案；看板工具側曾用 VGenAxIs） |
 | UI 原型 | `git_workbench_interactive.html` |
-| PM 看板 | `docs/PROJECT-BOARD.html` + `docs/start-board-watch.cmd` → `http://127.0.0.1:28789/` |
+| PM 看板 | `docs/board.json`（唯一權威，`.ai-hooks/validate-board.ps1` 驗證）；舊 `PROJECT-BOARD.html`＋`start-board-watch.cmd`（埠 28789）已停用 |
 | 舊規畫 | `docs/product-plan/`（Electron + React **已廢止**，僅供模組／工項語意參考） |
 
 ---
@@ -26,7 +26,7 @@ SGenAxis 是**本機優先的跨平台桌機**「自動化開發控制中心」�
 3. 指派 Agent → 看 Run／Log  
 4. 檢視 Git 變更 →（後期）核准提交／發布  
 
-**操作步驟（開專案／DryRun／設定、埠 28789 與 `:8788` 禁區）：**  
+**操作步驟（開專案／DryRun／設定、埠 28789（舊看板，已停用）與 `:8788` 禁區）：**  
 `apps/sgenaxis-desktop/README.md`「使用說明」· 索引 `docs/DESKTOP-APP-USAGE.md`（PD-README-APP-01）。
 
 ### 1.2 範圍與非目標
@@ -162,7 +162,7 @@ UI 事件只呼叫 **command 名稱 + 參數**；副作用全部在 Core／Adapt
 | 紅 | 失敗／阻塞（需原因與證據） |
 | 綠 | 核准範圍內驗收完成（**≠** 已正式發布） |
 
-> 開發用 `PROJECT-BOARD.html` 燈號是 PM 切片狀態，勿與產品內工項健康混為同一權威。
+> 開發看板（`docs/board.json`）燈號是 PM 切片狀態，勿與產品內工項健康混為同一權威。
 
 ---
 
@@ -284,67 +284,81 @@ UI「指派 Agent」
 
 ## 7. 開發期工具（非產品殼）
 
-> **2026-11-21 更新（以此為準）**：開發看板權威已改為 `docs/board.json`（`.ai-hooks/validate-board.ps1` 驗證），`PROJECT-BOARD.html`／`#board-snapshot`／`zone` 寫法停用。燈號改為 **Green＝進行順利、Blue＝Done**（不再以「改綠」表示滅燈）；Done 需有產出＋獨立 `TDD_PASS`＋PR 已合併。待決策改為紅燈卡＋`lightReason`「待決策：」。角色分離、讀取範圍、PM 必作的精神不變。完整規則見 `.agents/skills/ai-dev-pipeline/references/board-and-lights.md` 與 `roles-and-gates.md`。下列 §7.1–§7.3 中與此衝突的字句以本段為準。
+開發看板的唯一權威是 **`docs/board.json`**，格式與規則由 `.ai-hooks/validate-board.ps1` 強制（hook、Git hook、CI 跑同一支）。完整規則：`.agents/skills/ai-dev-pipeline/references/board-and-lights.md`（看板、層級、燈號、讀取範圍）與 `roles-and-gates.md`（角色、PR、Done 條件）；本節為摘要，兩者衝突時以 references 為準。
 
 | 工具 | 位址／入口 | 用途 |
 |------|------------|------|
-| 專案看板 | `http://127.0.0.1:28789/`（`start-board-watch.cmd`） | 開發本產品用的燈號板；可寫回 `PROJECT-BOARD.html` |
-| 派工清單 | 黃燈 epic `PRODUCT-DEV-20261023`＋灰燈 `PD-*` | **首版切片**（流程骨架＋模組），不是全產品／不是 VGenAxIs 歷史全量；含 `PD-EXEC-CLI`／`PD-EXEC-MCP` |
-| **滅燈規則（硬性）** | 見 §7.1 | **未產出且 TDD 未過關 → 禁止改綠／滅工項** |
-| **PM Agent 必作** | 見 §7.3；詳 `tools/board/PM-AGENT.md` | **建工項 → 決策紅燈 → 派 subagent**；不可只在對話開工 |
+| 開發看板 | `docs/board.json`（驗證：`.ai-hooks/validate-board.ps1`） | 開發本產品用的工作卡與燈號；每張卡含 `id`／`level`／`parentId`／`status`／`light`／`notes`／`history` |
+| 派工清單 | Epic `PRODUCT-DEV-20261023`＋其下 `PD-*` 卡 | **首版切片**（流程骨架＋模組），不是全產品／不是 VGenAxIs 歷史全量；含 `PD-EXEC-CLI`／`PD-EXEC-MCP` |
+| **Done 規則（硬性）** | 見 §7.1 | **產出＋獨立 `TDD_PASS`＋PR 已合併 → 才可設 Done／Blue** |
+| **PM Agent 必作** | 見 §7.3；詳 `tools/board/PM-AGENT.md` | **建卡 → 決策紅燈 → 派 subagent**；不可只在對話開工 |
 | 禁止占用 | `:8788` HoneyBadger mailbox、使用者指定勿動之 `:8787` | 不可當 SGenAxis 通道 |
-| 舊埠 | `:18789` | 已讓出；勿再寫回腳本 |
 
-產品發行走 **Tauri 桌機**；看板 HTTP 可保留為內部 PM，不必等同產品 UI。
+產品發行走 **Tauri 桌機**；開發看板是內部 PM 資料，不等同產品 UI（產品內燈號語意見 §5.5，勿混用）。
 
-### 7.1 滅燈規則（硬性 · 已拍板）
+**燈號（`light`，每張卡必填）**
 
-工項燈號改 **綠（滅燈）** 必須同時滿足：
+| 燈 | 含義 |
+|----|------|
+| Gray | 未開始／暫停（暫停須寫原因） |
+| Green | 進行順利（**不代表完成**） |
+| Yellow | 有風險（必填 `lightReason`） |
+| Red | 卡住或待決策（必填 `lightReason`；待決策時以「待決策：」開頭） |
+| Blue | 完成（只在 `status=Done`／Released） |
+
+### 7.1 Done（藍燈）規則（硬性 · 已拍板）
+
+卡片設 `status=Done`、`light=Blue` 必須**三項同時成立**：
 
 | # | 條件 | 不合格例 |
 |---|------|----------|
-| 1 | **有產出** | 可指認的原始碼／報告／產物路徑；空承諾、只改備註、只改 zone → **不可滅** |
-| 2 | **TDD 過關** | 由**獨立 TDD Agent** 執行／核對測試並回報 PASS（有效 RED→同斷言 GREEN，或等效 `cargo test`／契約測試由 TDD Agent 親跑為綠） | `PENDING_TDD_PACKET`、實作代理自測自報、未跑測、弱化 assertion → **不可滅** |
+| 1 | **有產出** | 可指認的原始碼／報告／產物路徑；空承諾、只改 `notes` → **不可 Done** |
+| 2 | **獨立 `TDD_PASS`** | 由**獨立 TDD 代理**（驗證者 ≠ 開發者）親跑測試並回報 PASS，必要時高階審查也通過；`PENDING_TDD_PACKET`、開發代理自測自報、未跑測、弱化 assertion → **不可 Done** |
+| 3 | **PR 已合併** | 沒有 PR 的純文件／決策卡免此項，須在 `notes` 註明；PR 仍 open／draft → **不可 Done** |
+
+綠燈只表示進行順利；開發中、In Review 的卡都是 Green（或依風險 Yellow／Red），**不可**用 Green 表示完成。
+
+**CI guard**：PR 必須對應一張 Task 卡，該卡 `status=In Review`、`tdd=Green`，且涵蓋的情境都是 Green，否則 `guard` 失敗（`.github/ai-dev-guard/guard.ps1`）。開發代理交付時依本卡 TDD 自測 Green 填 `tdd=Green`（`ai-dev-implementation` 交付步驟）；這不代表驗收，Done 仍須上表的獨立 `TDD_PASS`。
 
 **角色分離（硬性）**
 | 角色 | 可做 | 不可做 |
 |------|------|--------|
-| **實作 Agent** | 寫碼、寫測試草稿、交 `reports/dispatch-pd/<ID>.md`、標 `READY_FOR_TDD` | **改綠**、宣稱 TDD PASS、弱化已核准斷言 |
-| **TDD Agent**（獨立） | 定義／核對 TDD 封包、親跑測試、寫 `reports/dispatch-pd/<ID>-TDD-REVIEW.md`、回報 `TDD_PASS`／`TDD_FAIL` | 代實作業務功能（除非修測試基礎設施） |
-| **母對話／owner** | **僅在 TDD Agent = `TDD_PASS` 且有產出** 時改綠 | 僅憑實作代理口頭完成改綠 |
+| **開發代理** | 寫碼、寫測試、交 `reports/dispatch-pd/<ID>.md`、開 draft PR、標 `READY_FOR_TDD`（卡最多移到 `In Review`） | 設 Done／Blue／Released／`approvedBy`、宣稱 TDD PASS、弱化已核准斷言、驗收自己的卡 |
+| **TDD 代理**（獨立） | 核對 TDD 封包、親跑測試、寫 `reports/dispatch-pd/<ID>-TDD-REVIEW.md`、回報 `TDD_PASS`／`TDD_FAIL` | 改產品程式；改測試斷言（測試基礎設施壞掉除外，需註明）；設 Done／Blue |
+| **高階模型（PM／架構師）／使用者** | **僅在三項條件成立時** 設 Done／Blue、合併 PR | 僅憑開發代理口頭完成就設 Done；實作自己規劃的卡又自己驗收 |
 
 **禁止**
-- 排程／腳本／輪詢「批次直接改綠」
-- 實作代理自測通過就滅燈（必須另起 TDD Agent）
-- 以 PARTIAL、口頭完成、文件勾選代替 TDD Agent 核可
+- 排程／腳本／輪詢批次設 Done／Blue
+- 開發代理自測通過就設 Done（必須另起獨立 TDD 代理）
+- 以 PARTIAL、口頭完成、文件勾選代替 `TDD_PASS`
 
-工具：`tools/board/poll_next_work.py` 只列待做；`poll_extinguish.py` **拒絕**直接滅燈。
+工具：`tools/board/poll_extinguish.py` 保留為**拒絕**批次結案的安全鎖；`tools/board/poll_next_work.py` 只列待做、不改燈（目前仍讀已停用的舊看板，見 PM-AGENT.md「已知落差」）。
 
 ### 7.2 領取範圍／讀取範圍（硬性 · 省 token）
 
-Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」讀完整看板或其他卡。
+Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」讀整份 `docs/board.json` 或其他卡。
 
 | 角色 | 可讀 | 禁止（除非該卡 AC 明示） |
 |------|------|---------------------------|
-| **母對話派工** | 只把該卡 `id／bdd／tdd／note／允許·保護範圍` 與相關路徑寫進 Task prompt | 叫子代理打開整份 `PROJECT-BOARD.html`、掃全部 `reports/dispatch-pd/*`、整份 PRODUCT-DEVELOPMENT |
-| **實作 Agent** | Prompt 摘錄；`reports/dispatch-pd/<本卡ID>.md`；本卡允許路徑內檔案 | 讀其他 `PD-*` 報告／無關 crate；整板 Grep；整檔重寫看板 |
-| **TDD Agent** | 佇列內各卡的報告＋對應測試指令；寫 `<ID>-TDD-REVIEW.md` | 一次載入全部工項備註當上下文 |
+| **派工者（PM／母對話）** | 只把該卡 `id`／`title`／`bdd`（或 `scenarioIds`）／TDD 封包／允許·保護範圍與相關路徑寫進 prompt | 叫子代理讀整份 `docs/board.json`、掃全部 `reports/dispatch-pd/*`、整份 PRODUCT-DEVELOPMENT |
+| **開發代理** | Prompt 摘錄；`reports/dispatch-pd/<本卡ID>.md`；本卡允許路徑內檔案 | 讀其他 `PD-*` 卡或報告／無關 crate；整板搜尋 |
+| **TDD 代理** | 佇列內各卡的報告＋對應測試指令；寫 `<ID>-TDD-REVIEW.md` | 一次載入全部卡的 `notes` 當上下文 |
 
-看板回寫：只追加**本卡**短註（或 `board.py report`）；**禁止**用過期整份 HTML 覆寫 `#board-snapshot` 外殼。
+看板回寫：只改**本卡**——更新 `updatedAt`、在 `history` 追加 `{at, from, to, by, note}`、在 `notes` 追加 `{at, by, text}`（只追加不改舊紀錄）；**禁止**整檔重寫 `docs/board.json` 或用過期副本覆蓋。改完跑 `.ai-hooks/validate-board.ps1`。
 
 ### 7.3 PM Agent 必作事項（硬性 · 已拍板）
 
-母對話／PM Agent 使用看板工具時，下列為**必作**（細節與檢查清單：`tools/board/PM-AGENT.md`）：
+母對話／PM Agent 安排工作時，下列為**必作**（細節與檢查清單：`tools/board/PM-AGENT.md`）：
 
 | # | 必作 | 不合格 |
 |---|------|--------|
-| 1 | **建工項**：下一批工作先寫入 `#board-snapshot`（`kind=task`，預設灰燈；欄位齊 BDD／允許範圍／AC） | 只在聊天列清單、不建卡就派工 |
-| 2 | **決策 → 紅燈**：待核准／範圍未決／REPLAN／SPEC_CONFLICT／發布門檻未定 → `kind=decision`、`zone=red`，`note` 記錄 **待決策事項** 條列 | 決策未決就黃燈開工；紅燈無待決策清單 |
-| 3 | **分派 subagent**：決策清後灰→黃；一卡一實作 Agent＋獨立 TDD Gate；prompt 僅該卡（§7.2）；`TDD_PASS` 後母對話才滅燈（§7.1） | 跳過 TDD；實作自改綠；整板塞進 prompt |
+| 1 | **建卡**：下一批工作先寫入 `docs/board.json`（`level=Task`／Story，`parentId` 指向上層，`status=Todo`、`light=Gray`；BDD／允許範圍／AC 寫進卡） | 只在聊天列清單、不建卡就派工 |
+| 2 | **決策 → 紅燈**：待核准／範圍未決／REPLAN／SPEC_CONFLICT／發布門檻未定 → `light=Red`，`lightReason` 以「待決策：」開頭，`notes` 條列每項決策（問題／選項／影響卡 ID／建議） | 決策未決就開工；紅燈無待決策清單 |
+| 3 | **分派 subagent**：決策清後 `Todo`→`In Progress`、`light=Green`；一卡一開發代理＋獨立 TDD Gate；prompt 僅該卡（§7.2）；三項條件成立後才由高階模型／使用者設 Done／Blue（§7.1） | 跳過 TDD；開發代理自設 Done；整板塞進 prompt |
 
-自動派工 `skip_kinds` 含 `decision`（紅燈決策卡不進 CLI lane；由 PM／owner 處理）。
+自動派工一律跳過待決策紅燈卡（由 PM／owner 處理）。
 
-**禁止**：無建卡派工；決策紅燈未關就派實作；用腳本批次改綠。
+**禁止**：無建卡派工；決策紅燈未關就派依賴它的卡；用腳本批次設 Done／Blue。
 
 ---
 
@@ -369,9 +383,9 @@ Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」�
 | `git_workbench_interactive.html` | 產品 UI 原型 |
 | `docs/PRODUCT-DEVELOPMENT.md` | 本說明（Markdown） |
 | `docs/PRODUCT-DEVELOPMENT.html` | 本說明（HTML，可雙擊開啟） |
-| `docs/PROJECT-BOARD.html` | 開發看板資料與 UI |
+| `docs/board.json` | 開發看板（唯一權威；`.ai-hooks/validate-board.ps1` 驗證） |
 | `tools/board/PM-AGENT.md` | **PM Agent 必作**：建工項、決策紅燈、分派 subagent |
-| `docs/start-board-watch.cmd` | 看板服務啟動（埠 **28789**） |
+| `docs/start-board-watch.cmd` | 舊看板服務（埠 28789，讀已停用的 `PROJECT-BOARD.html`）；已停用，見 `tools/board/PM-AGENT.md`「已知落差」 |
 | `apps/sgenaxis-desktop/README.md` | 桌機 App 使用說明（開專案／DryRun／設定；埠禁區） |
 | `docs/VERIFY-ELEVATED-AND-LIVE-SMOKE.md` | elevated VERIFY-INSTALL／Live CLI 冒煙操作、風險、NOT RUN（PD-VERIFY-DOC-01） |
 | `docs/RELEASE-CHECKLIST-v0.1.md` | v0.1 發布檢查清單（MSI／elev／sec／SBOM／簽章／CHANGELOG；PASS｜FAIL｜NOT RUN｜PARTIAL）（PD-REL-CHECKLIST-01） |
@@ -408,5 +422,5 @@ Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」�
 | 2026-10-23 | REL／佈版：Windows 安裝包拍板 **WiX**（M3；macOS／Linux 另案） |
 | 2026-10-24 | §7.3 PM Agent 必作：建工項、決策紅燈＋待決策事項、分派 subagent；`tools/board/PM-AGENT.md`；`skip_kinds`+`decision` |
 | 2026-10-24 | **滅燈規則**：未產出且 TDD 未過關不可滅工項；禁止排程直接改綠 |
-| 2026-10-24 | **TDD Agent 閘門**：另起獨立 TDD Agent 測過（`TDD_PASS`）才可由母對話標綠；實作代理不可改綠 |
+| 2026-10-24 | **TDD Agent 閘門**：另起獨立 TDD Agent 測過（`TDD_PASS`）才可由母對話標綠；實作代理不可改綠（歷史紀錄；現行規則見 §7.1：完成＝Done／Blue） |
 | 2026-10-24 | **§7.2 領取讀取範圍**：subagent 只讀自己領取工項；禁止讀整板／全部報告（省 token） |
