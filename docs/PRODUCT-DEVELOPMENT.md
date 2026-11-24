@@ -6,7 +6,7 @@
 | 狀態 | **已拍板技術棧與製作流程**；產品實作尚未開工 |
 | 產品名稱 | SGenAxis（工作台原型／文案；看板工具側曾用 VGenAxIs） |
 | UI 原型 | `git_workbench_interactive.html` |
-| PM 看板 | `docs/PROJECT-BOARD.html` + `docs/start-board-watch.cmd` → `http://127.0.0.1:28789/` |
+| PM 看板 | `docs/board.json`（唯一權威，`.ai-hooks/validate-board.ps1` 驗證）；舊 `PROJECT-BOARD.html`＋`start-board-watch.cmd`（埠 28789）已停用 |
 | 舊規畫 | `docs/product-plan/`（Electron + React **已廢止**，僅供模組／工項語意參考） |
 
 ---
@@ -26,7 +26,7 @@ SGenAxis 是**本機優先的跨平台桌機**「自動化開發控制中心」�
 3. 指派 Agent → 看 Run／Log  
 4. 檢視 Git 變更 →（後期）核准提交／發布  
 
-**操作步驟（開專案／DryRun／設定、埠 28789 與 `:8788` 禁區）：**  
+**操作步驟（開專案／DryRun／設定、埠 28789（舊看板，已停用）與 `:8788` 禁區）：**  
 `apps/sgenaxis-desktop/README.md`「使用說明」· 索引 `docs/DESKTOP-APP-USAGE.md`（PD-README-APP-01）。
 
 ### 1.2 範圍與非目標
@@ -162,7 +162,7 @@ UI 事件只呼叫 **command 名稱 + 參數**；副作用全部在 Core／Adapt
 | 紅 | 失敗／阻塞（需原因與證據） |
 | 綠 | 核准範圍內驗收完成（**≠** 已正式發布） |
 
-> 開發用 `PROJECT-BOARD.html` 燈號是 PM 切片狀態，勿與產品內工項健康混為同一權威。
+> 開發看板（`docs/board.json`）燈號是 PM 切片狀態，勿與產品內工項健康混為同一權威。
 
 ---
 
@@ -313,16 +313,18 @@ UI「指派 Agent」
 | # | 條件 | 不合格例 |
 |---|------|----------|
 | 1 | **有產出** | 可指認的原始碼／報告／產物路徑；空承諾、只改 `notes` → **不可 Done** |
-| 2 | **獨立 `TDD_PASS`** | 由**獨立 TDD 代理**（驗證者 ≠ 開發者）親跑測試並回報 PASS；必要時高階審查也通過 | `PENDING_TDD_PACKET`、開發代理自測自報、未跑測、弱化 assertion → **不可 Done** |
+| 2 | **獨立 `TDD_PASS`** | 由**獨立 TDD 代理**（驗證者 ≠ 開發者）親跑測試並回報 PASS，必要時高階審查也通過；`PENDING_TDD_PACKET`、開發代理自測自報、未跑測、弱化 assertion → **不可 Done** |
 | 3 | **PR 已合併** | 沒有 PR 的純文件／決策卡免此項，須在 `notes` 註明 | PR 仍 open／draft → **不可 Done** |
 
 綠燈只表示進行順利；開發中、In Review 的卡都是 Green（或依風險 Yellow／Red），**不可**用 Green 表示完成。
 
+**CI guard**：PR 必須對應一張 Task 卡，該卡 `status=In Review`、`tdd=Green`，且涵蓋的情境都是 Green，否則 `guard` 失敗（`.github/ai-dev-guard/guard.ps1`）。`tdd=Green` 依獨立 `TDD_PASS` 記錄，開發代理不可自記。
+
 **角色分離（硬性）**
 | 角色 | 可做 | 不可做 |
 |------|------|--------|
-| **開發代理** | 寫碼、寫測試、交 `reports/dispatch-pd/<ID>.md`、開 draft PR、標 `READY_FOR_TDD`（卡最多移到 `In Review`） | 設 Done／Blue、宣稱 TDD PASS、弱化已核准斷言、驗收自己的卡 |
-| **TDD 代理**（獨立） | 核對 TDD 封包、親跑測試、寫 `reports/dispatch-pd/<ID>-TDD-REVIEW.md`、回報 `TDD_PASS`／`TDD_FAIL` | 改產品程式；設 Done／Blue |
+| **開發代理** | 寫碼、寫測試、交 `reports/dispatch-pd/<ID>.md`、開 draft PR、標 `READY_FOR_TDD`（卡最多移到 `In Review`） | 設 Done／Blue／Released／`approvedBy`、宣稱 TDD PASS、弱化已核准斷言、驗收自己的卡 |
+| **TDD 代理**（獨立） | 核對 TDD 封包、親跑測試、寫 `reports/dispatch-pd/<ID>-TDD-REVIEW.md`、回報 `TDD_PASS`／`TDD_FAIL` | 改產品程式；改測試斷言（測試基礎設施壞掉除外，需註明）；設 Done／Blue |
 | **高階模型（PM／架構師）／使用者** | **僅在三項條件成立時** 設 Done／Blue、合併 PR | 僅憑開發代理口頭完成就設 Done；實作自己規劃的卡又自己驗收 |
 
 **禁止**
@@ -381,9 +383,9 @@ Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」�
 | `git_workbench_interactive.html` | 產品 UI 原型 |
 | `docs/PRODUCT-DEVELOPMENT.md` | 本說明（Markdown） |
 | `docs/PRODUCT-DEVELOPMENT.html` | 本說明（HTML，可雙擊開啟） |
-| `docs/PROJECT-BOARD.html` | 開發看板資料與 UI |
+| `docs/board.json` | 開發看板（唯一權威；`.ai-hooks/validate-board.ps1` 驗證） |
 | `tools/board/PM-AGENT.md` | **PM Agent 必作**：建工項、決策紅燈、分派 subagent |
-| `docs/start-board-watch.cmd` | 看板服務啟動（埠 **28789**） |
+| `docs/start-board-watch.cmd` | 舊看板服務（埠 28789，讀已停用的 `PROJECT-BOARD.html`）；已停用，見 `tools/board/PM-AGENT.md`「已知落差」 |
 | `apps/sgenaxis-desktop/README.md` | 桌機 App 使用說明（開專案／DryRun／設定；埠禁區） |
 | `docs/VERIFY-ELEVATED-AND-LIVE-SMOKE.md` | elevated VERIFY-INSTALL／Live CLI 冒煙操作、風險、NOT RUN（PD-VERIFY-DOC-01） |
 | `docs/RELEASE-CHECKLIST-v0.1.md` | v0.1 發布檢查清單（MSI／elev／sec／SBOM／簽章／CHANGELOG；PASS｜FAIL｜NOT RUN｜PARTIAL）（PD-REL-CHECKLIST-01） |
@@ -420,5 +422,5 @@ Subagent **只處理自己領取的那一張卡**；禁止為「了解全貌」�
 | 2026-10-23 | REL／佈版：Windows 安裝包拍板 **WiX**（M3；macOS／Linux 另案） |
 | 2026-10-24 | §7.3 PM Agent 必作：建工項、決策紅燈＋待決策事項、分派 subagent；`tools/board/PM-AGENT.md`；`skip_kinds`+`decision` |
 | 2026-10-24 | **滅燈規則**：未產出且 TDD 未過關不可滅工項；禁止排程直接改綠 |
-| 2026-10-24 | **TDD Agent 閘門**：另起獨立 TDD Agent 測過（`TDD_PASS`）才可由母對話標綠；實作代理不可改綠 |
+| 2026-10-24 | **TDD Agent 閘門**：另起獨立 TDD Agent 測過（`TDD_PASS`）才可由母對話標綠；實作代理不可改綠（歷史紀錄；現行規則見 §7.1：完成＝Done／Blue） |
 | 2026-10-24 | **§7.2 領取讀取範圍**：subagent 只讀自己領取工項；禁止讀整板／全部報告（省 token） |

@@ -53,15 +53,15 @@
 | 1 | 卡 `Todo`→`In Progress`、`light=Green`、填 `startedAt`；上層卡 `notes` 記「開工：…」 |
 | 2 | 每張卡 **一個** 開發代理；prompt **只含該卡欄位**（§7.2） |
 | 3 | 另起 **獨立 TDD Gate**（佇列 = 本批 ID）；開發代理不可自設 Done（§7.1） |
-| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` → TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 且 PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
+| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` → TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 後依此記 `tdd=Green`（CI `guard` 要求 PR 對應卡為 `In Review`＋`tdd=Green`，涵蓋情境皆 Green；開發代理不可自記）→ PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
 
 ## 4. 角色對照
 
 | 角色 | 必作 | 禁作 |
 |------|------|------|
 | **PM Agent（高階模型／母對話）** | 建卡、決策紅燈＋待決策清單、派開發／TDD、三項條件成立後設 Done／Blue、合併 PR | 跳過建卡直接開工；決策未決就派依賴卡；無 `TDD_PASS` 設 Done |
-| **開發代理** | 產出＋報告＋draft PR；卡最多到 `In Review` | 設 Done／Blue；讀整板 |
-| **TDD 代理** | 親跑測＋ REVIEW；回報 `TDD_PASS`／`TDD_FAIL` | 設 Done／Blue；改產品程式 |
+| **開發代理** | 產出＋報告＋draft PR；卡最多到 `In Review` | 設 Done／Blue／Released／`approvedBy`；記自己卡的 `tdd=Green`；讀整板 |
+| **TDD 代理** | 親跑測＋ REVIEW；回報 `TDD_PASS`／`TDD_FAIL` | 設 Done／Blue；改產品程式；改測試斷言（測試基礎設施壞掉除外，需註明） |
 
 ## 5. 檢查清單（每批開工前）
 
