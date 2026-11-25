@@ -4,7 +4,7 @@
 Status vocabulary (only): PASS | FAIL | BLOCKED | NOT RUN | PARTIAL.
 
 Writes Markdown under ``reports/`` (default) or ``releases/``. Optionally
-appends a board ``#release`` row via ``release_report`` (snapshot-only).
+writes ``<report>.release.json`` via ``release_report`` (never writes a board).
 
 No signing; no macOS/Linux packaging (M4). Reuses ``release_report.build_artifact``.
 """
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -441,14 +440,13 @@ def write_report(
 
 
 def hang_to_release(
-    board_path: Path,
     result: Mapping[str, Any],
     report_path: str | Path,
     *,
     embed_report_md: bool = True,
     repo: Path | None = None,
 ) -> dict:
-    """Append/replace one release row pointing at this Build Result (via release_report)."""
+    """Write ``<report>.release.json`` pointing at this Build Result; return the record."""
     root = repo or REPO
     rp = Path(report_path)
     try:
@@ -466,9 +464,10 @@ def hang_to_release(
         embed_report_md=embed_report_md,
         repo=root,
     )
-    # Carry overall Build Result status for consumers that read snapshot.releases.
+    # Carry overall Build Result status for consumers of the release record.
     release["buildResultStatus"] = result["status"]
-    return release_report.append_release(Path(board_path), release)
+    release_report.write_release_json(release, release_report.release_json_path(rp))
+    return release
 
 
 def candidate_v010_from_packaging(
@@ -633,7 +632,7 @@ def candidate_v010_from_packaging(
         rollback=[
             "Do not distribute unsigned/unverified MSI beyond lab.",
             "Remove or quarantine packaging/windows/wix/out/SGenAxis-0.1.0-windows-x64.msi if a bad candidate is published.",
-            "If a release row was appended, re-append a corrected reportPath via release_report or delete that release id in snapshot.releases via snapshot_safe.",
+            "If a <report>.release.json was written, regenerate it with a corrected reportPath or delete it.",
         ],
         pending=pending,
         generated_at=ts,
@@ -1036,11 +1035,6 @@ def generate_final_v010(
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument(
-        "--board",
-        default=os.environ.get("HB_BOARD_TASKS") or str(REPO / "docs" / "PROJECT-BOARD.html"),
-        help="PROJECT-BOARD.html for optional --record-release",
-    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     g = sub.add_parser("generate", help="Generate v0.1.0 candidate (or --version) Build Result")
@@ -1052,7 +1046,7 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument(
         "--record-release",
         action="store_true",
-        help="Append snapshot.releases via release_report (reportPath → this Build Result)",
+        help="Write <report>.release.json via release_report (reportPath → this Build Result)",
     )
     g.add_argument("--no-json", action="store_true", help="Skip sidecar .json")
     g.add_argument("--no-embed-report", action="store_true")
@@ -1206,18 +1200,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("wrote %s status=%s" % (path, result["status"]))
         if args.record_release:
             stored = hang_to_release(
-                Path(args.board),
                 result,
                 path,
                 embed_report_md=not args.no_embed_report,
                 repo=REPO,
             )
             print(
-                "recorded release id=%s buildResultStatus=%s reportPath=%s"
+                "recorded release id=%s buildResultStatus=%s reportPath=%s file=%s"
                 % (
                     stored.get("id"),
                     stored.get("buildResultStatus"),
                     stored.get("reportPath"),
+                    release_report.release_json_path(path),
                 )
             )
         return 0

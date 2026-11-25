@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""PD-REL-HANG-FINAL-01 — hang final Build Result + key artifacts into #release.
+"""PD-REL-HANG-FINAL-01 — hang final Build Result + key artifacts as a release record.
 
-BDD-PD-REL-HANG-FINAL-01: append/update snapshot.releases v0.1.0 (or equiv);
+BDD-PD-REL-HANG-FINAL-01: write <report>.release.json for v0.1.0 (or equiv);
 reportPath → latest reports/build-0.1.0-final-*.md; artifacts include MSI / SBOM
 when present; never rewrite signing NOT RUN as PASS.
 
-Reuses release_report (snapshot-only mutate). No git tag; no store listing.
+Reuses release_report; never writes a board (PD-BOARD-GAPS-RELEASE-01).
+No git tag; no store listing.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -20,8 +20,6 @@ from typing import Any, MutableMapping, Sequence
 
 BOARD_DIR = Path(__file__).resolve().parent
 REPO = BOARD_DIR.parents[1]
-DOCS = REPO / "docs"
-DEFAULT_BOARD = DOCS / "PROJECT-BOARD.html"
 TAIPEI = timezone(timedelta(hours=8))
 
 CARD_ID = "PD-REL-HANG-FINAL-01"
@@ -178,7 +176,6 @@ def refuse_signing_forged_pass(release: MutableMapping[str, Any]) -> MutableMapp
 
 
 def hang_final_to_release(
-    board_path: Path,
     *,
     version: str = DEFAULT_VERSION,
     report_path: Path | str | None = None,
@@ -186,7 +183,7 @@ def hang_final_to_release(
     embed_report_md: bool = True,
     include_missing_artifacts: bool = False,
 ) -> dict:
-    """Append/replace v0.1.0 release pointing at final BR + MSI/SBOM artifacts."""
+    """Write <report>.release.json for v0.1.0 (final BR + MSI/SBOM); return the record."""
     root = repo or REPO
     rp = Path(report_path) if report_path else find_latest_final_br(root)
     if rp is None:
@@ -228,20 +225,16 @@ def hang_final_to_release(
     # HARD: hang must not invent overall PASS when BR is PARTIAL / signing NOT RUN.
     if release["signingStatus"].upper() == "NOT RUN" and release["buildResultStatus"].upper() == "PASS":
         release["buildResultStatus"] = "PARTIAL"
-    return release_report.append_release(Path(board_path), release)
+    release_report.write_release_json(release, release_report.release_json_path(rp))
+    return release
 
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument(
-        "--board",
-        default=os.environ.get("HB_BOARD_TASKS") or str(DEFAULT_BOARD),
-        help="PROJECT-BOARD.html path",
-    )
     ap.add_argument("--repo", default=str(REPO), help="Repo root")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    h = sub.add_parser("hang", help="Hang final BR into snapshot.releases")
+    h = sub.add_parser("hang", help="Write <final BR>.release.json")
     h.add_argument("--version", default=DEFAULT_VERSION)
     h.add_argument(
         "--report-path",
@@ -272,7 +265,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.cmd == "hang":
         stored = hang_final_to_release(
-            Path(args.board),
             version=args.version,
             report_path=args.report_path or None,
             repo=root,

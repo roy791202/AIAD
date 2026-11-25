@@ -8,7 +8,6 @@ from pathlib import Path
 
 import build_result as br
 import pack_spec as ps
-import release_report
 
 
 class TestFieldContract(unittest.TestCase):
@@ -123,21 +122,11 @@ class TestHangBuildResultAndRelease(unittest.TestCase):
             self.assertIn(a["packStatus"], ps.VALID_STATUSES)
 
     def test_hang_pack_spec_to_release(self):
-        snap = {"asOf": "2026-10-24T00:00:00+08:00", "tasks": [], "releases": []}
-        html = (
-            "<!DOCTYPE html>\n<html><head><title>t</title></head>"
-            '<body><div class="nav">導覽</div>'
-            '<script type="application/json" id="board-snapshot">\n'
-            + json.dumps(snap, ensure_ascii=False, indent=2)
-            + "\n</script>\n<script>/* runtime */</script></body></html>\n"
-        )
+        """PD-BOARD-GAPS-RELEASE-01: writes <report>.release.json, never a board."""
         spec = ps.default_matrix_v010(generated_at="2026-10-24T12:00:00+08:00")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            board = root / "PROJECT-BOARD.html"
-            board.write_text(html, encoding="utf-8", newline="\n")
             stored = ps.hang_pack_spec_to_release(
-                board,
                 spec,
                 report_path="reports/dispatch-pd/PD-M4-PACK-SPEC-01.md",
                 repo=root,
@@ -145,9 +134,10 @@ class TestHangBuildResultAndRelease(unittest.TestCase):
             self.assertEqual(stored.get("version"), "0.1.0")
             self.assertEqual(stored.get("packSpecStatus"), spec["status"])
             self.assertEqual(stored.get("packSpecSchema"), ps.SCHEMA_ID)
-            rels = release_report.list_releases(board)
-            self.assertEqual(len(rels), 1)
-            self.assertEqual(len(rels[0]["artifacts"]), 3)
+            self.assertEqual(len(stored["artifacts"]), 3)
+            out = root / "reports" / "dispatch-pd" / "PD-M4-PACK-SPEC-01.release.json"
+            self.assertEqual(json.loads(out.read_text(encoding="utf-8")), stored)
+            self.assertEqual(sorted(p.name for p in root.iterdir()), ["reports"])
 
 
 class TestSchemaAndDefaultMatrix(unittest.TestCase):

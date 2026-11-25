@@ -26878,20 +26878,27 @@
       "level": "Task",
       "title": "發布工具不再寫看板：release_report 改輸出 .release.json",
       "parentId": "PRODUCT-HARDEN-20261024",
-      "status": "Todo",
-      "light": "Gray",
+      "status": "In Review",
+      "light": "Green",
       "createdAt": "2026-11-24T16:00:00+08:00",
-      "updatedAt": "2026-11-24T16:00:00+08:00",
+      "updatedAt": "2026-11-24T18:49:00+08:00",
+      "startedAt": "2026-11-24T18:32:44+08:00",
       "owner": "AIAD",
       "role": "dev-agent",
       "hours": 3,
-      "tdd": "None",
+      "tdd": "Green",
       "ci": "None",
+      "prUrl": "https://github.com/roy791202/AIAD/pull/119",
       "notes": [
         {
           "at": "2026-11-24T16:00:00+08:00",
           "by": "PM (Claude Opus 5.5)",
           "text": "已知落差卡 C2。release_report.py：移除 append_release、list_releases、_mutate_snapshot、--board 與 board_watch import；保留 build_release、build_artifact、now_iso、size_text；子指令改 build，輸出一筆發布紀錄 JSON，--out <path> 寫檔、否則 stdout。build_result.py、rel_hang_final.py、rel_hang_post.py：拿掉 --board 與寫看板步驟，改寫 <report>.release.json。tests/test_pd_release_rec_01.py 與 tests/features/pd_release_rec_01.feature 改驗發布紀錄 JSON 與輸出檔；rust-gate.yml 測試清單沿用檔名。AC-C2-1 四支工具不 import board_watch、不參照 PROJECT-BOARD；AC-C2-2 build 產出 JSON 欄位與原 build_release 一致；AC-C2-3 三支呼叫端產生 .release.json 且不寫任何看板檔；AC-C2-4 release 測試與 tools/board/test_build_result.py、test_rel_hang_*.py 全 Green。保護：C1 檔案清單、board_core/**。依賴：無。"
+        },
+        {
+          "at": "2026-11-24T18:49:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "實作決策：release_report 新增 release_json_path（reports/x.md → reports/x.release.json）與 write_release_json；hang_to_release／hang_final_to_release／hang_post_to_release 拿掉 board_path 參數，寫出 <report>.release.json 並回傳紀錄。卡外連帶（移除 append_release／list_releases 必然波及）：tools/board/pack_spec.py hang_pack_spec_to_release 同樣拿掉 board_path、有 report_path 時寫 .release.json；test_pack_spec.py 跟著改；test_rel_ui_smoke.py 改用本檔內 snapshot_safe 小 helper 取代 release_report.append_release／list_releases，斷言不變（此測試驗的是已退役的 HTML #release，且依賴 C1 要刪的 snapshot_safe，交 C1 一併處理）；packaging/PACK-SPEC.md 一行說明。.feature 有改，PR 需 spec-change 標籤。"
         }
       ],
       "history": [
@@ -26901,6 +26908,20 @@
           "to": "Todo",
           "by": "PM (Claude Opus 5.5)",
           "note": "建卡。"
+        },
+        {
+          "at": "2026-11-24T18:32:44+08:00",
+          "from": "Todo",
+          "to": "In Progress",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "領卡開工（worktree claude/pd-board-gaps-release-01-8fdc3a），先寫 RED。"
+        },
+        {
+          "at": "2026-11-24T18:49:00+08:00",
+          "from": "In Progress",
+          "to": "In Review",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "READY_FOR_TDD。證據：RED commit c0a0291f 時 15 failed（無 build 子指令、--board 仍在、hang 仍需 board_path）；GREEN：tests/test_pd_release_rec_01.py + tools/board/test_build_result.py、test_rel_hang_final.py、test_rel_hang_post.py、test_pack_spec.py、test_rel_ui_smoke.py、test_br_final.py → 59 passed, 1 skipped（既有 live board 存在性守衛）。AC-C2-1 grep board_watch／PROJECT-BOARD 於四支工具無結果。tools/board unittest discover：126 tests，5 errors 與改前相同（缺 reports/*.md 證據檔）。pytest tests：60 failed／541 passed，失敗清單與 285510de 完全相同（本卡新增 3 passed）。pd_ci_pr_gate PASS。本機以合成 MSI fixture 設 SGENAXIS_PACKAGING_TEST_ROOT（CI 用真 fixture）。"
         }
       ]
     },

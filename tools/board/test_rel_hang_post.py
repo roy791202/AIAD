@@ -8,22 +8,14 @@ import unittest
 from pathlib import Path
 
 import rel_hang_post as rhp
-import release_report
 
 
-def _mini_board(releases: list | None = None) -> str:
-    snap = {
-        "asOf": "2026-10-24T00:00:00+08:00",
-        "tasks": [],
-        "releases": list(releases or []),
-    }
-    return (
-        "<!DOCTYPE html>\n<html><head><title>t</title></head>"
-        '<body><div class="nav">導覽</div>'
-        '<script type="application/json" id="board-snapshot">\n'
-        + json.dumps(snap, ensure_ascii=False, indent=2)
-        + "\n</script>\n<script>/* runtime */</script></body></html>\n"
-    )
+def _seed_board_json(root: Path) -> Path:
+    """A board file that release tools must never touch (PD-BOARD-GAPS-RELEASE-01)."""
+    board = root / "docs" / "board.json"
+    board.parent.mkdir(parents=True, exist_ok=True)
+    board.write_text('{"items": []}\n', encoding="utf-8", newline="\n")
+    return board
 
 
 def _seed_br(
@@ -119,28 +111,10 @@ class TestHangPostToRelease(unittest.TestCase):
             (reports / "sbom-test.cdx.json").write_text("{}", encoding="utf-8")
             (reports / "sbom-test.spdx.json").write_text("{}", encoding="utf-8")
 
-            board = root / "PROJECT-BOARD.html"
-            board.write_text(
-                _mini_board(
-                    [
-                        {
-                            "id": "v0.1.0",
-                            "version": "0.1.0",
-                            "reportPath": "reports/build-0.1.0-final-old.md",
-                            "artifacts": [],
-                            "buildResultStatus": "PARTIAL",
-                            "cardId": "PD-REL-HANG-FINAL-01",
-                        }
-                    ]
-                ),
-                encoding="utf-8",
-                newline="\n",
-            )
-            before = board.read_text(encoding="utf-8")
-            self.assertTrue(before.lstrip().startswith("<!DOCTYPE"))
+            board = _seed_board_json(root)
+            before = board.read_bytes()
 
             stored = rhp.hang_post_to_release(
-                board,
                 report_path=md,
                 repo=root,
                 embed_report_md=False,
@@ -158,12 +132,11 @@ class TestHangPostToRelease(unittest.TestCase):
             self.assertIn("SBOM-CycloneDX", labels)
             self.assertIn("SBOM-SPDX", labels)
 
-            after = board.read_text(encoding="utf-8")
-            self.assertTrue(after.lstrip().startswith("<!DOCTYPE"))
-            self.assertIn('class="nav"', after)
-            rels = release_report.list_releases(board)
-            self.assertEqual(len(rels), 1)
-            self.assertIn("post-remain", rels[0]["reportPath"])
+            release_json = md.with_name(md.stem + ".release.json")
+            self.assertEqual(json.loads(release_json.read_text(encoding="utf-8")), stored)
+            self.assertIn("post-remain", stored["reportPath"])
+            self.assertEqual(board.read_bytes(), before)
+            self.assertFalse((root / "docs" / "PROJECT-BOARD.html").exists())
 
     def test_best_available_stays_partial_no_forged_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -175,10 +148,7 @@ class TestHangPostToRelease(unittest.TestCase):
                 status="PASS",
                 signing="NOT RUN",
             )
-            board = root / "PROJECT-BOARD.html"
-            board.write_text(_mini_board(), encoding="utf-8", newline="\n")
             stored = rhp.hang_post_to_release(
-                board,
                 report_path=md,
                 repo=root,
                 embed_report_md=False,
@@ -198,6 +168,10 @@ class TestHangPostToRelease(unittest.TestCase):
         }
         rhp.refuse_signing_forged_pass(rel)
         self.assertEqual(rel["signingStatus"], "NOT RUN")
+
+    def test_cli_has_no_board_option(self):
+        with self.assertRaises(SystemExit):
+            rhp.build_parser().parse_args(["--board", "x.html", "hang"])
 
 
 if __name__ == "__main__":

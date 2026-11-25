@@ -458,7 +458,6 @@ def apply_to_build_result(
 
 
 def hang_pack_spec_to_release(
-    board_path: Path,
     pack_spec: Mapping[str, Any],
     *,
     report_path: str | None = None,
@@ -466,7 +465,7 @@ def hang_pack_spec_to_release(
     recorded_by: str = "agent",
     repo: Path | None = None,
 ) -> dict:
-    """Append a release row whose artifacts come from PackSpec (via release_report)."""
+    """Build a release record from PackSpec; write <report>.release.json when report_path."""
     root = repo or REPO
     spec = validate_pack_spec(pack_spec)
     arts = to_release_artifacts(spec["artifacts"], repo=root, only_existing=False)
@@ -480,7 +479,11 @@ def hang_pack_spec_to_release(
     )
     release["packSpecStatus"] = spec["status"]
     release["packSpecSchema"] = SCHEMA_ID
-    return release_report.append_release(Path(board_path), release)
+    if report_path:
+        report = Path(report_path)
+        report = report if report.is_absolute() else root / report
+        release_report.write_release_json(release, release_report.release_json_path(report))
+    return release
 
 
 def schema_document() -> dict:
