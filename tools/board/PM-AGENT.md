@@ -53,7 +53,7 @@
 | 1 | 卡 `Todo`→`In Progress`、`light=Green`、填 `startedAt`；上層卡 `notes` 記「開工：…」 |
 | 2 | 每張卡 **一個** 開發代理；prompt **只含該卡欄位**（§7.2） |
 | 3 | 另起 **獨立 TDD Gate**（佇列 = 本批 ID）；開發代理不可自設 Done（§7.1） |
-| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` （交付時依自測填 `tdd=Green`；CI `guard` 要求 PR 對應卡為 `In Review`＋`tdd=Green`，涵蓋情境皆 Green）→ TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 且 PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt` |
+| 4 | 開發代理標 `READY_FOR_TDD`、開 draft PR、卡移 `In Review` （交付時依自測填 `tdd=Green`；CI `guard` 要求 PR 對應卡為 `In Review`＋`tdd=Green`，涵蓋情境皆 Green）→ TDD 代理寫 `<ID>-TDD-REVIEW.md` → `TDD_PASS` 且 PR 合併後，**僅高階模型／使用者**設 `status=Done`、`light=Blue`、`completedAt`；走只改 `docs/board.json` 的結案 PR，Owner 推送前加 `board-closeout` 標籤（可一次結多張卡，見 `ai-dev-pipeline/references/roles-and-gates.md`「結案 PR」） |
 
 ## 4. 角色對照
 

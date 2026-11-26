@@ -30,7 +30,12 @@
 2. **獨立 `TDD_PASS`**：驗證者 ≠ 開發者，親跑通過；必要時審查也通過。
 3. **PR 已合併**（沒有 PR 的純文件／決策卡免此項，需註明）。
 只有高階模型或使用者能設 Done／藍燈；排程、腳本、輪詢一律不得批次改 Done。
-設 Done 走一個只改看板的結案 PR，由 Owner 加 `board-closeout` 標籤（檢查項見 [enforcement.md](enforcement.md)）。
+
+## 結案 PR（設 Done）
+- **只改 `docs/board.json`**；改到其他檔案，CI guard 直接失敗（不會退回一般 PR 的檢查）。
+- 由 **Owner 加 `board-closeout` 標籤**，而且要在**推送前**加好：guard 讀的是觸發事件當下的標籤，推送後才加可能被取消的那一輪蓋掉（見 `docs/LESSONS.md` 2026-11-25 一則）。
+- 一個結案 PR 可以結多張卡。guard 只檢查有變更的卡：必須是 Task 或 Story；base 為 In Review 且 `tdd` Green；結案後為 Done 並填 `completedAt`。
+- 只可改 `status`、`light`、`updatedAt`、`completedAt`、`ci`、`approvedBy`、`lightReason`；`notes`、`history` 只能追加。不可新增或刪除卡片。
 
 ## 驗收紀錄必填
 開發代理身分、驗證代理身分（審查代理身分）、BDD ID、執行的指令與結果、截圖錄影路徑、`TDD_PASS`／`TDD_FAIL`、NOT RUN 清單與原因。
