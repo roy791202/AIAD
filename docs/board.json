@@ -3886,6 +3886,11 @@
           "at": "2026-11-25T16:30:00+08:00",
           "by": "dev-agent (Claude Opus 5.5)",
           "text": "本批已建卡：PD-LESSONS-GUARD-LABEL-01（Owner 指示記錄 PR #119 guard 標籤時序問題）。"
+        },
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "本批已建卡：PD-CI-GUARD-CLOSEOUT-TOP-01（D1 結案模式比對最上層欄位）、PD-CI-VALIDATE-BOARD-SYNC-01（D3 三份 validate-board.ps1 一致＋檢查）、PD-CI-CLOSEOUT-APPROVER-DEC-01（D4 approvedBy 有效值，待決策紅燈）。來源：PR #122 獨立驗收建議；Owner 2026-11-26 指示開卡。三卡都改 .github/ai-dev-guard/validate-board.ps1，建議依序做。"
         }
       ],
       "history": [
@@ -27160,6 +27165,120 @@
           "to": "Done",
           "by": "Owner（指示記錄；檔案由 dev-agent 代改）",
           "note": "PR #122 已合併、CI Green、獨立 TDD_PASS；Owner 授權設 Done／藍燈（board-closeout 批次）。"
+        }
+      ]
+    },
+    {
+      "id": "PD-CI-GUARD-CLOSEOUT-TOP-01",
+      "level": "Task",
+      "title": "結案模式也比對看板最上層欄位（board-closeout 不可改 items 以外的欄位）",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "In Review",
+      "light": "Green",
+      "createdAt": "2026-11-26T15:50:00+08:00",
+      "updatedAt": "2026-11-26T16:30:00+08:00",
+      "startedAt": "2026-11-26T16:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 1,
+      "tdd": "Green",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "PR #122 獨立驗收建議 D1。缺口：.github/ai-dev-guard/validate-board.ps1 的 Test-BoardCloseout 只比對 items，看板最上層欄位（例 project、migration、updatedAt 以外的頂層鍵）在 board-closeout PR 可任意改動而不被擋。範圍：Test-BoardCloseout 加最上層欄位比對（除 items 外，允許哪些頂層鍵變動於開工時對照 Test-BoardBookkeeping 決定並寫進 notes）；tests/test_ai_dev_guard_closeout.py 補測試。AC-1 board-closeout PR 改了最上層非允許欄位 → guard 失敗並列出欄位名；AC-2 只改卡片的既有結案 PR（#120、#123 的 diff）仍通過；AC-3 tests/test_ai_dev_guard_closeout.py 全 Green、pd_ci_pr_gate PASS。改 .github/ai-dev-guard/ → PR 需 Owner 加 guard-change 標籤。依賴：建議與 PD-CI-VALIDATE-BOARD-SYNC-01、PD-CI-CLOSEOUT-APPROVER-DEC-01 依序做（三卡都改同一檔），避免衝突。無 BDD（CI 工具卡）。"
+        },
+        {
+          "at": "2026-11-26T16:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "實作決策：結案 PR 的最上層欄位只允許 updatedAt 變動（格式仍由 Test-Board 檢查）；items 以外的其他最上層欄位（version、project、migration，以及新增或刪除最上層欄位）不可變動，錯誤訊息列出欄位名。依據：#122 既有測試的 _close 會更新最上層 updatedAt，視為正常結案；main 上 #117–#123 七個合併 commit 的最上層欄位皆未變動。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡（PR #122 驗收 D1）。"
+        },
+        {
+          "at": "2026-11-26T16:00:00+08:00",
+          "from": "Todo",
+          "to": "In Progress",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "開工；TDD 先寫 RED（tests/test_ai_dev_guard_closeout.py）。"
+        },
+        {
+          "at": "2026-11-26T16:30:00+08:00",
+          "from": "In Progress",
+          "to": "In Review",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "READY_FOR_TDD。RED 88c4a38d：新增 5 測試中 4 failed（project／version／migration 修改、刪除 migration），只改最上層 updatedAt 1 passed。GREEN：Test-BoardCloseout 比對 items、updatedAt 以外的最上層欄位；tests/test_ai_dev_guard_closeout.py 27 passed。AC-2：以新檢查重跑 #120（88813277）與 #123（3cb7393e）的看板差異，Test-BoardCloseout 皆 0 錯誤。roles-and-gates.md 結案段落加一行；sync_skills --check OK；pd_ci_pr_gate PASS。待獨立 TDD 代理驗證；PR 需 Owner 加 guard-change 標籤（推送前）。"
+        }
+      ]
+    },
+    {
+      "id": "PD-CI-VALIDATE-BOARD-SYNC-01",
+      "level": "Task",
+      "title": "三份 validate-board.ps1 回到一致，並在 PR gate 加一致性檢查",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Gray",
+      "createdAt": "2026-11-26T15:50:00+08:00",
+      "updatedAt": "2026-11-26T15:50:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 2,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "PR #122 獨立驗收建議 D3。現況（main 3cb7393e）：.ai-hooks/validate-board.ps1 與 .githooks/validate-board.ps1 相同（218 行）；.github/ai-dev-guard/validate-board.ps1 多 38 行（Test-BoardCloseout，256 行）。文件 board-and-lights.md:3 與 PRODUCT-DEVELOPMENT.md:287 寫「hook、Git hook、CI 跑同一支」，已不成立，且沒有檢查會發現漂移。建議做法：把 .github/ai-dev-guard 版同步到另兩份（Test-BoardCloseout 只在 -Library 被 guard 呼叫，不影響 hook 行為），並在 scripts/pd_ci_pr_gate.py 加一致性檢查（三檔 hash 不同即失敗）。開工前若要改成單一來源（hook 直接呼叫 .github 版），先在 notes 記錄並請 Owner 拍板。AC-1 三檔 hash 相同；AC-2 任一份改動而未同步 → pd_ci_pr_gate 失敗並列出檔名；AC-3 本機 pre-commit 與 ai-hook 對既有看板行為不變（validate-board 對 main 的 docs/board.json exit 0）；AC-4 pd_ci_pr_gate PASS。改 .ai-hooks/、.githooks/、.github/ai-dev-guard/ → PR 需 Owner 加 guard-change 標籤。無 BDD（CI 工具卡）。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡（PR #122 驗收 D3）。"
+        }
+      ]
+    },
+    {
+      "id": "PD-CI-CLOSEOUT-APPROVER-DEC-01",
+      "level": "Task",
+      "title": "決策＋實作：board-closeout 結案時 approvedBy 的有效值",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "Todo",
+      "light": "Red",
+      "lightReason": "待決策：board-closeout 結案的 approvedBy 要不要必填、可填哪些值（目前任何值都通過，含 dev-agent）。",
+      "createdAt": "2026-11-26T15:50:00+08:00",
+      "updatedAt": "2026-11-26T15:50:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 1,
+      "tdd": "None",
+      "ci": "None",
+      "notes": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "by": "PM (Claude Opus 5.5)",
+          "text": "PR #122 獨立驗收建議 D4。現況：Test-BoardCloseout 允許改 approvedBy，但不檢查值；validate-board.ps1 的 IsDevAgent 檢查（不可以是開發代理）只用在 Prod 發布紀錄。#120、#123 結案時都沒填 approvedBy。\n待決策事項:\n- [ ] DEC-1: approvedBy 是否必填／選項 A 結案必填·B 選填（維持現狀）／影響 PD-CI-CLOSEOUT-APPROVER-DEC-01、之後所有結案 PR／建議 A（結案由 Owner 核准，留下核准者紀錄）\n- [ ] DEC-2: 可填的值／選項 A 不可是開發代理（沿用 IsDevAgent）·B 只允許清單內的值（例 Owner、使用者帳號）·C 不限制／影響 同上／建議 A（與 Prod 規則一致，改動最小）\n狀態: 紅燈，決策關閉前不開工。決策後實作範圍：.github/ai-dev-guard/validate-board.ps1 的 Test-BoardCloseout、tests/test_ai_dev_guard_closeout.py；若 DEC-1 選 A，同步 PM-AGENT.md §3 與 roles-and-gates.md 結案 PR 段落。改 .github/ai-dev-guard/ → PR 需 guard-change 標籤。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T15:50:00+08:00",
+          "from": "new",
+          "to": "Todo",
+          "by": "PM (Claude Opus 5.5)",
+          "note": "建卡（決策紅燈，PR #122 驗收 D4）。"
         }
       ]
     }

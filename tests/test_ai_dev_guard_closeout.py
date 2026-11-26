@@ -322,6 +322,41 @@ def test_should_fail_when_closeout_removes_card(repo: Path) -> None:
     assert f"{OTHER}: " in _out(p)
 
 
+@pytest.mark.parametrize(("field", "value"), [
+    ("project", "renamed"),
+    ("version", 2),
+    ("migration", {"source": "x"}),
+])
+def test_should_fail_when_closeout_changes_top_level_field(repo: Path, field: str, value: object) -> None:
+    board = _close(_base_board())
+    board[field] = value
+    _head(repo, board)
+    p = _run_guard(repo)
+    assert p.returncode == 1, _out(p)
+    assert f"board-closeout 不可修改看板最上層欄位：{field}" in _out(p)
+
+
+def test_should_fail_when_closeout_removes_top_level_field(repo: Path) -> None:
+    base = _base_board()
+    base["migration"] = {"source": "x"}
+    _rebase_fixture(repo, base)
+    board = _close(json.loads(json.dumps(base)))
+    del board["migration"]
+    _head(repo, board)
+    p = _run_guard(repo)
+    assert p.returncode == 1, _out(p)
+    assert "board-closeout 不可修改看板最上層欄位：migration" in _out(p)
+
+
+def test_should_pass_when_closeout_changes_only_top_level_updated_at(repo: Path) -> None:
+    board = _close(_base_board())
+    assert board["updatedAt"] == T2
+    _head(repo, board)
+    p = _run_guard(repo)
+    assert p.returncode == 0, _out(p)
+    assert "最上層欄位" not in _out(p)
+
+
 def test_should_fail_when_closeout_label_and_no_card_changed(repo: Path) -> None:
     board = _base_board()
     board["updatedAt"] = T2
