@@ -213,6 +213,9 @@ function Test-BoardCloseout($old, $new) {
   if (-not ((IsObj $old) -and (IsArr (Get-V $old 'items')) -and (IsObj $new) -and (IsArr (Get-V $new 'items')))) { return @('board-closeout 無法讀取 base 或 head 的 items') }
   $J = { param($v) ConvertTo-Json -InputObject $v -Depth 64 -Compress }
   $allowed = 'status', 'light', 'updatedAt', 'completedAt', 'ci', 'approvedBy', 'lightReason'
+  # 最上層：items 由下面逐卡檢查，updatedAt 可更新（格式由 Test-Board 檢查），其他欄位不可新增、刪除或修改。
+  $top = @(@($old.Keys) + @($new.Keys) | Select-Object -Unique | Where-Object { $_ -cnotin 'items', 'updatedAt' })
+  foreach ($k in $top) { if ((& $J (Get-V $old $k)) -cne (& $J (Get-V $new $k)) -or $old.Contains($k) -ne $new.Contains($k)) { $e.Add("board-closeout 不可修改看板最上層欄位：$k") } }
   $om = [ordered]@{}; foreach ($it in $old['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $om[[string]$it['id']] = $it } }
   $nm = [ordered]@{}; foreach ($it in $new['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $nm[[string]$it['id']] = $it } }
   $touched = 0
