@@ -206,6 +206,44 @@ function Test-BoardBookkeeping($old, $new) {
   return @($e)
 }
 
+# 結案 PR（board-closeout 標籤）：只檢查有變更的卡片；回傳錯誤字串清單，空＝通過。
+# 卡片層級的格式規則（例如 Done 必須藍燈）由 Test-Board 負責，這裡不重複。
+function Test-BoardCloseout($old, $new) {
+  $e = [Collections.Generic.List[string]]::new()
+  if (-not ((IsObj $old) -and (IsArr (Get-V $old 'items')) -and (IsObj $new) -and (IsArr (Get-V $new 'items')))) { return @('board-closeout 無法讀取 base 或 head 的 items') }
+  $J = { param($v) ConvertTo-Json -InputObject $v -Depth 64 -Compress }
+  $allowed = 'status', 'light', 'updatedAt', 'completedAt', 'ci', 'approvedBy', 'lightReason'
+  $om = [ordered]@{}; foreach ($it in $old['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $om[[string]$it['id']] = $it } }
+  $nm = [ordered]@{}; foreach ($it in $new['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $nm[[string]$it['id']] = $it } }
+  $touched = 0
+  foreach ($id in $om.Keys) { if (-not $nm.Contains($id)) { $e.Add("${id}: 結案時不可刪除卡片"); $touched++ } }
+  foreach ($id in $nm.Keys) {
+    $n = $nm[$id]
+    if (-not $om.Contains($id)) { $e.Add("${id}: 結案時不可新增卡片"); $touched++; continue }
+    $o = $om[$id]
+    $keys = @(@($o.Keys) + @($n.Keys) | Select-Object -Unique)
+    $diff = @($keys | Where-Object { (& $J (Get-V $o $_)) -cne (& $J (Get-V $n $_)) })
+    if (-not $diff.Count) { continue }
+    $touched++
+    if ((Get-V $n 'level') -cnotin 'Task', 'Story') { $e.Add("${id}: 只能結案 Task 或 Story（此卡是 $(Get-V $n 'level')）") }
+    if ((Get-V $o 'status') -cne 'In Review') { $e.Add("${id}: base 的狀態是 $(Get-V $o 'status')，只能結案 In Review 的卡") }
+    if ((Get-V $o 'tdd') -cne 'Green') { $e.Add("${id}: base 的 tdd 是 $(Get-V $o 'tdd')，結案前必須是 Green") }
+    if ((Get-V $n 'status') -cne 'Done') { $e.Add("${id}: 結案後狀態必須是 Done（目前是 $(Get-V $n 'status')）") }
+    if (-not (Has $n 'completedAt')) { $e.Add("${id}: 結案時必須填 completedAt") }
+    foreach ($k in $diff) {
+      if ($k -cin 'notes', 'history') {
+        $oa = @(Get-V $o $k | ForEach-Object { $_ }); $na = @(Get-V $n $k | ForEach-Object { $_ })
+        $ok = $na.Count -ge $oa.Count
+        for ($i = 0; $ok -and $i -lt $oa.Count; $i++) { if ((& $J $oa[$i]) -cne (& $J $na[$i])) { $ok = $false } }
+        if (-not $ok) { $e.Add("${id}: $k 只能追加，不可修改或刪除舊紀錄") }
+      }
+      elseif ($k -cnotin $allowed) { $e.Add("${id}: 結案時不可修改欄位 $k") }
+    }
+  }
+  if (-not $touched) { $e.Add('board-closeout PR 沒有結案任何卡片') }
+  return @($e)
+}
+
 if ($Library) { return }
 if (-not $Path) { Write-Error '用法：validate-board.ps1 -Path board.json [-OldPath old.json -Role dev-agent]'; exit 2 }
 try { $new = Read-BoardJson ([IO.File]::ReadAllText($Path)) } catch { Write-Output "board.json 無法解析：$($_.Exception.Message)"; exit 2 }

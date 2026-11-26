@@ -27000,6 +27000,51 @@
           "note": "建卡（決策紅燈）。"
         }
       ]
+    },
+    {
+      "id": "PD-CI-GUARD-CLOSEOUT-01",
+      "level": "Task",
+      "title": "AI Dev Guard 支援結案 PR（board-closeout 標籤）並把 guard 本身列為強制機制檔案",
+      "parentId": "PRODUCT-HARDEN-20261024",
+      "status": "In Review",
+      "light": "Green",
+      "createdAt": "2026-11-26T10:00:00+08:00",
+      "updatedAt": "2026-11-26T15:00:00+08:00",
+      "startedAt": "2026-11-26T10:00:00+08:00",
+      "owner": "AIAD",
+      "role": "dev-agent",
+      "hours": 3,
+      "tdd": "Green",
+      "ci": "Pending",
+      "prUrl": "https://github.com/roy791202/AIAD/pull/122",
+      "notes": [
+        {
+          "at": "2026-11-26T10:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "缺口：guard 要求 PR 對應卡必為 In Review，Owner 合併後設 Done 的結案 PR（例 #120）永遠過不了。使用者定案方案 B（L1）與 L2 介面：PR 有 board-closeout 標籤時改走結案檢查（只改 docs/board.json；該卡 base In Review→Done；Blue、tdd/ci Green、prUrl、completedAt；history 末筆 In Review→Done；其他卡不變）。另把 .github/ai-dev-guard/ 列入需 guard-change 標籤的路徑。使用者於 session 中指定由本 session 實作。範圍：.github/ai-dev-guard/guard.ps1、tests/test_ai_dev_guard_closeout.py、ai-dev-pipeline references（enforcement、roles-and-gates）與產生檔。無 BDD 情境（CI 工具卡）。"
+        },
+        {
+          "at": "2026-11-26T14:00:00+08:00",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "text": "規格改版：使用者選用 PM session 轉來的 Owner 核准 L2，取代上一則。結案模式（board-closeout 標籤且只改 docs/board.json）不做卡片對應，改呼叫 .github/ai-dev-guard/validate-board.ps1 的 Test-BoardCloseout：只檢查有變更的卡；限 Task／Story；base In Review 且 tdd Green；head Done 且有 completedAt；只可改 status/light/updatedAt/completedAt/ci/approvedBy/lightReason；notes、history 只能追加；不可新增或刪除卡；無卡變更即失敗；可一次結多張。標籤在但改了其他檔案直接失敗。另把 .github/ai-dev-guard/ 列入 guard-change 路徑。前一版 be15080c 的獨立驗證 TDD_PASS 只適用舊規格，不沿用。範圍另含 tools/board/PM-AGENT.md §3、docs/CI-PR-GATE.md、scripts/pd_ci_pr_gate.py（把新測試納入 PR gate 子集）。"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T10:00:00+08:00",
+          "from": "new",
+          "to": "In Progress",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "開工。"
+        },
+        {
+          "at": "2026-11-26T15:00:00+08:00",
+          "from": "In Progress",
+          "to": "In Review",
+          "by": "dev-agent (Claude Opus 5.5)",
+          "note": "READY_FOR_TDD：draft PR #122（f3b7ed4c）；自測 22 passed、PR gate PASS、sync --check OK。待 PM session 派獨立 TDD 代理驗收；需 Owner 加 guard-change 標籤。"
+        }
+      ]
     }
   ],
   "migration": {
