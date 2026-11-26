@@ -37,6 +37,7 @@
 - 一個結案 PR 可以結多張卡。guard 只檢查有變更的卡：必須是 Task 或 Story；base 為 In Review 且 `tdd` Green；結案後為 Done 並填 `completedAt`。
 - 只可改 `status`、`light`、`updatedAt`、`completedAt`、`ci`、`approvedBy`、`lightReason`；`notes`、`history` 只能追加。不可新增或刪除卡片。
 - 看板最上層只可改 `updatedAt`；`version`、`project`、`migration` 等其他最上層欄位不可新增、刪除或修改。
+- `approvedBy` 有變更時，必須是非空字串，而且不可以是開發代理。
 
 ## 驗收紀錄必填
 開發代理身分、驗證代理身分（審查代理身分）、BDD ID、執行的指令與結果、截圖錄影路徑、`TDD_PASS`／`TDD_FAIL`、NOT RUN 清單與原因。

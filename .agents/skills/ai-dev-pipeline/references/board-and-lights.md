@@ -1,6 +1,6 @@
 # 看板、工作層級與燈號
 
-**唯一權威**：`docs/board.json`，格式與規則由 `.ai-hooks/validate-board.ps1` 強制（hook、Git hook、CI 都跑同一支）。若另有工單工具（Linear、Jira、GitHub Issues），兩邊同步，以 board.json 為準。舊的 `PROJECT-BOARD.html`／`#board-snapshot`／`zone` 寫法已停用。
+**唯一權威**：`docs/board.json`，格式與規則由 `.ai-hooks/validate-board.ps1` 強制（hook、Git hook、CI 各有一份：`.ai-hooks/`、`.githooks/`、`.github/ai-dev-guard/`，三份必須逐字相同，PR gate 的 `tests/test_validate_board_copies.py` 會檢查；改規則時三份一起改）。若另有工單工具（Linear、Jira、GitHub Issues），兩邊同步，以 board.json 為準。舊的 `PROJECT-BOARD.html`／`#board-snapshot`／`zone` 寫法已停用。
 
 ## 工作層級
 | 層級 | 含義 | 時間 | 估算 |

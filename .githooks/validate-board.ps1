@@ -3,7 +3,7 @@
  用法：
    validate-board.ps1 -Path docs/board.json                  # 驗證格式與規則，錯誤時 exit 1
    validate-board.ps1 -Path new.json -OldPath old.json -Role dev-agent   # 另外檢查角色權限（開發代理不可設 Done/藍燈/Released/approvedBy）
-   . validate-board.ps1 -Library                             # 只載入函式（Test-Board / Test-BoardRole / Read-BoardJson）
+   . validate-board.ps1 -Library                             # 只載入函式（Test-Board / Test-BoardRole / Test-BoardBookkeeping / Test-BoardCloseout / Read-BoardJson）
  結束碼：0 通過；1 規則不符；2 無法讀取或解析（呼叫端應視為失敗＝fail closed）。
 #>
 param([string]$Path, [string]$OldPath, [string]$Role = '', [switch]$Library, [switch]$AsJson)
@@ -203,6 +203,51 @@ function Test-BoardBookkeeping($old, $new) {
     $hn = if (IsArr (Get-V $it 'history')) { $it['history'].Count } else { 0 }; $ho = if (IsArr (Get-V $o 'history')) { $o['history'].Count } else { 0 }
     if ($hn -le $ho) { $e.Add("$($it['id']): 狀態或燈號變了，但 history 沒有追加一筆 {at, from, to, by}") }
   }
+  return @($e)
+}
+
+# 結案 PR（board-closeout 標籤）：只檢查有變更的卡片；回傳錯誤字串清單，空＝通過。
+# 卡片層級的格式規則（例如 Done 必須藍燈）由 Test-Board 負責，這裡不重複。
+function Test-BoardCloseout($old, $new) {
+  $e = [Collections.Generic.List[string]]::new()
+  if (-not ((IsObj $old) -and (IsArr (Get-V $old 'items')) -and (IsObj $new) -and (IsArr (Get-V $new 'items')))) { return @('board-closeout 無法讀取 base 或 head 的 items') }
+  $J = { param($v) ConvertTo-Json -InputObject $v -Depth 64 -Compress }
+  $allowed = 'status', 'light', 'updatedAt', 'completedAt', 'ci', 'approvedBy', 'lightReason'
+  # 最上層：items 由下面逐卡檢查，updatedAt 可更新（格式由 Test-Board 檢查），其他欄位不可新增、刪除或修改。
+  $top = @(@($old.Keys) + @($new.Keys) | Select-Object -Unique | Where-Object { $_ -cnotin 'items', 'updatedAt' })
+  foreach ($k in $top) { if ((& $J (Get-V $old $k)) -cne (& $J (Get-V $new $k)) -or $old.Contains($k) -ne $new.Contains($k)) { $e.Add("board-closeout 不可修改看板最上層欄位：$k") } }
+  $om = [ordered]@{}; foreach ($it in $old['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $om[[string]$it['id']] = $it } }
+  $nm = [ordered]@{}; foreach ($it in $new['items']) { if ((IsObj $it) -and (Get-V $it 'id')) { $nm[[string]$it['id']] = $it } }
+  $touched = 0
+  foreach ($id in $om.Keys) { if (-not $nm.Contains($id)) { $e.Add("${id}: 結案時不可刪除卡片"); $touched++ } }
+  foreach ($id in $nm.Keys) {
+    $n = $nm[$id]
+    if (-not $om.Contains($id)) { $e.Add("${id}: 結案時不可新增卡片"); $touched++; continue }
+    $o = $om[$id]
+    $keys = @(@($o.Keys) + @($n.Keys) | Select-Object -Unique)
+    $diff = @($keys | Where-Object { (& $J (Get-V $o $_)) -cne (& $J (Get-V $n $_)) })
+    if (-not $diff.Count) { continue }
+    $touched++
+    if ((Get-V $n 'level') -cnotin 'Task', 'Story') { $e.Add("${id}: 只能結案 Task 或 Story（此卡是 $(Get-V $n 'level')）") }
+    if ((Get-V $o 'status') -cne 'In Review') { $e.Add("${id}: base 的狀態是 $(Get-V $o 'status')，只能結案 In Review 的卡") }
+    if ((Get-V $o 'tdd') -cne 'Green') { $e.Add("${id}: base 的 tdd 是 $(Get-V $o 'tdd')，結案前必須是 Green") }
+    if ((Get-V $n 'status') -cne 'Done') { $e.Add("${id}: 結案後狀態必須是 Done（目前是 $(Get-V $n 'status')）") }
+    if (-not (Has $n 'completedAt')) { $e.Add("${id}: 結案時必須填 completedAt") }
+    foreach ($k in $diff) {
+      if ($k -cin 'notes', 'history') {
+        $oa = @(Get-V $o $k | ForEach-Object { $_ }); $na = @(Get-V $n $k | ForEach-Object { $_ })
+        $ok = $na.Count -ge $oa.Count
+        for ($i = 0; $ok -and $i -lt $oa.Count; $i++) { if ((& $J $oa[$i]) -cne (& $J $na[$i])) { $ok = $false } }
+        if (-not $ok) { $e.Add("${id}: $k 只能追加，不可修改或刪除舊紀錄") }
+      }
+      elseif ($k -cnotin $allowed) { $e.Add("${id}: 結案時不可修改欄位 $k") }
+      elseif ($k -ceq 'approvedBy') {
+        $ab = Get-V $n 'approvedBy'
+        if (-not (($ab -is [string]) -and $ab.Trim() -and -not (IsDevAgent $ab))) { $e.Add("${id}: 結案時 approvedBy 必須是非空字串，且不可以是開發代理") }
+      }
+    }
+  }
+  if (-not $touched) { $e.Add('board-closeout PR 沒有結案任何卡片') }
   return @($e)
 }
 

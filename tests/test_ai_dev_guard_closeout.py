@@ -387,3 +387,36 @@ def test_should_pass_when_guard_changed_with_guard_change_label(repo: Path) -> N
     _touch_guard_and_progress(repo)
     p = _run_guard(repo, title=f"ci: guard ({TASK})", labels="guard-change")
     assert p.returncode == 0, _out(p)
+
+
+# --- PD-CI-GUARD-HARDEN-01 D4: approvedBy must be non-empty and not a dev agent ------------------
+
+@pytest.mark.parametrize("value", ["dev-agent", "開發代理 (Claude)", "", "   ", 123])
+def test_should_fail_when_closeout_sets_invalid_approved_by(repo: Path, value: object) -> None:
+    board = _close(_base_board())
+    _card(board, TASK)["approvedBy"] = value
+    _head(repo, board)
+    p = _run_guard(repo)
+    assert p.returncode == 1, _out(p)
+    assert f"{TASK}: 結案時 approvedBy 必須是非空字串，且不可以是開發代理" in _out(p)
+
+
+def test_should_fail_when_closeout_removes_approved_by(repo: Path) -> None:
+    base = _base_board()
+    _card(base, TASK)["approvedBy"] = "Owner"
+    _rebase_fixture(repo, base)
+    board = _close(json.loads(json.dumps(base)))
+    del _card(board, TASK)["approvedBy"]
+    _head(repo, board)
+    p = _run_guard(repo)
+    assert p.returncode == 1, _out(p)
+    assert f"{TASK}: 結案時 approvedBy 必須是非空字串，且不可以是開發代理" in _out(p)
+
+
+def test_should_pass_when_closeout_keeps_unchanged_approved_by(repo: Path) -> None:
+    base = _base_board()
+    _card(base, TASK)["approvedBy"] = "Owner"
+    _rebase_fixture(repo, base)
+    _head(repo, _close(json.loads(json.dumps(base))))
+    p = _run_guard(repo)
+    assert p.returncode == 0, _out(p)
