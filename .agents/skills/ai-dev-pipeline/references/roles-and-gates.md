@@ -30,6 +30,7 @@
 2. **獨立 `TDD_PASS`**：驗證者 ≠ 開發者，親跑通過；必要時審查也通過。
 3. **PR 已合併**（沒有 PR 的純文件／決策卡免此項，需註明）。
 只有高階模型或使用者能設 Done／藍燈；排程、腳本、輪詢一律不得批次改 Done。
+設 Done 走一個只改看板的結案 PR，由 Owner 加 `board-closeout` 標籤（檢查項見 [enforcement.md](enforcement.md)）。
 
 ## 驗收紀錄必填
 開發代理身分、驗證代理身分（審查代理身分）、BDD ID、執行的指令與結果、截圖錄影路徑、`TDD_PASS`／`TDD_FAIL`、NOT RUN 清單與原因。

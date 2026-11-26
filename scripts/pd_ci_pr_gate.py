@@ -29,6 +29,8 @@ PR_TEST_SUBSET = (
     "tests/test_stats.py",
     "tests/test_schedule.py",
     "tests/test_dispatcher.py",
+    # PD-CI-GUARD-CLOSEOUT-01: AI Dev Guard behaviour (needs pwsh; built into ubuntu-latest).
+    "tests/test_ai_dev_guard_closeout.py",
 )
 
 
