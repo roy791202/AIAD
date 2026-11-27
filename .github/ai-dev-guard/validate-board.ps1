@@ -3,7 +3,7 @@
  用法：
    validate-board.ps1 -Path docs/board.json                  # 驗證格式與規則，錯誤時 exit 1
    validate-board.ps1 -Path new.json -OldPath old.json -Role dev-agent   # 另外檢查角色權限（開發代理不可設 Done/藍燈/Released/approvedBy）
-   . validate-board.ps1 -Library                             # 只載入函式（Test-Board / Test-BoardRole / Read-BoardJson）
+   . validate-board.ps1 -Library                             # 只載入函式（Test-Board / Test-BoardRole / Test-BoardBookkeeping / Test-BoardCloseout / Read-BoardJson）
  結束碼：0 通過；1 規則不符；2 無法讀取或解析（呼叫端應視為失敗＝fail closed）。
 #>
 param([string]$Path, [string]$OldPath, [string]$Role = '', [switch]$Library, [switch]$AsJson)
@@ -241,6 +241,10 @@ function Test-BoardCloseout($old, $new) {
         if (-not $ok) { $e.Add("${id}: $k 只能追加，不可修改或刪除舊紀錄") }
       }
       elseif ($k -cnotin $allowed) { $e.Add("${id}: 結案時不可修改欄位 $k") }
+      elseif ($k -ceq 'approvedBy') {
+        $ab = Get-V $n 'approvedBy'
+        if (-not (($ab -is [string]) -and $ab.Trim() -and -not (IsDevAgent $ab))) { $e.Add("${id}: 結案時 approvedBy 必須是非空字串，且不可以是開發代理") }
+      }
     }
   }
   if (-not $touched) { $e.Add('board-closeout PR 沒有結案任何卡片') }

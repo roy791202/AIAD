@@ -31,6 +31,8 @@ PR_TEST_SUBSET = (
     "tests/test_dispatcher.py",
     # PD-CI-GUARD-CLOSEOUT-01: AI Dev Guard behaviour (needs pwsh; built into ubuntu-latest).
     "tests/test_ai_dev_guard_closeout.py",
+    # PD-CI-GUARD-HARDEN-01: the three validate-board.ps1 copies stay byte-identical.
+    "tests/test_validate_board_copies.py",
 )
 
 
